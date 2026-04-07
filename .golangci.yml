@@ -9,8 +9,6 @@ run:
   timeout: 5m
 
 linters:
-  disable:
-    - depguard
   enable:
     - depguard
     - errcheck
@@ -25,8 +23,20 @@ linters:
     - misspell
     - unconvert
     - unparam
+  exclusions:
+    paths:
+      - bin
+      - dist
+      - web
+      - extension
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - errcheck
+          - gocyclo
 
-linters-settings:
+settings:
   depguard:
     rules:
       domain-stdlib-only:
@@ -61,16 +71,3 @@ linters-settings:
       - G104
   errcheck:
     check-type-assertions: true
-
-issues:
-  exclude-dirs:
-    - bin
-    - dist
-    - web
-    - extension
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
-        - gocyclo
