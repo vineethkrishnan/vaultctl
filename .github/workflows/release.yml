@@ -75,6 +75,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: vineethkrishnan/vaultctl
+          repository: vineethnkrishnan/vaultctl
           short-description: "Zero-knowledge password vault. Self-hosted, E2E encrypted, open source."
           readme-filepath: docs/initial/prd.md

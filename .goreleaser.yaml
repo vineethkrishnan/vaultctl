@@ -107,8 +107,8 @@ dockers:
       - '--label=org.opencontainers.image.version={{.Version}}'
   # Docker Hub (secondary registry)
   - image_templates:
-      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-amd64'
-      - 'docker.io/vineethkrishnan/vaultctl:latest-amd64'
+      - 'docker.io/vineethnkrishnan/vaultctl:{{ .Version }}-amd64'
+      - 'docker.io/vineethnkrishnan/vaultctl:latest-amd64'
     dockerfile: Dockerfile.goreleaser
     use: buildx
     build_flag_templates:
@@ -118,8 +118,8 @@ dockers:
       - '--label=org.opencontainers.image.revision={{.FullCommit}}'
       - '--label=org.opencontainers.image.licenses=AGPL-3.0'
   - image_templates:
-      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-arm64'
-      - 'docker.io/vineethkrishnan/vaultctl:latest-arm64'
+      - 'docker.io/vineethnkrishnan/vaultctl:{{ .Version }}-arm64'
+      - 'docker.io/vineethnkrishnan/vaultctl:latest-arm64'
     dockerfile: Dockerfile.goreleaser
     use: buildx
     goarch: arm64
@@ -139,14 +139,14 @@ docker_manifests:
       - 'ghcr.io/vineethkrishnan/vaultctl:latest-amd64'
       - 'ghcr.io/vineethkrishnan/vaultctl:latest-arm64'
   # Docker Hub
-  - name_template: 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}'
+  - name_template: 'docker.io/vineethnkrishnan/vaultctl:{{ .Version }}'
     image_templates:
-      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-amd64'
-      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-arm64'
-  - name_template: 'docker.io/vineethkrishnan/vaultctl:latest'
+      - 'docker.io/vineethnkrishnan/vaultctl:{{ .Version }}-amd64'
+      - 'docker.io/vineethnkrishnan/vaultctl:{{ .Version }}-arm64'
+  - name_template: 'docker.io/vineethnkrishnan/vaultctl:latest'
     image_templates:
-      - 'docker.io/vineethkrishnan/vaultctl:latest-amd64'
-      - 'docker.io/vineethkrishnan/vaultctl:latest-arm64'
+      - 'docker.io/vineethnkrishnan/vaultctl:latest-amd64'
+      - 'docker.io/vineethnkrishnan/vaultctl:latest-arm64'
 
 # H13: cosign container image signatures (keyless).
 docker_signs:
