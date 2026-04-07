@@ -66,6 +66,7 @@ jobs:
   dockerhub-description:
     name: Update Docker Hub Description
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v6
 
@@ -76,3 +77,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: vineethkrishnan/vaultctl
           short-description: "Zero-knowledge password vault. Self-hosted, E2E encrypted, open source."
+          readme-filepath: docs/initial/prd.md

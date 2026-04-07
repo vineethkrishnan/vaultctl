@@ -1,0 +1,13 @@
+# Minimal Dockerfile for goreleaser — the binary is pre-built.
+# The main Dockerfile is for docker compose / manual builds.
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY vaultctl /usr/local/bin/vaultctl
+
+USER nonroot:nonroot
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["/usr/local/bin/vaultctl", "healthcheck"]
+
+ENTRYPOINT ["/usr/local/bin/vaultctl"]
