@@ -130,16 +130,16 @@ func decodePHC(encoded string) (ServerArgon2Params, []byte, []byte, error) {
 
 	var p ServerArgon2Params
 	if _, err := fmt.Sscanf(parts[0], "m=%d,t=%d,p=%d", &p.MemoryKB, &p.Iterations, &p.Parallelism); err != nil {
-		return ServerArgon2Params{}, nil, nil, fmt.Errorf("%w: params: %v", ErrMalformedPHC, err)
+		return ServerArgon2Params{}, nil, nil, fmt.Errorf("%w: params: %v", ErrMalformedPHC, err) //nolint:errorlint // wrap sentinel only
 	}
 	b64 := base64.RawStdEncoding
 	salt, err := b64.DecodeString(parts[1])
 	if err != nil {
-		return ServerArgon2Params{}, nil, nil, fmt.Errorf("%w: salt: %v", ErrMalformedPHC, err)
+		return ServerArgon2Params{}, nil, nil, fmt.Errorf("%w: salt: %v", ErrMalformedPHC, err) //nolint:errorlint // wrap sentinel only
 	}
 	digest, err := b64.DecodeString(parts[2])
 	if err != nil {
-		return ServerArgon2Params{}, nil, nil, fmt.Errorf("%w: digest: %v", ErrMalformedPHC, err)
+		return ServerArgon2Params{}, nil, nil, fmt.Errorf("%w: digest: %v", ErrMalformedPHC, err) //nolint:errorlint // wrap sentinel only
 	}
 	p.SaltLen = uint32(len(salt))
 	p.KeyLen = uint32(len(digest))

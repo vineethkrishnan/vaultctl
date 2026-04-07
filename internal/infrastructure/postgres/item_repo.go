@@ -102,11 +102,11 @@ func (r *ItemRepo) ListActive(ctx context.Context, vaultID vault.ID, opts ports.
 	args := []any{string(vaultID)}
 	if opts.FolderID != nil {
 		args = append(args, string(*opts.FolderID))
-		sb.WriteString(fmt.Sprintf(" AND folder_id = $%d", len(args)))
+		fmt.Fprintf(&sb, " AND folder_id = $%d", len(args))
 	}
 	if opts.ItemType != nil {
 		args = append(args, string(*opts.ItemType))
-		sb.WriteString(fmt.Sprintf(" AND item_type = $%d", len(args)))
+		fmt.Fprintf(&sb, " AND item_type = $%d", len(args))
 	}
 	if opts.FavoritesOnly {
 		sb.WriteString(" AND favorite = TRUE")

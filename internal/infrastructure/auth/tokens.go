@@ -58,7 +58,7 @@ func (g *TokenGenerator) InviteToken() (string, error) {
 func generate(n int) (string, error) {
 	buf := make([]byte, n)
 	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("%w: %v", ErrTokenRead, err)
+		return "", fmt.Errorf("%w: %v", ErrTokenRead, err) //nolint:errorlint // wrap sentinel only
 	}
 	return base64.RawURLEncoding.EncodeToString(buf), nil
 }

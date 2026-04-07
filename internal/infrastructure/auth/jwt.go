@@ -124,7 +124,7 @@ func (s *JWTService) Verify(tokenString string) (*AccessClaims, error) {
 		}
 	}, parserOpts...)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrInvalidToken, err)
+		return nil, fmt.Errorf("%w: %v", ErrInvalidToken, err) //nolint:errorlint // wrap sentinel only
 	}
 	return out, nil
 }

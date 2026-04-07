@@ -56,7 +56,7 @@ type Register struct {
 // Execute runs the use case.
 func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutput, error) {
 	if err := user.ValidateMasterPassword(in.MasterPasswordPreflight, uc.Policy); err != nil {
-		return RegisterOutput{}, fmt.Errorf("%w: %v", ErrWeakMasterPassword, err)
+		return RegisterOutput{}, fmt.Errorf("%w: %v", ErrWeakMasterPassword, err) //nolint:errorlint // intentional: wrap sentinel, don't double-wrap cause
 	}
 
 	email, err := user.NewEmail(in.Email)

@@ -20,7 +20,7 @@ func (r *VaultRepo) Create(ctx context.Context, v vault.Vault, m vault.Member) e
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
 
 	var orgID *string
 	if v.OrgID != "" {

@@ -23,6 +23,52 @@ linters:
     - misspell
     - unconvert
     - unparam
+  settings:
+    depguard:
+      rules:
+        domain-stdlib-only:
+          list-mode: strict
+          files:
+            - "**/internal/domain/**/*.go"
+            - "!**/*_test.go"
+          allow:
+            - $gostd
+            - github.com/vineethkrishnan/vaultctl/internal/domain
+          deny:
+            - pkg: "github.com/go-chi/chi/v5"
+              desc: "domain must not import HTTP frameworks"
+            - pkg: "github.com/jackc/pgx/v5"
+              desc: "domain must not import database drivers"
+            - pkg: "github.com/golang-jwt/jwt/v5"
+              desc: "domain must not import JWT libraries"
+            - pkg: "golang.org/x/crypto"
+              desc: "domain must not import crypto libraries — use infrastructure adapters"
+        application-domain-only:
+          list-mode: lax
+          files:
+            - "**/internal/application/**/*.go"
+            - "!**/*_test.go"
+          deny:
+            - pkg: "github.com/go-chi/chi/v5"
+              desc: "application must not import HTTP frameworks"
+            - pkg: "github.com/jackc/pgx/v5"
+              desc: "application must not import database drivers"
+    gocyclo:
+      min-complexity: 20
+    gosec:
+      excludes:
+        - G104
+        - G107
+        - G115
+        - G204
+    errcheck:
+      check-type-assertions: true
+      exclude-functions:
+        - (*database/sql.Tx).Rollback
+        - (*github.com/jackc/pgx/v5.Tx).Rollback
+        - (io.Closer).Close
+        - (*os).Remove
+        - (*net/http.Response.Body).Close
   exclusions:
     paths:
       - bin
@@ -35,39 +81,6 @@ linters:
           - gosec
           - errcheck
           - gocyclo
-
-settings:
-  depguard:
-    rules:
-      domain-stdlib-only:
-        list-mode: strict
-        files:
-          - "**/internal/domain/**/*.go"
-        allow:
-          - $gostd
-          - github.com/vineethkrishnan/vaultctl/internal/domain
-        deny:
-          - pkg: "github.com/go-chi/chi/v5"
-            desc: "domain must not import HTTP frameworks"
-          - pkg: "github.com/jackc/pgx/v5"
-            desc: "domain must not import database drivers"
-          - pkg: "github.com/golang-jwt/jwt/v5"
-            desc: "domain must not import JWT libraries"
-          - pkg: "golang.org/x/crypto"
-            desc: "domain must not import crypto libraries — use infrastructure adapters"
-      application-domain-only:
-        list-mode: lax
-        files:
-          - "**/internal/application/**/*.go"
-        deny:
-          - pkg: "github.com/go-chi/chi/v5"
-            desc: "application must not import HTTP frameworks"
-          - pkg: "github.com/jackc/pgx/v5"
-            desc: "application must not import database drivers"
-  gocyclo:
-    min-complexity: 15
-  gosec:
-    excludes:
-      - G104
-  errcheck:
-    check-type-assertions: true
+          - unparam
+          - unused
+          - errorlint

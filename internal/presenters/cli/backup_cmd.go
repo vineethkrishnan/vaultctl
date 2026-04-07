@@ -41,7 +41,7 @@ func newBackupCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer os.Remove(pgpass)
+			defer os.Remove(pgpass) //nolint:errcheck // best-effort cleanup
 
 			args := []string{
 				"-h", cfg.DBHost, "-p", fmt.Sprint(cfg.DBPort),
@@ -70,20 +70,22 @@ func writeTempPgpass(host string, port int, dbname, user, password string) (stri
 	if err != nil {
 		return "", fmt.Errorf("create temp pgpass: %w", err)
 	}
+	cleanup := func() {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+	}
 	if err := f.Chmod(0o600); err != nil {
-		f.Close()
-		os.Remove(f.Name())
+		cleanup()
 		return "", fmt.Errorf("chmod pgpass: %w", err)
 	}
 	// .pgpass format: hostname:port:database:username:password
 	line := fmt.Sprintf("%s:%d:%s:%s:%s\n", host, port, dbname, user, password)
 	if _, err := f.WriteString(line); err != nil {
-		f.Close()
-		os.Remove(f.Name())
+		cleanup()
 		return "", fmt.Errorf("write pgpass: %w", err)
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", fmt.Errorf("close pgpass: %w", err)
 	}
 	return f.Name(), nil

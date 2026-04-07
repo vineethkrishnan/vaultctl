@@ -114,7 +114,7 @@ func buildAEAD(b64 string) (cipher.AEAD, error) {
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrBadDataKey, err)
+		return nil, fmt.Errorf("%w: %v", ErrBadDataKey, err) //nolint:errorlint // wrap sentinel only
 	}
 	return cipher.NewGCM(block)
 }

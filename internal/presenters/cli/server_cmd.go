@@ -50,7 +50,7 @@ func newServerCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer cleanup()
+			defer cleanup() //nolint:errcheck // best-effort shutdown cleanup
 
 			srv := &http.Server{
 				Addr:              addr,
