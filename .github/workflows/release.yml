@@ -58,7 +58,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # H13: SLSA L3 provenance attestation over every published binary + image.
+      # Only available on public repos — skip while private.
       - name: attest build provenance
+        if: github.event.repository.visibility == 'public'
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: 'dist/*.tar.gz,dist/*.zip'
