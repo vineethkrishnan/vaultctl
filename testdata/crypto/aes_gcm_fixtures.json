@@ -1,0 +1,23 @@
+[
+  {
+    "key_b64": "hPDijibpsmpxVW/QDMi9E722ws+p6SmE+YVLvSIQ6q8=",
+    "plaintext_b64": "aGVsbG8gZnJvbSBUeXBlU2NyaXB0",
+    "blob_b64": "AQE4nXvLj7xAck2eklZZ81bMBeU/BuLUjDjRELV39RMLMXGGBgJC6tWRR/gVLXyBfJmx"
+  },
+  {
+    "key_b64": "hXv9pdTT30dhoE99nu2V1xzAHJyYyTCAD4wH6UOQdjc=",
+    "plaintext_b64": "c2VjcmV0IHdpdGggQUFE",
+    "blob_b64": "AQH1MFAbU2mvXTRlWJdzMb+c3GIvOSNSNOAlg4ooi7CbqWoq0kxye1BYxrYG",
+    "aad_b64": "dXNlcjp1MTIzOnRvdHBfc2VjcmV0"
+  },
+  {
+    "key_b64": "/xWTpCcwpr2TTWNSaUkRhmZhXH9DeHpXb1z8j9G0QhA=",
+    "plaintext_b64": "V50RiWsZ6u/pWk6cz/gqnlyoO+Fghft/h2hm6hj3ht4=",
+    "blob_b64": "AQG3v39ndMH7ABLu+IRxnc/Y2bx2t+viUKfX7q+Qb1amsGZChANNgKCCVQqrwwYr8IWCydC5MqSWhQ0G/Z4="
+  },
+  {
+    "key_b64": "t3tKQdzjVbmwfCZoZoR49HtrQQxJKQW2KuSSiF9Jk5A=",
+    "plaintext_b64": "TXkgTG9naW4gSXRlbRMTExMTExMTExMTExMTExMTExM=",
+    "blob_b64": "AQFdfLjz8CEFzXwzE+ldOzvK6bkmUOdklxZgCS/W5072WibKn7859Pjtl+rh+9BrSVhNe3f0B/f1WPcJY+Q="
+  }
+]

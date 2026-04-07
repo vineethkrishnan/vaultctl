@@ -1,0 +1,84 @@
+# Import & Export
+
+import { Callout, Steps, Tabs } from 'nextra/components'
+
+Migrate your existing passwords into vaultctl or export your vault data for backup.
+
+---
+
+## Import from Bitwarden
+
+vaultctl can import your data from a Bitwarden CSV export. The entire import process happens in your browser -- the CSV file is never sent to the server.
+
+### Step 1: Export from Bitwarden
+
+<Tabs items={['Web Vault', 'Desktop App']}>
+  <Tabs.Tab>
+  1. Log in to your Bitwarden web vault.
+  2. Go to **Tools > Export Vault**.
+  3. Select **CSV** as the format (not encrypted JSON).
+  4. Enter your master password and click **Export Vault**.
+  5. Save the `.csv` file to your computer.
+  </Tabs.Tab>
+  <Tabs.Tab>
+  1. Open the Bitwarden desktop app.
+  2. Go to **File > Export Vault**.
+  3. Select **CSV** as the format.
+  4. Enter your master password and click **Export Vault**.
+  5. Save the `.csv` file to your computer.
+  </Tabs.Tab>
+</Tabs>
+
+### Step 2: Import into vaultctl
+
+<Steps>
+### Open the import tool
+Go to **Settings > Import** in the vaultctl web vault.
+
+### Select the source
+Choose **Bitwarden (CSV)** from the dropdown.
+
+### Upload the file
+Click **Choose File** and select the CSV you exported. The file is read entirely in your browser.
+
+### Review the preview
+vaultctl shows a summary of the items found: how many logins, notes, cards, and identities will be imported. Review the list for accuracy.
+
+### Confirm the import
+Click **Import**. Each item is encrypted with your vault key and saved to the server. Folders from the Bitwarden export are re-created as vaultctl folders.
+</Steps>
+
+### Type Mapping
+
+Bitwarden item types are mapped to vaultctl types as follows:
+
+| Bitwarden Type | vaultctl Type |
+|---------------|---------------|
+| Login | Login |
+| Secure Note | Secure Note |
+| Card | Credit Card |
+| Identity | Identity |
+
+Custom fields, URIs, and TOTP secrets are preserved during import.
+
+<Callout type="warning">
+**Delete the CSV file after import.** The exported CSV contains your passwords in plain text. Permanently delete it from your computer and your trash/recycle bin once the import is complete.
+</Callout>
+
+---
+
+## Security Notes
+
+- **Client-side processing** -- The CSV file is parsed and encrypted entirely in your browser. It is never uploaded to the vaultctl server in its original form.
+- **No network during parsing** -- The import tool reads the file using the browser's File API. Network requests are only made when saving the encrypted items.
+- **Duplicate handling** -- If an item with the same name and type already exists in your vault, it is imported as a separate entry. vaultctl does not merge duplicates automatically.
+
+<Callout type="info">
+Currently, vaultctl supports importing from Bitwarden CSV only. Support for additional formats (1Password, LastPass, KeePass) is planned for future releases.
+</Callout>
+
+---
+
+## Export
+
+Export is not yet available in the current release. When added, exports will be encrypted by default to prevent accidental exposure of vault data.

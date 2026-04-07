@@ -1,0 +1,85 @@
+# Two-Factor Authentication
+
+import { Callout, Steps } from 'nextra/components'
+
+Add an extra layer of security to your vaultctl account with time-based one-time passwords (TOTP).
+
+---
+
+## What Is 2FA?
+
+Two-factor authentication requires a second credential -- a 6-digit code from an authenticator app -- in addition to your master password when you log in. Even if someone learns your password, they cannot access your vault without the code.
+
+---
+
+## Compatible Apps
+
+Any TOTP-compatible authenticator app works with vaultctl. Popular options include:
+
+| App | Platforms |
+|-----|-----------|
+| **Google Authenticator** | iOS, Android |
+| **Authy** | iOS, Android, Desktop |
+| **1Password** | iOS, Android, Desktop, Browser |
+| **Aegis** | Android |
+| **Raivo OTP** | iOS |
+
+---
+
+## Enabling 2FA
+
+<Steps>
+### Open security settings
+Go to **Settings > Security > Two-Factor Authentication**.
+
+### Step-up authentication
+Re-enter your master password to confirm your identity.
+
+### Scan the QR code
+A QR code is displayed on screen. Open your authenticator app and scan it. If you cannot scan, click **Manual Entry** to copy the secret key.
+
+### Enter the verification code
+Type the 6-digit code from your authenticator app into the verification field and click **Verify**.
+
+### Save your backup codes
+A set of one-time backup codes is displayed. Save these in a secure location (alongside your recovery kit, for example). Each backup code can be used once in place of a TOTP code if you lose access to your authenticator app.
+</Steps>
+
+<Callout type="info">
+2FA is enabled immediately after you verify the first code. Your next login will require both your master password and a TOTP code.
+</Callout>
+
+---
+
+## Logging In with 2FA
+
+1. Enter your master password as usual.
+2. When prompted, open your authenticator app and enter the current 6-digit code.
+3. Click **Verify** to complete login.
+
+If you do not have access to your authenticator app, click **Use Backup Code** and enter one of the backup codes you saved during setup.
+
+---
+
+## Replay Protection
+
+Each TOTP code is valid for a single 30-second window. vaultctl tracks used codes and rejects any code that has already been submitted during its validity window. This prevents replay attacks where an attacker intercepts and reuses a code.
+
+---
+
+## Disabling 2FA
+
+<Steps>
+### Open security settings
+Go to **Settings > Security > Two-Factor Authentication**.
+
+### Step-up authentication
+Re-enter your master password.
+
+### Disable
+Click **Disable 2FA** and confirm. The TOTP secret is deleted from the server and your authenticator app entry becomes inactive.
+</Steps>
+
+<Callout type="warning">
+After disabling 2FA, your account is protected only by your master password. Consider re-enabling 2FA or using a strong, unique password.
+</Callout>

@@ -1,0 +1,132 @@
+# Server Configuration
+
+import { Callout, Tabs, Steps } from 'nextra/components'
+
+vaultctl is configured entirely through environment variables. This page covers every variable, key rotation procedures, and a production readiness checklist.
+
+## Required Variables
+
+These must be set for the server to start.
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VAULTCTL_ENV` | Environment mode: `development`, `staging`, or `production` | `production` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://vaultctl:secret@db:5432/vaultctl?sslmode=require` |
+| `JWT_SECRET_CURRENT` | HMAC-SHA256 secret for signing JWT access tokens (min 32 bytes, base64) | `base64-encoded-random-32-bytes` |
+| `SERVER_PEPPER` | Secret used for server-side Argon2id re-hashing of auth hashes (min 32 bytes, base64) | `base64-encoded-random-32-bytes` |
+| `ENUMERATION_PEPPER` | Secret used to generate fake KDF params for unknown emails (min 32 bytes, base64) | `base64-encoded-random-32-bytes` |
+| `DATA_ENCRYPTION_KEY` | AES-256 key for server-side encryption of TOTP secrets (32 bytes, base64) | `base64-encoded-random-32-bytes` |
+
+<Callout type="warning">
+  Generate all secrets with a cryptographically secure random source:
+  ```bash
+  openssl rand -base64 32
+  ```
+  Never reuse secrets across environments. Never commit secrets to source control.
+</Callout>
+
+## Optional Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LISTEN_ADDR` | `:8080` | Address and port the server listens on |
+| `JWT_SECRET_NEXT` | *(none)* | Next JWT secret for zero-downtime key rotation |
+| `JWT_KID_CURRENT` | `1` | Key ID included in JWT headers for rotation tracking |
+| `JWT_ACCESS_TTL` | `15m` | Access token lifetime (e.g., `15m`, `1h`) |
+| `JWT_REFRESH_TTL` | `7d` | Refresh token lifetime (e.g., `7d`, `30d`) |
+| `DATA_ENCRYPTION_KEY_NEXT` | *(none)* | Next data encryption key for zero-downtime rotation |
+| `MAX_LOGIN_ATTEMPTS` | `5` | Failed login attempts before account lockout |
+| `LOCKOUT_DURATION` | `15m` | Duration of account lockout after max failed attempts |
+| `RATE_LIMIT_RPM` | `60` | Global per-IP rate limit (requests per minute) |
+| `AUTH_RATE_LIMIT_PER_EMAIL` | `5` | Max auth attempts per email within the rate limit window |
+| `AUTH_RATE_LIMIT_WINDOW` | `15m` | Time window for per-email auth rate limiting |
+| `TRUSTED_PROXIES` | *(none)* | Comma-separated list of trusted proxy CIDRs for `X-Forwarded-For` |
+| `LOG_REDACT_FIELDS` | `authHash,refreshToken` | Comma-separated list of JSON fields to redact in logs |
+| `DB_SSL_MODE` | `require` | PostgreSQL SSL mode: `disable`, `require`, `verify-ca`, `verify-full` |
+
+## Key Rotation
+
+vaultctl supports zero-downtime rotation for JWT secrets and data encryption keys using a "current + next" pattern.
+
+### JWT Secret Rotation
+
+<Steps>
+### Set the next secret
+
+Add `JWT_SECRET_NEXT` with a newly generated secret. Increment `JWT_KID_CURRENT`.
+
+```bash
+JWT_SECRET_CURRENT=<old-secret>
+JWT_SECRET_NEXT=<new-secret>
+JWT_KID_CURRENT=2
+```
+
+### Restart the server
+
+The server now signs new tokens with `JWT_SECRET_NEXT` but still validates tokens signed with `JWT_SECRET_CURRENT`.
+
+### Wait for old tokens to expire
+
+Wait at least `JWT_ACCESS_TTL` + `JWT_REFRESH_TTL` (e.g., 7 days + 15 minutes).
+
+### Promote the new secret
+
+Move the new secret to `JWT_SECRET_CURRENT` and remove `JWT_SECRET_NEXT`.
+
+```bash
+JWT_SECRET_CURRENT=<new-secret>
+# JWT_SECRET_NEXT removed
+JWT_KID_CURRENT=2
+```
+
+### Restart the server
+
+The rotation is complete.
+</Steps>
+
+### Data Encryption Key Rotation
+
+The same pattern applies to `DATA_ENCRYPTION_KEY` and `DATA_ENCRYPTION_KEY_NEXT`. The server re-encrypts data lazily on read (decrypts with old key, re-encrypts with new key on next write).
+
+<Steps>
+### Set the next key
+
+```bash
+DATA_ENCRYPTION_KEY=<old-key>
+DATA_ENCRYPTION_KEY_NEXT=<new-key>
+```
+
+### Restart and wait
+
+The server uses the new key for all new encryptions and can decrypt with either key.
+
+### Promote the new key
+
+Once all data has been re-encrypted (or after a sufficient period), promote:
+
+```bash
+DATA_ENCRYPTION_KEY=<new-key>
+# DATA_ENCRYPTION_KEY_NEXT removed
+```
+</Steps>
+
+## Production Checklist
+
+Before deploying to production, verify each item:
+
+| Check | Details |
+|-------|---------|
+| `VAULTCTL_ENV=production` | Enables strict security defaults |
+| All secrets are unique | No reuse across environments; all generated with `openssl rand -base64 32` |
+| `DATABASE_URL` uses SSL | Set `sslmode=require` or `verify-full` in the connection string |
+| TLS termination configured | Use a reverse proxy (Caddy, nginx) with a valid certificate |
+| `TRUSTED_PROXIES` set correctly | Must match your reverse proxy's IP/CIDR to correctly resolve client IPs |
+| Rate limits reviewed | Adjust `RATE_LIMIT_RPM` and `AUTH_RATE_LIMIT_PER_EMAIL` for your expected traffic |
+| Backup schedule configured | See [Backup & Restore](/help-center/backup-restore) |
+| Log redaction enabled | `LOG_REDACT_FIELDS` includes sensitive field names |
+| Firewall rules in place | Only expose port 443 (HTTPS). Block direct access to port 8080. |
+| Database credentials are not default | Change the default PostgreSQL password |
+
+<Callout type="info">
+  In `production` mode, the server enforces HTTPS-only cookies, requires `TRUSTED_PROXIES` if behind a proxy, and enables stricter request validation.
+</Callout>

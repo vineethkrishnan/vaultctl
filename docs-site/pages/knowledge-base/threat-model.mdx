@@ -1,0 +1,82 @@
+# Threat Model
+
+import { Callout } from 'nextra/components'
+
+This page documents the threats vaultctl defends against, known limitations, and the security controls in place.
+
+## Defended Threats
+
+| Threat | Defense | Controls |
+|--------|---------|----------|
+| **Database dump** | All item data is AES-256-GCM encrypted. Auth hashes are double-Argon2id hashed. Vault keys are RSA/AES-KW wrapped. | C1, C2 |
+| **Server compromise** (read access) | Server stores only ciphertext. No plaintext secrets, no key material. | C1 |
+| **MITM on vault sharing** | Vault key wraps are Ed25519-signed by the sender. Recipients verify signatures against the sender's identity public key. | C3 |
+| **Brute-force master password** | Argon2id (3 iter, 64 MB, 4 threads) on client + Argon2id (2 iter, 19 MB, 1 thread) on server. Account locks after 5 failed attempts. | C2, H3 |
+| **Email enumeration** | Prelogin returns deterministic fake KDF params for unknown emails. Login errors do not distinguish "email not found" from "wrong password". | H2 |
+| **Token theft** | Access tokens are short-lived (15 min default). Refresh tokens are single-use with rotation. Sessions can be revoked. | H4 |
+| **TOTP replay** | Each TOTP code is tracked per time step. Replaying a used code within the same 30-second window is rejected. | H6 |
+| **IDOR (insecure direct object reference)** | All resource access checks vault membership. Users cannot access items, folders, or vaults they are not members of. | H7 |
+| **XSS (cross-site scripting)** | Strict Content Security Policy. Keys live in a Web Worker (isolated context, not accessible from main thread). HttpOnly cookies where applicable. | H8 |
+| **Clickjacking** | `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`. | H9 |
+| **Cut-and-paste ciphertext** | AAD binding ties each ciphertext to its specific context (vault ID, item ID, field type). Moving ciphertext between contexts causes decryption failure. | C4 |
+
+## Known Limitations
+
+These are acknowledged risks that are inherent to the architecture or not yet mitigated:
+
+| Limitation | Details |
+|------------|---------|
+| **Malicious JavaScript** | A compromised server (or CDN/build pipeline) could serve modified JS that exfiltrates keys before encryption. This is an inherent limitation of all web-based crypto apps. Self-hosting and verifying build artifacts mitigates this. |
+| **Browser memory** | Decrypted data exists in browser memory during use. JavaScript does not provide reliable memory zeroing. The Web Worker auto-locks after 15 minutes of inactivity and clears all key material. |
+| **Single-device unlock** | There is no "trusted device" or "remember this device" flow. Every session requires the full master password. This is by design for security but impacts convenience. |
+| **Vault names not encrypted** | Vault names are stored in plaintext on the server. An attacker with DB access can see vault names (but not their contents). |
+| **Item types visible** | The `itemType` field (`login`, `note`, `card`, etc.) is stored in plaintext for server-side filtering. An attacker can see the distribution of item types. |
+| **Ciphertext size** | While names are padded to 32-byte boundaries, the size of encrypted item data reveals approximate payload length. |
+| **No offline access** | The web client requires server connectivity to sync. If the server is unreachable, cached data in the browser may be available but cannot be updated. |
+
+## Content Security Policy
+
+vaultctl sets a strict CSP to mitigate XSS and code injection:
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  connect-src 'self';
+  frame-ancestors 'none';
+  form-action 'self';
+  base-uri 'self';
+  object-src 'none';
+```
+
+| Directive | Purpose |
+|-----------|---------|
+| `script-src 'self'` | Only scripts from the same origin (no inline, no CDN) |
+| `connect-src 'self'` | API calls only to same origin |
+| `frame-ancestors 'none'` | Prevents embedding in iframes (clickjacking) |
+| `object-src 'none'` | Blocks plugins (Flash, Java) |
+
+<Callout type="info">
+  The CSP does not allow `unsafe-eval` or external script sources. If you use a reverse proxy that injects scripts (e.g., analytics), you must adjust the CSP accordingly — but be aware this weakens the security posture.
+</Callout>
+
+## Security Controls Reference
+
+| ID | Control | Description |
+|----|---------|-------------|
+| C1 | Client-side encryption | AES-256-GCM encryption of all sensitive data in the browser |
+| C2 | Dual Argon2id | Client-side + server-side Argon2id for auth hash storage |
+| C3 | Signed key wraps | Ed25519 signatures on vault key wraps prevent MITM during sharing |
+| C4 | AAD binding | Ciphertext bound to context via Additional Authenticated Data |
+| C5 | Name padding | PKCS#7 padding to 32-byte boundaries prevents length fingerprinting |
+| H2 | Enumeration prevention | Fake KDF params for unknown emails |
+| H3 | Account lockout | 5 failed attempts triggers 15-minute lockout |
+| H4 | Token hygiene | Short-lived access tokens, single-use refresh tokens with rotation |
+| H6 | TOTP replay protection | Per-window code tracking prevents replay |
+| H7 | IDOR prevention | Vault membership checks on every resource access |
+| H8 | XSS mitigation | Strict CSP, Web Worker key isolation |
+| H9 | Clickjacking prevention | `frame-ancestors 'none'` |
+| H10 | Rate limiting | Per-IP and per-email rate limits |
+| H11 | Sensitive log redaction | Configurable field redaction in server logs |

@@ -1,0 +1,21 @@
+# lefthook pre-commit + commit-msg hooks.
+# Install with: lefthook install
+
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -l -w {staged_files}
+      stage_fixed: true
+    lint:
+      glob: "*.go"
+      run: golangci-lint run --fast --new-from-rev=HEAD~1 ./...
+    tidy-check:
+      glob: "go.{mod,sum}"
+      run: go mod tidy && git diff --exit-code -- go.mod go.sum
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- commitlint --edit {1}

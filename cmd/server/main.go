@@ -1,0 +1,39 @@
+// Command vaultctl is the unified CLI + server entry point.
+//
+// Subcommands:
+//   - vaultctl server       Start the API server
+//   - vaultctl backup       Create a PostgreSQL dump
+//   - vaultctl healthcheck  Probe /api/v1/health (used by container HEALTHCHECK)
+//   - vaultctl admin init   Bootstrap the first admin user
+//   - vaultctl <client>     Client commands (login, get, list, create, …) — M6 needed
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/logging"
+	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
+	"github.com/vineethkrishnan/vaultctl/internal/presenters/cli"
+)
+
+func main() {
+	// Register the server runner so `vaultctl server` can reach back into
+	// the composition root without creating an import cycle.
+	cli.RegisterServerRunner(runServer)
+	cli.Execute()
+}
+
+// runServer is the composition root invoked by `vaultctl server`.
+func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler, func() error, error) {
+	slog.SetDefault(logging.New(cfg))
+	adapters, err := buildAdapters(ctx, cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	deps := buildHandlers(cfg, adapters)
+	cleanup := func() error { adapters.pool.Close(); return nil }
+	return api.NewRouter(deps), cleanup, nil
+}

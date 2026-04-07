@@ -1,0 +1,86 @@
+# Recovery Kit
+
+import { Callout, Steps } from 'nextra/components'
+
+Your recovery kit is a backup key that lets you regain access to your vault if you forget your master password.
+
+---
+
+## What Is the Recovery Kit?
+
+The recovery kit is a random **256-bit key**, encoded as a human-readable string. It is generated on your device and can decrypt your vault independently of your master password.
+
+Think of it as a spare key to your house -- store it somewhere safe and separate from your everyday key.
+
+<Callout type="error">
+**If you lose both your master password and your recovery kit, your data is permanently unrecoverable.** vaultctl is zero-knowledge -- the server cannot reset your password or decrypt your vault.
+</Callout>
+
+---
+
+## Saving Your Recovery Kit
+
+The recovery kit is displayed once during account setup. You can also regenerate it later from settings.
+
+<Steps>
+### Copy or print the key
+When the recovery kit is shown, copy the key string or use the **Print** button to generate a printable PDF.
+
+### Store it securely
+Choose one or more of the following:
+
+- **Print it** and store the paper in a safe, lockbox, or safety deposit box.
+- **Write it down by hand** and keep it with important documents.
+- **Save it to an encrypted USB drive** that you store in a physically secure location.
+
+### Verify your backup
+Confirm you can read the key from wherever you stored it. An unreadable backup is the same as no backup.
+</Steps>
+
+<Callout type="warning">
+Do not store your recovery kit in your vault (it would be inaccessible when you need it), in cloud-synced notes, in your email, or anywhere a third party could access it.
+</Callout>
+
+---
+
+## Using the Recovery Kit
+
+If you forget your master password:
+
+<Steps>
+### Go to the login page
+Click **Forgot Password** below the password field.
+
+### Enter your recovery kit
+Paste or type the recovery kit string into the field provided.
+
+### Set a new master password
+Choose a new master password. Your vault keys are re-derived and your private keys are re-encrypted with the new password.
+
+### Log in
+You are logged in with your new password. All vault data is preserved.
+</Steps>
+
+---
+
+## Regenerating the Recovery Kit
+
+You can generate a new recovery kit at any time. The old kit is invalidated immediately.
+
+<Steps>
+### Open settings
+Go to **Settings > Security > Recovery Kit**.
+
+### Authenticate
+Complete a step-up authentication (re-enter your master password).
+
+### Generate a new kit
+Click **Regenerate Recovery Kit**. A new 256-bit key is created and the old one is revoked.
+
+### Save the new key
+Follow the same storage steps as before. Destroy any copies of the old recovery kit.
+</Steps>
+
+<Callout type="info">
+Regenerating the recovery kit does not change your master password, vault key, or any encrypted data. Only the recovery key itself is rotated.
+</Callout>

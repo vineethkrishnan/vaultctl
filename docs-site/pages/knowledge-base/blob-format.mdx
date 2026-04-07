@@ -1,0 +1,244 @@
+# Blob Wire Format
+
+import { Callout, Tabs } from 'nextra/components'
+
+Every encrypted value in vaultctl is serialized into a compact binary blob, then Base64-encoded for JSON transport. This page documents the byte-level layout, parsing logic, and interop requirements between Go and TypeScript.
+
+## General Layout
+
+```
+Offset  Size     Field
+──────  ──────   ─────────────
+0       1 byte   version
+1       1 byte   alg_id
+2       varies   algorithm-specific payload
+```
+
+- **version**: Currently `0x01`. Future versions may change the payload layout.
+- **alg_id**: Identifies the encryption algorithm and determines how to parse the rest of the blob.
+
+## Algorithm-Specific Layouts
+
+### AES-256-GCM (`alg_id = 0x01`)
+
+The most common blob type. Used for item data, item names, folder names, and encrypted private keys.
+
+```
+Offset  Size      Field
+──────  ────────  ─────────────
+0       1 byte    version (0x01)
+1       1 byte    alg_id (0x01)
+2       12 bytes  nonce
+14      N bytes   ciphertext
+14+N    16 bytes  GCM auth tag
+```
+
+**Total size:** `2 + 12 + len(plaintext) + 16` bytes
+
+```
+┌─────┬─────┬──────────────┬──────────────────┬──────────────────┐
+│ 01  │ 01  │    nonce     │    ciphertext    │     GCM tag      │
+│ 1B  │ 1B  │     12B      │      var         │       16B        │
+└─────┴─────┴──────────────┴──────────────────┴──────────────────┘
+```
+
+### RSA-OAEP-SHA256 (`alg_id = 0x02`)
+
+Used for wrapping vault keys in shared vaults. No separate nonce or tag — the OAEP padding provides built-in authentication.
+
+```
+Offset  Size      Field
+──────  ────────  ─────────────
+0       1 byte    version (0x01)
+1       1 byte    alg_id (0x02)
+2       512 bytes RSA-OAEP ciphertext (4096-bit key)
+```
+
+**Total size:** `2 + 512` = 514 bytes (fixed for 4096-bit RSA)
+
+```
+┌─────┬─────┬────────────────────────────────────────┐
+│ 01  │ 02  │         RSA-OAEP ciphertext            │
+│ 1B  │ 1B  │              512B                      │
+└─────┴─────┴────────────────────────────────────────┘
+```
+
+### AES-256-KW (`alg_id = 0x03`)
+
+Used for wrapping vault keys in personal vaults. AES Key Wrap (RFC 3394) includes an 8-byte integrity check value.
+
+```
+Offset  Size      Field
+──────  ────────  ─────────────
+0       1 byte    version (0x01)
+1       1 byte    alg_id (0x03)
+2       N bytes   wrapped key (ciphertext + 8B ICV)
+```
+
+For a 256-bit (32-byte) vault key, the wrapped output is 40 bytes (32 + 8 ICV):
+
+**Total size:** `2 + 40` = 42 bytes
+
+```
+┌─────┬─────┬────────────────────────────────────────┐
+│ 01  │ 03  │      wrapped key (ciphertext + ICV)    │
+│ 1B  │ 1B  │              40B                       │
+└─────┴─────┴────────────────────────────────────────┘
+```
+
+<Callout type="info">
+  AES Key Wrap does not use a nonce — it is deterministic. The 8-byte integrity check value (ICV) at the end of the wrapped output serves as an authentication tag. If any bit is tampered with, unwrapping fails.
+</Callout>
+
+## Parsing Pseudocode
+
+<Tabs items={['TypeScript', 'Go']}>
+  <Tabs.Tab>
+```typescript
+function parseBlob(base64: string): DecryptedPayload {
+  const raw = base64Decode(base64);
+
+  const version = raw[0];
+  if (version !== 0x01) throw new Error(`unsupported version: ${version}`);
+
+  const algId = raw[1];
+  const payload = raw.slice(2);
+
+  switch (algId) {
+    case 0x01: { // AES-256-GCM
+      const nonce = payload.slice(0, 12);
+      const ciphertextAndTag = payload.slice(12);
+      // WebCrypto expects ciphertext+tag concatenated
+      return { algId, nonce, ciphertextAndTag };
+    }
+    case 0x02: { // RSA-OAEP-SHA256
+      const ciphertext = payload;
+      return { algId, ciphertext };
+    }
+    case 0x03: { // AES-256-KW
+      const wrappedKey = payload;
+      return { algId, wrappedKey };
+    }
+    default:
+      throw new Error(`unknown alg_id: ${algId}`);
+  }
+}
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```go
+func ParseBlob(b64 string) (*Blob, error) {
+    raw, err := base64.StdEncoding.DecodeString(b64)
+    if err != nil {
+        return nil, fmt.Errorf("base64 decode: %w", err)
+    }
+    if len(raw) < 2 {
+        return nil, errors.New("blob too short")
+    }
+
+    version := raw[0]
+    if version != 0x01 {
+        return nil, fmt.Errorf("unsupported version: %d", version)
+    }
+
+    algID := raw[1]
+    payload := raw[2:]
+
+    switch algID {
+    case 0x01: // AES-256-GCM
+        if len(payload) < 12+16 {
+            return nil, errors.New("AES-GCM blob too short")
+        }
+        nonce := payload[:12]
+        ciphertext := payload[12 : len(payload)-16]
+        tag := payload[len(payload)-16:]
+        return &Blob{AlgID: algID, Nonce: nonce, Ciphertext: ciphertext, Tag: tag}, nil
+
+    case 0x02: // RSA-OAEP-SHA256
+        return &Blob{AlgID: algID, Ciphertext: payload}, nil
+
+    case 0x03: // AES-256-KW
+        return &Blob{AlgID: algID, WrappedKey: payload}, nil
+
+    default:
+        return nil, fmt.Errorf("unknown alg_id: %d", algID)
+    }
+}
+```
+  </Tabs.Tab>
+</Tabs>
+
+## Serialization Pseudocode
+
+<Tabs items={['TypeScript', 'Go']}>
+  <Tabs.Tab>
+```typescript
+function buildBlob(algId: number, parts: Uint8Array[]): string {
+  const header = new Uint8Array([0x01, algId]);
+  const totalLen = 2 + parts.reduce((sum, p) => sum + p.length, 0);
+  const result = new Uint8Array(totalLen);
+  result.set(header, 0);
+
+  let offset = 2;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+
+  return base64Encode(result);
+}
+
+// AES-256-GCM example:
+const blob = buildBlob(0x01, [nonce, ciphertextAndTag]);
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```go
+func BuildBlob(algID byte, parts ...[]byte) string {
+    totalLen := 2
+    for _, p := range parts {
+        totalLen += len(p)
+    }
+
+    buf := make([]byte, 0, totalLen)
+    buf = append(buf, 0x01, algID)
+    for _, p := range parts {
+        buf = append(buf, p...)
+    }
+
+    return base64.StdEncoding.EncodeToString(buf)
+}
+
+// AES-256-GCM example:
+blob := BuildBlob(0x01, nonce, ciphertext, tag)
+```
+  </Tabs.Tab>
+</Tabs>
+
+## Interop Notes (Go / TypeScript)
+
+<Callout type="warning">
+  Both implementations **must** produce identical wire bytes for a given plaintext, key, and nonce. The following details are critical for round-trip compatibility.
+</Callout>
+
+| Aspect | Requirement |
+|--------|------------|
+| **Base64 encoding** | Standard encoding with `=` padding (`base64.StdEncoding` in Go, `btoa`/`Buffer` in TS) |
+| **AES-GCM tag position** | Tag is appended **after** ciphertext. Go's `cipher.AEAD.Seal()` does this by default. WebCrypto's `encrypt()` returns ciphertext+tag concatenated. |
+| **AES-GCM tag size** | Always 128 bits (16 bytes). Both Go and WebCrypto default to this. |
+| **RSA-OAEP label** | Empty (nil/undefined). Do not set a label parameter. |
+| **AES Key Wrap** | Go: `github.com/NickBall/go-aes-key-wrap`. TS: WebCrypto `wrapKey` with `AES-KW`. Both produce identical output for the same key and KEK. |
+| **Byte order** | Big-endian for all multi-byte fields (standard network byte order). |
+| **AAD format** | UTF-8 encoded strings concatenated with `\|\|` separator: `"vaultId\|\|itemId"`. Both sides must produce identical AAD bytes. |
+| **Name padding** | PKCS#7 to 32-byte boundaries. Padding must be applied **before** encryption and stripped **after** decryption. |
+
+## Interop Validation
+
+The blob format is validated by cross-language table-driven tests:
+
+- **TypeScript to Go**: TypeScript encrypts test vectors, serializes as JSON fixtures, Go parses and decrypts
+- **Go to TypeScript**: Go encrypts test vectors, TypeScript parses and decrypts
+- **HKDF**: Both sides derive identical keys from the same input material
+- **PKCS#7 padding**: Both sides produce byte-identical padded output
+
+Test fixtures are located in `testdata/crypto/`.

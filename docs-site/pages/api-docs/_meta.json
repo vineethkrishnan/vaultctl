@@ -1,0 +1,9 @@
+{
+  "index": "Overview",
+  "authentication": "Authentication",
+  "vaults": "Vaults",
+  "items": "Items",
+  "folders": "Folders",
+  "totp": "TOTP (2FA)",
+  "errors": "Error Codes"
+}

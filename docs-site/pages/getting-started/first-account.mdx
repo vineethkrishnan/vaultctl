@@ -1,0 +1,80 @@
+# Your First Account
+
+import { Steps, Callout } from 'nextra/components'
+
+<Steps>
+### Open the Web Vault
+
+Navigate to your vaultctl server URL in any modern browser (Chrome, Firefox, Safari, Edge).
+
+### Click "Create Account"
+
+On the login page, click the **Create one** link at the bottom.
+
+### Fill in Your Details
+
+| Field | Notes |
+|-------|-------|
+| **Email** | Your login identifier. Must be unique. |
+| **Name** | Display name (visible to shared vault members). |
+| **Master Password** | Minimum 10 characters. Use a passphrase — four random words are easy to remember and very strong. |
+| **Confirm Password** | Type it again to prevent typos. |
+
+### Wait for Key Generation
+
+After clicking **Create Account**, vaultctl generates your encryption keys. This takes 2-5 seconds:
+
+- RSA-2048 keypair (for vault sharing)
+- Ed25519 keypair (for identity verification)
+- Personal vault key (256-bit AES)
+- Recovery key (256-bit random)
+
+All of this happens **in your browser** — keys never touch the server.
+
+### Save Your Recovery Kit
+
+A recovery key is displayed. **This is shown only once.**
+
+```
+YWJj-ZGVm-Z2hp-amts-bW5v-cHFy-c3R1-dnd4-eXow-MTIz-NDU2
+```
+
+How to save it:
+- **Write it down** on paper → store in a safe or lockbox
+- **Print it** → store with important documents
+- **Save to a file** → put on an encrypted USB drive
+
+Check the **"I have safely stored my recovery key"** checkbox, then click **Continue**.
+
+<Callout type="error">
+  **If you lose both your master password and recovery key, your vault data is permanently inaccessible.** There is no server-side reset. This is the core zero-knowledge guarantee.
+</Callout>
+
+### Log In
+
+You're redirected to the login page. Enter your email and master password.
+
+The first login takes a few seconds — vaultctl is deriving your encryption keys using Argon2id (a memory-hard algorithm that makes brute-force attacks very expensive).
+
+### Create Your First Item
+
+Once logged in, click **+ New Item** in the sidebar. Choose a type:
+
+| Type | Best For |
+|------|----------|
+| **Login** | Website passwords, with autofill + TOTP support |
+| **Secure Note** | API tokens, license keys, free-text secrets |
+| **Credit Card** | Payment card details |
+| **Identity** | Personal info for form filling |
+| **API Key** | Service credentials |
+| **SSH Key** | SSH keypairs and passphrases |
+| **Passkey** | WebAuthn/FIDO2 credentials |
+
+### Install the Browser Extension
+
+For autofill support, install the browser extension. See the [Browser Extension](/user-manual/browser-extension) guide.
+
+### Enable Two-Factor Authentication
+
+For extra security, enable TOTP 2FA in **Settings > Security**. See the [2FA guide](/user-manual/two-factor-auth).
+</Steps>

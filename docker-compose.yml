@@ -1,0 +1,76 @@
+# Production-style self-hosted stack: Caddy (auto-TLS) + vaultctl + Postgres.
+# See PRD §17.2 and deploy/caddy/Caddyfile.
+#
+# Usage:
+#   cp .env.example .env
+#   # fill in secrets — see .env.example header
+#   docker compose up -d
+
+name: vaultctl
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: vaultctl-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      VAULTCTL_BASE_URL: ${VAULTCTL_BASE_URL}
+    networks:
+      - vaultctl-net
+    depends_on:
+      vaultctl:
+        condition: service_started
+
+  vaultctl:
+    build:
+      context: .
+      args:
+        VERSION: ${VAULTCTL_VERSION:-dev}
+    image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-dev}
+    container_name: vaultctl-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Loopback-only inside compose network, so `disable` is the exception
+      # documented in H12.
+      VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_DB_HOST: vaultctl-db
+    networks:
+      - vaultctl-net
+    depends_on:
+      vaultctl-db:
+        condition: service_healthy
+
+  vaultctl-db:
+    image: postgres:16-alpine
+    container_name: vaultctl-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${VAULTCTL_DB_NAME:-vaultctl}
+      POSTGRES_USER: ${VAULTCTL_DB_USER:-vaultctl}
+      POSTGRES_PASSWORD: ${VAULTCTL_DB_PASSWORD:?VAULTCTL_DB_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vaultctl-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+
+networks:
+  vaultctl-net:
+    driver: bridge

@@ -1,0 +1,156 @@
+# Reverse Proxy Setup
+
+import { Callout, Tabs } from 'nextra/components'
+
+vaultctl should be deployed behind a reverse proxy that handles TLS termination. This page covers configuration for Caddy (recommended), nginx, and Cloudflare Tunnel.
+
+<Callout type="info">
+  When using a reverse proxy, you **must** set `TRUSTED_PROXIES` so that vaultctl resolves the real client IP from `X-Forwarded-For` headers. Without this, rate limiting and lockout will apply to the proxy's IP instead of the client's.
+</Callout>
+
+## Caddy (Recommended)
+
+Caddy automatically obtains and renews TLS certificates via Let's Encrypt. No manual certificate management required.
+
+### Caddyfile
+
+```
+vault.example.com {
+    reverse_proxy vaultctl:8080
+}
+```
+
+That is the entire configuration. Caddy handles HTTPS, certificate renewal, HTTP-to-HTTPS redirect, and HTTP/2.
+
+### Docker Compose
+
+```yaml
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - vaultctl
+
+  vaultctl:
+    image: ghcr.io/vineethkrishnan/vaultctl:latest
+    environment:
+      TRUSTED_PROXIES: "172.16.0.0/12"
+      # ... other env vars
+
+volumes:
+  caddy_data:
+  caddy_config:
+```
+
+### TRUSTED_PROXIES for Caddy
+
+```bash
+# Docker default bridge network
+TRUSTED_PROXIES=172.16.0.0/12
+```
+
+---
+
+## nginx
+
+### Configuration
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name vault.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/vault.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/vault.example.com/privkey.pem;
+
+    # TLS hardening
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+
+    location / {
+        proxy_pass http://vaultctl:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket support (if needed in future)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+server {
+    listen 80;
+    server_name vault.example.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+### TRUSTED_PROXIES for nginx
+
+```bash
+# Same Docker network
+TRUSTED_PROXIES=172.16.0.0/12
+
+# If nginx runs on the host
+TRUSTED_PROXIES=127.0.0.1/32
+```
+
+---
+
+## Cloudflare Tunnel
+
+Cloudflare Tunnel provides zero-config TLS and DDoS protection without opening any ports.
+
+### One-liner setup
+
+```bash
+cloudflared tunnel --url http://localhost:8080 --hostname vault.example.com
+```
+
+### Docker Compose
+
+```yaml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    depends_on:
+      - vaultctl
+
+  vaultctl:
+    image: ghcr.io/vineethkrishnan/vaultctl:latest
+    environment:
+      TRUSTED_PROXIES: "172.16.0.0/12"
+      # ... other env vars
+```
+
+### TRUSTED_PROXIES for Cloudflare
+
+```bash
+# Cloudflare Tunnel runs as a sidecar in Docker
+TRUSTED_PROXIES=172.16.0.0/12
+
+# If using Cloudflare proxy (orange cloud), also trust Cloudflare IPs:
+# https://www.cloudflare.com/ips/
+TRUSTED_PROXIES=172.16.0.0/12,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22
+```
+
+<Callout type="warning">
+  With Cloudflare Tunnel, traffic between Cloudflare and your server is encrypted through the tunnel. However, Cloudflare terminates TLS and can technically inspect traffic. If this is a concern for your threat model, use Caddy or nginx with end-to-end TLS instead.
+</Callout>

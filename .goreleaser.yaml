@@ -1,0 +1,156 @@
+# goreleaser config for vaultctl (architecture §M14, H13)
+# Signs every artifact with cosign keyless (Sigstore) OIDC identity, publishes
+# SLSA L3 provenance, attaches SBOMs.
+
+version: 2
+
+project_name: vaultctl
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: vaultctl
+    main: ./cmd/server
+    binary: vaultctl
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Version={{.Version}}
+      - -X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Commit={{.ShortCommit}}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE*
+      - README*
+      - docs/initial/architecture.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: '{{ incpatch .Version }}-dev'
+
+changelog:
+  use: git
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Security
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+# H13: cosign keyless signatures tied to the GitHub Actions OIDC identity.
+signs:
+  - cmd: cosign
+    certificate: '${artifact}.pem'
+    args:
+      - sign-blob
+      - '--output-certificate=${certificate}'
+      - '--output-signature=${signature}'
+      - '${artifact}'
+      - '--yes'
+    artifacts: checksum
+    output: true
+
+# H13: SBOM attached to every archive.
+sboms:
+  - id: archive
+    artifacts: archive
+    documents:
+      - '${artifact}.sbom.cdx.json'
+    cmd: syft
+    args: ['$artifact', '--output', 'cyclonedx-json=$document']
+
+# H13: container images (GHCR + Docker Hub) — multi-arch.
+dockers:
+  - image_templates:
+      - 'ghcr.io/vineethkrishnan/vaultctl:{{ .Version }}-amd64'
+      - 'ghcr.io/vineethkrishnan/vaultctl:latest-amd64'
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - '--platform=linux/amd64'
+      - '--label=org.opencontainers.image.source=https://github.com/vineethkrishnan/vaultctl'
+      - '--label=org.opencontainers.image.version={{.Version}}'
+      - '--label=org.opencontainers.image.revision={{.FullCommit}}'
+      - '--label=org.opencontainers.image.licenses=AGPL-3.0'
+  - image_templates:
+      - 'ghcr.io/vineethkrishnan/vaultctl:{{ .Version }}-arm64'
+      - 'ghcr.io/vineethkrishnan/vaultctl:latest-arm64'
+    dockerfile: Dockerfile
+    use: buildx
+    goarch: arm64
+    build_flag_templates:
+      - '--platform=linux/arm64'
+      - '--label=org.opencontainers.image.source=https://github.com/vineethkrishnan/vaultctl'
+      - '--label=org.opencontainers.image.version={{.Version}}'
+  # Docker Hub (secondary registry)
+  - image_templates:
+      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-amd64'
+      - 'docker.io/vineethkrishnan/vaultctl:latest-amd64'
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - '--platform=linux/amd64'
+      - '--label=org.opencontainers.image.source=https://github.com/vineethkrishnan/vaultctl'
+      - '--label=org.opencontainers.image.version={{.Version}}'
+      - '--label=org.opencontainers.image.revision={{.FullCommit}}'
+      - '--label=org.opencontainers.image.licenses=AGPL-3.0'
+  - image_templates:
+      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-arm64'
+      - 'docker.io/vineethkrishnan/vaultctl:latest-arm64'
+    dockerfile: Dockerfile
+    use: buildx
+    goarch: arm64
+    build_flag_templates:
+      - '--platform=linux/arm64'
+      - '--label=org.opencontainers.image.source=https://github.com/vineethkrishnan/vaultctl'
+      - '--label=org.opencontainers.image.version={{.Version}}'
+
+docker_manifests:
+  # GHCR
+  - name_template: 'ghcr.io/vineethkrishnan/vaultctl:{{ .Version }}'
+    image_templates:
+      - 'ghcr.io/vineethkrishnan/vaultctl:{{ .Version }}-amd64'
+      - 'ghcr.io/vineethkrishnan/vaultctl:{{ .Version }}-arm64'
+  - name_template: 'ghcr.io/vineethkrishnan/vaultctl:latest'
+    image_templates:
+      - 'ghcr.io/vineethkrishnan/vaultctl:latest-amd64'
+      - 'ghcr.io/vineethkrishnan/vaultctl:latest-arm64'
+  # Docker Hub
+  - name_template: 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}'
+    image_templates:
+      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-amd64'
+      - 'docker.io/vineethkrishnan/vaultctl:{{ .Version }}-arm64'
+  - name_template: 'docker.io/vineethkrishnan/vaultctl:latest'
+    image_templates:
+      - 'docker.io/vineethkrishnan/vaultctl:latest-amd64'
+      - 'docker.io/vineethkrishnan/vaultctl:latest-arm64'
+
+# H13: cosign container image signatures (keyless).
+docker_signs:
+  - cmd: cosign
+    artifacts: manifests
+    args: ['sign', '--yes', '${artifact}']
+    output: true

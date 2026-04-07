@@ -1,0 +1,94 @@
+# Sharing Vaults
+
+import { Callout, Steps } from 'nextra/components'
+
+You can share a vault with other vaultctl users on the same server. Sharing uses public-key cryptography so the server never has access to the shared data.
+
+---
+
+## How Sharing Works
+
+When you share a vault, vaultctl performs the following steps:
+
+1. **Key wrapping** -- Your vault key is encrypted (wrapped) with the recipient's RSA-OAEP public key. Only the recipient's private key can unwrap it.
+2. **Signature** -- The wrapped key package is signed with your Ed25519 signing key. This lets the recipient verify the share came from you, not from a compromised server.
+3. **Delivery** -- The server stores the encrypted package. When the recipient unlocks their vault, they unwrap the vault key and can decrypt all items in the shared vault.
+
+<Callout>
+The server only transports encrypted blobs. It cannot read the vault key or any shared items at any point.
+</Callout>
+
+---
+
+## Safety Numbers
+
+Before trusting a shared vault, you should verify the sharer's identity using **safety numbers**. Each user pair has a unique 60-digit fingerprint derived from both users' public keys.
+
+<Steps>
+### Open the shared vault
+Navigate to the shared vault in your sidebar.
+
+### View safety numbers
+Click the **shield icon** or go to **Vault Settings > Members** and click a member's name. The 60-digit fingerprint is displayed in groups of 5 digits.
+
+### Compare out-of-band
+Compare this number with the other person -- in person, over a video call, or through a trusted channel. If the numbers match, the connection is authentic.
+</Steps>
+
+<Callout type="warning">
+If the safety numbers do not match, do not trust the shared vault. This could indicate a man-in-the-middle attack. Contact the vault owner through a separate channel.
+</Callout>
+
+---
+
+## Vault Roles
+
+Each member of a shared vault has one of four roles.
+
+| Role | View Items | Edit Items | Manage Members | Delete Vault |
+|------|:----------:|:----------:|:--------------:|:------------:|
+| **Owner** | Yes | Yes | Yes | Yes |
+| **Admin** | Yes | Yes | Yes | No |
+| **Member** | Yes | Yes | No | No |
+| **Read-Only** | Yes | No | No | No |
+
+- There is exactly one **Owner** per vault (the person who created it).
+- **Admins** can invite and remove members and change roles, but cannot delete the vault or remove the owner.
+- **Members** can view and edit items but cannot manage membership.
+- **Read-Only** members can view and copy item fields but cannot create, edit, or delete items.
+
+---
+
+## Sharing a Vault
+
+<Steps>
+### Open vault settings
+Navigate to the vault you want to share and click **Vault Settings** (the gear icon).
+
+### Invite a member
+Click **Add Member**, enter the person's username or email, and select a role.
+
+### Confirm
+Click **Share**. The vault key is wrapped with the recipient's public key and delivered.
+</Steps>
+
+The recipient will see the shared vault in their sidebar the next time they sync.
+
+---
+
+## Removing a Member
+
+<Steps>
+### Open vault settings
+Go to **Vault Settings > Members**.
+
+### Remove the member
+Click the three-dot menu next to the member's name and select **Remove**.
+
+### Automatic rekey
+vaultctl automatically generates a new vault key, re-encrypts all items, and re-wraps the key for each remaining member.
+</Steps>
+
+<Callout type="warning">
+**Rekey on removal** -- Whenever a member is removed from a shared vault, the vault key is rotated and all items are re-encrypted. This ensures the removed member cannot decrypt any future changes, even if they retained a copy of the old wrapped key.
+</Callout>

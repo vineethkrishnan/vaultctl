@@ -1,0 +1,194 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
+	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
+	infraauth "github.com/vineethkrishnan/vaultctl/internal/infrastructure/auth"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
+	infracrypto "github.com/vineethkrishnan/vaultctl/internal/infrastructure/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
+	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
+	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
+)
+
+// adapters bundles every concrete adapter so main.go can wire handlers in
+// one shot.
+type adapters struct {
+	pool  *postgres.Pool
+	users *postgres.UserRepo
+	sess  *postgres.SessionStore
+	vaults *postgres.VaultRepo
+	items *postgres.ItemRepo
+	folders *postgres.FolderRepo
+
+	hasher *infraauth.Argon2Hasher
+	hmac   *infraauth.HMACService
+	jwt    *infraauth.JWTService
+	tokens *infraauth.TokenGenerator
+	totp   *infraauth.TOTPProvider
+	aead   *infracrypto.ServerAEAD
+
+	clock ports.Clock
+	ids   ports.IDGenerator
+
+	rateLimiter *middleware.RateLimiter
+}
+
+// uuidGen implements ports.IDGenerator.
+type uuidGen struct{}
+
+func (uuidGen) NewID() string { return uuid.NewString() }
+
+// buildAdapters opens every infrastructure dependency.
+func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
+	pool, err := postgres.Connect(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: %w", err)
+	}
+	hmac, err := infraauth.NewHMACService(cfg.ServerPepper, cfg.EnumerationPepper)
+	if err != nil {
+		return nil, fmt.Errorf("hmac: %w", err)
+	}
+	var nextKey *infraauth.JWTKey
+	if cfg.JWTSecretNext != "" {
+		k := infraauth.JWTKey{Kid: cfg.JWTKidCurrent + "-next", Secret: []byte(cfg.JWTSecretNext)}
+		nextKey = &k
+	}
+	jwt, err := infraauth.NewJWTService(infraauth.JWTConfig{
+		Current:   infraauth.JWTKey{Kid: cfg.JWTKidCurrent, Secret: []byte(cfg.JWTSecretCurrent)},
+		Next:      nextKey,
+		Issuer:    "vaultctl",
+		AccessTTL: cfg.JWTAccessTTL,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("jwt: %w", err)
+	}
+
+	clock := ports.RealClock()
+
+	var aead *infracrypto.ServerAEAD
+	if cfg.DataEncryptionKey != "" {
+		var err2 error
+		aead, err2 = infracrypto.NewServerAEAD(cfg.DataEncryptionKey, cfg.DataEncryptionKeyNext)
+		if err2 != nil {
+			return nil, fmt.Errorf("server aead: %w", err2)
+		}
+	}
+
+	a := &adapters{
+		pool:    pool,
+		users:   &postgres.UserRepo{Pool: pool},
+		sess:    &postgres.SessionStore{Pool: pool},
+		vaults:  &postgres.VaultRepo{Pool: pool},
+		items:   &postgres.ItemRepo{Pool: pool},
+		folders: &postgres.FolderRepo{Pool: pool},
+		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
+		hmac:    hmac,
+		jwt:     jwt,
+		tokens:  infraauth.NewTokenGenerator(),
+		totp:    infraauth.NewTOTPProvider(),
+		aead:    aead,
+		clock:   clock,
+		ids:     uuidGen{},
+		rateLimiter: middleware.NewRateLimiter(
+			clock, cfg.RateLimitRPM, time.Minute,
+			cfg.AuthRateLimitPerEmail, cfg.AuthRateLimitWindow,
+		),
+	}
+	return a, nil
+}
+
+// buildHandlers constructs the use cases + API handler structs.
+func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
+	tokens := &jwtServiceAdapter{svc: a.jwt}
+
+	authHandlers := &api.AuthHandlers{
+		Register: &auth.Register{
+			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
+			Policy: user.DefaultPolicy(), DefaultRole: user.RoleMember,
+		},
+		Prelogin: &auth.Prelogin{Users: a.users, HMAC: a.hmac, DefaultKDF: user.DefaultKDFParams()},
+		Login: &auth.Login{
+			Users: a.users, Sessions: a.sess, Vaults: a.vaults,
+			Hasher: a.hasher, Tokens: tokens, TokenGenerator: a.tokens,
+			HMAC: a.hmac, Clock: a.clock, IDs: a.ids,
+			MaxAttempts:     cfg.MaxLoginAttempts,
+			LockoutDuration: cfg.LockoutDuration,
+			RefreshTTL:      cfg.JWTRefreshTTL,
+		},
+		Refresh: &auth.Refresh{
+			Users: a.users, Sessions: a.sess, Tokens: tokens,
+			TokenGenerator: a.tokens, HMAC: a.hmac, Clock: a.clock,
+			RefreshTTL: cfg.JWTRefreshTTL,
+		},
+		Logout: &auth.Logout{Sessions: a.sess, HMAC: a.hmac},
+		StepUp: &auth.StepUp{
+			Users: a.users, Hasher: a.hasher, Tokens: tokens,
+			Clock: a.clock, StepUpTTL: 5 * time.Minute,
+		},
+		PasswordChange: &auth.PasswordChange{
+			Users: a.users, Sessions: a.sess, Hasher: a.hasher,
+			Tokens: tokens, TokenGenerator: a.tokens, HMAC: a.hmac,
+			Clock: a.clock, IDs: a.ids, RefreshTTL: cfg.JWTRefreshTTL,
+		},
+		TOTPSetup:   &auth.TOTPSetup{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Issuer: "vaultctl"},
+		TOTPEnable:  &auth.TOTPEnable{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
+		TOTPDisable: &auth.TOTPDisable{Users: a.users},
+		TOTPVerify:  &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
+	}
+
+	vaultHandlers := &api.VaultHandlers{
+		ListVaults:  &appvault.ListVaults{Vaults: a.vaults},
+		CreateVault: &appvault.CreateVault{Vaults: a.vaults, Clock: a.clock, IDs: a.ids},
+		CreateItem:  &appvault.CreateItem{Vaults: a.vaults, Items: a.items, Clock: a.clock, IDs: a.ids},
+		GetItem:     &appvault.GetItem{Vaults: a.vaults, Items: a.items},
+		UpdateItem:  &appvault.UpdateItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
+		TrashItem:   &appvault.TrashItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
+		RestoreItem: &appvault.RestoreItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
+		PurgeItem:   &appvault.PurgeItem{Vaults: a.vaults, Items: a.items},
+		ListActive:  &appvault.ListActive{Vaults: a.vaults, Items: a.items},
+		ListTrash:   &appvault.ListTrash{Vaults: a.vaults, Items: a.items},
+		CreateFolder: &appvault.CreateFolder{Vaults: a.vaults, Folders: a.folders, Clock: a.clock, IDs: a.ids},
+		RenameFolder: &appvault.RenameFolder{Vaults: a.vaults, Folders: a.folders},
+		DeleteFolder: &appvault.DeleteFolder{Vaults: a.vaults, Folders: a.folders},
+		ListFolders:  &appvault.ListFolders{Vaults: a.vaults, Folders: a.folders},
+	}
+
+	return api.Dependencies{
+		Tokens:             tokens,
+		Clock:              a.clock,
+		Auth:               authHandlers,
+		Vault:              vaultHandlers,
+		RateLimiter:        a.rateLimiter,
+		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
+	}
+}
+
+// jwtServiceAdapter bridges the infrastructure JWTService into the
+// ports.TokenIssuer interface (different struct types, same semantics).
+type jwtServiceAdapter struct {
+	svc *infraauth.JWTService
+}
+
+func (a *jwtServiceAdapter) Issue(userID, role string, now, stepUpUntil time.Time) (string, error) {
+	return a.svc.Issue(userID, role, now, stepUpUntil)
+}
+func (a *jwtServiceAdapter) Verify(token string) (ports.AccessClaims, error) {
+	claims, err := a.svc.Verify(token)
+	if err != nil {
+		return ports.AccessClaims{}, err
+	}
+	out := ports.AccessClaims{UserID: claims.UserID, Role: claims.Role}
+	if claims.StepUpExp > 0 {
+		out.StepUpUntil = time.Unix(claims.StepUpExp, 0)
+	}
+	return out, nil
+}

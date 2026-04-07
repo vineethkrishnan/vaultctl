@@ -1,0 +1,90 @@
+# Auto-Lock & Security
+
+import { Callout } from 'nextra/components'
+
+vaultctl includes several features that protect your data when you step away from your device or leave a session unattended.
+
+---
+
+## Auto-Lock Timeout
+
+Your vault locks automatically after a period of inactivity. The default timeout is **15 minutes**.
+
+### Configuring the Timeout
+
+Go to **Settings > Security > Auto-Lock Timeout** and choose a duration:
+
+| Option | Description |
+|--------|-------------|
+| **1 minute** | For high-security environments. |
+| **5 minutes** | Recommended for shared workstations. |
+| **15 minutes** | The default. Balances security and convenience. |
+| **30 minutes** | For personal devices in a trusted location. |
+| **1 hour** | Less frequent locking. |
+| **Never** | The vault stays unlocked until you close the tab or manually lock. |
+
+<Callout type="warning">
+Setting the timeout to **Never** means your vault remains unlocked as long as the browser tab is open. Use this only on devices you fully control.
+</Callout>
+
+### What Happens When the Vault Locks
+
+When the auto-lock timer fires:
+
+1. **Web Worker terminated** -- The background worker that holds your decrypted vault key is shut down.
+2. **Keys zeroed** -- All cryptographic keys in memory are overwritten with zeros and released for garbage collection.
+3. **UI cleared** -- The item list and any open item details are replaced with the unlock screen.
+4. **Password required** -- You must re-enter your master password (and 2FA code, if enabled) to unlock the vault again.
+
+No network requests are made during lock. Locking is a purely local operation.
+
+---
+
+## Clipboard Auto-Clear
+
+When you copy any sensitive field (password, API key, CVV, private key, etc.), vaultctl starts a 30-second countdown. When the timer expires, your clipboard is cleared automatically.
+
+- A small toast notification shows the countdown.
+- If you copy something else (from any app) before the timer expires, vaultctl does not interfere with the new clipboard content.
+- Clipboard clearing uses the Clipboard API and works across all supported browsers.
+
+---
+
+## Reprompt
+
+Items marked with **reprompt enabled** require you to re-enter your master password before sensitive fields can be revealed or copied. This provides an extra layer of protection for your most critical secrets.
+
+### How It Works
+
+- When you open an item with reprompt enabled, masked fields (password, private key, CVV, etc.) show a **lock icon** instead of the reveal/copy buttons.
+- Clicking the lock icon opens a password prompt. Enter your master password to unlock the field for the current viewing session.
+- Once you navigate away from the item, the reprompt resets. You will need to enter your password again the next time.
+
+### Enabling Reprompt
+
+Open any vault item, click **Edit**, and toggle **Require Reprompt** to on. Save the item. The setting is encrypted along with the rest of the item data.
+
+<Callout type="info">
+SSH Key private keys always require reprompt, regardless of the item-level setting. This is enforced by the application and cannot be disabled.
+</Callout>
+
+---
+
+## Session Management
+
+You can view and manage your active sessions from **Settings > Security > Active Sessions**.
+
+| Column | Description |
+|--------|-------------|
+| **Device** | Browser and operating system. |
+| **IP Address** | The IP address of the session. |
+| **Last Active** | When the session was last used. |
+| **Current** | Indicates your current session. |
+
+### Revoking a Session
+
+Click **Revoke** next to any session to terminate it immediately. The device is logged out and must re-authenticate. To revoke all sessions except the current one, click **Revoke All Others**.
+
+<Callout type="warning">
+Revoking a session does not change your master password. If you suspect your password is compromised, [change your password](/user-manual/password-change) immediately after revoking sessions.
+</Callout>

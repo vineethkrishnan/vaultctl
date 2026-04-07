@@ -1,0 +1,75 @@
+# API Reference
+
+import { Callout } from 'nextra/components'
+
+The vaultctl REST API is served at `/api/v1`. All requests and responses use JSON.
+
+## Base URL
+
+```
+https://your-vault-server.com/api/v1
+```
+
+## Authentication
+
+All endpoints except auth and health require a JWT access token in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults
+```
+
+## Conventions
+
+| Convention | Details |
+|------------|---------|
+| Content-Type | `application/json` |
+| Timestamps | ISO 8601 UTC (`2026-04-06T12:00:00Z`) |
+| Binary data | Base64 standard encoding (with `=` padding) |
+| Encrypted blobs | Base64-encoded wire format: `version(1B) \|\| alg_id(1B) \|\| nonce \|\| ciphertext \|\| tag` |
+
+## Rate Limits
+
+| Scope | Limit |
+|-------|-------|
+| Per IP | 60 req/min |
+| Per email (auth) | 5 attempts / 15 min |
+
+## All Endpoints
+
+### Public
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/config` | Server config |
+| `POST` | `/auth/register` | Create account |
+| `GET` | `/auth/prelogin?email=` | Get KDF params |
+| `POST` | `/auth/login` | Log in |
+| `POST` | `/auth/refresh` | Refresh tokens |
+| `POST` | `/auth/logout` | Log out |
+
+### Authenticated (JWT)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/auth/step-up` | Re-verify password |
+| `POST` | `/auth/totp/setup` | Generate TOTP (step-up) |
+| `POST` | `/auth/totp/enable` | Enable 2FA |
+| `POST` | `/auth/totp/disable` | Disable 2FA (step-up) |
+| `POST` | `/auth/totp/verify` | Verify TOTP code |
+| `POST` | `/auth/password/change` | Change password (step-up) |
+| `GET` | `/vaults` | List vaults |
+| `POST` | `/vaults` | Create vault |
+| `GET` | `/vaults/:id/items` | List items |
+| `POST` | `/vaults/:id/items` | Create item |
+| `GET` | `/vaults/:id/items/:id` | Get item |
+| `PUT` | `/vaults/:id/items/:id` | Update item |
+| `DELETE` | `/vaults/:id/items/:id` | Trash item |
+| `GET` | `/vaults/:id/trash` | List trash |
+| `POST` | `/vaults/:id/trash/:id/restore` | Restore |
+| `DELETE` | `/vaults/:id/trash/:id` | Purge (step-up) |
+| `GET` | `/vaults/:id/folders` | List folders |
+| `POST` | `/vaults/:id/folders` | Create folder |
+| `PUT` | `/vaults/:id/folders/:id` | Rename folder |
+| `DELETE` | `/vaults/:id/folders/:id` | Delete folder |

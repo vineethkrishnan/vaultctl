@@ -1,0 +1,66 @@
+# Folders & Favorites
+
+import { Callout, Steps } from 'nextra/components'
+
+Organize your vault items using folders and favorites. Both features work across all seven item types.
+
+---
+
+## Folders
+
+Folders let you group related items together. Every folder name is encrypted with your vault key, so the server never sees how you organize your data.
+
+### Creating a Folder
+
+<Steps>
+### Open the folder panel
+Click the **folder icon** in the sidebar, or go to **Settings > Folders**.
+
+### Name your folder
+Type a name and press Enter, or click **Create**. Folder names can include spaces and special characters.
+
+### Move items into the folder
+Open any vault item, click the **Folder** dropdown, and select the folder. You can also drag items into folders from the item list.
+</Steps>
+
+### Renaming a Folder
+
+Right-click a folder in the sidebar (or click the three-dot menu) and select **Rename**. Type the new name and press Enter.
+
+### Deleting a Folder
+
+Right-click a folder and select **Delete**. Items inside the folder are not deleted -- they are moved back to "No Folder."
+
+<Callout type="warning">
+Deleting a folder does not delete the items inside it. The items remain in your vault and appear under "No Folder."
+</Callout>
+
+### Encrypted Folder Names
+
+Folder names are encrypted with the same vault key that protects your items. The server stores only ciphertext. This means:
+
+- No one with server access can see your folder names.
+- Folder names are decrypted locally when you unlock your vault.
+- If you share a vault, shared members decrypt folder names with the shared vault key.
+
+---
+
+## Favorites
+
+Star any item to mark it as a favorite. Favorites appear in a dedicated section at the top of your vault, making them easy to find.
+
+### Starring an Item
+
+Open any vault item and click the **star icon** in the top-right corner. The item is immediately pinned to the Favorites section.
+
+### Unstarring an Item
+
+Click the star icon again to remove the item from Favorites. The item stays in your vault -- it just no longer appears in the Favorites section.
+
+### Favorites in the Sidebar
+
+The sidebar shows a **Favorites** section above your folders. Click it to see only your starred items. The count badge shows how many items you have starred.
+
+<Callout type="info">
+Favorites are stored as a flag on each item and are encrypted along with the rest of the item data. The server cannot determine which items you have starred.
+</Callout>

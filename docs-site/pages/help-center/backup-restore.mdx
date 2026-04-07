@@ -1,0 +1,131 @@
+# Backup & Restore
+
+import { Callout, Steps } from 'nextra/components'
+
+Your vaultctl database contains all encrypted vault data. Regular backups are essential. This page covers the built-in backup command, manual backups, what is included, restore procedures, and scheduling.
+
+## Built-In Backup Command
+
+vaultctl includes a backup command that creates a compressed PostgreSQL dump:
+
+```bash
+# Docker
+docker compose exec vaultctl vaultctl backup --output /backups/vaultctl-$(date +%Y%m%d).sql.gz
+
+# Binary
+vaultctl backup --output /var/backups/vaultctl-$(date +%Y%m%d).sql.gz
+```
+
+The backup file is a gzipped `pg_dump` output with all tables and data.
+
+## Manual pg_dump
+
+If you prefer to use `pg_dump` directly:
+
+```bash
+# From the host (if PostgreSQL is exposed)
+pg_dump --format=custom \
+  --file=/var/backups/vaultctl-$(date +%Y%m%d).dump \
+  "$DATABASE_URL"
+
+# From Docker
+docker compose exec db pg_dump -U vaultctl -Fc -f /tmp/backup.dump vaultctl
+docker compose cp db:/tmp/backup.dump ./backups/
+```
+
+## What is in the Backup
+
+| Data | Encrypted? | Notes |
+|------|-----------|-------|
+| User accounts (email, name, KDF params) | No | Needed for authentication flow |
+| Auth hashes | Double-hashed (Argon2id) | Not reversible to master password |
+| Encrypted RSA/Ed25519 private keys | Yes (AES-256-GCM) | Useless without master password |
+| Public keys and signatures | No | Used for key wrapping and verification |
+| Vault metadata (name, type) | No | Vault names are plaintext |
+| Encrypted vault keys (per-member wraps) | Yes (RSA-OAEP or AES-KW) | Useless without member's private key |
+| Encrypted item data | Yes (AES-256-GCM) | Useless without vault key |
+| Encrypted item/folder names | Yes (AES-256-GCM) | Useless without vault key |
+| TOTP secrets | Yes (AES-256-GCM) | Server-side encrypted with `DATA_ENCRYPTION_KEY` |
+| Session/refresh tokens | Hashed (SHA-256) | Expire naturally; revoked on restore if needed |
+
+<Callout type="info">
+  Because all sensitive data is encrypted, a database backup is safe to store — an attacker cannot extract passwords from it without the master password. However, the backup does contain email addresses and vault names in plaintext.
+</Callout>
+
+## Restore
+
+<Steps>
+### Stop the server
+
+```bash
+docker compose down vaultctl
+# or
+systemctl stop vaultctl
+```
+
+### Restore the database
+
+```bash
+# From built-in backup (gzipped SQL)
+gunzip -c /backups/vaultctl-20260406.sql.gz | \
+  docker compose exec -T db psql -U vaultctl -d vaultctl
+
+# From pg_dump custom format
+docker compose exec -T db pg_restore -U vaultctl -d vaultctl --clean /tmp/backup.dump
+```
+
+### Start the server
+
+```bash
+docker compose up -d vaultctl
+# or
+systemctl start vaultctl
+```
+</Steps>
+
+<Callout type="warning">
+  After a restore, all active sessions are invalidated. Users will need to log in again. This is expected — refresh tokens from before the restore point will no longer be valid.
+</Callout>
+
+## Scheduled Backups
+
+Use cron to automate daily backups with retention:
+
+```bash
+# /etc/cron.d/vaultctl-backup
+# Daily at 3:00 AM, keep 30 days of backups
+0 3 * * * root docker compose -f /opt/vaultctl/docker-compose.yml exec -T vaultctl \
+  vaultctl backup --output /backups/vaultctl-$(date +\%Y\%m\%d).sql.gz \
+  && find /backups -name "vaultctl-*.sql.gz" -mtime +30 -delete
+```
+
+### Verify backups
+
+Periodically test that your backups can be restored:
+
+```bash
+# Create a test database and restore into it
+docker compose exec db createdb -U vaultctl vaultctl_test
+gunzip -c /backups/vaultctl-20260406.sql.gz | \
+  docker compose exec -T db psql -U vaultctl -d vaultctl_test
+
+# Verify table counts
+docker compose exec db psql -U vaultctl -d vaultctl_test \
+  -c "SELECT 'users', count(*) FROM users UNION ALL SELECT 'items', count(*) FROM items;"
+
+# Clean up
+docker compose exec db dropdb -U vaultctl vaultctl_test
+```
+
+## Key Storage Warning
+
+<Callout type="error">
+  **Never store `SERVER_PEPPER`, `ENUMERATION_PEPPER`, `JWT_SECRET_CURRENT`, or `DATA_ENCRYPTION_KEY` in the same location as your database backups.**
+
+  If an attacker obtains both the backup and these keys, they could:
+  - Decrypt TOTP secrets (using `DATA_ENCRYPTION_KEY`)
+  - Generate fake KDF params (using `ENUMERATION_PEPPER`)
+  - Sign fraudulent JWT tokens (using `JWT_SECRET_CURRENT`)
+
+  Store server secrets in a separate secrets manager (e.g., HashiCorp Vault, AWS Secrets Manager, or an encrypted USB drive in a safe).
+</Callout>

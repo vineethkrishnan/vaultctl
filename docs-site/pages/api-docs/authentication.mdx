@@ -1,0 +1,345 @@
+# Authentication API
+
+import { Callout, Tabs, Steps } from 'nextra/components'
+
+All authentication endpoints are under `/api/v1/auth`.
+
+## Register
+
+Create a new account. The client performs Argon2id key derivation locally and sends the resulting auth hash, encrypted private keys, and public keys.
+
+```
+POST /auth/register
+```
+
+### Request
+
+```json
+{
+  "email": "alice@example.com",
+  "name": "Alice",
+  "authHash": "base64-encoded-auth-hash",
+  "salt": "base64-encoded-salt",
+  "masterPasswordPreflight": "base64-encoded-preflight",
+  "kdfIterations": 3,
+  "kdfMemoryKB": 65536,
+  "kdfParallelism": 4,
+  "encryptedPrivateKey": "base64-encoded-blob",
+  "encryptedIdentityPrivateKey": "base64-encoded-blob",
+  "publicKey": "base64-encoded-rsa-public-key",
+  "publicKeySignature": "base64-encoded-ed25519-signature",
+  "identityPublicKey": "base64-encoded-ed25519-public-key"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `email` | string | User email address |
+| `name` | string | Display name |
+| `authHash` | string | Base64-encoded Argon2id hash derived from master password via HKDF(info="auth") |
+| `salt` | string | Base64-encoded random salt used for Argon2id derivation |
+| `masterPasswordPreflight` | string | Base64-encoded value for client-side password verification on future logins |
+| `kdfIterations` | integer | Argon2id time parameter (default: 3) |
+| `kdfMemoryKB` | integer | Argon2id memory parameter in KB (default: 65536) |
+| `kdfParallelism` | integer | Argon2id parallelism parameter (default: 4) |
+| `encryptedPrivateKey` | string | Base64-encoded RSA private key encrypted with stretched key |
+| `encryptedIdentityPrivateKey` | string | Base64-encoded Ed25519 private key encrypted with stretched key |
+| `publicKey` | string | Base64-encoded RSA public key (PKCS#1) |
+| `publicKeySignature` | string | Base64-encoded Ed25519 signature over the RSA public key |
+| `identityPublicKey` | string | Base64-encoded Ed25519 public key |
+
+### Response — `201 Created`
+
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "role": "owner"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "name": "Alice",
+    "authHash": "c2VjdXJlLWhhc2gtYnl0ZXM=",
+    "salt": "cmFuZG9tLXNhbHQ=",
+    "masterPasswordPreflight": "cHJlZmxpZ2h0LWJ5dGVz",
+    "kdfIterations": 3,
+    "kdfMemoryKB": 65536,
+    "kdfParallelism": 4,
+    "encryptedPrivateKey": "ZW5jcnlwdGVkLXJzYS1wcml2YXRl",
+    "encryptedIdentityPrivateKey": "ZW5jcnlwdGVkLWVkMjU1MTktcHJpdmF0ZQ==",
+    "publicKey": "cnNhLXB1YmxpYy1rZXk=",
+    "publicKeySignature": "ZWQyNTUxOS1zaWduYXR1cmU=",
+    "identityPublicKey": "ZWQyNTUxOS1wdWJsaWMta2V5"
+  }'
+```
+
+---
+
+## Prelogin
+
+Retrieve KDF parameters for a given email. Used by the client to derive the auth hash before login.
+
+```
+GET /auth/prelogin?email=alice@example.com
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "salt": "cmFuZG9tLXNhbHQ=",
+  "iterations": 3,
+  "memoryKB": 65536,
+  "parallelism": 4
+}
+```
+
+<Callout type="info">
+  **Enumeration prevention (H2):** If the email does not exist, the server returns **fake but deterministic** KDF parameters derived from the email and a server-side pepper. This prevents attackers from discovering which emails are registered.
+</Callout>
+
+### Example
+
+```bash
+curl "https://vault.example.com/api/v1/auth/prelogin?email=alice@example.com"
+```
+
+---
+
+## Login
+
+Authenticate with email and auth hash. Returns tokens, encrypted keys, and the user's vault list.
+
+```
+POST /auth/login
+```
+
+### Request
+
+```json
+{
+  "email": "alice@example.com",
+  "authHash": "base64-encoded-auth-hash",
+  "deviceName": "Chrome on macOS"
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "role": "owner",
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4=",
+  "sessionId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "refreshExpiresAt": "2026-04-13T12:00:00Z",
+  "encryptedPrivateKey": "base64-encoded-blob",
+  "encryptedIdentityPrivateKey": "base64-encoded-blob",
+  "publicKey": "base64-encoded-rsa-public-key",
+  "publicKeySignature": "base64-encoded-ed25519-signature",
+  "identityPublicKey": "base64-encoded-ed25519-public-key",
+  "vaults": [
+    {
+      "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+      "vaultName": "Personal",
+      "vaultType": "personal",
+      "encryptedVaultKey": "base64-encoded-wrapped-key",
+      "senderId": "550e8400-e29b-41d4-a716-446655440000",
+      "wrapSignature": "base64-encoded-signature",
+      "role": "owner"
+    }
+  ]
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "authHash": "c2VjdXJlLWhhc2gtYnl0ZXM=",
+    "deviceName": "Chrome on macOS"
+  }'
+```
+
+---
+
+## Refresh Token
+
+Exchange a valid refresh token for a new access/refresh token pair.
+
+```
+POST /auth/refresh
+```
+
+### Request
+
+```json
+{
+  "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4="
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "bmV3LXJlZnJlc2gtdG9rZW4=",
+  "refreshExpiresAt": "2026-04-13T12:00:00Z"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4="}'
+```
+
+---
+
+## Logout
+
+Revoke a refresh token and end the associated session.
+
+```
+POST /auth/logout
+```
+
+### Request
+
+```json
+{
+  "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4="
+}
+```
+
+### Response — `204 No Content`
+
+No response body.
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4="}'
+```
+
+---
+
+## Step-Up Authentication
+
+Re-verify the master password to obtain a short-lived step-up token. Required before sensitive operations like changing password, purging items, or managing TOTP.
+
+```
+POST /auth/step-up
+```
+
+**Requires:** JWT access token in `Authorization` header.
+
+### Request
+
+```json
+{
+  "authHash": "base64-encoded-auth-hash"
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "accessToken": "eyJhbGciOi..."
+}
+```
+
+The returned access token contains a `step_up` claim and expires in **5 minutes**.
+
+<Callout type="warning">
+  The step-up token replaces your current access token. Use it for the privileged operation, then continue with a normal token from `/auth/refresh`.
+</Callout>
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/step-up \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"authHash": "c2VjdXJlLWhhc2gtYnl0ZXM="}'
+```
+
+---
+
+## Change Password
+
+Change the master password. Requires a step-up token. Re-encrypts private keys with the new stretched key and revokes all existing sessions.
+
+```
+POST /auth/password/change
+```
+
+**Requires:** JWT access token with `step_up` claim.
+
+### Request
+
+```json
+{
+  "oldAuthHash": "base64-encoded-old-auth-hash",
+  "newAuthHash": "base64-encoded-new-auth-hash",
+  "encryptedPrivateKey": "base64-encoded-new-blob",
+  "encryptedIdentityPrivateKey": "base64-encoded-new-blob"
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "bmV3LXJlZnJlc2gtdG9rZW4=",
+  "refreshExpiresAt": "2026-04-13T12:00:00Z"
+}
+```
+
+<Callout type="warning">
+  This operation **revokes all sessions** across all devices. The response contains new tokens for the current session only. All other devices will need to log in again with the new master password.
+</Callout>
+
+### Example
+
+<Steps>
+### Obtain a step-up token
+
+```bash
+STEP_UP_TOKEN=$(curl -s -X POST https://vault.example.com/api/v1/auth/step-up \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"authHash": "b2xkLWF1dGgtaGFzaA=="}' | jq -r '.accessToken')
+```
+
+### Change the password
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/password/change \
+  -H "Authorization: Bearer $STEP_UP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "oldAuthHash": "b2xkLWF1dGgtaGFzaA==",
+    "newAuthHash": "bmV3LWF1dGgtaGFzaA==",
+    "encryptedPrivateKey": "bmV3LWVuY3J5cHRlZC1yc2EtcHJpdmF0ZQ==",
+    "encryptedIdentityPrivateKey": "bmV3LWVuY3J5cHRlZC1lZDI1NTE5LXByaXZhdGU="
+  }'
+```
+</Steps>

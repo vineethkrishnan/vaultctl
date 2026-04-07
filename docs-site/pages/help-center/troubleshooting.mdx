@@ -1,0 +1,119 @@
+# Troubleshooting
+
+import { Callout } from 'nextra/components'
+
+## Cannot Connect to Server
+
+**Symptoms:** Browser shows "connection refused", "ERR_CONNECTION_TIMED_OUT", or "unable to reach server".
+
+**Check these in order:**
+
+1. **Server is running:**
+   ```bash
+   docker compose ps
+   # or
+   systemctl status vaultctl
+   ```
+
+2. **Correct URL:** Ensure you are using `https://` (not `http://`) and the correct port. The default is `443` if behind a reverse proxy, or `8080` for the raw server.
+
+3. **TLS certificate:** If using a self-signed certificate, your browser may block the connection. Accept the certificate or configure a trusted CA.
+
+4. **Firewall:** Ensure the port is open:
+   ```bash
+   # Check if the port is listening
+   ss -tlnp | grep 8080
+   ```
+
+5. **Reverse proxy:** If using Caddy or nginx, check the proxy logs:
+   ```bash
+   docker compose logs caddy
+   # or
+   journalctl -u nginx
+   ```
+
+---
+
+## Login Fails
+
+**Symptoms:** "Invalid credentials" error after entering correct password.
+
+- **Caps Lock:** Verify Caps Lock is off. The master password is case-sensitive.
+- **Account locked:** After **5 consecutive failed attempts**, the account is locked for **15 minutes** (configurable via `LOCKOUT_DURATION`). Wait and try again.
+- **KDF mismatch:** If you changed KDF parameters after registration (not recommended), the client may derive a different auth hash. Use the same parameters that were set during account creation.
+
+<Callout type="info">
+  If your account is locked, you will receive an `ACCOUNT_LOCKED` error. The lockout expires automatically — there is no manual unlock.
+</Callout>
+
+---
+
+## Slow Login
+
+**Symptoms:** Login takes 2-5 seconds or more.
+
+This is **expected behavior**. vaultctl uses Argon2id with 64 MB of memory and 3 iterations for key derivation. This is intentionally slow to make brute-force attacks impractical.
+
+- **2-5 seconds** is normal on modern hardware.
+- **Older or low-memory devices** may take longer.
+- **Do not reduce KDF parameters** to speed up login — this weakens security.
+
+---
+
+## Browser Extension Not Autofilling
+
+**Symptoms:** The extension icon appears but does not fill in credentials.
+
+1. **Check permissions:** Ensure the extension has permission to access the current site. Click the extension icon and check site access settings.
+
+2. **Check URI match:** The extension matches saved items by URI. If the saved URI is `https://example.com/login` but you are on `https://example.com/app/login`, the match may fail. Edit the item and update the URI, or add multiple URIs.
+
+3. **Multiple matches:** If multiple items match, the extension shows a dropdown instead of autofilling. Click the extension icon and select the correct item.
+
+4. **Iframe isolation:** Some sites use iframes for login forms. The extension may not have access to iframe contents depending on browser security settings.
+
+---
+
+## 429 Rate Limited
+
+**Symptoms:** API returns `{"error": {"code": "RATE_LIMITED", "message": "too many requests"}}`.
+
+The server enforces rate limits to prevent abuse:
+
+| Scope | Default Limit |
+|-------|--------------|
+| Per IP | 60 requests/min |
+| Per email (auth endpoints) | 5 attempts / 15 min |
+
+**Resolution:**
+- Wait for the `Retry-After` header value (in seconds) before retrying.
+- If you are hitting the per-IP limit from scripts or automation, increase `RATE_LIMIT_RPM` in the server configuration.
+- If you are hitting the per-email limit, wait 15 minutes or adjust `AUTH_RATE_LIMIT_WINDOW`.
+
+---
+
+## 500 Internal Server Error
+
+**Symptoms:** API returns `{"error": {"code": "INTERNAL", "message": "internal server error"}}`.
+
+1. **Check server logs:**
+   ```bash
+   docker compose logs vaultctl --tail 100
+   # or
+   journalctl -u vaultctl --since "5 minutes ago"
+   ```
+
+2. **Database connectivity:** Verify PostgreSQL is running and the `DATABASE_URL` is correct:
+   ```bash
+   docker compose exec db pg_isready
+   ```
+
+3. **Missing environment variables:** Ensure all required env vars are set. See [Server Configuration](/help-center/configuration).
+
+4. **Disk space:** Check available disk space. PostgreSQL may refuse writes if the disk is full.
+
+5. **Report the issue:** If the error persists, open an issue on [GitHub](https://github.com/vineethkrishnan/vaultctl/issues) with the relevant log output (redact any sensitive values).
+
+<Callout type="warning">
+  Server logs may contain request metadata. The `LOG_REDACT_FIELDS` environment variable controls which fields are redacted. Ensure sensitive fields are redacted before sharing logs publicly.
+</Callout>

@@ -1,0 +1,46 @@
+# Binaries
+/bin/
+/dist/
+/vaultctl
+/vaultctl.exe
+
+# Go build cache / test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Env — NEVER commit
+.env
+.env.*
+!.env.example
+
+# Backup directory (matches VAULTCTL_BACKUP_DIR default)
+/backups/
+
+# Caddy state
+/caddy-data/
+/caddy-config/
+
+# Postgres state
+/postgres-data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Node (frontend / extension / docs)
+/web/node_modules/
+/web/dist/
+/web/test-results/
+/extension/node_modules/
+/extension/.output/
+/docs-site/node_modules/
+/docs-site/out/
+/docs-site/.next/
+
+# SBOM + release artifacts (generated)
+*.sbom.json
+*.intoto.jsonl

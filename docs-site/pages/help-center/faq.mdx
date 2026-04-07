@@ -1,0 +1,77 @@
+# FAQ
+
+import { Callout } from 'nextra/components'
+
+## What if I forget my master password?
+
+If you saved your **recovery kit** during registration, you can use it to regain access to your vault. The recovery key decrypts your RSA private key, which in turn unlocks all your vault keys.
+
+If you lost both your master password and your recovery kit, **your data is permanently lost**. This is by design — no one (not even a server administrator) can recover your data without one of these two secrets.
+
+<Callout type="warning">
+  Store your recovery kit in a physically secure location (e.g., a safe or safety deposit box). Do not store it digitally alongside your vault backup.
+</Callout>
+
+## Can the server read my passwords?
+
+**No.** vaultctl uses a zero-knowledge architecture. All encryption and decryption happens in your browser. The server only stores ciphertext encrypted with AES-256-GCM. Without your master password (or recovery key), the server cannot decrypt anything — not your passwords, not your notes, not your item names.
+
+See [Zero-Knowledge Design](/knowledge-base/zero-knowledge) for details on what the server can and cannot see.
+
+## Is it safe to use on public WiFi?
+
+**Yes.** All communication between your browser and the vaultctl server is encrypted with TLS (HTTPS). On top of that, all sensitive data is encrypted client-side before it ever leaves your browser. Even if TLS were somehow broken, an attacker would only see AES-256-GCM ciphertext.
+
+## How is this different from Bitwarden?
+
+vaultctl and Bitwarden share similar zero-knowledge principles, but differ in key areas:
+
+| | vaultctl | Bitwarden |
+|--|----------|-----------|
+| **Hosting** | Self-hosted only (Docker or binary) | Cloud-hosted or self-hosted |
+| **Cloud dependency** | None — runs on your infrastructure | Official cloud option; self-hosted requires Bitwarden license |
+| **Key hierarchy** | RSA-4096 + Ed25519 + AES-256-GCM + AES-KW | RSA-2048 + AES-256-CBC + HMAC |
+| **Sharing verification** | Ed25519 signed key wraps + safety numbers | Trust on first use |
+| **Codebase** | Go backend, React frontend | C# backend, Angular frontend |
+
+## Can I use it without Docker?
+
+**Yes.** vaultctl ships as a single static Go binary. You can download it from the [releases page](https://github.com/vineethkrishnan/vaultctl/releases) and run it directly:
+
+```bash
+# Download and run
+./vaultctl serve --config /etc/vaultctl/config.env
+
+# Or use the install script
+curl -fsSL https://vaultctl.dev/install.sh | bash -s -- --no-docker
+```
+
+You will need to provide your own PostgreSQL instance and TLS termination (reverse proxy).
+
+## What happens if the server goes down?
+
+If the vaultctl server becomes unreachable:
+
+- **You cannot sync** new changes or access data from new devices.
+- **No data is lost** — all encrypted data persists in the PostgreSQL database.
+- **Cached data** in your browser or extension may still be available for read-only access (depending on the client implementation).
+
+Once the server is restored, everything resumes normally. The server is stateless beyond the database — restarting it has no side effects.
+
+## Can I migrate from another password manager?
+
+**Bitwarden CSV** import is supported. Export your vault from Bitwarden as an unencrypted CSV, then import it through the vaultctl web interface.
+
+Other import formats are planned:
+
+| Source | Status |
+|--------|--------|
+| Bitwarden (CSV) | Supported |
+| 1Password (1PUX) | Planned |
+| KeePass (KDBX) | Planned |
+| LastPass (CSV) | Planned |
+| Chrome (CSV) | Planned |
+
+<Callout type="info">
+  When importing, the CSV file is processed entirely in your browser. The plaintext data is encrypted client-side before being sent to the server. The unencrypted file never leaves your machine.
+</Callout>

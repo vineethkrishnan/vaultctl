@@ -1,0 +1,67 @@
+# Core Concepts
+
+import { Callout } from 'nextra/components'
+
+## Master Password
+
+Your single key to everything. It is:
+- **Never sent to the server** in plaintext
+- Used locally to derive encryption keys via Argon2id + HKDF
+- The only thing you need to remember
+
+## Key Derivation
+
+When you enter your master password:
+
+```
+Master Password + Salt
+        │
+        ▼ Argon2id (3 iterations, 64MB memory, 4 threads)
+        │
+    Master Key (256-bit)
+        │
+        ├── HKDF(info="auth") → Auth Hash    → sent to server for login
+        │
+        └── HKDF(info="enc")  → Stretched Key → encrypts your private keys locally
+```
+
+The **auth hash** proves you know the password without revealing it. The **stretched key** encrypts your RSA and Ed25519 private keys — it never leaves your browser.
+
+## Vault Keys
+
+Each vault has its own 256-bit symmetric key:
+
+- **Personal vaults**: Key wrapped with AES Key Wrap using your stretched key
+- **Shared vaults**: Key wrapped with each member's RSA public key
+
+Removing a member triggers a **rekey** — a new vault key is generated and re-wrapped for remaining members.
+
+## Item Encryption
+
+Every vault item has two encrypted fields:
+
+| Field | Encryption | Notes |
+|-------|-----------|-------|
+| **Name** | AES-256-GCM | Padded to 32-byte boundaries to prevent length fingerprinting |
+| **Data** | AES-256-GCM | Full item payload as JSON |
+
+Both use random 96-bit nonces. The server sees only ciphertext.
+
+## Identity Keys
+
+Each user has an Ed25519 identity keypair:
+- **Signs** the RSA public key (proves key ownership)
+- **Signs vault key wraps** during sharing (prevents MITM)
+- Produces a **safety number** — a 60-digit fingerprint for out-of-band verification
+
+## Recovery Kit
+
+At registration, a random recovery key is generated. Your RSA private key is encrypted with this key. If you forget your master password, the recovery key restores vault access.
+
+<Callout type="warning">
+  The recovery key is shown **once** and never stored on the server. If you lose both your master password and recovery key, your data is gone forever.
+</Callout>
+
+## Web Worker Key Custody
+
+In the browser, all decrypted keys live in a **Web Worker** — an isolated execution context. Keys never cross to the main thread. The Worker auto-locks after 15 minutes of inactivity, zeroing all key material in memory.

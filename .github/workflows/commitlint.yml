@@ -1,0 +1,31 @@
+name: commitlint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  lint:
+    name: lint commit messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: install commitlint
+        run: |
+          npm install --no-save \
+            @commitlint/cli@19 \
+            @commitlint/config-conventional@19
+      - name: lint PR commits
+        run: |
+          npx commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to   "${{ github.event.pull_request.head.sha }}" \
+            --verbose

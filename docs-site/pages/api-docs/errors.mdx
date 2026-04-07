@@ -1,0 +1,161 @@
+# Error Codes
+
+import { Callout, Steps } from 'nextra/components'
+
+All API errors follow a consistent JSON format.
+
+## Error Format
+
+```json
+{
+  "error": {
+    "code": "INVALID",
+    "message": "email is required",
+    "field": "email"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | string | Machine-readable error code (see table below) |
+| `message` | string | Human-readable description |
+| `field` | string | *(optional)* The request field that caused the error |
+
+## Error Code Reference
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `INVALID` | 400 | Request validation failed — missing or malformed field |
+| `WEAK_MASTER_PASSWORD` | 400 | Master password does not meet strength requirements |
+| `UNAUTHENTICATED` | 401 | No access token provided or token is malformed |
+| `TOKEN_INVALID` | 401 | Access token signature verification failed |
+| `INVALID_CREDENTIALS` | 401 | Email or auth hash does not match |
+| `SESSION_EXPIRED` | 401 | Refresh token has expired or been revoked |
+| `FORBIDDEN` | 403 | Authenticated but lacking permission for this action |
+| `STEP_UP_REQUIRED` | 403 | Operation requires a step-up access token |
+| `NOT_FOUND` | 404 | Resource does not exist or is not accessible |
+| `CONFLICT` | 409 | Resource already exists (e.g., duplicate email) |
+| `ACCOUNT_LOCKED` | 423 | Too many failed login attempts — account temporarily locked |
+| `RATE_LIMITED` | 429 | Request rate limit exceeded |
+| `INTERNAL` | 500 | Unexpected server error |
+
+## Common Scenarios
+
+### Validation Error
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+```json
+{
+  "error": {
+    "code": "INVALID",
+    "message": "email is required",
+    "field": "email"
+  }
+}
+```
+
+### Invalid Credentials
+
+```json
+{
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "invalid email or password"
+  }
+}
+```
+
+<Callout type="info">
+  The error message is intentionally vague — it does not reveal whether the email exists or the password was wrong.
+</Callout>
+
+### Account Locked
+
+```json
+{
+  "error": {
+    "code": "ACCOUNT_LOCKED",
+    "message": "account temporarily locked due to too many failed attempts"
+  }
+}
+```
+
+After 5 consecutive failed login attempts, the account is locked for 15 minutes (configurable via `LOCKOUT_DURATION`).
+
+### Rate Limited
+
+```json
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "too many requests"
+  }
+}
+```
+
+The response includes a `Retry-After` header indicating when to retry (in seconds).
+
+---
+
+## Step-Up Handling Flow
+
+Several sensitive operations return `STEP_UP_REQUIRED` if called without a step-up token. Here is the recommended client flow:
+
+<Steps>
+### Attempt the protected operation
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../trash/880e8400-...
+```
+
+Response:
+
+```json
+{
+  "error": {
+    "code": "STEP_UP_REQUIRED",
+    "message": "this operation requires re-authentication"
+  }
+}
+```
+
+### Prompt the user for their master password
+
+Re-derive the auth hash from the master password using the stored KDF parameters.
+
+### Obtain a step-up token
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/step-up \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"authHash": "base64-encoded-auth-hash"}'
+```
+
+### Retry the operation with the step-up token
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <step_up_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../trash/880e8400-...
+```
+</Steps>
+
+<Callout type="warning">
+  Step-up tokens expire after **5 minutes**. If the token expires before the operation completes, you will need to request a new one.
+</Callout>
+
+## Operations Requiring Step-Up
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /auth/password/change` | Change master password |
+| `POST /auth/totp/setup` | Begin TOTP setup |
+| `POST /auth/totp/disable` | Disable TOTP |
+| `DELETE /vaults/:id/trash/:id` | Permanently purge a trashed item |

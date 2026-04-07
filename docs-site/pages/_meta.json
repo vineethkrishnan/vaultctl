@@ -1,0 +1,27 @@
+{
+  "index": {
+    "title": "Home",
+    "type": "page",
+    "display": "hidden"
+  },
+  "getting-started": {
+    "title": "Getting Started",
+    "type": "page"
+  },
+  "user-manual": {
+    "title": "User Manual",
+    "type": "page"
+  },
+  "api-docs": {
+    "title": "API Docs",
+    "type": "page"
+  },
+  "knowledge-base": {
+    "title": "Knowledge Base",
+    "type": "page"
+  },
+  "help-center": {
+    "title": "Help Center",
+    "type": "page"
+  }
+}

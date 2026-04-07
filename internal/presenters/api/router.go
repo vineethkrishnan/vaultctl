@@ -1,0 +1,134 @@
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
+
+	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
+)
+
+// Dependencies bundles the wired services the router needs.
+type Dependencies struct {
+	Tokens             ports.TokenIssuer
+	Clock              ports.Clock
+	Auth               *AuthHandlers
+	Vault              *VaultHandlers
+	RateLimiter        *middleware.RateLimiter
+	CORSAllowedOrigins []string
+}
+
+// NewRouter assembles the chi router with the full middleware stack and
+// every endpoint from PRD §10.
+func NewRouter(deps Dependencies) http.Handler {
+	r := chi.NewRouter()
+
+	r.Use(chimw.RequestID)
+	r.Use(chimw.RealIP)
+	r.Use(chimw.Recoverer)
+	r.Use(chimw.Timeout(60 * time.Second))
+	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.CORS(deps.CORSAllowedOrigins))
+
+	requireAuth := middleware.RequireJWT(deps.Tokens)
+	requireStepUp := middleware.RequireStepUp(deps.Clock)
+
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/health", healthHandler)
+		r.Get("/config", configHandler)
+
+		// ===== Auth (unauthenticated) =====
+		r.Group(func(r chi.Router) {
+			if deps.RateLimiter != nil {
+				// Per-IP + per-email rate limiting on credential endpoints (H3)
+				r.Use(deps.RateLimiter.AuthAttempt(extractLoginEmail))
+			}
+			r.Post("/auth/register", deps.Auth.HandleRegister)
+			r.Get("/auth/prelogin", deps.Auth.HandlePrelogin)
+			r.Post("/auth/login", deps.Auth.HandleLogin)
+			r.Post("/auth/refresh", deps.Auth.HandleRefresh)
+			r.Post("/auth/logout", deps.Auth.HandleLogout)
+		})
+
+		// ===== Authenticated routes =====
+		r.Group(func(r chi.Router) {
+			r.Use(requireAuth)
+
+			// Step-up auth — rate-limited to prevent brute-force re-auth
+			if deps.RateLimiter != nil {
+				r.With(deps.RateLimiter.PerIP).Post("/auth/step-up", deps.Auth.HandleStepUp)
+			} else {
+				r.Post("/auth/step-up", deps.Auth.HandleStepUp)
+			}
+
+			// TOTP 2FA management — rate-limited
+			totpMw := []func(http.Handler) http.Handler{requireStepUp}
+			if deps.RateLimiter != nil {
+				totpMw = append(totpMw, deps.RateLimiter.PerIP)
+			}
+			r.With(totpMw...).Post("/auth/totp/setup", deps.Auth.HandleTOTPSetup)
+			r.With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/totp/enable", deps.Auth.HandleTOTPEnable)
+			r.With(totpMw...).Post("/auth/totp/disable", deps.Auth.HandleTOTPDisable)
+			r.With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/totp/verify", deps.Auth.HandleTOTPVerify)
+
+			// Password change (requires step-up + rate limit)
+			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/password/change", deps.Auth.HandlePasswordChange)
+
+			// Vault management
+			r.Get("/vaults", deps.Vault.HandleListVaults)
+			r.Post("/vaults", deps.Vault.HandleCreateVault)
+
+			// Vault items
+			r.Route("/vaults/{vaultId}", func(r chi.Router) {
+				r.Get("/items", deps.Vault.HandleListItems)
+				r.Post("/items", deps.Vault.HandleCreateItem)
+				r.Get("/items/{id}", deps.Vault.HandleGetItem)
+				r.Put("/items/{id}", deps.Vault.HandleUpdateItem)
+				r.Delete("/items/{id}", deps.Vault.HandleTrashItem)
+
+				// Trash
+				r.Get("/trash", deps.Vault.HandleListTrash)
+				r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
+				// H10 step-up required for irreversible purge
+				r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
+
+				// Folders
+				r.Get("/folders", deps.Vault.HandleListFolders)
+				r.Post("/folders", deps.Vault.HandleCreateFolder)
+				r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
+				r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+			})
+		})
+	})
+
+	return r
+}
+
+func healthHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// configHandler exposes server-side config that clients need to behave
+// correctly (e.g. clipboard timeout, vault lock timeout). It MUST NOT
+// expose any secret material.
+func configHandler(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"version":          "v1",
+		"registrationMode": "invite",
+	})
+}
+
+// rateLimitOrNoop returns the PerIP middleware as a slice suitable for
+// chi's With(), or an empty slice when no limiter is configured.
+func rateLimitOrNoop(rl *middleware.RateLimiter) []func(http.Handler) http.Handler {
+	if rl == nil {
+		return nil
+	}
+	return []func(http.Handler) http.Handler{rl.PerIP}
+}

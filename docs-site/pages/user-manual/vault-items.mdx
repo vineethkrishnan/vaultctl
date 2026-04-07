@@ -1,0 +1,140 @@
+# Vault Items
+
+import { Callout } from 'nextra/components'
+
+vaultctl supports seven item types. Each type has fields tailored to its purpose, and all field values are encrypted before leaving your device.
+
+---
+
+## Login
+
+Store website and app credentials.
+
+| Field | Description |
+|-------|-------------|
+| **Username** | Your login name or email address. |
+| **Password** | Masked by default. Click the eye icon to reveal, or the copy icon to copy. |
+| **URI** | The website or app URL. Used by the browser extension for autofill matching. |
+| **TOTP Secret** | A TOTP seed for generating one-time codes. When set, vaultctl displays a live 6-digit code with a countdown timer. |
+| **Notes** | Free-form text for anything else you want to remember. |
+| **Custom Fields** | Add your own key-value pairs (text, hidden, or boolean). |
+
+<Callout>
+vaultctl keeps a **password history** for every login item. Each time you update the password field, the previous value is saved with a timestamp. You can view and copy old passwords from the item detail view.
+</Callout>
+
+---
+
+## Secure Note
+
+Store sensitive text that does not fit into other item types.
+
+| Field | Description |
+|-------|-------------|
+| **Content** | The main body of the note. Supports multi-line text. |
+| **Notes** | Additional context or annotations. |
+
+---
+
+## Credit Card
+
+Keep payment card details encrypted and accessible when you need them.
+
+| Field | Description |
+|-------|-------------|
+| **Cardholder Name** | The name printed on the card. |
+| **Card Number** | Masked, showing only the last 4 digits. Click to copy the full number. |
+| **Expiry** | Displayed as MM/YY. |
+| **CVV** | Masked by default. Click to reveal or copy. |
+| **Card Type** | Visa, Mastercard, Amex, Discover, or other. |
+| **Notes** | Free-form text. |
+
+---
+
+## Identity
+
+Store personal information for filling out forms.
+
+| Field | Description |
+|-------|-------------|
+| **First Name** | Your given name. |
+| **Last Name** | Your family name. |
+| **Email** | Primary email address. |
+| **Phone** | Phone number. |
+| **Address Line 1** | Street address. |
+| **Address Line 2** | Apartment, suite, or unit (optional). |
+| **City** | City or locality. |
+| **State / Province** | State, province, or region. |
+| **Postal Code** | ZIP or postal code. |
+| **Country** | Country name. |
+| **SSN** | Social Security Number. Masked by default. |
+| **Passport Number** | Masked by default. |
+| **License Number** | Driver's license or national ID. Masked by default. |
+| **Notes** | Free-form text. |
+
+---
+
+## API Key
+
+Store API keys and tokens for developer services.
+
+| Field | Description |
+|-------|-------------|
+| **Key** | The API key or token. Masked by default. Click the copy icon to copy. |
+| **Environment** | Label for the environment (e.g., production, staging, development). |
+| **Service URL** | The base URL of the API service. |
+| **Expires** | Expiration date, if the key has one. |
+| **Notes** | Free-form text. |
+
+---
+
+## SSH Key
+
+Store SSH key pairs for server access.
+
+| Field | Description |
+|-------|-------------|
+| **Public Key** | The full public key. Click the copy icon to copy. |
+| **Private Key** | Masked by default. Requires reprompt to reveal. |
+| **Passphrase** | The passphrase protecting the private key. Masked by default. |
+| **Key Type** | Algorithm type (e.g., Ed25519, RSA, ECDSA). |
+| **Fingerprint** | The key fingerprint (read-only, computed automatically). |
+| **Host** | The server or hostname this key is used with. |
+| **Notes** | Free-form text. |
+
+<Callout type="warning">
+The private key field always requires **reprompt** (re-entering your master password) before it can be revealed or copied. This cannot be disabled.
+</Callout>
+
+---
+
+## Passkey
+
+Store WebAuthn/FIDO2 passkeys created through the browser extension.
+
+| Field | Description |
+|-------|-------------|
+| **RP ID** | The relying party identifier (usually the website domain). |
+| **RP Name** | The human-readable name of the relying party. |
+| **Credential ID** | The unique identifier for this credential. |
+| **User Handle** | The user handle provided by the relying party. |
+| **Discoverable** | Whether this passkey supports discoverable (resident) authentication. |
+| **Notes** | Free-form text. |
+
+<Callout type="info">
+Passkey items are **read-only** in the web vault. They are created and managed automatically by the browser extension's WebAuthn relay. You cannot manually edit passkey fields, but you can add notes and organize them into folders.
+</Callout>
+
+---
+
+## Common Features
+
+These features apply to all item types.
+
+**Favorites** -- Star any item to pin it to the top of your vault. See [Folders & Favorites](/user-manual/folders-favorites) for details.
+
+**Reprompt** -- Enable reprompt on sensitive items to require your master password before revealing or copying protected fields.
+
+**Clipboard Auto-Clear** -- When you copy a field value, vaultctl automatically clears your clipboard after 30 seconds.
+
+**Custom Fields** -- Login items support custom fields. Each custom field has a name and a value, and can be one of three types: text (visible), hidden (masked until revealed), or boolean (true/false toggle).

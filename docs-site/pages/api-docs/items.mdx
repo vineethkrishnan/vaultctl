@@ -1,0 +1,315 @@
+# Items API
+
+import { Callout, Tabs } from 'nextra/components'
+
+All item endpoints are scoped to a vault and require a JWT access token.
+
+## List Items
+
+Retrieve all items in a vault. Supports filtering by type, folder, and favorites.
+
+```
+GET /vaults/:vaultId/items
+```
+
+### Query Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `itemType` | string | Filter by type: `login`, `note`, `card`, `identity`, `api_key`, `ssh_key`, `passkey` |
+| `folderId` | UUID | Filter by folder. Use `none` for items not in any folder |
+| `favorites` | boolean | `true` to return only favorited items |
+
+### Response — `200 OK`
+
+```json
+{
+  "items": [
+    {
+      "itemId": "880e8400-e29b-41d4-a716-446655440000",
+      "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+      "itemType": "login",
+      "encryptedData": "base64-encoded-blob",
+      "encryptedName": "base64-encoded-blob",
+      "folderId": "990e8400-e29b-41d4-a716-446655440000",
+      "favorite": true,
+      "reprompt": false,
+      "createdAt": "2026-04-01T10:00:00Z",
+      "updatedAt": "2026-04-06T08:30:00Z"
+    }
+  ]
+}
+```
+
+### Examples
+
+<Tabs items={['All items', 'Favorites only', 'By folder', 'By type']}>
+  <Tabs.Tab>
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../items
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     "https://vault.example.com/api/v1/vaults/660e8400-.../items?favorites=true"
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     "https://vault.example.com/api/v1/vaults/660e8400-.../items?folderId=990e8400-..."
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     "https://vault.example.com/api/v1/vaults/660e8400-.../items?itemType=login"
+```
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## Create Item
+
+Add a new encrypted item to a vault.
+
+```
+POST /vaults/:vaultId/items
+```
+
+### Request
+
+```json
+{
+  "itemType": "login",
+  "encryptedData": "base64-encoded-blob",
+  "encryptedName": "base64-encoded-blob",
+  "folderId": "990e8400-e29b-41d4-a716-446655440000",
+  "favorite": false,
+  "reprompt": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `itemType` | string | yes | One of: `login`, `note`, `card`, `identity`, `api_key`, `ssh_key`, `passkey` |
+| `encryptedData` | string | yes | Base64-encoded AES-256-GCM blob containing the item payload |
+| `encryptedName` | string | yes | Base64-encoded AES-256-GCM blob containing the item name (PKCS#7 padded to 32B) |
+| `folderId` | UUID | no | Folder to place the item in. Omit for root level |
+| `favorite` | boolean | no | Mark as favorite (default: `false`) |
+| `reprompt` | boolean | no | Require master password re-entry before revealing (default: `false`) |
+
+### Response — `201 Created`
+
+```json
+{
+  "itemId": "880e8400-e29b-41d4-a716-446655440000",
+  "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+  "itemType": "login",
+  "encryptedData": "base64-encoded-blob",
+  "encryptedName": "base64-encoded-blob",
+  "folderId": "990e8400-e29b-41d4-a716-446655440000",
+  "favorite": false,
+  "reprompt": false,
+  "createdAt": "2026-04-06T12:00:00Z",
+  "updatedAt": "2026-04-06T12:00:00Z"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/vaults/660e8400-.../items \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "itemType": "login",
+    "encryptedData": "ZW5jcnlwdGVkLWxvZ2luLWRhdGE=",
+    "encryptedName": "ZW5jcnlwdGVkLW5hbWU=",
+    "favorite": true
+  }'
+```
+
+---
+
+## Get Item
+
+Retrieve a single item by ID.
+
+```
+GET /vaults/:vaultId/items/:itemId
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "itemId": "880e8400-e29b-41d4-a716-446655440000",
+  "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+  "itemType": "login",
+  "encryptedData": "base64-encoded-blob",
+  "encryptedName": "base64-encoded-blob",
+  "folderId": null,
+  "favorite": true,
+  "reprompt": false,
+  "createdAt": "2026-04-01T10:00:00Z",
+  "updatedAt": "2026-04-06T08:30:00Z"
+}
+```
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../items/880e8400-...
+```
+
+---
+
+## Update Item
+
+Update an existing item. All mutable fields can be changed.
+
+```
+PUT /vaults/:vaultId/items/:itemId
+```
+
+### Request
+
+```json
+{
+  "encryptedData": "base64-encoded-new-blob",
+  "encryptedName": "base64-encoded-new-blob",
+  "folderId": "990e8400-e29b-41d4-a716-446655440000",
+  "favorite": true,
+  "reprompt": true
+}
+```
+
+### Response — `200 OK`
+
+Returns the full updated item (same shape as Get Item).
+
+### Example
+
+```bash
+curl -X PUT https://vault.example.com/api/v1/vaults/660e8400-.../items/880e8400-... \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "encryptedData": "dXBkYXRlZC1lbmNyeXB0ZWQtZGF0YQ==",
+    "encryptedName": "dXBkYXRlZC1lbmNyeXB0ZWQtbmFtZQ==",
+    "favorite": true
+  }'
+```
+
+---
+
+## Trash Item (Soft Delete)
+
+Move an item to the trash. The item is not permanently deleted and can be restored.
+
+```
+DELETE /vaults/:vaultId/items/:itemId
+```
+
+### Response — `204 No Content`
+
+No response body.
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../items/880e8400-...
+```
+
+---
+
+## List Trash
+
+Retrieve all trashed items in a vault.
+
+```
+GET /vaults/:vaultId/trash
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "items": [
+    {
+      "itemId": "880e8400-e29b-41d4-a716-446655440000",
+      "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+      "itemType": "login",
+      "encryptedData": "base64-encoded-blob",
+      "encryptedName": "base64-encoded-blob",
+      "folderId": null,
+      "favorite": false,
+      "reprompt": false,
+      "trashedAt": "2026-04-05T16:00:00Z",
+      "createdAt": "2026-04-01T10:00:00Z",
+      "updatedAt": "2026-04-05T16:00:00Z"
+    }
+  ]
+}
+```
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../trash
+```
+
+---
+
+## Restore Item
+
+Restore a trashed item back to the vault.
+
+```
+POST /vaults/:vaultId/trash/:itemId/restore
+```
+
+### Response — `200 OK`
+
+Returns the restored item (same shape as Get Item).
+
+### Example
+
+```bash
+curl -X POST -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../trash/880e8400-.../restore
+```
+
+---
+
+## Purge Item (Permanent Delete)
+
+Permanently delete a trashed item. This action is irreversible.
+
+```
+DELETE /vaults/:vaultId/trash/:itemId
+```
+
+**Requires:** JWT access token with `step_up` claim.
+
+### Response — `204 No Content`
+
+No response body.
+
+<Callout type="warning">
+  Purging permanently destroys the encrypted data. This cannot be undone. A [step-up token](/api-docs/authentication#step-up-authentication) is required.
+</Callout>
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <step_up_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../trash/880e8400-...
+```

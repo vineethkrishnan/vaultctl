@@ -1,0 +1,108 @@
+# Encryption Details
+
+import { Callout } from 'nextra/components'
+
+A deep dive into how vaultctl encrypts data, derives keys, and structures ciphertext.
+
+## Blob Wire Format
+
+Every encrypted value in vaultctl follows a compact binary format before being Base64-encoded:
+
+```
+┌──────────┬──────────┬───────────┬────────────┬─────┐
+│ version  │  alg_id  │   nonce   │ ciphertext │ tag │
+│  (1 B)   │  (1 B)   │ (var len) │  (var len) │(var)│
+└──────────┴──────────┴───────────┴────────────┴─────┘
+```
+
+| Component | Size | Description |
+|-----------|------|-------------|
+| `version` | 1 byte | Wire format version (currently `0x01`) |
+| `alg_id` | 1 byte | Algorithm identifier (see table below) |
+| `nonce` | Algorithm-dependent | Random nonce / IV |
+| `ciphertext` | Variable | Encrypted payload |
+| `tag` | Algorithm-dependent | Authentication tag |
+
+See the [Blob Wire Format](/knowledge-base/blob-format) page for byte-level layout diagrams.
+
+## Algorithm Parameters
+
+| Algorithm | `alg_id` | Nonce | Tag | Use Case |
+|-----------|----------|-------|-----|----------|
+| AES-256-GCM | `0x01` | 12 bytes | 16 bytes | Item data, item names, folder names, private keys |
+| RSA-OAEP-SHA256 | `0x02` | none | none | Vault key wrapping for shared vaults |
+| AES-256-KW | `0x03` | none | 8 bytes | Vault key wrapping for personal vaults |
+
+<Callout type="info">
+  RSA-OAEP ciphertext is inherently authenticated by the OAEP padding scheme — no separate nonce or tag is needed. AES Key Wrap (RFC 3394) includes an 8-byte integrity check value appended to the ciphertext.
+</Callout>
+
+## Name Padding
+
+Item names and folder names are padded to **32-byte boundaries** using PKCS#7 before encryption. This prevents the server from inferring name lengths from ciphertext size.
+
+```
+Original:    "GitHub"           → 6 bytes
+Padded:      "GitHub" + 26×0x1A → 32 bytes
+Encrypted:   AES-256-GCM(padded_name)
+```
+
+Names longer than 32 bytes are padded to the next multiple of 32 (64, 96, etc.).
+
+## Key Derivation
+
+### Client-Side (Argon2id)
+
+The master password is processed entirely in the browser:
+
+```
+Master Password + Salt (16 bytes random)
+        │
+        ▼ Argon2id
+        │   iterations:  3
+        │   memory:      64 MB
+        │   parallelism: 4
+        │   output:      32 bytes
+        │
+    Master Key (256-bit)
+        │
+        ├── HKDF-SHA256(info="auth")  → Auth Hash (32 bytes)
+        │       Sent to server for authentication
+        │
+        └── HKDF-SHA256(info="enc")   → Stretched Key (32 bytes)
+                Encrypts RSA + Ed25519 private keys locally
+```
+
+### Server-Side (Argon2id Re-Hash)
+
+The server never stores the auth hash directly. It applies a second round of Argon2id before storage:
+
+| Parameter | Value |
+|-----------|-------|
+| Iterations | 2 |
+| Memory | 19 MB |
+| Parallelism | 1 |
+
+This means a database leak does not reveal auth hashes — an attacker must crack two layers of Argon2id.
+
+## AAD Binding
+
+AES-256-GCM encryptions use **Additional Authenticated Data (AAD)** to bind ciphertext to its context and prevent cut-and-paste attacks:
+
+| Encrypted Field | AAD Value |
+|----------------|-----------|
+| Item data | `vaultId \|\| itemId` |
+| Item name | `vaultId \|\| itemId \|\| "name"` |
+| Folder name | `vaultId \|\| folderId \|\| "folder"` |
+| Private key (RSA) | `userId \|\| "private_key"` |
+| Private key (Ed25519) | `userId \|\| "identity_private_key"` |
+
+If an attacker copies ciphertext from one item to another, decryption fails because the AAD does not match.
+
+## Nonce Generation
+
+All nonces are generated using `crypto.getRandomValues()` in the browser (backed by the OS CSPRNG). Each encryption operation uses a fresh random nonce.
+
+<Callout type="warning">
+  Nonce reuse with AES-GCM is catastrophic — it breaks both confidentiality and authenticity. vaultctl generates a new 96-bit random nonce for every encryption, giving a collision probability below 2^-32 after 2^32 encryptions per key.
+</Callout>

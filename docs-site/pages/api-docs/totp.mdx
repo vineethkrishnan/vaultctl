@@ -1,0 +1,174 @@
+# TOTP API
+
+import { Callout, Steps } from 'nextra/components'
+
+TOTP (Time-based One-Time Password) endpoints manage two-factor authentication for user accounts. All endpoints require a JWT access token.
+
+## Setup TOTP
+
+Generate a new TOTP secret and provisioning URL. The secret is not yet active until confirmed via the Enable endpoint.
+
+```
+POST /auth/totp/setup
+```
+
+**Requires:** JWT access token with `step_up` claim.
+
+### Response — `200 OK`
+
+```json
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "otpauthUrl": "otpauth://totp/vaultctl:alice@example.com?secret=JBSWY3DPEHPK3PXP&issuer=vaultctl&algorithm=SHA1&digits=6&period=30"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `secret` | Base32-encoded TOTP secret for manual entry |
+| `otpauthUrl` | URI for QR code scanning by authenticator apps |
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/totp/setup \
+  -H "Authorization: Bearer <step_up_token>"
+```
+
+---
+
+## Enable TOTP
+
+Confirm and activate TOTP by providing a valid code from the authenticator app. This verifies the user has successfully configured their authenticator.
+
+```
+POST /auth/totp/enable
+```
+
+### Request
+
+```json
+{
+  "code": "123456"
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "message": "TOTP enabled"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/totp/enable \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "123456"}'
+```
+
+---
+
+## Verify TOTP
+
+Verify a TOTP code during login or other verification flows.
+
+```
+POST /auth/totp/verify
+```
+
+### Request
+
+```json
+{
+  "code": "654321"
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "message": "TOTP verified"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/totp/verify \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "654321"}'
+```
+
+---
+
+## Disable TOTP
+
+Remove TOTP two-factor authentication from the account.
+
+```
+POST /auth/totp/disable
+```
+
+**Requires:** JWT access token with `step_up` claim.
+
+### Response — `200 OK`
+
+```json
+{
+  "message": "TOTP disabled"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/totp/disable \
+  -H "Authorization: Bearer <step_up_token>"
+```
+
+---
+
+## Typical Setup Flow
+
+<Steps>
+### Obtain a step-up token
+
+Re-verify your master password to get a step-up access token.
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/step-up \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"authHash": "base64-encoded-auth-hash"}'
+```
+
+### Generate the TOTP secret
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/totp/setup \
+  -H "Authorization: Bearer <step_up_token>"
+```
+
+### Scan the QR code
+
+Use the `otpauthUrl` from the response to generate a QR code or enter the `secret` manually in your authenticator app.
+
+### Confirm with a code
+
+```bash
+curl -X POST https://vault.example.com/api/v1/auth/totp/enable \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "123456"}'
+```
+</Steps>
+
+<Callout type="info">
+  **Replay protection (H6):** Each TOTP code can only be used once within its 30-second window. Replaying a recently used code will be rejected, even if it is still technically valid for the current time step.
+</Callout>

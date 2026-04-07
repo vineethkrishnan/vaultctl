@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS api_keys;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS vault_items;
+DROP TABLE IF EXISTS folders;
+DROP TABLE IF EXISTS vault_members;
+DROP TABLE IF EXISTS vaults;
+DROP TABLE IF EXISTS org_invites;
+DROP TABLE IF EXISTS org_members;
+DROP TABLE IF EXISTS organizations;
+DROP TABLE IF EXISTS users;

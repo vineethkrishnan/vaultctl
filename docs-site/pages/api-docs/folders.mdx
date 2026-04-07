@@ -1,0 +1,143 @@
+# Folders API
+
+import { Callout } from 'nextra/components'
+
+Folders organize items within a vault. All folder endpoints are scoped to a vault and require a JWT access token.
+
+## List Folders
+
+Retrieve all folders in a vault.
+
+```
+GET /vaults/:vaultId/folders
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "folders": [
+    {
+      "folderId": "990e8400-e29b-41d4-a716-446655440000",
+      "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+      "encryptedName": "base64-encoded-blob",
+      "createdAt": "2026-04-01T10:00:00Z",
+      "updatedAt": "2026-04-01T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../folders
+```
+
+---
+
+## Create Folder
+
+Create a new folder in a vault.
+
+```
+POST /vaults/:vaultId/folders
+```
+
+### Request
+
+```json
+{
+  "encryptedName": "base64-encoded-blob"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `encryptedName` | string | Base64-encoded AES-256-GCM blob containing the folder name (PKCS#7 padded to 32B) |
+
+### Response — `201 Created`
+
+```json
+{
+  "folderId": "990e8400-e29b-41d4-a716-446655440000",
+  "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+  "encryptedName": "base64-encoded-blob",
+  "createdAt": "2026-04-06T12:00:00Z",
+  "updatedAt": "2026-04-06T12:00:00Z"
+}
+```
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/vaults/660e8400-.../folders \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"encryptedName": "ZW5jcnlwdGVkLWZvbGRlci1uYW1l"}'
+```
+
+---
+
+## Rename Folder
+
+Update the encrypted name of an existing folder.
+
+```
+PUT /vaults/:vaultId/folders/:folderId
+```
+
+### Request
+
+```json
+{
+  "encryptedName": "base64-encoded-new-blob"
+}
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "folderId": "990e8400-e29b-41d4-a716-446655440000",
+  "vaultId": "660e8400-e29b-41d4-a716-446655440000",
+  "encryptedName": "base64-encoded-new-blob",
+  "createdAt": "2026-04-01T10:00:00Z",
+  "updatedAt": "2026-04-06T12:00:00Z"
+}
+```
+
+### Example
+
+```bash
+curl -X PUT https://vault.example.com/api/v1/vaults/660e8400-.../folders/990e8400-... \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"encryptedName": "cmVuYW1lZC1mb2xkZXI="}'
+```
+
+---
+
+## Delete Folder
+
+Permanently delete a folder.
+
+```
+DELETE /vaults/:vaultId/folders/:folderId
+```
+
+### Response — `204 No Content`
+
+No response body.
+
+<Callout type="info">
+  When a folder is deleted, all items inside it are **moved to the vault root** (their `folderId` is set to `null`). No items are deleted.
+</Callout>
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../folders/990e8400-...
+```

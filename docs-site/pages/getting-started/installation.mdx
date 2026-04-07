@@ -1,0 +1,179 @@
+# Installation
+
+import { Tabs, Callout, Steps } from 'nextra/components'
+
+## One-Line Installer (Recommended)
+
+The interactive installer detects your OS, installs Docker if needed, generates secrets, configures TLS, and starts everything.
+
+```bash
+curl -fsSL https://vaultctl.dev/install.sh | bash
+```
+
+**What it does:**
+
+1. Checks for Docker (installs if missing)
+2. Pulls the latest vaultctl + PostgreSQL images
+3. Generates cryptographic secrets (JWT, HMAC, encryption keys)
+4. Asks for your domain name
+5. Configures Caddy for automatic HTTPS via Let's Encrypt
+6. Starts all services
+7. Runs database migrations
+8. Prints your vault URL
+
+<Callout type="info">
+  The installer is fully interactive — it prompts before every action. You can review each step before proceeding.
+</Callout>
+
+---
+
+## Manual Installation
+
+<Tabs items={['Docker Compose', 'Binary', 'Kubernetes']}>
+  <Tabs.Tab>
+### Docker Compose
+
+<Steps>
+### Clone the repository
+
+```bash
+git clone https://github.com/vineethkrishnan/vaultctl.git
+cd vaultctl
+```
+
+### Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set these required values:
+
+```env
+VAULTCTL_ENV=production
+VAULTCTL_DATABASE_URL=postgres://vaultctl:changeme@db:5432/vaultctl?sslmode=disable
+
+# Generate each with: openssl rand -base64 32
+VAULTCTL_JWT_SECRET_CURRENT=<generate>
+VAULTCTL_SERVER_PEPPER=<generate>
+VAULTCTL_ENUMERATION_PEPPER=<generate>
+VAULTCTL_DATA_ENCRYPTION_KEY=<generate>
+```
+
+### Generate secrets
+
+```bash
+for var in JWT_SECRET_CURRENT SERVER_PEPPER ENUMERATION_PEPPER DATA_ENCRYPTION_KEY; do
+  echo "VAULTCTL_${var}=$(openssl rand -base64 32)"
+done >> .env
+```
+
+### Start services
+
+```bash
+docker compose up -d
+```
+
+### Verify
+
+```bash
+curl https://your-domain.com/api/v1/health
+# → {"status":"ok"}
+```
+</Steps>
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+### Binary Installation
+
+For servers where you don't want Docker.
+
+<Steps>
+### Download
+
+```bash
+# Linux (amd64)
+curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_linux_amd64.tar.gz | tar xz
+
+# Linux (arm64)
+curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_linux_arm64.tar.gz | tar xz
+
+# macOS (Apple Silicon)
+curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_darwin_arm64.tar.gz | tar xz
+```
+
+### Prerequisites
+
+- PostgreSQL 16+ running and accessible
+- A database created for vaultctl
+- A reverse proxy (Caddy or nginx) for TLS
+
+### Configure
+
+```bash
+cp .env.example .env
+# Edit .env with your DATABASE_URL and secrets
+```
+
+### Run migrations
+
+```bash
+./vaultctl migrate up
+```
+
+### Start
+
+```bash
+./vaultctl server
+```
+
+The server listens on `:8080` by default. Put a TLS-terminating reverse proxy in front.
+</Steps>
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+### Kubernetes
+
+A Helm chart is planned for a future release. For now, use the Docker image directly:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultctl
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: vaultctl
+          image: ghcr.io/vineethkrishnan/vaultctl:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: vaultctl-secrets
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 5
+```
+
+Create a Secret with all required environment variables. See the [Configuration](/help-center/configuration) page for the complete list.
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## Post-Installation
+
+After installation, open your browser and navigate to your server URL.
+
+1. Click **Create Account**
+2. Follow the [Your First Account](/getting-started/first-account) guide
+3. Install the [Browser Extension](/user-manual/browser-extension)
+
+<Callout type="warning">
+  **Security reminder:** Each cryptographic secret (`JWT_SECRET`, `SERVER_PEPPER`, `ENUMERATION_PEPPER`, `DATA_ENCRYPTION_KEY`) must be unique. Never reuse secrets across deployments. Store them separately from database backups.
+</Callout>

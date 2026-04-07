@@ -1,0 +1,90 @@
+/**
+ * Key custody facade — delegates to the crypto Web Worker (M9).
+ *
+ * The Worker holds all decrypted key material in an isolated scope. This
+ * module provides the same async API that the rest of the app consumes.
+ *
+ * For the registration flow (where the Worker isn't yet initialized and we
+ * need to generate keys in the main thread), crypto operations are imported
+ * directly from shared/crypto — those calls don't go through this module.
+ */
+
+import {
+  workerInit,
+  workerEncrypt,
+  workerDecrypt,
+  workerEncryptName,
+  workerDecryptName,
+  workerLock,
+  workerTerminate,
+  workerIsUnlocked,
+} from "@/worker/worker-client";
+import type { VaultMembership } from "@/shared/types/api";
+
+export interface InitParams {
+  stretchedKey: Uint8Array;
+  encryptedPrivateKey: string; // base64 wire blob
+  encryptedIdentityPrivateKey: string; // base64 wire blob
+  vaults: VaultMembership[];
+}
+
+/** Initialize key custody after login — delegates to Worker. */
+export async function initKeys(params: InitParams): Promise<void> {
+  await workerInit({
+    stretchedKey: params.stretchedKey,
+    encryptedPrivateKey: params.encryptedPrivateKey,
+    encryptedIdentityPrivateKey: params.encryptedIdentityPrivateKey,
+    vaults: params.vaults.map((v) => ({
+      vaultId: v.vaultId,
+      encryptedVaultKey: v.encryptedVaultKey,
+      vaultType: v.vaultType,
+    })),
+  });
+}
+
+/** Check if keys are loaded in the Worker. */
+export async function isUnlocked(): Promise<boolean> {
+  return workerIsUnlocked();
+}
+
+/** Encrypt item data for a vault. Returns base64 wire blob. */
+export async function encryptData(
+  vaultId: string,
+  plaintext: Uint8Array,
+): Promise<string> {
+  return workerEncrypt(vaultId, plaintext);
+}
+
+/** Decrypt item data. Returns plaintext bytes. */
+export async function decryptData(
+  vaultId: string,
+  encryptedB64: string,
+): Promise<Uint8Array> {
+  return workerDecrypt(vaultId, encryptedB64);
+}
+
+/** Encrypt an item name with 32-byte padding. Returns base64 wire blob. */
+export async function encryptName(
+  vaultId: string,
+  name: string,
+): Promise<string> {
+  return workerEncryptName(vaultId, name);
+}
+
+/** Decrypt an item name (removes padding). Returns plain string. */
+export async function decryptName(
+  vaultId: string,
+  encryptedB64: string,
+): Promise<string> {
+  return workerDecryptName(vaultId, encryptedB64);
+}
+
+/** Lock the vault: zero all key material in the Worker. */
+export function lock(): void {
+  workerLock();
+}
+
+/** Terminate the Worker entirely (on logout). */
+export function terminate(): void {
+  workerTerminate();
+}

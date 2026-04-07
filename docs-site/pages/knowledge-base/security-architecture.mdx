@@ -1,0 +1,119 @@
+# Security Architecture
+
+import { Callout } from 'nextra/components'
+
+An overview of the cryptographic primitives, key hierarchy, security controls, and server-side storage model.
+
+## Cryptographic Primitives
+
+| Primitive | Algorithm | Key Size | Purpose |
+|-----------|-----------|----------|---------|
+| Symmetric encryption | AES-256-GCM | 256-bit | Encrypt item data, item names, folder names, private keys |
+| Asymmetric encryption | RSA-OAEP-SHA256 | 4096-bit | Wrap vault keys for shared vault members |
+| Symmetric key wrap | AES-256-KW (RFC 3394) | 256-bit | Wrap vault keys for personal vaults |
+| Key derivation | Argon2id | 256-bit output | Derive master key from master password |
+| Key expansion | HKDF-SHA256 | 256-bit output | Derive auth hash and stretched key from master key |
+| Digital signature | Ed25519 | 256-bit | Sign public keys and vault key wraps |
+| Server auth hash storage | Argon2id | 256-bit output | Re-hash client auth hash before storing |
+| TOTP | HMAC-SHA1 | 160-bit | Time-based one-time passwords (RFC 6238) |
+
+## Key Hierarchy
+
+```
+                    Master Password
+                         │
+                         ▼
+                ┌─────────────────┐
+                │    Argon2id     │  salt (16B random, stored on server)
+                │ 3 iter / 64MB  │  parallelism: 4
+                └────────┬────────┘
+                         │
+                    Master Key (256-bit)
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+              ▼                     ▼
+     HKDF(info="auth")    HKDF(info="enc")
+              │                     │
+              ▼                     ▼
+        Auth Hash              Stretched Key
+     (sent to server)      (never leaves browser)
+              │                     │
+              ▼                     ├── AES-256-GCM → Encrypted RSA Private Key
+     ┌─────────────────┐           │
+     │ Server Argon2id  │           └── AES-256-GCM → Encrypted Ed25519 Private Key
+     │ 2 iter / 19MB   │
+     └────────┬────────┘
+              │                RSA Private Key
+              ▼                     │
+     Stored Hash                    ▼
+     (in database)         RSA-OAEP unwrap of
+                           shared vault keys
+                                    │
+                                    ▼
+                              Vault Key (256-bit)
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                         ▼                     ▼
+                  AES-256-GCM            AES-256-GCM
+                  (item data)          (item/folder names)
+```
+
+### Key Types
+
+| Key | Generated | Stored | Protected By |
+|-----|-----------|--------|-------------|
+| Master Key | Derived from password + salt | Never stored | Exists only in memory during session |
+| Auth Hash | HKDF from master key | Server (double-hashed) | Argon2id (client) + Argon2id (server) |
+| Stretched Key | HKDF from master key | Never stored | Exists only in memory during session |
+| RSA Keypair (4096-bit) | At registration | Private: encrypted on server. Public: plaintext on server | AES-256-GCM with stretched key |
+| Ed25519 Keypair | At registration | Private: encrypted on server. Public: plaintext on server | AES-256-GCM with stretched key |
+| Vault Key (256-bit) | At vault creation | Wrapped on server (per member) | RSA-OAEP (shared) or AES-256-KW (personal) |
+
+## Security Controls
+
+| ID | Control | Layer | Description |
+|----|---------|-------|-------------|
+| C1 | Client-side encryption | Crypto | All sensitive data encrypted in the browser with AES-256-GCM before transmission |
+| C2 | Dual Argon2id | Crypto | Client derives auth hash via Argon2id; server re-hashes with second Argon2id before storage |
+| C3 | Signed key wraps | Crypto | Ed25519 signatures on vault key wraps prevent man-in-the-middle during sharing |
+| C4 | AAD binding | Crypto | Ciphertext bound to context (vault ID, item ID, field type) via AES-GCM AAD |
+| C5 | Name padding | Crypto | PKCS#7 padding to 32-byte boundaries prevents length fingerprinting |
+| H2 | Enumeration prevention | Auth | Prelogin returns deterministic fake KDF params for unknown emails |
+| H3 | Account lockout | Auth | 5 consecutive failures triggers 15-minute lockout |
+| H4 | Token hygiene | Auth | Access tokens: short-lived (15 min). Refresh tokens: single-use with rotation |
+| H5 | Step-up authentication | Auth | Sensitive operations require re-verification with 5-minute expiry |
+| H6 | TOTP replay protection | Auth | Per-time-step code tracking rejects replayed codes |
+| H7 | IDOR prevention | Authz | Vault membership verified on every resource access |
+| H8 | XSS mitigation | Transport | Strict CSP, Web Worker key isolation, no inline scripts |
+| H9 | Clickjacking prevention | Transport | `X-Frame-Options: DENY`, `frame-ancestors 'none'` |
+| H10 | Rate limiting | Transport | Per-IP (60/min) and per-email (5/15min) rate limits |
+| H11 | Log redaction | Ops | Configurable field list redacted from server logs |
+
+## What the Server Stores
+
+| Data | Encrypted? | Notes |
+|------|-----------|-------|
+| Email | No | Required for authentication |
+| Display name | No | User profile |
+| Auth hash | Hashed | Double Argon2id — not reversible to master password |
+| Salt | No | Needed for client-side key derivation |
+| KDF parameters | No | Iterations, memory, parallelism |
+| RSA public key | No | Used for vault key wrapping during sharing |
+| Ed25519 public key | No | Used for signature verification |
+| Public key signature | No | Ed25519 signature over RSA public key |
+| Encrypted RSA private key | Yes (AES-256-GCM) | Only decryptable with stretched key |
+| Encrypted Ed25519 private key | Yes (AES-256-GCM) | Only decryptable with stretched key |
+| Vault names | No | Plaintext for server-side listing |
+| Vault types | No | `personal` or `shared` |
+| Encrypted vault keys | Yes (RSA-OAEP or AES-KW) | Per-member wrapped vault keys |
+| Wrap signatures | No | Ed25519 signature over wrapped key |
+| Item types | No | `login`, `note`, `card`, etc. |
+| Encrypted item data | Yes (AES-256-GCM) | Ciphertext blob |
+| Encrypted item names | Yes (AES-256-GCM) | Padded and encrypted |
+| Encrypted folder names | Yes (AES-256-GCM) | Padded and encrypted |
+| Timestamps | No | Created, updated, trashed dates |
+| TOTP secrets | Yes (AES-256-GCM) | Server-side encrypted with `DATA_ENCRYPTION_KEY` |
+| Refresh tokens | Hashed | SHA-256 hashed before storage |
+| Session metadata | No | Device name, IP, last active time |

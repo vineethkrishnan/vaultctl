@@ -1,0 +1,69 @@
+# Zero-Knowledge Design
+
+import { Callout } from 'nextra/components'
+
+vaultctl is a **zero-knowledge** password manager. This means the server processes and stores your data without ever being able to read it.
+
+## What "Zero-Knowledge" Means
+
+All encryption and decryption happens **in your browser**. The server receives only ciphertext and has no access to:
+
+- Your master password
+- Your encryption keys
+- Your plaintext passwords, notes, or any item data
+
+The server is a "dumb store" — it persists encrypted blobs, enforces access control on those blobs, and facilitates sync. It cannot interpret what it stores.
+
+## What the Server Cannot Do
+
+| Action | Why Not |
+|--------|---------|
+| Read your passwords or notes | Item data is AES-256-GCM encrypted; the server never has the vault key |
+| Know your master password | Only a derived auth hash reaches the server, then re-hashed with Argon2id |
+| Brute-force your vault offline | Requires cracking Argon2id (client) + Argon2id (server) — two layers of memory-hard KDF |
+| Know the length of item/folder names | Names are PKCS#7 padded to 32-byte boundaries before encryption |
+| Decrypt shared vault keys | Vault keys are RSA-OAEP wrapped per-member; the server has no private keys |
+| Forge vault key wraps | Each wrap is Ed25519-signed by the sender; the server cannot produce valid signatures |
+
+## What the Server Can See
+
+The server does have access to certain metadata necessary for operation:
+
+| Visible to Server | Why |
+|-------------------|-----|
+| Email addresses | Required for authentication and account recovery |
+| Vault names | Stored in plaintext for server-side listing (not encrypted) |
+| Vault types (`personal` / `shared`) | Used for access control logic |
+| Item types (`login`, `note`, `card`, etc.) | Used for server-side filtering |
+| Timestamps (created, updated, trashed) | Required for sync ordering and trash retention |
+| Public keys (RSA, Ed25519) | Needed for key wrapping during sharing |
+| Number of items and folders | Visible from row counts |
+| Ciphertext sizes | Visible from blob sizes (names are padded to mitigate this) |
+
+<Callout type="info">
+  Vault names are currently stored in plaintext. This is a deliberate trade-off — it allows the server to return vault lists without requiring client-side decryption of every vault name during initial sync. A future version may encrypt vault names.
+</Callout>
+
+## Trust Model
+
+What happens under different compromise scenarios:
+
+| Scenario | Impact | Mitigation |
+|----------|--------|------------|
+| **Server compromised** (attacker gains read access) | Attacker sees only ciphertext and encrypted key blobs | All sensitive data is client-side encrypted; useless without master password |
+| **Database leaked** | Attacker gets encrypted blobs + double-hashed auth hashes | Must crack Argon2id (server) then Argon2id (client) to derive any keys |
+| **Malicious server operator** | Operator could serve modified JavaScript to steal passwords | Users should verify JS integrity; CSP headers prevent injection; open-source allows audit |
+| **Master password phished** | Attacker can derive all keys and decrypt the vault | Use a strong, unique master password; enable TOTP 2FA |
+| **Recovery kit stolen** | Attacker can decrypt the RSA private key and access vaults | Store recovery kit offline in a physically secure location |
+
+<Callout type="warning">
+  The primary trust boundary is the **client application**. If an attacker can modify the JavaScript served to your browser, they can intercept keys before encryption. This is an inherent limitation of all web-based cryptographic applications. Self-hosting and pinning deployments mitigates this risk.
+</Callout>
+
+## Design Principles
+
+1. **Encrypt before transmit** — Data is encrypted in the browser before any network request.
+2. **Minimal metadata** — The server stores only what is strictly necessary for sync and access control.
+3. **Key separation** — Auth hash (for login) and stretched key (for encryption) are derived from the same master password via different HKDF info strings, so compromising one does not reveal the other.
+4. **Forward secrecy on sharing** — Removing a member from a shared vault triggers a rekey, generating a new vault key and re-wrapping for remaining members.
+5. **Verifiable identity** — Ed25519 identity keys sign RSA public keys and vault key wraps, enabling out-of-band safety number verification.

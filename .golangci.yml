@@ -1,0 +1,74 @@
+# golangci-lint config for vaultctl.
+#
+# Key enforcement (architecture §3.3): depguard blocks forbidden imports from
+# the domain/ layer so the pure-stdlib invariant of M1 is a CI-time failure.
+
+run:
+  timeout: 5m
+  go: "1.23"
+
+linters:
+  disable-all: true
+  enable:
+    - depguard
+    - errcheck
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - errorlint
+    - goconst
+    - misspell
+    - unconvert
+    - unparam
+
+linters-settings:
+  depguard:
+    rules:
+      domain-stdlib-only:
+        list-mode: strict
+        files:
+          - "**/internal/domain/**/*.go"
+        allow:
+          - $gostd
+          - github.com/vineethkrishnan/vaultctl/internal/domain
+        deny:
+          - pkg: "github.com/go-chi/chi/v5"
+            desc: "domain must not import HTTP frameworks"
+          - pkg: "github.com/jackc/pgx/v5"
+            desc: "domain must not import database drivers"
+          - pkg: "github.com/golang-jwt/jwt/v5"
+            desc: "domain must not import JWT libraries"
+          - pkg: "golang.org/x/crypto"
+            desc: "domain must not import crypto libraries — use infrastructure adapters"
+      application-domain-only:
+        list-mode: lax
+        files:
+          - "**/internal/application/**/*.go"
+        deny:
+          - pkg: "github.com/go-chi/chi/v5"
+            desc: "application must not import HTTP frameworks"
+          - pkg: "github.com/jackc/pgx/v5"
+            desc: "application must not import database drivers"
+  gocyclo:
+    min-complexity: 15
+  gosec:
+    excludes:
+      - G104 # allow _ = json.NewEncoder(...).Encode(...) patterns
+  errcheck:
+    check-type-assertions: true
+
+issues:
+  exclude-dirs:
+    - bin
+    - dist
+    - web
+    - ext
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+        - gocyclo

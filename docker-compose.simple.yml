@@ -1,0 +1,49 @@
+# Simple compose variant: NO Caddy. Use when fronting vaultctl with your own
+# reverse proxy (nginx, Traefik, Cloudflare Tunnel, etc.).
+#
+# The API server is exposed on 127.0.0.1:8080 only — never bind 0.0.0.0
+# without a TLS-terminating proxy in front.
+
+name: vaultctl-simple
+
+services:
+  vaultctl:
+    image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-dev}
+    container_name: vaultctl-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_DB_HOST: vaultctl-db
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - vaultctl-net
+    depends_on:
+      vaultctl-db:
+        condition: service_healthy
+
+  vaultctl-db:
+    image: postgres:16-alpine
+    container_name: vaultctl-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${VAULTCTL_DB_NAME:-vaultctl}
+      POSTGRES_USER: ${VAULTCTL_DB_USER:-vaultctl}
+      POSTGRES_PASSWORD: ${VAULTCTL_DB_PASSWORD:?VAULTCTL_DB_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vaultctl-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+
+networks:
+  vaultctl-net:
+    driver: bridge

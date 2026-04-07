@@ -1,0 +1,41 @@
+# vaultctl
+
+## Zero-knowledge, self-hosted password vault
+
+Your passwords are encrypted on your device before they ever leave it. The server never sees your plaintext data — not even we can read it.
+
+import { Cards, Card } from 'nextra/components'
+
+<Cards>
+  <Card title="Getting Started" href="/getting-started" arrow>
+    Install in 2 minutes. One command setup.
+  </Card>
+  <Card title="User Manual" href="/user-manual" arrow>
+    Learn how to use every feature of vaultctl.
+  </Card>
+  <Card title="API Docs" href="/api-docs" arrow>
+    Full REST API reference for developers.
+  </Card>
+  <Card title="Knowledge Base" href="/knowledge-base" arrow>
+    Encryption, architecture, security deep-dives.
+  </Card>
+  <Card title="Help Center" href="/help-center" arrow>
+    FAQs, troubleshooting, self-hosting guides.
+  </Card>
+</Cards>
+
+---
+
+### Why vaultctl?
+
+| | |
+|---|---|
+| **Zero-Knowledge** | AES-256-GCM encryption happens in your browser. The server stores only ciphertext. |
+| **Self-Hosted** | One command deploys everything. Your data stays on your infrastructure. |
+| **7 Item Types** | Logins, notes, cards, identities, API keys, SSH keys, passkeys. |
+| **Browser Extension** | Chrome + Firefox with autofill, auto-save, TOTP code gen. |
+| **Open Source** | MIT licensed. Audit the code yourself. |
+
+```bash
+curl -fsSL https://vaultctl.dev/install.sh | bash
+```

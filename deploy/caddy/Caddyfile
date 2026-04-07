@@ -1,0 +1,40 @@
+# Caddy config for vaultctl. Substitutes {$VAULTCTL_BASE_URL} at startup.
+#
+# Notes:
+#   - Auto-TLS via Let's Encrypt when the base URL is a public hostname.
+#   - Body-logging is explicitly OFF for /api/v1/auth/* to prevent authHash
+#     leakage (architecture §6.5, C4).
+#   - Security headers are emitted here AND in Go middleware (§6.4, M8).
+
+{$VAULTCTL_BASE_URL:localhost} {
+	encode gzip zstd
+
+	header {
+		# HSTS — 2 years, include subdomains, preload
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "interest-cohort=(), geolocation=(), camera=(), microphone=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-site"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	# Reverse proxy to the Go API. Auth routes get a tighter log filter.
+	@auth path /api/v1/auth/*
+	reverse_proxy @auth vaultctl:8080 {
+		# C4: never log request bodies on auth routes
+		trusted_proxies private_ranges
+	}
+
+	reverse_proxy vaultctl:8080 {
+		trusted_proxies private_ranges
+	}
+
+	log {
+		output stdout
+		format json
+		# Never capture request bodies — C4
+	}
+}

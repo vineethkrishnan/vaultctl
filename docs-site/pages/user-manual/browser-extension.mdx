@@ -1,0 +1,131 @@
+# Browser Extension
+
+import { Callout, Steps, Tabs } from 'nextra/components'
+
+The vaultctl browser extension lets you autofill credentials, generate passwords, and save new logins directly from your browser.
+
+---
+
+## Supported Browsers
+
+| Browser | Support | Install Method |
+|---------|---------|----------------|
+| **Google Chrome** | Full | Chrome Web Store or manual load |
+| **Chromium-based** (Edge, Brave, Vivaldi, Arc) | Full | Chrome Web Store or manual load |
+| **Firefox** | Full | Firefox Add-ons or manual load |
+| **Safari** | Not yet supported | -- |
+
+---
+
+## Installation
+
+<Tabs items={['Chrome / Chromium', 'Firefox']}>
+  <Tabs.Tab>
+  1. Open the Chrome Web Store (or your Chromium browser's extension store).
+  2. Search for **vaultctl** and click **Add to Chrome**.
+  3. Click **Add Extension** in the confirmation dialog.
+  4. The vaultctl icon appears in your browser toolbar.
+  </Tabs.Tab>
+  <Tabs.Tab>
+  1. Open Firefox Add-ons (addons.mozilla.org).
+  2. Search for **vaultctl** and click **Add to Firefox**.
+  3. Click **Add** in the permissions dialog.
+  4. The vaultctl icon appears in your browser toolbar.
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## First-Time Setup
+
+<Steps>
+### Click the extension icon
+Click the vaultctl icon in your browser toolbar.
+
+### Enter your server URL
+Type the URL of your vaultctl instance (e.g., `https://vault.example.com`). This is the same URL you use to access the web vault.
+
+### Log in
+Enter your username and master password. If you have 2FA enabled, enter the TOTP code when prompted.
+
+### Done
+The extension is connected. Your vault syncs automatically.
+</Steps>
+
+---
+
+## Autofill
+
+The extension detects login forms on web pages and offers to fill your credentials.
+
+### How It Works
+
+1. When you visit a page with a login form, the extension matches the page URL against the URI fields in your login items.
+2. A small vaultctl icon appears inside the username or password field, or a notification banner appears at the top of the page.
+3. Click the icon or banner to see matching logins.
+4. Click a login to fill the form.
+
+If multiple logins match the current URL, the extension shows all matches and lets you choose.
+
+### Click to Fill
+
+For forms that are not auto-detected, you can manually fill credentials:
+
+1. Click the vaultctl icon in the toolbar.
+2. Search or browse for the login you need.
+3. Click **Fill** next to the item.
+
+---
+
+## Clipboard Auto-Clear
+
+When you copy a password, username, or other sensitive field from the extension popup, your clipboard is automatically cleared after **30 seconds**.
+
+---
+
+## Keyboard Shortcut
+
+Open the extension popup quickly with a keyboard shortcut:
+
+| Platform | Default Shortcut |
+|----------|-----------------|
+| **macOS** | `Cmd + Shift + L` |
+| **Windows / Linux** | `Ctrl + Shift + L` |
+
+You can customize this shortcut in your browser's extension settings:
+- **Chrome**: `chrome://extensions/shortcuts`
+- **Firefox**: `about:addons` > gear icon > **Manage Extension Shortcuts**
+
+---
+
+## Building from Source
+
+If you prefer to build and load the extension yourself:
+
+<Steps>
+### Clone the repository
+```bash
+git clone https://github.com/vineethkrishnan/vaultctl.git
+cd vaultctl/extension
+```
+
+### Install dependencies
+```bash
+npm install
+```
+
+### Build
+```bash
+npm run build
+```
+
+### Load in your browser
+
+**Chrome / Chromium**: Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the `extension/dist` folder.
+
+**Firefox**: Go to `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select any file in the `extension/dist` folder.
+</Steps>
+
+<Callout type="info">
+The extension communicates with your vaultctl server over HTTPS. All encryption and decryption happens locally in the extension -- the server only receives and stores encrypted blobs.
+</Callout>

@@ -1,0 +1,8 @@
+{
+  "index": "Overview",
+  "faq": "FAQ",
+  "troubleshooting": "Troubleshooting",
+  "configuration": "Server Configuration",
+  "reverse-proxy": "Reverse Proxy Setup",
+  "backup-restore": "Backup & Restore"
+}
