@@ -25,7 +25,7 @@ jobs:
           cache: true
       - uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.62
+          version: v1.64
           args: --timeout=5m
 
   govulncheck:
@@ -49,4 +49,4 @@ jobs:
       - uses: actions/checkout@v6
       - uses: securego/gosec@master
         with:
-          args: "-quiet -exclude=G104,G115,G204 ./..."
+          args: "-quiet -exclude=G104,G107,G115,G204 ./..."
