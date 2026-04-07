@@ -71,6 +71,7 @@ jobs:
             release
             security
             installer
+            main
           requireScope: false
           subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: |
