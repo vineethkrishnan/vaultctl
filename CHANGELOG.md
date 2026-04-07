@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.0.0...v1.0.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** use minimal Dockerfile for goreleaser, fix Docker Hub description ([5e2339b](https://github.com/vineethkrishnan/vaultctl/commit/5e2339b005a1ae69572d443b88cbd322c3f89ae7))
+
 ## 1.0.0 (2026-04-07)
 
 
