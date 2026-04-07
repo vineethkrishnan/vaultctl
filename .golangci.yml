@@ -1,14 +1,16 @@
-# golangci-lint config for vaultctl.
+# golangci-lint config for vaultctl (v2 format).
 #
 # Key enforcement (architecture §3.3): depguard blocks forbidden imports from
 # the domain/ layer so the pure-stdlib invariant of M1 is a CI-time failure.
 
+version: "2"
+
 run:
   timeout: 5m
-  go: "1.23"
 
 linters:
-  disable-all: true
+  disable:
+    - depguard
   enable:
     - depguard
     - errcheck
@@ -56,7 +58,7 @@ linters-settings:
     min-complexity: 15
   gosec:
     excludes:
-      - G104 # allow _ = json.NewEncoder(...).Encode(...) patterns
+      - G104
   errcheck:
     check-type-assertions: true
 
@@ -65,7 +67,7 @@ issues:
     - bin
     - dist
     - web
-    - ext
+    - extension
   exclude-rules:
     - path: _test\.go
       linters:
