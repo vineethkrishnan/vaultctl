@@ -1,0 +1,16 @@
+# Default owner for everything
+* @vineethkrishnan
+
+# CI/CD and GitHub config
+.github/ @vineethkrishnan
+Dockerfile @vineethkrishnan
+docker-compose*.yml @vineethkrishnan
+.goreleaser.yaml @vineethkrishnan
+
+# Security-sensitive files
+internal/domain/crypto/ @vineethkrishnan
+internal/infrastructure/crypto/ @vineethkrishnan
+internal/infrastructure/auth/ @vineethkrishnan
+internal/presenters/api/middleware/ @vineethkrishnan
+migrations/ @vineethkrishnan
+deploy/ @vineethkrishnan

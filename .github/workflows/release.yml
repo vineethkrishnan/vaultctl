@@ -62,3 +62,17 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: 'dist/*.tar.gz,dist/*.zip'
+
+  dockerhub-description:
+    name: Update Docker Hub Description
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: vineethkrishnan/vaultctl
+          short-description: "Zero-knowledge password vault. Self-hosted, E2E encrypted, open source."

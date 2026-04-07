@@ -2,14 +2,15 @@ name: commitlint
 
 on:
   pull_request:
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
   pull-requests: read
 
 jobs:
-  lint:
-    name: lint commit messages
+  lint-commits:
+    name: Lint Commit Messages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,7 +18,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: install commitlint
         run: |
           npm install --no-save \
@@ -29,3 +30,50 @@ jobs:
             --from "${{ github.event.pull_request.base.sha }}" \
             --to   "${{ github.event.pull_request.head.sha }}" \
             --verbose
+
+  lint-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            refactor
+            chore
+            docs
+            test
+            build
+            ci
+            perf
+            hotfix
+            sec
+          scopes: |
+            domain
+            crypto
+            auth
+            vault
+            api
+            middleware
+            cli
+            config
+            postgres
+            logging
+            web
+            extension
+            docs
+            docker
+            deps
+            ci
+            release
+            security
+            installer
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            must start with a lowercase letter.
+            Example: "feat(api): add CORS middleware"
