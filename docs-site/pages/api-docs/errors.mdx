@@ -28,10 +28,16 @@ All API errors follow a consistent JSON format.
 |------|-------------|-------------|
 | `INVALID` | 400 | Request validation failed — missing or malformed field |
 | `WEAK_MASTER_PASSWORD` | 400 | Master password does not meet strength requirements |
+| `REGISTRATION_DISABLED` | 400 | Open registration is disabled on this server |
+| `INVITE_REQUIRED` | 400 | Invite token is required (server registration mode is `invite`) |
+| `INVITE_NOT_REDEEMABLE` | 400 | Invite token is expired, already used, or revoked |
+| `INVALID_ROLE` | 400 | Invalid role value provided |
 | `UNAUTHENTICATED` | 401 | No access token provided or token is malformed |
 | `TOKEN_INVALID` | 401 | Access token signature verification failed |
 | `INVALID_CREDENTIALS` | 401 | Email or auth hash does not match |
 | `SESSION_EXPIRED` | 401 | Refresh token has expired or been revoked |
+| `API_KEY_INVALID` | 401 | API key not found or has been deleted |
+| `API_KEY_EXPIRED` | 401 | API key has passed its expiration date |
 | `FORBIDDEN` | 403 | Authenticated but lacking permission for this action |
 | `STEP_UP_REQUIRED` | 403 | Operation requires a step-up access token |
 | `NOT_FOUND` | 404 | Resource does not exist or is not accessible |
@@ -159,3 +165,5 @@ curl -X DELETE -H "Authorization: Bearer <step_up_token>" \
 | `POST /auth/totp/setup` | Begin TOTP setup |
 | `POST /auth/totp/disable` | Disable TOTP |
 | `DELETE /vaults/:id/trash/:id` | Permanently purge a trashed item |
+| `DELETE /vaults/:id/trash` | Bulk purge expired trash |
+| `GET /export` | Export vault data |

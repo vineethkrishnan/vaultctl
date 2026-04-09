@@ -1,0 +1,1957 @@
+basePath: /api/v1
+definitions:
+  github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportData:
+    properties:
+      folders:
+        items:
+          $ref: '#/definitions/github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportFolder'
+        type: array
+      items:
+        items:
+          $ref: '#/definitions/github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportItem'
+        type: array
+      vaults:
+        items:
+          $ref: '#/definitions/github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportVault'
+        type: array
+    type: object
+  github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportFolder:
+    properties:
+      createdAt:
+        type: string
+      encryptedName:
+        type: string
+      id:
+        type: string
+      vaultId:
+        type: string
+    type: object
+  github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportItem:
+    properties:
+      createdAt:
+        type: string
+      encryptedData:
+        type: string
+      encryptedName:
+        type: string
+      favorite:
+        type: boolean
+      folderId:
+        type: string
+      id:
+        type: string
+      itemType:
+        type: string
+      updatedAt:
+        type: string
+      vaultId:
+        type: string
+    type: object
+  github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportVault:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  internal_presenters_api.APIKeyResponse:
+    properties:
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      keyPrefix:
+        type: string
+      lastUsedAt:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.CreateAPIKeyRequest:
+    properties:
+      expiresIn:
+        description: duration string
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.CreateAPIKeyResponse:
+    properties:
+      expiresAt:
+        type: string
+      id:
+        type: string
+      key:
+        description: raw key, shown only once
+        type: string
+      keyPrefix:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.CreateInviteRequest:
+    properties:
+      email:
+        type: string
+      expiresIn:
+        description: duration string, e.g. "24h"
+        type: string
+      role:
+        type: string
+    type: object
+  internal_presenters_api.CreateInviteResponse:
+    properties:
+      inviteId:
+        type: string
+      token:
+        type: string
+    type: object
+  internal_presenters_api.CreateOrgRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_presenters_api.ErrorBody:
+    properties:
+      error:
+        properties:
+          code:
+            type: string
+          field:
+            type: string
+          message:
+            type: string
+        type: object
+    type: object
+  internal_presenters_api.FolderCreateRequest:
+    properties:
+      encryptedName:
+        type: string
+    type: object
+  internal_presenters_api.FolderResponse:
+    properties:
+      createdAt:
+        type: string
+      encryptedName:
+        type: string
+      id:
+        type: string
+      vaultId:
+        type: string
+    type: object
+  internal_presenters_api.InviteResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      inviterId:
+        type: string
+      role:
+        type: string
+    type: object
+  internal_presenters_api.ItemCreateRequest:
+    properties:
+      encryptedData:
+        description: base64 wire-format blob
+        type: string
+      encryptedName:
+        type: string
+      favorite:
+        type: boolean
+      folderId:
+        type: string
+      itemType:
+        type: string
+      reprompt:
+        type: boolean
+    type: object
+  internal_presenters_api.ItemReblobDTO:
+    properties:
+      encryptedData:
+        type: string
+      encryptedName:
+        type: string
+      itemId:
+        type: string
+    type: object
+  internal_presenters_api.ItemResponse:
+    properties:
+      createdAt:
+        type: string
+      encryptedData:
+        type: string
+      encryptedName:
+        type: string
+      favorite:
+        type: boolean
+      folderId:
+        type: string
+      id:
+        type: string
+      itemType:
+        type: string
+      reprompt:
+        type: boolean
+      trashed:
+        type: boolean
+      updatedAt:
+        type: string
+      vaultId:
+        type: string
+    type: object
+  internal_presenters_api.ItemUpdateRequest:
+    properties:
+      encryptedData:
+        type: string
+      encryptedName:
+        type: string
+      favorite:
+        type: boolean
+      folderId:
+        type: string
+      reprompt:
+        type: boolean
+    type: object
+  internal_presenters_api.LoginRequest:
+    properties:
+      authHash:
+        description: redacted via LOG_REDACT_FIELDS (C4)
+        type: string
+      deviceName:
+        type: string
+      email:
+        type: string
+    type: object
+  internal_presenters_api.LoginResponse:
+    properties:
+      accessToken:
+        type: string
+      encryptedIdentityPrivateKey:
+        type: string
+      encryptedPrivateKey:
+        description: User crypto material for client-side key hydration (§4.2)
+        type: string
+      identityPublicKey:
+        type: string
+      publicKey:
+        type: string
+      publicKeySignature:
+        type: string
+      refreshExpiresAt:
+        type: string
+      refreshToken:
+        type: string
+      role:
+        type: string
+      sessionId:
+        type: string
+      upgradeAuthHash:
+        type: boolean
+      userId:
+        type: string
+      vaults:
+        description: Vault memberships with wrapped keys
+        items:
+          $ref: '#/definitions/internal_presenters_api.VaultMembershipDTO'
+        type: array
+    type: object
+  internal_presenters_api.LogoutRequest:
+    properties:
+      refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.OrgMemberResponse:
+    properties:
+      acceptedAt:
+        type: string
+      invitedAt:
+        type: string
+      orgId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  internal_presenters_api.OrgResponse:
+    properties:
+      createdAt:
+        type: string
+      createdBy:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.PasswordChangeRequest:
+    properties:
+      encryptedIdentityPrivateKey:
+        description: base64 wire blob
+        type: string
+      encryptedPrivateKey:
+        description: base64 wire blob
+        type: string
+      newAuthHash:
+        description: base64
+        type: string
+      oldAuthHash:
+        description: base64
+        type: string
+    type: object
+  internal_presenters_api.PasswordChangeResponse:
+    properties:
+      accessToken:
+        type: string
+      refreshExpiresAt:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.PreloginResponse:
+    properties:
+      iterations:
+        type: integer
+      memoryKB:
+        type: integer
+      parallelism:
+        type: integer
+      salt:
+        description: base64
+        type: string
+    type: object
+  internal_presenters_api.PublicKeyResponse:
+    properties:
+      identityPublicKey:
+        type: string
+      publicKey:
+        type: string
+      userId:
+        type: string
+    type: object
+  internal_presenters_api.PurgeTrashResponse:
+    properties:
+      purged:
+        type: integer
+    type: object
+  internal_presenters_api.RedeemInviteRequest:
+    properties:
+      token:
+        type: string
+    type: object
+  internal_presenters_api.RedeemInviteResponse:
+    properties:
+      email:
+        type: string
+      orgId:
+        type: string
+      role:
+        type: string
+    type: object
+  internal_presenters_api.RefreshRequest:
+    properties:
+      refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.RefreshResponse:
+    properties:
+      accessToken:
+        type: string
+      refreshExpiresAt:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.RegisterRequest:
+    properties:
+      authHash:
+        description: base64
+        type: string
+      email:
+        type: string
+      encryptedIdentityPrivateKey:
+        type: string
+      encryptedPrivateKey:
+        type: string
+      identityPublicKey:
+        type: string
+      inviteToken:
+        description: required when registration mode is "invite"
+        type: string
+      kdfIterations:
+        type: integer
+      kdfMemoryKB:
+        type: integer
+      kdfParallelism:
+        type: integer
+      masterPasswordPreflight:
+        type: string
+      name:
+        type: string
+      publicKey:
+        type: string
+      publicKeySignature:
+        type: string
+      salt:
+        description: base64
+        type: string
+    type: object
+  internal_presenters_api.RegisterResponse:
+    properties:
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  internal_presenters_api.RekeyBlobDTO:
+    properties:
+      encryptedVaultKey:
+        type: string
+      userId:
+        type: string
+      wrapSignature:
+        type: string
+    type: object
+  internal_presenters_api.RekeyVaultRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_presenters_api.ItemReblobDTO'
+        type: array
+      newKeys:
+        items:
+          $ref: '#/definitions/internal_presenters_api.RekeyBlobDTO'
+        type: array
+    type: object
+  internal_presenters_api.RemoveMemberResponse:
+    properties:
+      rekeyRequired:
+        type: boolean
+      remainingMembers:
+        items:
+          $ref: '#/definitions/internal_presenters_api.VaultMembershipDTO'
+        type: array
+    type: object
+  internal_presenters_api.SessionResponse:
+    properties:
+      createdAt:
+        type: string
+      deviceName:
+        type: string
+      id:
+        type: string
+      ipAddress:
+        type: string
+      lastActiveAt:
+        type: string
+    type: object
+  internal_presenters_api.ShareVaultRequest:
+    properties:
+      encryptedVaultKey:
+        type: string
+      recipientUserId:
+        type: string
+      role:
+        type: string
+      wrapSignature:
+        type: string
+    type: object
+  internal_presenters_api.StepUpRequest:
+    properties:
+      authHash:
+        description: base64 re-derived authHash
+        type: string
+    type: object
+  internal_presenters_api.StepUpResponse:
+    properties:
+      accessToken:
+        type: string
+    type: object
+  internal_presenters_api.TOTPCodeRequest:
+    properties:
+      code:
+        description: 6-digit TOTP code
+        type: string
+    type: object
+  internal_presenters_api.TOTPSetupResponse:
+    properties:
+      otpauthUrl:
+        description: for QR code
+        type: string
+      secret:
+        description: base32 for manual entry
+        type: string
+    type: object
+  internal_presenters_api.UpdateMemberRoleRequest:
+    properties:
+      role:
+        type: string
+    type: object
+  internal_presenters_api.UpdateProfileRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_presenters_api.UserProfileResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+    type: object
+  internal_presenters_api.VaultCreateRequest:
+    properties:
+      encryptedVaultKey:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+      wrapSignature:
+        type: string
+    type: object
+  internal_presenters_api.VaultMembershipDTO:
+    properties:
+      encryptedVaultKey:
+        type: string
+      role:
+        type: string
+      senderId:
+        type: string
+      vaultId:
+        type: string
+      vaultName:
+        type: string
+      vaultType:
+        type: string
+      wrapSignature:
+        type: string
+    type: object
+  internal_presenters_api.VaultResponse:
+    properties:
+      createdAt:
+        type: string
+      encryptedVaultKey:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+      senderId:
+        type: string
+      type:
+        type: string
+      wrapSignature:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Zero-knowledge, self-hosted password vault API
+  title: vaultctl API
+  version: "1.0"
+paths:
+  /admin/backup:
+    post:
+      description: Backup requires pg_dump (shell access) and is not suitable for
+        HTTP API. Use the CLI instead.
+      responses:
+        "501":
+          description: Not implemented — use CLI
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Trigger backup
+      tags:
+      - Admin
+  /api-keys:
+    get:
+      description: Returns all API keys for the authenticated user (without raw key
+        values)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.APIKeyResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List API keys
+      tags:
+      - API Keys
+    post:
+      consumes:
+      - application/json
+      description: Generate a new personal API key for programmatic access. The raw
+        key is returned only once.
+      parameters:
+      - description: API key creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateAPIKeyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.CreateAPIKeyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create API key
+      tags:
+      - API Keys
+  /api-keys/{id}:
+    delete:
+      description: Permanently delete a personal API key
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Delete API key
+      tags:
+      - API Keys
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate with email and auth hash, returns JWT tokens and encrypted
+        crypto material
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.LoginResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "423":
+          description: Account locked
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Rate limited
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Login
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke the refresh token to end the session
+      parameters:
+      - description: Refresh token to revoke
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.LogoutRequest'
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Logout
+      tags:
+      - Auth
+  /auth/password/change:
+    post:
+      consumes:
+      - application/json
+      description: Change master password and re-encrypt private keys. Requires step-up.
+      parameters:
+      - description: Old and new auth hashes with re-encrypted keys
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.PasswordChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.PasswordChangeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Change master password
+      tags:
+      - Auth
+  /auth/prelogin:
+    get:
+      description: Returns salt and KDF parameters needed to derive the auth hash
+        client-side
+      parameters:
+      - description: User email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.PreloginResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Get KDF parameters
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid refresh token for a new access/refresh token pair
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RefreshResponse'
+        "401":
+          description: Session expired
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Refresh tokens
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with client-side derived crypto material
+      parameters:
+      - description: Registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "409":
+          description: Email already taken
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Rate limited
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Register new user
+      tags:
+      - Auth
+  /auth/step-up:
+    post:
+      consumes:
+      - application/json
+      description: Re-verify master password to get a step-up token for sensitive
+        operations
+      parameters:
+      - description: Auth hash for re-authentication
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.StepUpRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.StepUpResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Step-up authentication
+      tags:
+      - Auth
+  /auth/totp/disable:
+    post:
+      description: Deactivate two-factor authentication. Requires step-up.
+      responses:
+        "204":
+          description: No content
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Disable TOTP 2FA
+      tags:
+      - Auth
+  /auth/totp/enable:
+    post:
+      consumes:
+      - application/json
+      description: Verify a TOTP code to activate two-factor authentication
+      parameters:
+      - description: TOTP verification code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.TOTPCodeRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Invalid code
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Enable TOTP 2FA
+      tags:
+      - Auth
+  /auth/totp/setup:
+    post:
+      description: Generate a new TOTP secret and QR code URL. Requires step-up authentication.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.TOTPSetupResponse'
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Setup TOTP 2FA
+      tags:
+      - Auth
+  /auth/totp/verify:
+    post:
+      consumes:
+      - application/json
+      description: Validate a TOTP code during the two-factor authentication step
+        of login
+      parameters:
+      - description: TOTP code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.TOTPCodeRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Invalid code
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Verify TOTP code
+      tags:
+      - Auth
+  /config:
+    get:
+      description: Returns public server configuration (no secrets)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Server config
+      tags:
+      - System
+  /export:
+    get:
+      description: Export all vaults, items, and folders for the authenticated user.
+        Requires step-up authentication.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_vineethkrishnan_vaultctl_internal_application_auth.ExportData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Export vault data
+      tags:
+      - Import/Export
+  /health:
+    get:
+      description: Returns server health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - System
+  /invites:
+    get:
+      description: Admin lists pending invites for an organization
+      parameters:
+      - description: Organization ID
+        in: query
+        name: orgId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.InviteResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List invites
+      tags:
+      - Invites
+    post:
+      consumes:
+      - application/json
+      description: Admin creates an invite token for a new member
+      parameters:
+      - description: Invite payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.CreateInviteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create invite
+      tags:
+      - Invites
+  /invites/{id}:
+    delete:
+      description: Admin revokes a pending invite by ID
+      parameters:
+      - description: Invite ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Revoke invite
+      tags:
+      - Invites
+  /invites/redeem:
+    post:
+      consumes:
+      - application/json
+      description: New user redeems an invite token during registration
+      parameters:
+      - description: Raw invite token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RedeemInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RedeemInviteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Redeem invite
+      tags:
+      - Invites
+  /orgs:
+    post:
+      consumes:
+      - application/json
+      description: Admin creates a new organization
+      parameters:
+      - description: Organization payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateOrgRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.OrgResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create organization
+      tags:
+      - Organizations
+  /orgs/{id}/members:
+    get:
+      description: List all members of an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.OrgMemberResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List org members
+      tags:
+      - Organizations
+  /orgs/{id}/members/{userId}:
+    put:
+      consumes:
+      - application/json
+      description: Update a member's role within an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: New role
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.UpdateMemberRoleRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Update member role
+      tags:
+      - Organizations
+  /orgs/{id}/members/{userId}/pubkey:
+    get:
+      description: Returns a member's public keys for encrypting shared vault keys
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.PublicKeyResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Get member public key
+      tags:
+      - Organizations
+  /users/me:
+    get:
+      description: Returns the profile of the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.UserProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated user's display name
+      parameters:
+      - description: Profile update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.UserProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - Users
+  /users/me/sessions:
+    get:
+      description: Returns all active sessions for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.SessionResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List sessions
+      tags:
+      - Users
+  /users/me/sessions/{id}:
+    delete:
+      description: Revoke a specific session for the authenticated user
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Revoke session
+      tags:
+      - Users
+  /vaults:
+    get:
+      description: Returns all vaults the authenticated user has access to
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.VaultResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List vaults
+      tags:
+      - Vaults
+    post:
+      consumes:
+      - application/json
+      description: Create a new vault with an encrypted vault key
+      parameters:
+      - description: Vault creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.VaultCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.VaultResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create vault
+      tags:
+      - Vaults
+  /vaults/{vaultId}/folders:
+    get:
+      description: List all folders in the specified vault
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.FolderResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List folders
+      tags:
+      - Folders
+    post:
+      consumes:
+      - application/json
+      description: Create a new encrypted folder in the specified vault
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Folder payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.FolderCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.FolderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create folder
+      tags:
+      - Folders
+  /vaults/{vaultId}/folders/{folderId}:
+    delete:
+      description: Delete a folder (items in the folder are not deleted, just unlinked)
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Folder ID
+        in: path
+        name: folderId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Delete folder
+      tags:
+      - Folders
+    put:
+      consumes:
+      - application/json
+      description: Update the encrypted name of a folder
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Folder ID
+        in: path
+        name: folderId
+        required: true
+        type: string
+      - description: New encrypted name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.FolderCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.FolderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Rename folder
+      tags:
+      - Folders
+  /vaults/{vaultId}/items:
+    get:
+      description: List all active (non-trashed) items in a vault with optional filters
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Filter favorites only
+        in: query
+        name: favorites
+        type: boolean
+      - description: Filter by folder ID
+        in: query
+        name: folderId
+        type: string
+      - description: Filter by item type (login, note, card, identity, api_key, ssh_key,
+          passkey)
+        in: query
+        name: itemType
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.ItemResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List items
+      tags:
+      - Items
+    post:
+      consumes:
+      - application/json
+      description: Create a new encrypted item in the specified vault
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Item payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.ItemCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Vault not found or not a member
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create item
+      tags:
+      - Items
+  /vaults/{vaultId}/items/{id}:
+    delete:
+      description: Move an item to trash (soft delete)
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Trash item
+      tags:
+      - Items
+    get:
+      description: Retrieve a single encrypted item by ID
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ItemResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Get item
+      tags:
+      - Items
+    put:
+      consumes:
+      - application/json
+      description: Update an existing encrypted item
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated item payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.ItemUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ItemResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Update item
+      tags:
+      - Items
+  /vaults/{vaultId}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add a new member to a shared vault with an encrypted vault key
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Sharing payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.ShareVaultRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Share vault
+      tags:
+      - Sharing
+  /vaults/{vaultId}/members/{userId}:
+    delete:
+      description: Remove a member from a shared vault and signal rekey requirement
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RemoveMemberResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Remove member
+      tags:
+      - Sharing
+  /vaults/{vaultId}/rekey:
+    post:
+      consumes:
+      - application/json
+      description: Atomically re-encrypt all items and re-wrap vault keys for remaining
+        members
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Rekey payload with new keys and re-encrypted items
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RekeyVaultRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Rekey vault
+      tags:
+      - Sharing
+  /vaults/{vaultId}/trash:
+    delete:
+      description: Permanently delete all trashed items older than 30 days in a vault.
+        Requires step-up authentication.
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.PurgeTrashResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Purge expired trash
+      tags:
+      - Trash
+    get:
+      description: List all soft-deleted items in a vault
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.ItemResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List trash
+      tags:
+      - Trash
+  /vaults/{vaultId}/trash/{id}:
+    delete:
+      description: Permanently delete a trashed item. Requires step-up authentication.
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Purge item
+      tags:
+      - Trash
+  /vaults/{vaultId}/trash/{id}/restore:
+    post:
+      description: Restore a soft-deleted item from trash
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Restore item
+      tags:
+      - Trash
+securityDefinitions:
+  BearerAuth:
+    description: Enter "Bearer {token}" (include the word Bearer)
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,147 @@
+# Users API
+
+import { Callout } from 'nextra/components'
+
+Manage user profile and sessions. All endpoints require a JWT access token.
+
+## Get Profile
+
+Retrieve the authenticated user's profile.
+
+```
+GET /users/me
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "email": "alice@example.com",
+  "name": "Alice",
+  "role": "owner",
+  "createdAt": "2026-04-01T10:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | User UUID |
+| `email` | string | User email address |
+| `name` | string | Display name |
+| `role` | string | Server-wide role: `owner`, `admin`, or `member` |
+| `createdAt` | string | ISO 8601 account creation timestamp |
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/users/me
+```
+
+---
+
+## Update Profile
+
+Update the authenticated user's display name.
+
+```
+PUT /users/me
+```
+
+### Request
+
+```json
+{
+  "name": "Alice Smith"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | New display name |
+
+### Response — `200 OK`
+
+Returns the full updated profile (same shape as Get Profile).
+
+### Errors
+
+- `400 INVALID` -- Validation failed (empty name)
+
+### Example
+
+```bash
+curl -X PUT https://vault.example.com/api/v1/users/me \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Alice Smith"}'
+```
+
+---
+
+## List Sessions
+
+Retrieve all active sessions for the authenticated user.
+
+```
+GET /users/me/sessions
+```
+
+### Response — `200 OK`
+
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "deviceName": "Chrome on macOS",
+    "ipAddress": "203.0.113.42",
+    "createdAt": "2026-04-01T10:00:00Z",
+    "lastActiveAt": "2026-04-09T08:30:00Z"
+  }
+]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Session UUID |
+| `deviceName` | string | Device name provided at login |
+| `ipAddress` | string | IP address of the session |
+| `createdAt` | string | Session creation timestamp |
+| `lastActiveAt` | string | Last activity timestamp |
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/users/me/sessions
+```
+
+---
+
+## Revoke Session
+
+Revoke a specific session, logging that device out.
+
+```
+DELETE /users/me/sessions/:sessionId
+```
+
+### Response — `204 No Content`
+
+No response body.
+
+### Errors
+
+- `404 NOT_FOUND` -- Session not found or does not belong to user
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/users/me/sessions/a1b2c3d4-...
+```
+
+<Callout type="info">
+  Revoking a session invalidates its refresh token. The access token remains valid until it expires (short-lived), but cannot be refreshed.
+</Callout>

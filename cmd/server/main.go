@@ -6,6 +6,16 @@
 //   - vaultctl healthcheck  Probe /api/v1/health (used by container HEALTHCHECK)
 //   - vaultctl admin init   Bootstrap the first admin user
 //   - vaultctl <client>     Client commands (login, get, list, create, …) — M6 needed
+
+// @title vaultctl API
+// @version 1.0
+// @description Zero-knowledge, self-hosted password vault API
+// @host localhost:8080
+// @BasePath /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter "Bearer {token}" (include the word Bearer)
 package main
 
 import (
@@ -15,6 +25,7 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/logging"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/scheduler"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/cli"
 )
@@ -34,6 +45,15 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 		return nil, nil, err
 	}
 	deps := buildHandlers(cfg, adapters)
-	cleanup := func() error { adapters.pool.Close(); return nil }
+
+	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
+	sched.Start()
+
+	cleanup := func() error {
+		schedCtx := sched.Stop()
+		<-schedCtx.Done()
+		adapters.pool.Close()
+		return nil
+	}
 	return api.NewRouter(deps), cleanup, nil
 }

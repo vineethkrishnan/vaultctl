@@ -7,9 +7,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
+
+	_ "github.com/vineethkrishnan/vaultctl/docs" // swagger generated docs
 )
 
 // Dependencies bundles the wired services the router needs.
@@ -17,9 +21,18 @@ type Dependencies struct {
 	Tokens             ports.TokenIssuer
 	Clock              ports.Clock
 	Auth               *AuthHandlers
+	User               *UserHandlers
 	Vault              *VaultHandlers
+	APIKey             *APIKeyHandlers
+	Invite             *InviteHandlers
+	Org                *OrgHandlers
+	Admin              *AdminHandlers
+	Export             *ExportHandlers
+	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
+	RegistrationMode   string
+	Env                string
 }
 
 // NewRouter assembles the chi router with the full middleware stack and
@@ -34,12 +47,19 @@ func NewRouter(deps Dependencies) http.Handler {
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS(deps.CORSAllowedOrigins))
 
-	requireAuth := middleware.RequireJWT(deps.Tokens)
+	requireAuth := middleware.RequireJWTOrAPIKey(deps.Tokens, deps.APIKeyValidator)
 	requireStepUp := middleware.RequireStepUp(deps.Clock)
+	requireAdmin := middleware.RequireRole(user.RoleAdmin)
+
+	if deps.Env != "production" {
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		))
+	}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
-		r.Get("/config", configHandler)
+		r.Get("/config", configHandler(deps.RegistrationMode))
 
 		// ===== Auth (unauthenticated) =====
 		r.Group(func(r chi.Router) {
@@ -52,6 +72,9 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Post("/auth/login", deps.Auth.HandleLogin)
 			r.Post("/auth/refresh", deps.Auth.HandleRefresh)
 			r.Post("/auth/logout", deps.Auth.HandleLogout)
+
+			// Invite redemption is public — new users redeem before registering
+			r.Post("/invites/redeem", deps.Invite.HandleRedeemInvite)
 		})
 
 		// ===== Authenticated routes =====
@@ -78,6 +101,37 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Password change (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/password/change", deps.Auth.HandlePasswordChange)
 
+			// Invite management (admin only)
+			r.With(requireAdmin).Post("/invites", deps.Invite.HandleCreateInvite)
+			r.With(requireAdmin).Get("/invites", deps.Invite.HandleListInvites)
+			r.With(requireAdmin).Delete("/invites/{id}", deps.Invite.HandleRevokeInvite)
+
+			// API keys
+			r.Post("/api-keys", deps.APIKey.HandleCreateAPIKey)
+			r.Get("/api-keys", deps.APIKey.HandleListAPIKeys)
+			r.Delete("/api-keys/{id}", deps.APIKey.HandleDeleteAPIKey)
+
+			// User profile & sessions
+			r.Get("/users/me", deps.User.HandleGetProfile)
+			r.Put("/users/me", deps.User.HandleUpdateProfile)
+			r.Get("/users/me/sessions", deps.User.HandleListSessions)
+			r.Delete("/users/me/sessions/{id}", deps.User.HandleRevokeSession)
+
+			// Organizations (admin only)
+			r.With(requireAdmin).Post("/orgs", deps.Org.HandleCreateOrg)
+			r.Route("/orgs/{id}", func(r chi.Router) {
+				r.Get("/members", deps.Org.HandleListOrgMembers)
+				r.With(requireAdmin).Put("/members/{userId}", deps.Org.HandleUpdateMemberRole)
+				// Organization member public key
+				r.Get("/members/{userId}/pubkey", deps.User.HandleGetMemberPublicKey)
+			})
+
+			// Admin
+			r.With(requireAdmin).Post("/admin/backup", deps.Admin.HandleBackup)
+
+			// Data export (step-up required — sensitive data)
+			r.With(requireStepUp).Get("/export", deps.Export.HandleExport)
+
 			// Vault management
 			r.Get("/vaults", deps.Vault.HandleListVaults)
 			r.Post("/vaults", deps.Vault.HandleCreateVault)
@@ -95,12 +149,19 @@ func NewRouter(deps Dependencies) http.Handler {
 				r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
 				// H10 step-up required for irreversible purge
 				r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
+				// Bulk purge all expired trash (H10 step-up required)
+				r.With(requireStepUp).Delete("/trash", deps.Vault.HandlePurgeExpiredTrash)
 
 				// Folders
 				r.Get("/folders", deps.Vault.HandleListFolders)
 				r.Post("/folders", deps.Vault.HandleCreateFolder)
 				r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
 				r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+
+				// Sharing
+				r.Post("/members", deps.Vault.HandleShareVault)
+				r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
+				r.Post("/rekey", deps.Vault.HandleRekeyVault)
 			})
 		})
 	})
@@ -108,20 +169,33 @@ func NewRouter(deps Dependencies) http.Handler {
 	return r
 }
 
+// healthHandler returns server health status.
+// @Summary Health check
+// @Description Returns server health status
+// @Tags System
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /health [get]
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-// configHandler exposes server-side config that clients need to behave
-// correctly (e.g. clipboard timeout, vault lock timeout). It MUST NOT
-// expose any secret material.
-func configHandler(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"version":          "v1",
-		"registrationMode": "invite",
-	})
+// configHandler returns public server configuration.
+// @Summary Server config
+// @Description Returns public server configuration (no secrets)
+// @Tags System
+// @Produce json
+// @Success 200 {object} map[string]any
+// @Router /config [get]
+func configHandler(registrationMode string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"version":          "v1",
+			"registrationMode": registrationMode,
+		})
+	}
 }
 
 // rateLimitOrNoop returns the PerIP middleware as a slice suitable for

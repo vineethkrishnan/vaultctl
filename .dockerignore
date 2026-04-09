@@ -3,7 +3,9 @@
 .idea
 .vscode
 .DS_Store
-docs
+docs/initial
+docs/handoff
+docs-site
 bin
 dist
 backups

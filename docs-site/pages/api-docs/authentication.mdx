@@ -28,7 +28,8 @@ POST /auth/register
   "encryptedIdentityPrivateKey": "base64-encoded-blob",
   "publicKey": "base64-encoded-rsa-public-key",
   "publicKeySignature": "base64-encoded-ed25519-signature",
-  "identityPublicKey": "base64-encoded-ed25519-public-key"
+  "identityPublicKey": "base64-encoded-ed25519-public-key",
+  "inviteToken": "raw-invite-token"
 }
 ```
 
@@ -47,6 +48,7 @@ POST /auth/register
 | `publicKey` | string | Base64-encoded RSA public key (PKCS#1) |
 | `publicKeySignature` | string | Base64-encoded Ed25519 signature over the RSA public key |
 | `identityPublicKey` | string | Base64-encoded Ed25519 public key |
+| `inviteToken` | string | Raw invite token (required when server registration mode is `invite`) |
 
 ### Response — `201 Created`
 
@@ -75,9 +77,18 @@ curl -X POST https://vault.example.com/api/v1/auth/register \
     "encryptedIdentityPrivateKey": "ZW5jcnlwdGVkLWVkMjU1MTktcHJpdmF0ZQ==",
     "publicKey": "cnNhLXB1YmxpYy1rZXk=",
     "publicKeySignature": "ZWQyNTUxOS1zaWduYXR1cmU=",
-    "identityPublicKey": "ZWQyNTUxOS1wdWJsaWMta2V5"
+    "identityPublicKey": "ZWQyNTUxOS1wdWJsaWMta2V5",
+    "inviteToken": "optional-raw-invite-token"
   }'
 ```
+
+### Errors
+
+- `400 INVALID` -- Validation failed (missing or malformed field)
+- `400 INVITE_REQUIRED` -- Invite token required (when registration mode is `invite`)
+- `400 REGISTRATION_DISABLED` -- Open registration is disabled
+- `409 CONFLICT` -- Email already taken
+- `429 RATE_LIMITED` -- Too many requests
 
 ---
 

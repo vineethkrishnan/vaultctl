@@ -53,6 +53,9 @@ func (e *erroringRepo) FindByID(ctx context.Context, id user.ID) (user.User, err
 	}
 	return e.fakeUserRepo.FindByID(ctx, id)
 }
+func (e *erroringRepo) UpdateProfile(ctx context.Context, id user.ID, name string) error {
+	return e.fakeUserRepo.UpdateProfile(ctx, id, name)
+}
 func (e *erroringRepo) AuthHash(ctx context.Context, id user.ID) (string, error) {
 	if e.failAuthHash {
 		return "", errors.New("authhash-load-failed")

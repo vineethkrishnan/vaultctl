@@ -240,6 +240,18 @@ func (r *fakeItemRepo) PurgeExpired(_ context.Context, cutoff time.Time) (int, e
 	}
 	return n, nil
 }
+func (r *fakeItemRepo) PurgeExpiredInVault(_ context.Context, vaultID domainvault.ID, cutoff time.Time) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	n := 0
+	for k, it := range r.byKey {
+		if k.vaultID == vaultID && it.DeletedAt != nil && it.DeletedAt.Before(cutoff) {
+			delete(r.byKey, k)
+			n++
+		}
+	}
+	return n, nil
+}
 
 // ===========================================================================
 // fakeFolderRepo

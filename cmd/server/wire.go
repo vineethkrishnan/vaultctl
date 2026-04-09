@@ -22,12 +22,15 @@ import (
 // adapters bundles every concrete adapter so main.go can wire handlers in
 // one shot.
 type adapters struct {
-	pool  *postgres.Pool
-	users *postgres.UserRepo
-	sess  *postgres.SessionStore
-	vaults *postgres.VaultRepo
-	items *postgres.ItemRepo
+	pool    *postgres.Pool
+	users   *postgres.UserRepo
+	sess    *postgres.SessionStore
+	vaults  *postgres.VaultRepo
+	items   *postgres.ItemRepo
 	folders *postgres.FolderRepo
+	apikeys *postgres.APIKeyRepo
+	invites *postgres.InviteRepo
+	orgs    *postgres.OrgRepo
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -90,6 +93,9 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		vaults:  &postgres.VaultRepo{Pool: pool},
 		items:   &postgres.ItemRepo{Pool: pool},
 		folders: &postgres.FolderRepo{Pool: pool},
+		apikeys: &postgres.APIKeyRepo{Pool: pool},
+		invites: &postgres.InviteRepo{Pool: pool},
+		orgs:    &postgres.OrgRepo{Pool: pool},
 		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
 		hmac:    hmac,
 		jwt:     jwt,
@@ -114,6 +120,10 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
 			Policy: user.DefaultPolicy(), DefaultRole: user.RoleMember,
+			RegistrationMode: cfg.RegistrationMode,
+			RedeemInvite: &auth.RedeemInvite{
+				Invites: a.invites, HMAC: a.hmac, Clock: a.clock,
+			},
 		},
 		Prelogin: &auth.Prelogin{Users: a.users, HMAC: a.hmac, DefaultKDF: user.DefaultKDFParams()},
 		Login: &auth.Login{
@@ -145,6 +155,34 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		TOTPVerify:  &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
 	}
 
+	userHandlers := &api.UserHandlers{
+		Users:    a.users,
+		Sessions: a.sess,
+	}
+
+	apiKeyHandlers := &api.APIKeyHandlers{
+		Create: &auth.CreateAPIKey{
+			APIKeys: a.apikeys, TokenGenerator: a.tokens,
+			HMAC: a.hmac, Clock: a.clock, IDs: a.ids,
+		},
+		List:   &auth.ListAPIKeys{APIKeys: a.apikeys},
+		Delete: &auth.DeleteAPIKey{APIKeys: a.apikeys},
+	}
+
+	inviteHandlers := &api.InviteHandlers{
+		CreateInvite: &auth.CreateInvite{
+			Invites: a.invites, HMAC: a.hmac, Tokens: a.tokens,
+			Clock: a.clock, IDs: a.ids,
+		},
+		RedeemInvite: &auth.RedeemInvite{
+			Invites: a.invites, HMAC: a.hmac, Clock: a.clock,
+		},
+		RevokeInvite: &auth.RevokeInvite{
+			Invites: a.invites, Clock: a.clock,
+		},
+		ListInvites: &auth.ListInvites{Invites: a.invites},
+	}
+
 	vaultHandlers := &api.VaultHandlers{
 		ListVaults:  &appvault.ListVaults{Vaults: a.vaults},
 		CreateVault: &appvault.CreateVault{Vaults: a.vaults, Clock: a.clock, IDs: a.ids},
@@ -154,21 +192,54 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		TrashItem:   &appvault.TrashItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
 		RestoreItem: &appvault.RestoreItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
 		PurgeItem:   &appvault.PurgeItem{Vaults: a.vaults, Items: a.items},
-		ListActive:  &appvault.ListActive{Vaults: a.vaults, Items: a.items},
-		ListTrash:   &appvault.ListTrash{Vaults: a.vaults, Items: a.items},
+		PurgeExpiredTrash: &appvault.PurgeExpiredTrashInVault{
+			Vaults: a.vaults, Items: a.items, Clock: a.clock,
+			RetentionDays: cfg.TrashRetentionDays,
+		},
+		ListActive:   &appvault.ListActive{Vaults: a.vaults, Items: a.items},
+		ListTrash:    &appvault.ListTrash{Vaults: a.vaults, Items: a.items},
 		CreateFolder: &appvault.CreateFolder{Vaults: a.vaults, Folders: a.folders, Clock: a.clock, IDs: a.ids},
 		RenameFolder: &appvault.RenameFolder{Vaults: a.vaults, Folders: a.folders},
 		DeleteFolder: &appvault.DeleteFolder{Vaults: a.vaults, Folders: a.folders},
 		ListFolders:  &appvault.ListFolders{Vaults: a.vaults, Folders: a.folders},
+		ShareVault:   &appvault.ShareVault{Vaults: a.vaults, Clock: a.clock},
+		RemoveMember: &appvault.RemoveMember{Vaults: a.vaults},
+		RekeyVault:   &appvault.RekeyVault{Vaults: a.vaults, Items: a.items},
+	}
+
+	orgHandlers := &api.OrgHandlers{
+		CreateOrg:        &auth.CreateOrganization{Orgs: a.orgs, Clock: a.clock, IDs: a.ids},
+		ListMembers:      &auth.ListOrgMembers{Orgs: a.orgs},
+		UpdateMemberRole: &auth.UpdateOrgMemberRole{Orgs: a.orgs},
+	}
+
+	exportHandlers := &api.ExportHandlers{
+		Export: &auth.ExportVaults{
+			Vaults: a.vaults, Items: a.items, Folders: a.folders,
+		},
+	}
+
+	apiKeyValidator := &apiKeyValidatorAdapter{
+		uc:    &auth.ValidateAPIKey{APIKeys: a.apikeys, HMAC: a.hmac, Clock: a.clock},
+		Users: a.users,
 	}
 
 	return api.Dependencies{
 		Tokens:             tokens,
 		Clock:              a.clock,
 		Auth:               authHandlers,
+		User:               userHandlers,
 		Vault:              vaultHandlers,
+		APIKey:             apiKeyHandlers,
+		Invite:             inviteHandlers,
+		Org:                orgHandlers,
+		Admin:              &api.AdminHandlers{},
+		Export:             exportHandlers,
+		APIKeyValidator:    apiKeyValidator,
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
+		RegistrationMode:   cfg.RegistrationMode,
+		Env:                string(cfg.Env),
 	}
 }
 
@@ -191,4 +262,26 @@ func (a *jwtServiceAdapter) Verify(token string) (ports.AccessClaims, error) {
 		out.StepUpUntil = time.Unix(claims.StepUpExp, 0)
 	}
 	return out, nil
+}
+
+// apiKeyValidatorAdapter bridges the ValidateAPIKey use case into the
+// middleware.APIKeyValidator interface.
+type apiKeyValidatorAdapter struct {
+	uc    *auth.ValidateAPIKey
+	Users ports.UserRepository
+}
+
+func (a *apiKeyValidatorAdapter) Validate(ctx context.Context, rawKey string) (string, string, error) {
+	out, err := a.uc.Execute(ctx, auth.ValidateAPIKeyInput{RawKey: rawKey})
+	if err != nil {
+		return "", "", err
+	}
+
+	// Look up the user to get their current role and verify they still exist.
+	u, err := a.Users.FindByID(ctx, out.UserID)
+	if err != nil {
+		return "", "", err
+	}
+
+	return string(out.UserID), string(u.Role), nil
 }

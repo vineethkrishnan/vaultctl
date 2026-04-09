@@ -1,0 +1,187 @@
+package api
+
+import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	"github.com/vineethkrishnan/vaultctl/internal/domain"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
+	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
+)
+
+// UserHandlers ties HTTP to user profile and session endpoints.
+type UserHandlers struct {
+	Users    ports.UserRepository
+	Sessions ports.SessionStore
+}
+
+// HandleGetProfile returns the authenticated user's profile.
+// @Summary Get user profile
+// @Description Returns the profile of the authenticated user
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} UserProfileResponse
+// @Failure 401 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /users/me [get]
+func (h *UserHandlers) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
+	u, err := h.Users.FindByID(r.Context(), middleware.CallerID(r.Context()))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, UserProfileResponse{
+		ID:        string(u.ID),
+		Email:     u.Email.String(),
+		Name:      u.Name,
+		Role:      string(u.Role),
+		CreatedAt: u.CreatedAt.UTC().Format(timeFormat),
+	})
+}
+
+// HandleUpdateProfile updates the authenticated user's profile.
+// @Summary Update user profile
+// @Description Update the authenticated user's display name
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body UpdateProfileRequest true "Profile update payload"
+// @Success 200 {object} UserProfileResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /users/me [put]
+func (h *UserHandlers) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	var req UpdateProfileRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if req.Name == "" {
+		writeError(w, r, domain.NewInvalid("name", "required"))
+		return
+	}
+	if len(req.Name) > user.MaxNameLength {
+		writeError(w, r, domain.NewInvalid("name", "too long"))
+		return
+	}
+
+	callerID := middleware.CallerID(r.Context())
+	if err := h.Users.UpdateProfile(r.Context(), callerID, req.Name); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	u, err := h.Users.FindByID(r.Context(), callerID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, UserProfileResponse{
+		ID:        string(u.ID),
+		Email:     u.Email.String(),
+		Name:      u.Name,
+		Role:      string(u.Role),
+		CreatedAt: u.CreatedAt.UTC().Format(timeFormat),
+	})
+}
+
+// HandleListSessions returns all active sessions for the authenticated user.
+// @Summary List sessions
+// @Description Returns all active sessions for the authenticated user
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} SessionResponse
+// @Failure 401 {object} ErrorBody
+// @Router /users/me/sessions [get]
+func (h *UserHandlers) HandleListSessions(w http.ResponseWriter, r *http.Request) {
+	sessions, err := h.Sessions.ListForUser(r.Context(), middleware.CallerID(r.Context()))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	out := make([]SessionResponse, 0, len(sessions))
+	for _, s := range sessions {
+		resp := SessionResponse{
+			ID:         string(s.ID),
+			DeviceName: s.DeviceName,
+			IPAddress:  s.IPAddress,
+			CreatedAt:  s.CreatedAt.UTC().Format(timeFormat),
+		}
+		if s.LastRefreshAt != nil {
+			t := s.LastRefreshAt.UTC().Format(timeFormat)
+			resp.LastActiveAt = &t
+		}
+		out = append(out, resp)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// HandleRevokeSession revokes a single session belonging to the caller.
+// @Summary Revoke session
+// @Description Revoke a specific session for the authenticated user
+// @Tags Users
+// @Security BearerAuth
+// @Param id path string true "Session ID"
+// @Success 204 "No content"
+// @Failure 401 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /users/me/sessions/{id} [delete]
+func (h *UserHandlers) HandleRevokeSession(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	sessionID := user.SessionID(chi.URLParam(r, "id"))
+
+	// Verify the session belongs to the caller
+	sessions, err := h.Sessions.ListForUser(r.Context(), callerID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	found := false
+	for _, s := range sessions {
+		if s.ID == sessionID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		writeError(w, r, domain.ErrNotFound)
+		return
+	}
+
+	if err := h.Sessions.Revoke(r.Context(), sessionID); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleGetMemberPublicKey returns a user's public keys for vault sharing.
+// @Summary Get member public key
+// @Description Returns a member's public keys for encrypting shared vault keys
+// @Tags Organizations
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Organization ID"
+// @Param userId path string true "User ID"
+// @Success 200 {object} PublicKeyResponse
+// @Failure 401 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /orgs/{id}/members/{userId}/pubkey [get]
+func (h *UserHandlers) HandleGetMemberPublicKey(w http.ResponseWriter, r *http.Request) {
+	u, err := h.Users.FindByID(r.Context(), user.ID(chi.URLParam(r, "userId")))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, PublicKeyResponse{
+		UserID:            string(u.ID),
+		PublicKey:         encodeB64(u.PublicKey.Bytes()),
+		IdentityPublicKey: encodeB64(u.IdentityPublicKey.Bytes()),
+	})
+}
