@@ -3,7 +3,7 @@ import type { DocsThemeConfig } from "nextra-theme-docs";
 const config: DocsThemeConfig = {
   logo: (
     <span style={{ fontWeight: 800, fontSize: 18 }}>
-      🔐 vaultctl
+      vaultctl
     </span>
   ),
   project: {
@@ -12,7 +12,7 @@ const config: DocsThemeConfig = {
   docsRepositoryBase:
     "https://github.com/vineethkrishnan/vaultctl/tree/main/docs-site",
   footer: {
-    content: (
+    text: (
       <span>
         {new Date().getFullYear()} © vaultctl — Zero-knowledge password vault
       </span>
@@ -37,7 +37,7 @@ const config: DocsThemeConfig = {
   },
   navigation: true,
   editLink: {
-    content: "Edit this page on GitHub →",
+    text: "Edit this page on GitHub →",
   },
   feedback: {
     content: "Question? Give us feedback →",
