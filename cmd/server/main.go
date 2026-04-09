@@ -25,6 +25,7 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/logging"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/scheduler"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/cli"
 )
@@ -44,6 +45,15 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 		return nil, nil, err
 	}
 	deps := buildHandlers(cfg, adapters)
-	cleanup := func() error { adapters.pool.Close(); return nil }
+
+	sched := scheduler.New(adapters.items, adapters.sess, cfg.TrashRetentionDays)
+	sched.Start()
+
+	cleanup := func() error {
+		schedCtx := sched.Stop()
+		<-schedCtx.Done()
+		adapters.pool.Close()
+		return nil
+	}
 	return api.NewRouter(deps), cleanup, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
@@ -29,6 +30,9 @@ type VaultHandlers struct {
 	RenameFolder      *appvault.RenameFolder
 	DeleteFolder      *appvault.DeleteFolder
 	ListFolders       *appvault.ListFolders
+	ShareVault        *appvault.ShareVault
+	RemoveMember      *appvault.RemoveMember
+	RekeyVault        *appvault.RekeyVault
 }
 
 // HandleListVaults returns all vaults the caller is a member of.
@@ -501,4 +505,172 @@ func (h *VaultHandlers) HandleListFolders(w http.ResponseWriter, r *http.Request
 		out = append(out, folderToDTO(f))
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// ===========================================================================
+// Sharing handlers
+// ===========================================================================
+
+// HandleShareVault adds a member to a shared vault.
+// @Summary Share vault
+// @Description Add a new member to a shared vault with an encrypted vault key
+// @Tags Sharing
+// @Accept json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param body body ShareVaultRequest true "Sharing payload"
+// @Success 204 "No content"
+// @Failure 400 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/members [post]
+func (h *VaultHandlers) HandleShareVault(w http.ResponseWriter, r *http.Request) {
+	var req ShareVaultRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	encKey, err := decodeB64Blob(req.EncryptedVaultKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	sigRaw, err := base64.StdEncoding.DecodeString(req.WrapSignature)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	sig, err := crypto.NewEd25519Signature(sigRaw)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	err = h.ShareVault.Execute(r.Context(), appvault.ShareVaultInput{
+		Caller:            middleware.CallerID(r.Context()),
+		VaultID:           vault.ID(chi.URLParam(r, "vaultId")),
+		RecipientUserID:   user.ID(req.RecipientUserID),
+		EncryptedVaultKey: encKey,
+		WrapSignature:     sig,
+		Role:              user.Role(req.Role),
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleRemoveMember removes a member from a shared vault.
+// @Summary Remove member
+// @Description Remove a member from a shared vault and signal rekey requirement
+// @Tags Sharing
+// @Security BearerAuth
+// @Produce json
+// @Param vaultId path string true "Vault ID"
+// @Param userId path string true "User ID to remove"
+// @Success 200 {object} RemoveMemberResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/members/{userId} [delete]
+func (h *VaultHandlers) HandleRemoveMember(w http.ResponseWriter, r *http.Request) {
+	out, err := h.RemoveMember.Execute(r.Context(), appvault.RemoveMemberInput{
+		Caller:     middleware.CallerID(r.Context()),
+		VaultID:    vault.ID(chi.URLParam(r, "vaultId")),
+		TargetUser: user.ID(chi.URLParam(r, "userId")),
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	members := make([]VaultMembershipDTO, 0, len(out.RemainingMembers))
+	for _, m := range out.RemainingMembers {
+		members = append(members, VaultMembershipDTO{
+			VaultID:           string(m.VaultID),
+			VaultName:         "",
+			VaultType:         "",
+			EncryptedVaultKey: encodeB64Blob(m.EncryptedVaultKey),
+			SenderID:          string(m.SenderID),
+			WrapSignature:     encodeB64(m.WrapSignature.Bytes()),
+			Role:              string(m.Role),
+		})
+	}
+	writeJSON(w, http.StatusOK, RemoveMemberResponse{
+		RekeyRequired:    out.RekeyRequired,
+		RemainingMembers: members,
+	})
+}
+
+// HandleRekeyVault re-encrypts all items and re-wraps keys after member removal.
+// @Summary Rekey vault
+// @Description Atomically re-encrypt all items and re-wrap vault keys for remaining members
+// @Tags Sharing
+// @Accept json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param body body RekeyVaultRequest true "Rekey payload with new keys and re-encrypted items"
+// @Success 204 "No content"
+// @Failure 400 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/rekey [post]
+func (h *VaultHandlers) HandleRekeyVault(w http.ResponseWriter, r *http.Request) {
+	var req RekeyVaultRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	vaultID := vault.ID(chi.URLParam(r, "vaultId"))
+
+	newKeys := make([]appvault.RekeyBlob, 0, len(req.NewKeys))
+	for _, k := range req.NewKeys {
+		encKey, err := decodeB64Blob(k.EncryptedVaultKey)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		sigRaw, err := base64.StdEncoding.DecodeString(k.WrapSignature)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		sig, err := crypto.NewEd25519Signature(sigRaw)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		newKeys = append(newKeys, appvault.RekeyBlob{
+			UserID:            user.ID(k.UserID),
+			EncryptedVaultKey: encKey,
+			WrapSignature:     sig,
+		})
+	}
+
+	items := make([]appvault.ItemReblob, 0, len(req.Items))
+	for _, it := range req.Items {
+		data, err := decodeB64Blob(it.EncryptedData)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		name, err := decodeB64Blob(it.EncryptedName)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		items = append(items, appvault.ItemReblob{
+			ItemID:        vault.ItemID(it.ItemID),
+			EncryptedData: data,
+			EncryptedName: name,
+		})
+	}
+
+	err := h.RekeyVault.Execute(r.Context(), appvault.RekeyVaultInput{
+		Caller:  middleware.CallerID(r.Context()),
+		VaultID: vaultID,
+		NewKeys: newKeys,
+		Items:   items,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

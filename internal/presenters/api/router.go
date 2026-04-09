@@ -108,6 +108,11 @@ func NewRouter(deps Dependencies) http.Handler {
 				r.Post("/folders", deps.Vault.HandleCreateFolder)
 				r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
 				r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+
+				// Sharing
+				r.Post("/members", deps.Vault.HandleShareVault)
+				r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
+				r.Post("/rekey", deps.Vault.HandleRekeyVault)
 			})
 		})
 	})

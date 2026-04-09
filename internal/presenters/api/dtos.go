@@ -205,6 +205,48 @@ type VaultResponse struct {
 }
 
 // ===========================================================================
+// Sharing DTOs
+// ===========================================================================
+
+type ShareVaultRequest struct {
+	RecipientUserID   string `json:"recipientUserId"`
+	EncryptedVaultKey string `json:"encryptedVaultKey"`
+	WrapSignature     string `json:"wrapSignature"`
+	Role              string `json:"role"`
+}
+
+type RemoveMemberResponse struct {
+	RekeyRequired    bool                 `json:"rekeyRequired"`
+	RemainingMembers []VaultMembershipDTO `json:"remainingMembers"`
+}
+
+type RekeyBlobDTO struct {
+	UserID            string `json:"userId"`
+	EncryptedVaultKey string `json:"encryptedVaultKey"`
+	WrapSignature     string `json:"wrapSignature"`
+}
+
+type ItemReblobDTO struct {
+	ItemID        string `json:"itemId"`
+	EncryptedData string `json:"encryptedData"`
+	EncryptedName string `json:"encryptedName"`
+}
+
+type RekeyVaultRequest struct {
+	NewKeys []RekeyBlobDTO  `json:"newKeys"`
+	Items   []ItemReblobDTO `json:"items"`
+}
+
+type MemberResponse struct {
+	UserID            string `json:"userId"`
+	Role              string `json:"role"`
+	EncryptedVaultKey string `json:"encryptedVaultKey"`
+	SenderID          string `json:"senderId"`
+	WrapSignature     string `json:"wrapSignature"`
+	AddedAt           string `json:"addedAt"`
+}
+
+// ===========================================================================
 // Helpers
 // ===========================================================================
 

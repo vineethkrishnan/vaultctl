@@ -1054,6 +1054,163 @@ const docTemplate = `{
                 }
             }
         },
+        "/vaults/{vaultId}/members": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add a new member to a shared vault with an encrypted vault key",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sharing"
+                ],
+                "summary": "Share vault",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault ID",
+                        "name": "vaultId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Sharing payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ShareVaultRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/vaults/{vaultId}/members/{userId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a member from a shared vault and signal rekey requirement",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sharing"
+                ],
+                "summary": "Remove member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault ID",
+                        "name": "vaultId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID to remove",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RemoveMemberResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/vaults/{vaultId}/rekey": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atomically re-encrypt all items and re-wrap vault keys for remaining members",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sharing"
+                ],
+                "summary": "Rekey vault",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault ID",
+                        "name": "vaultId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Rekey payload with new keys and re-encrypted items",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RekeyVaultRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/vaults/{vaultId}/trash": {
             "get": {
                 "security": [
@@ -1252,6 +1409,20 @@ const docTemplate = `{
                 },
                 "reprompt": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_presenters_api.ItemReblobDTO": {
+            "type": "object",
+            "properties": {
+                "encryptedData": {
+                    "type": "string"
+                },
+                "encryptedName": {
+                    "type": "string"
+                },
+                "itemId": {
+                    "type": "string"
                 }
             }
         },
@@ -1513,6 +1684,68 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.RekeyBlobDTO": {
+            "type": "object",
+            "properties": {
+                "encryptedVaultKey": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "wrapSignature": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.RekeyVaultRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.ItemReblobDTO"
+                    }
+                },
+                "newKeys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.RekeyBlobDTO"
+                    }
+                }
+            }
+        },
+        "internal_presenters_api.RemoveMemberResponse": {
+            "type": "object",
+            "properties": {
+                "rekeyRequired": {
+                    "type": "boolean"
+                },
+                "remainingMembers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.VaultMembershipDTO"
+                    }
+                }
+            }
+        },
+        "internal_presenters_api.ShareVaultRequest": {
+            "type": "object",
+            "properties": {
+                "encryptedVaultKey": {
+                    "type": "string"
+                },
+                "recipientUserId": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "wrapSignature": {
                     "type": "string"
                 }
             }

@@ -44,6 +44,15 @@ definitions:
       reprompt:
         type: boolean
     type: object
+  internal_presenters_api.ItemReblobDTO:
+    properties:
+      encryptedData:
+        type: string
+      encryptedName:
+        type: string
+      itemId:
+        type: string
+    type: object
   internal_presenters_api.ItemResponse:
     properties:
       createdAt:
@@ -216,6 +225,46 @@ definitions:
       role:
         type: string
       userId:
+        type: string
+    type: object
+  internal_presenters_api.RekeyBlobDTO:
+    properties:
+      encryptedVaultKey:
+        type: string
+      userId:
+        type: string
+      wrapSignature:
+        type: string
+    type: object
+  internal_presenters_api.RekeyVaultRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_presenters_api.ItemReblobDTO'
+        type: array
+      newKeys:
+        items:
+          $ref: '#/definitions/internal_presenters_api.RekeyBlobDTO'
+        type: array
+    type: object
+  internal_presenters_api.RemoveMemberResponse:
+    properties:
+      rekeyRequired:
+        type: boolean
+      remainingMembers:
+        items:
+          $ref: '#/definitions/internal_presenters_api.VaultMembershipDTO'
+        type: array
+    type: object
+  internal_presenters_api.ShareVaultRequest:
+    properties:
+      encryptedVaultKey:
+        type: string
+      recipientUserId:
+        type: string
+      role:
+        type: string
+      wrapSignature:
         type: string
     type: object
   internal_presenters_api.StepUpRequest:
@@ -966,6 +1015,107 @@ paths:
       summary: Update item
       tags:
       - Items
+  /vaults/{vaultId}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add a new member to a shared vault with an encrypted vault key
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Sharing payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.ShareVaultRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Share vault
+      tags:
+      - Sharing
+  /vaults/{vaultId}/members/{userId}:
+    delete:
+      description: Remove a member from a shared vault and signal rekey requirement
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RemoveMemberResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Remove member
+      tags:
+      - Sharing
+  /vaults/{vaultId}/rekey:
+    post:
+      consumes:
+      - application/json
+      description: Atomically re-encrypt all items and re-wrap vault keys for remaining
+        members
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      - description: Rekey payload with new keys and re-encrypted items
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RekeyVaultRequest'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Rekey vault
+      tags:
+      - Sharing
   /vaults/{vaultId}/trash:
     get:
       description: List all soft-deleted items in a vault

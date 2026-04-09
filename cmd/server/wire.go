@@ -160,6 +160,9 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		RenameFolder: &appvault.RenameFolder{Vaults: a.vaults, Folders: a.folders},
 		DeleteFolder: &appvault.DeleteFolder{Vaults: a.vaults, Folders: a.folders},
 		ListFolders:  &appvault.ListFolders{Vaults: a.vaults, Folders: a.folders},
+		ShareVault:   &appvault.ShareVault{Vaults: a.vaults, Clock: a.clock},
+		RemoveMember: &appvault.RemoveMember{Vaults: a.vaults},
+		RekeyVault:   &appvault.RekeyVault{Vaults: a.vaults, Items: a.items},
 	}
 
 	return api.Dependencies{
