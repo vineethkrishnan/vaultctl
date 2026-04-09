@@ -10,31 +10,40 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 )
 
+const (
+	trashPurgeSchedule   = "0 3 * * *" // daily at 3 AM
+	sessionPurgeSchedule = "0 * * * *"  // every hour
+	jobTimeout           = 30 * time.Second
+)
+
 // Scheduler runs periodic maintenance tasks.
 type Scheduler struct {
 	cron               *cron.Cron
 	items              ports.ItemRepository
 	sessions           ports.SessionStore
+	clock              ports.Clock
 	trashRetentionDays int
 }
 
 // New creates a scheduler with the given repositories.
-func New(items ports.ItemRepository, sessions ports.SessionStore, trashRetentionDays int) *Scheduler {
+func New(items ports.ItemRepository, sessions ports.SessionStore, clock ports.Clock, trashRetentionDays int) *Scheduler {
 	return &Scheduler{
 		cron:               cron.New(),
 		items:              items,
 		sessions:           sessions,
+		clock:              clock,
 		trashRetentionDays: trashRetentionDays,
 	}
 }
 
 // Start registers and starts all cron jobs.
 func (s *Scheduler) Start() {
-	// Purge expired trash items daily at 3 AM
-	s.cron.AddFunc("0 3 * * *", s.purgeTrash)
-
-	// Purge expired sessions every hour
-	s.cron.AddFunc("0 * * * *", s.purgeSessions)
+	if _, err := s.cron.AddFunc(trashPurgeSchedule, s.purgeTrash); err != nil {
+		slog.Error("scheduler.register_trash_purge.failed", slog.String("err", err.Error()))
+	}
+	if _, err := s.cron.AddFunc(sessionPurgeSchedule, s.purgeSessions); err != nil {
+		slog.Error("scheduler.register_session_purge.failed", slog.String("err", err.Error()))
+	}
 
 	s.cron.Start()
 	slog.Info("scheduler.started", slog.Int("jobs", len(s.cron.Entries())))
@@ -46,10 +55,10 @@ func (s *Scheduler) Stop() context.Context {
 }
 
 func (s *Scheduler) purgeTrash() {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), jobTimeout)
 	defer cancel()
 
-	cutoff := time.Now().AddDate(0, 0, -s.trashRetentionDays)
+	cutoff := s.clock.Now().AddDate(0, 0, -s.trashRetentionDays)
 	n, err := s.items.PurgeExpired(ctx, cutoff)
 	if err != nil {
 		slog.Error("scheduler.purge_trash.failed", slog.String("err", err.Error()))
@@ -61,7 +70,7 @@ func (s *Scheduler) purgeTrash() {
 }
 
 func (s *Scheduler) purgeSessions() {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), jobTimeout)
 	defer cancel()
 
 	n, err := s.sessions.PurgeExpired(ctx)

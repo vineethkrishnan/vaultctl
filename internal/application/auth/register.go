@@ -46,6 +46,12 @@ type RegisterOutput struct {
 	Role   user.Role
 }
 
+const (
+	RegistrationModeOpen     = "open"
+	RegistrationModeInvite   = "invite"
+	RegistrationModeDisabled = "disabled"
+)
+
 // ErrRegistrationDisabled signals that new registrations are not allowed.
 var ErrRegistrationDisabled = errors.New("auth: registration is disabled")
 
@@ -68,27 +74,26 @@ type Register struct {
 func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutput, error) {
 	// Enforce registration mode
 	switch uc.RegistrationMode {
-	case "disabled":
+	case RegistrationModeDisabled:
 		return RegisterOutput{}, ErrRegistrationDisabled
-	case "invite":
+	case RegistrationModeInvite:
 		if in.InviteToken == "" {
 			return RegisterOutput{}, ErrInviteRequired
 		}
 		if uc.RedeemInvite == nil {
-			return RegisterOutput{}, fmt.Errorf("invite mode configured but no RedeemInvite use case wired")
+			return RegisterOutput{}, fmt.Errorf("%w: RedeemInvite use case not wired", ErrInviteRequired)
 		}
 		redeemed, err := uc.RedeemInvite.Execute(ctx, RedeemInviteInput{Token: in.InviteToken})
 		if err != nil {
 			return RegisterOutput{}, fmt.Errorf("redeem invite: %w", err)
 		}
-		// Enforce that registration email matches the invite
 		if in.Email != redeemed.Email {
 			return RegisterOutput{}, domain.NewInvalid("email", "email does not match invite")
 		}
-	case "open", "":
+	case RegistrationModeOpen, "":
 		// Anyone can register
 	default:
-		return RegisterOutput{}, fmt.Errorf("unknown registration mode: %s", uc.RegistrationMode)
+		return RegisterOutput{}, fmt.Errorf("%w: unknown mode %q", ErrRegistrationDisabled, uc.RegistrationMode)
 	}
 
 	if err := user.ValidateMasterPassword(in.MasterPasswordPreflight, uc.Policy); err != nil {

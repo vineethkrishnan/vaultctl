@@ -1,14 +1,12 @@
 package api
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
-	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
@@ -91,12 +89,7 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 		writeError(w, r, err)
 		return
 	}
-	sigRaw, err := base64.StdEncoding.DecodeString(req.WrapSignature)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	sig, err := crypto.NewEd25519Signature(sigRaw)
+	sig, err := decodeB64Signature(req.WrapSignature)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -534,12 +527,7 @@ func (h *VaultHandlers) HandleShareVault(w http.ResponseWriter, r *http.Request)
 		writeError(w, r, err)
 		return
 	}
-	sigRaw, err := base64.StdEncoding.DecodeString(req.WrapSignature)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	sig, err := crypto.NewEd25519Signature(sigRaw)
+	sig, err := decodeB64Signature(req.WrapSignature)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -626,12 +614,7 @@ func (h *VaultHandlers) HandleRekeyVault(w http.ResponseWriter, r *http.Request)
 			writeError(w, r, err)
 			return
 		}
-		sigRaw, err := base64.StdEncoding.DecodeString(k.WrapSignature)
-		if err != nil {
-			writeError(w, r, err)
-			return
-		}
-		sig, err := crypto.NewEd25519Signature(sigRaw)
+		sig, err := decodeB64Signature(k.WrapSignature)
 		if err != nil {
 			writeError(w, r, err)
 			return

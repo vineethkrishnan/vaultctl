@@ -46,7 +46,7 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	}
 	deps := buildHandlers(cfg, adapters)
 
-	sched := scheduler.New(adapters.items, adapters.sess, cfg.TrashRetentionDays)
+	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
 	sched.Start()
 
 	cleanup := func() error {

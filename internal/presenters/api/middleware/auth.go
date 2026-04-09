@@ -4,7 +4,6 @@ package middleware
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -41,6 +40,17 @@ func CallerClaims(ctx context.Context) (ports.AccessClaims, bool) {
 	return v, ok
 }
 
+// injectCaller sets the caller identity into the request context.
+func injectCaller(r *http.Request, id user.ID, role user.Role, claims *ports.AccessClaims) *http.Request {
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, ctxCallerID, id)
+	ctx = context.WithValue(ctx, ctxCallerRole, role)
+	if claims != nil {
+		ctx = context.WithValue(ctx, ctxClaims, *claims)
+	}
+	return r.WithContext(ctx)
+}
+
 // RequireJWT verifies the Authorization: Bearer <jwt> header and injects
 // caller identity into the request context. Rejects missing/invalid tokens
 // with 401.
@@ -57,11 +67,7 @@ func RequireJWT(tokens ports.TokenIssuer) func(http.Handler) http.Handler {
 				writeErr(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid or expired token")
 				return
 			}
-			ctx := r.Context()
-			ctx = context.WithValue(ctx, ctxCallerID, user.ID(claims.UserID))
-			ctx = context.WithValue(ctx, ctxCallerRole, user.Role(claims.Role))
-			ctx = context.WithValue(ctx, ctxClaims, claims)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, injectCaller(r, user.ID(claims.UserID), user.Role(claims.Role), &claims))
 		})
 	}
 }
@@ -100,9 +106,8 @@ type APIKeyValidator interface {
 	Validate(ctx context.Context, rawKey string) (userID string, err error)
 }
 
-// RequireJWTOrAPIKey tries JWT validation first; if no Bearer token is present,
-// it falls back to API key validation. This allows endpoints to accept either
-// authentication method.
+// RequireJWTOrAPIKey tries JWT validation first; if that fails, falls back
+// to API key validation. Endpoints accept either authentication method.
 func RequireJWTOrAPIKey(tokens ports.TokenIssuer, apiKeys APIKeyValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -115,11 +120,7 @@ func RequireJWTOrAPIKey(tokens ports.TokenIssuer, apiKeys APIKeyValidator) func(
 			// Try JWT first
 			claims, err := tokens.Verify(tok)
 			if err == nil {
-				ctx := r.Context()
-				ctx = context.WithValue(ctx, ctxCallerID, user.ID(claims.UserID))
-				ctx = context.WithValue(ctx, ctxCallerRole, user.Role(claims.Role))
-				ctx = context.WithValue(ctx, ctxClaims, claims)
-				next.ServeHTTP(w, r.WithContext(ctx))
+				next.ServeHTTP(w, injectCaller(r, user.ID(claims.UserID), user.Role(claims.Role), &claims))
 				return
 			}
 
@@ -127,10 +128,7 @@ func RequireJWTOrAPIKey(tokens ports.TokenIssuer, apiKeys APIKeyValidator) func(
 			if apiKeys != nil {
 				userID, apiErr := apiKeys.Validate(r.Context(), tok)
 				if apiErr == nil {
-					ctx := r.Context()
-					ctx = context.WithValue(ctx, ctxCallerID, user.ID(userID))
-					ctx = context.WithValue(ctx, ctxCallerRole, user.Role("member"))
-					next.ServeHTTP(w, r.WithContext(ctx))
+					next.ServeHTTP(w, injectCaller(r, user.ID(userID), user.RoleMember, nil))
 					return
 				}
 			}
@@ -150,6 +148,3 @@ func extractBearer(h string) (string, bool) {
 	}
 	return strings.TrimSpace(parts[1]), parts[1] != ""
 }
-
-// ErrUnauthorized is the sentinel middleware tests use.
-var ErrUnauthorized = errors.New("middleware: unauthorized")

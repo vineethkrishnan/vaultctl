@@ -1,12 +1,12 @@
 import { useAuthStore } from "./auth-store";
 
-export interface ApiError {
+interface ApiError {
   code: string;
   message: string;
   field?: string;
 }
 
-export class ApiRequestError extends Error {
+class ApiRequestError extends Error {
   constructor(
     public readonly status: number,
     public readonly error: ApiError,
@@ -105,7 +105,7 @@ export async function apiFetcher<T>(options: {
   }
 
   if (res.status === 204) {
-    return undefined as T;
+    return undefined as unknown as T;
   }
 
   const body = await res.json();

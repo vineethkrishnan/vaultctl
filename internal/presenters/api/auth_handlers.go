@@ -2,13 +2,11 @@ package api
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
-	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
@@ -46,12 +44,12 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	authHash, err := base64.StdEncoding.DecodeString(req.AuthHash)
+	authHash, err := decodeB64(req.AuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	salt, err := base64.StdEncoding.DecodeString(req.Salt)
+	salt, err := decodeB64(req.Salt)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -66,32 +64,17 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	pubKeyRaw, err := base64.StdEncoding.DecodeString(req.PublicKey)
+	pubKey, err := decodeB64PublicKey(req.PublicKey)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	pubKey, err := crypto.NewPublicKey(pubKeyRaw)
+	idPub, err := decodeB64PublicKey(req.IdentityPublicKey)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	idPubRaw, err := base64.StdEncoding.DecodeString(req.IdentityPublicKey)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	idPub, err := crypto.NewPublicKey(idPubRaw)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	sigRaw, err := base64.StdEncoding.DecodeString(req.PublicKeySignature)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	sig, err := crypto.NewEd25519Signature(sigRaw)
+	sig, err := decodeB64Signature(req.PublicKeySignature)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -157,7 +140,7 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	authHash, err := base64.StdEncoding.DecodeString(req.AuthHash)
+	authHash, err := decodeB64(req.AuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -264,7 +247,7 @@ func (h *AuthHandlers) HandleStepUp(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	authHash, err := base64.StdEncoding.DecodeString(req.AuthHash)
+	authHash, err := decodeB64(req.AuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -393,22 +376,22 @@ func (h *AuthHandlers) HandlePasswordChange(w http.ResponseWriter, r *http.Reque
 		writeError(w, r, err)
 		return
 	}
-	oldHash, err := base64.StdEncoding.DecodeString(req.OldAuthHash)
+	oldHash, err := decodeB64(req.OldAuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	newHash, err := base64.StdEncoding.DecodeString(req.NewAuthHash)
+	newHash, err := decodeB64(req.NewAuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	encPriv, err := base64.StdEncoding.DecodeString(req.EncryptedPrivateKey)
+	encPriv, err := decodeB64(req.EncryptedPrivateKey)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	encIDPriv, err := base64.StdEncoding.DecodeString(req.EncryptedIdentityPrivateKey)
+	encIDPriv, err := decodeB64(req.EncryptedIdentityPrivateKey)
 	if err != nil {
 		writeError(w, r, err)
 		return

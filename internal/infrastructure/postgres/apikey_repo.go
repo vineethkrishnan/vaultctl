@@ -41,20 +41,11 @@ func (r *APIKeyRepo) ListByUser(ctx context.Context, userID user.ID) ([]user.API
 
 	out := []user.APIKey{}
 	for rows.Next() {
-		var (
-			id, uid, name, hash, prefix string
-			lastUsed                    *time.Time
-			expiresAt                   *time.Time
-			createdAt                   time.Time
-		)
-		if err := rows.Scan(&id, &uid, &name, &hash, &prefix, &lastUsed, &expiresAt, &createdAt); err != nil {
+		key, err := scanAPIKey(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, user.APIKey{
-			ID: user.APIKeyID(id), UserID: user.ID(uid),
-			Name: name, KeyHash: hash, KeyPrefix: prefix,
-			LastUsedAt: lastUsed, ExpiresAt: expiresAt, CreatedAt: createdAt,
-		})
+		out = append(out, key)
 	}
 	return out, rows.Err()
 }

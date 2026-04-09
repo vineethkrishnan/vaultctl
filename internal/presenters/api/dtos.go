@@ -330,6 +330,29 @@ func encodeB64Blob(b crypto.EncryptedBlob) string {
 
 func encodeB64(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
 
+// decodeB64 decodes a base64 string to raw bytes.
+func decodeB64(s string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(s)
+}
+
+// decodeB64Signature decodes a base64-encoded Ed25519 signature.
+func decodeB64Signature(s string) (crypto.Signature, error) {
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return crypto.Signature{}, err
+	}
+	return crypto.NewEd25519Signature(raw)
+}
+
+// decodeB64PublicKey decodes a base64-encoded public key.
+func decodeB64PublicKey(s string) (crypto.PublicKey, error) {
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return crypto.PublicKey{}, err
+	}
+	return crypto.NewPublicKey(raw)
+}
+
 // itemToDTO converts a domain item to the API response shape.
 func itemToDTO(it vault.Item) ItemResponse {
 	var folderID *string
