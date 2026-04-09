@@ -30,6 +30,7 @@ type adapters struct {
 	folders *postgres.FolderRepo
 	apikeys *postgres.APIKeyRepo
 	invites *postgres.InviteRepo
+	orgs    *postgres.OrgRepo
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -94,6 +95,7 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		folders: &postgres.FolderRepo{Pool: pool},
 		apikeys: &postgres.APIKeyRepo{Pool: pool},
 		invites: &postgres.InviteRepo{Pool: pool},
+		orgs:    &postgres.OrgRepo{Pool: pool},
 		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
 		hmac:    hmac,
 		jwt:     jwt,
@@ -153,6 +155,11 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		TOTPVerify:  &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
 	}
 
+	userHandlers := &api.UserHandlers{
+		Users:    a.users,
+		Sessions: a.sess,
+	}
+
 	apiKeyHandlers := &api.APIKeyHandlers{
 		Create: &auth.CreateAPIKey{
 			APIKeys: a.apikeys, TokenGenerator: a.tokens,
@@ -185,8 +192,12 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		TrashItem:   &appvault.TrashItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
 		RestoreItem: &appvault.RestoreItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
 		PurgeItem:   &appvault.PurgeItem{Vaults: a.vaults, Items: a.items},
-		ListActive:  &appvault.ListActive{Vaults: a.vaults, Items: a.items},
-		ListTrash:   &appvault.ListTrash{Vaults: a.vaults, Items: a.items},
+		PurgeExpiredTrash: &appvault.PurgeExpiredTrashInVault{
+			Vaults: a.vaults, Items: a.items, Clock: a.clock,
+			RetentionDays: cfg.TrashRetentionDays,
+		},
+		ListActive:   &appvault.ListActive{Vaults: a.vaults, Items: a.items},
+		ListTrash:    &appvault.ListTrash{Vaults: a.vaults, Items: a.items},
 		CreateFolder: &appvault.CreateFolder{Vaults: a.vaults, Folders: a.folders, Clock: a.clock, IDs: a.ids},
 		RenameFolder: &appvault.RenameFolder{Vaults: a.vaults, Folders: a.folders},
 		DeleteFolder: &appvault.DeleteFolder{Vaults: a.vaults, Folders: a.folders},
@@ -194,6 +205,18 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		ShareVault:   &appvault.ShareVault{Vaults: a.vaults, Clock: a.clock},
 		RemoveMember: &appvault.RemoveMember{Vaults: a.vaults},
 		RekeyVault:   &appvault.RekeyVault{Vaults: a.vaults, Items: a.items},
+	}
+
+	orgHandlers := &api.OrgHandlers{
+		CreateOrg:        &auth.CreateOrganization{Orgs: a.orgs, Clock: a.clock, IDs: a.ids},
+		ListMembers:      &auth.ListOrgMembers{Orgs: a.orgs},
+		UpdateMemberRole: &auth.UpdateOrgMemberRole{Orgs: a.orgs},
+	}
+
+	exportHandlers := &api.ExportHandlers{
+		Export: &auth.ExportVaults{
+			Vaults: a.vaults, Items: a.items, Folders: a.folders,
+		},
 	}
 
 	apiKeyValidator := &apiKeyValidatorAdapter{
@@ -205,9 +228,13 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		Tokens:             tokens,
 		Clock:              a.clock,
 		Auth:               authHandlers,
+		User:               userHandlers,
 		Vault:              vaultHandlers,
 		APIKey:             apiKeyHandlers,
 		Invite:             inviteHandlers,
+		Org:                orgHandlers,
+		Admin:              &api.AdminHandlers{},
+		Export:             exportHandlers,
 		APIKeyValidator:    apiKeyValidator,
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,

@@ -86,6 +86,11 @@ type ItemRepository interface {
 	// PurgeExpired removes trashed items older than cutoff, returning the
 	// number purged. Called by the trash-retention cron.
 	PurgeExpired(ctx context.Context, cutoff time.Time) (int, error)
+
+	// PurgeExpiredInVault removes trashed items older than cutoff within a
+	// single vault, returning the number purged. Used by the bulk trash
+	// purge API endpoint.
+	PurgeExpiredInVault(ctx context.Context, vaultID vault.ID, cutoff time.Time) (int, error)
 }
 
 // ItemListOptions filters the active-items list. Only server-visible fields

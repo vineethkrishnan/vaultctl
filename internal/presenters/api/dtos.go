@@ -308,6 +308,79 @@ type APIKeyResponse struct {
 }
 
 // ===========================================================================
+// User Profile DTOs
+// ===========================================================================
+
+type UserProfileResponse struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type UpdateProfileRequest struct {
+	Name string `json:"name"`
+}
+
+// ===========================================================================
+// Session DTOs
+// ===========================================================================
+
+type SessionResponse struct {
+	ID           string  `json:"id"`
+	DeviceName   string  `json:"deviceName"`
+	IPAddress    string  `json:"ipAddress"`
+	LastActiveAt *string `json:"lastActiveAt,omitempty"`
+	CreatedAt    string  `json:"createdAt"`
+}
+
+// ===========================================================================
+// Public Key DTOs
+// ===========================================================================
+
+type PublicKeyResponse struct {
+	UserID            string `json:"userId"`
+	PublicKey         string `json:"publicKey"`
+	IdentityPublicKey string `json:"identityPublicKey"`
+}
+
+// ===========================================================================
+// Organization DTOs
+// ===========================================================================
+
+type CreateOrgRequest struct {
+	Name string `json:"name"`
+}
+
+type OrgResponse struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedBy string `json:"createdBy"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type OrgMemberResponse struct {
+	OrgID      string  `json:"orgId"`
+	UserID     string  `json:"userId"`
+	Role       string  `json:"role"`
+	InvitedAt  string  `json:"invitedAt"`
+	AcceptedAt *string `json:"acceptedAt,omitempty"`
+}
+
+type UpdateMemberRoleRequest struct {
+	Role string `json:"role"`
+}
+
+// ===========================================================================
+// Trash DTOs
+// ===========================================================================
+
+type PurgeTrashResponse struct {
+	Purged int `json:"purged"`
+}
+
+// ===========================================================================
 // Helpers
 // ===========================================================================
 

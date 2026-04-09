@@ -131,6 +131,17 @@ func (r *ItemRepo) PurgeExpired(ctx context.Context, cutoff time.Time) (int, err
 	return int(tag.RowsAffected()), nil
 }
 
+func (r *ItemRepo) PurgeExpiredInVault(ctx context.Context, vaultID vault.ID, cutoff time.Time) (int, error) {
+	tag, err := r.Pool.Exec(ctx, `
+		DELETE FROM vault_items
+		WHERE vault_id = $1 AND deleted_at IS NOT NULL AND deleted_at < $2
+	`, string(vaultID), cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 func (r *ItemRepo) queryItems(ctx context.Context, sql string, args ...any) ([]vault.Item, error) {
 	rows, err := r.Pool.Query(ctx, sql, args...)
 	if err != nil {

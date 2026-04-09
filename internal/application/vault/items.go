@@ -307,5 +307,40 @@ func (uc *PurgeExpiredTrash) Execute(ctx context.Context) (int, error) {
 	return n, nil
 }
 
+// PurgeExpiredTrashInput is the input for the vault-scoped bulk purge.
+type PurgeExpiredTrashInput struct {
+	Caller  string
+	VaultID string
+}
+
+// PurgeExpiredTrashInVault permanently deletes all expired trashed items
+// within a single vault. Per H10, the handler requires step-up auth.
+type PurgeExpiredTrashInVault struct {
+	Vaults        ports.VaultRepository
+	Items         ports.ItemRepository
+	Clock         ports.Clock
+	RetentionDays int
+}
+
+// Execute runs the vault-scoped purge.
+func (uc *PurgeExpiredTrashInVault) Execute(ctx context.Context, in PurgeExpiredTrashInput) (int, error) {
+	callerID := user.ID(in.Caller)
+	vaultID := domainvault.ID(in.VaultID)
+
+	if _, err := ensureActiveMember(ctx, uc.Vaults, callerID, vaultID); err != nil {
+		return 0, err
+	}
+
+	if uc.RetentionDays <= 0 {
+		return 0, fmt.Errorf("invalid retention: %d", uc.RetentionDays)
+	}
+	cutoff := uc.Clock.Now().Add(-time.Duration(uc.RetentionDays) * 24 * time.Hour)
+	n, err := uc.Items.PurgeExpiredInVault(ctx, vaultID, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("purge expired in vault: %w", err)
+	}
+	return n, nil
+}
+
 // Ensure errors package reference for the grep'able sentinel.
 var _ = errors.Is

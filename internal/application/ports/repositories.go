@@ -31,6 +31,9 @@ type UserRepository interface {
 	// code paths.
 	AuthHash(ctx context.Context, id user.ID) (string, error)
 
+	// UpdateProfile updates the user's mutable profile fields (name).
+	UpdateProfile(ctx context.Context, id user.ID, name string) error
+
 	// UpdateAuthHash replaces the stored server-side auth hash. Used when
 	// AuthHasher.Verify returns upgrade=true, and on password change.
 	UpdateAuthHash(ctx context.Context, id user.ID, authHash string) error
@@ -80,6 +83,21 @@ type APIKeyRepository interface {
 	ListByUser(ctx context.Context, userID user.ID) ([]user.APIKey, error)
 	Delete(ctx context.Context, userID user.ID, keyID user.APIKeyID) error
 	UpdateLastUsed(ctx context.Context, keyID user.APIKeyID, now time.Time) error
+}
+
+// OrganizationRepository persists Organization + Membership rows.
+type OrganizationRepository interface {
+	// Create inserts an organization row plus the creator's initial membership.
+	Create(ctx context.Context, org organization.Organization, creator organization.Membership) error
+
+	// GetByID loads an organization by ID. Returns ErrNotFound when missing.
+	GetByID(ctx context.Context, id organization.ID) (organization.Organization, error)
+
+	// ListMembers returns all members of an organization.
+	ListMembers(ctx context.Context, orgID organization.ID) ([]organization.Membership, error)
+
+	// UpdateMemberRole changes a member's org-level role.
+	UpdateMemberRole(ctx context.Context, orgID organization.ID, userID user.ID, role user.Role) error
 }
 
 // SessionStore persists Session rows keyed off the HMAC'd refresh token.

@@ -126,6 +126,18 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 	}, nil
 }
 
+// UpdateProfile updates the user's display name.
+func (r *UserRepo) UpdateProfile(ctx context.Context, id user.ID, name string) error {
+	tag, err := r.Pool.Exec(ctx, `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`, name, string(id))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 // AuthHash returns the stored server-side auth hash.
 func (r *UserRepo) AuthHash(ctx context.Context, id user.ID) (string, error) {
 	var h string

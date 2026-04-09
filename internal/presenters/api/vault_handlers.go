@@ -14,23 +14,24 @@ import (
 
 // VaultHandlers ties HTTP to the vault use cases.
 type VaultHandlers struct {
-	ListVaults        *appvault.ListVaults
-	CreateVault       *appvault.CreateVault
-	CreateItem        *appvault.CreateItem
-	GetItem           *appvault.GetItem
-	UpdateItem        *appvault.UpdateItem
-	TrashItem         *appvault.TrashItem
-	RestoreItem       *appvault.RestoreItem
-	PurgeItem         *appvault.PurgeItem
-	ListActive        *appvault.ListActive
-	ListTrash         *appvault.ListTrash
-	CreateFolder      *appvault.CreateFolder
-	RenameFolder      *appvault.RenameFolder
-	DeleteFolder      *appvault.DeleteFolder
-	ListFolders       *appvault.ListFolders
-	ShareVault        *appvault.ShareVault
-	RemoveMember      *appvault.RemoveMember
-	RekeyVault        *appvault.RekeyVault
+	ListVaults         *appvault.ListVaults
+	CreateVault        *appvault.CreateVault
+	CreateItem         *appvault.CreateItem
+	GetItem            *appvault.GetItem
+	UpdateItem         *appvault.UpdateItem
+	TrashItem          *appvault.TrashItem
+	RestoreItem        *appvault.RestoreItem
+	PurgeItem          *appvault.PurgeItem
+	PurgeExpiredTrash  *appvault.PurgeExpiredTrashInVault
+	ListActive         *appvault.ListActive
+	ListTrash          *appvault.ListTrash
+	CreateFolder       *appvault.CreateFolder
+	RenameFolder       *appvault.RenameFolder
+	DeleteFolder       *appvault.DeleteFolder
+	ListFolders        *appvault.ListFolders
+	ShareVault         *appvault.ShareVault
+	RemoveMember       *appvault.RemoveMember
+	RekeyVault         *appvault.RekeyVault
 }
 
 // HandleListVaults returns all vaults the caller is a member of.

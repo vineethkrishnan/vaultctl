@@ -21,9 +21,13 @@ type Dependencies struct {
 	Tokens             ports.TokenIssuer
 	Clock              ports.Clock
 	Auth               *AuthHandlers
+	User               *UserHandlers
 	Vault              *VaultHandlers
 	APIKey             *APIKeyHandlers
 	Invite             *InviteHandlers
+	Org                *OrgHandlers
+	Admin              *AdminHandlers
+	Export             *ExportHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
@@ -107,6 +111,27 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Get("/api-keys", deps.APIKey.HandleListAPIKeys)
 			r.Delete("/api-keys/{id}", deps.APIKey.HandleDeleteAPIKey)
 
+			// User profile & sessions
+			r.Get("/users/me", deps.User.HandleGetProfile)
+			r.Put("/users/me", deps.User.HandleUpdateProfile)
+			r.Get("/users/me/sessions", deps.User.HandleListSessions)
+			r.Delete("/users/me/sessions/{id}", deps.User.HandleRevokeSession)
+
+			// Organizations (admin only)
+			r.With(requireAdmin).Post("/orgs", deps.Org.HandleCreateOrg)
+			r.Route("/orgs/{id}", func(r chi.Router) {
+				r.Get("/members", deps.Org.HandleListOrgMembers)
+				r.With(requireAdmin).Put("/members/{userId}", deps.Org.HandleUpdateMemberRole)
+				// Organization member public key
+				r.Get("/members/{userId}/pubkey", deps.User.HandleGetMemberPublicKey)
+			})
+
+			// Admin
+			r.With(requireAdmin).Post("/admin/backup", deps.Admin.HandleBackup)
+
+			// Data export (step-up required — sensitive data)
+			r.With(requireStepUp).Get("/export", deps.Export.HandleExport)
+
 			// Vault management
 			r.Get("/vaults", deps.Vault.HandleListVaults)
 			r.Post("/vaults", deps.Vault.HandleCreateVault)
@@ -124,6 +149,8 @@ func NewRouter(deps Dependencies) http.Handler {
 				r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
 				// H10 step-up required for irreversible purge
 				r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
+				// Bulk purge all expired trash (H10 step-up required)
+				r.With(requireStepUp).Delete("/trash", deps.Vault.HandlePurgeExpiredTrash)
 
 				// Folders
 				r.Get("/folders", deps.Vault.HandleListFolders)
