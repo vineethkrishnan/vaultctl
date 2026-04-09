@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.2...v1.1.3) (2026-04-09)
+
+
+### Bug Fixes
+
+* **ci:** pass cloudflare credentials as env vars for wrangler ([#23](https://github.com/vineethkrishnan/vaultctl/issues/23)) ([1de4da6](https://github.com/vineethkrishnan/vaultctl/commit/1de4da6d34bb2889caab0ad8800fa0237584ab93))
+
 ## [1.1.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.1...v1.1.2) (2026-04-09)
 
 
