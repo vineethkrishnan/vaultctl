@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.4...v1.1.5) (2026-04-09)
+
+
+### Documentation
+
+* **docs:** add all installation methods ([#27](https://github.com/vineethkrishnan/vaultctl/issues/27)) ([c31ed02](https://github.com/vineethkrishnan/vaultctl/commit/c31ed02bab584b6cdf973e93ea46aca1b606908a))
+
 ## [1.1.4](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.3...v1.1.4) (2026-04-09)
 
 
