@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.5...v1.1.6) (2026-04-09)
+
+
+### Bug Fixes
+
+* **docker:** default to server cmd, latest tag, and docker hub registry ([4ce525b](https://github.com/vineethkrishnan/vaultctl/commit/4ce525bd7129b7df162f5882761df1485af5de2c))
+
 ## [1.1.5](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.4...v1.1.5) (2026-04-09)
 
 
