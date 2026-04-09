@@ -10,6 +10,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 
 	_ "github.com/vineethkrishnan/vaultctl/docs" // swagger generated docs
@@ -21,6 +22,8 @@ type Dependencies struct {
 	Clock              ports.Clock
 	Auth               *AuthHandlers
 	Vault              *VaultHandlers
+	APIKey             *APIKeyHandlers
+	Invite             *InviteHandlers
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
 }
@@ -39,6 +42,7 @@ func NewRouter(deps Dependencies) http.Handler {
 
 	requireAuth := middleware.RequireJWT(deps.Tokens)
 	requireStepUp := middleware.RequireStepUp(deps.Clock)
+	requireAdmin := middleware.RequireRole(user.RoleAdmin)
 
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
@@ -59,6 +63,9 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Post("/auth/login", deps.Auth.HandleLogin)
 			r.Post("/auth/refresh", deps.Auth.HandleRefresh)
 			r.Post("/auth/logout", deps.Auth.HandleLogout)
+
+			// Invite redemption is public — new users redeem before registering
+			r.Post("/invites/redeem", deps.Invite.HandleRedeemInvite)
 		})
 
 		// ===== Authenticated routes =====
@@ -84,6 +91,16 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			// Password change (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/password/change", deps.Auth.HandlePasswordChange)
+
+			// Invite management (admin only)
+			r.With(requireAdmin).Post("/invites", deps.Invite.HandleCreateInvite)
+			r.With(requireAdmin).Get("/invites", deps.Invite.HandleListInvites)
+			r.With(requireAdmin).Delete("/invites/{id}", deps.Invite.HandleRevokeInvite)
+
+			// API keys
+			r.Post("/api-keys", deps.APIKey.HandleCreateAPIKey)
+			r.Get("/api-keys", deps.APIKey.HandleListAPIKeys)
+			r.Delete("/api-keys/{id}", deps.APIKey.HandleDeleteAPIKey)
 
 			// Vault management
 			r.Get("/vaults", deps.Vault.HandleListVaults)

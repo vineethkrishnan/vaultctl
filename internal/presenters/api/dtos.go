@@ -247,6 +247,66 @@ type MemberResponse struct {
 }
 
 // ===========================================================================
+// Invite DTOs
+// ===========================================================================
+
+type CreateInviteRequest struct {
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	ExpiresIn string `json:"expiresIn"` // duration string, e.g. "24h"
+}
+
+type CreateInviteResponse struct {
+	InviteID string `json:"inviteId"`
+	Token    string `json:"token"`
+}
+
+type InviteResponse struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	InviterID string `json:"inviterId"`
+	ExpiresAt string `json:"expiresAt"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type RedeemInviteRequest struct {
+	Token string `json:"token"`
+}
+
+type RedeemInviteResponse struct {
+	OrgID string `json:"orgId"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+// ===========================================================================
+// API Key DTOs
+// ===========================================================================
+
+type CreateAPIKeyRequest struct {
+	Name      string  `json:"name"`
+	ExpiresIn *string `json:"expiresIn,omitempty"` // duration string
+}
+
+type CreateAPIKeyResponse struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Key       string  `json:"key"` // raw key, shown only once
+	KeyPrefix string  `json:"keyPrefix"`
+	ExpiresAt *string `json:"expiresAt,omitempty"`
+}
+
+type APIKeyResponse struct {
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	KeyPrefix  string  `json:"keyPrefix"`
+	LastUsedAt *string `json:"lastUsedAt,omitempty"`
+	ExpiresAt  *string `json:"expiresAt,omitempty"`
+	CreatedAt  string  `json:"createdAt"`
+}
+
+// ===========================================================================
 // Helpers
 // ===========================================================================
 

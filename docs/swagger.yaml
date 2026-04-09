@@ -1,5 +1,59 @@
 basePath: /api/v1
 definitions:
+  internal_presenters_api.APIKeyResponse:
+    properties:
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      keyPrefix:
+        type: string
+      lastUsedAt:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.CreateAPIKeyRequest:
+    properties:
+      expiresIn:
+        description: duration string
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.CreateAPIKeyResponse:
+    properties:
+      expiresAt:
+        type: string
+      id:
+        type: string
+      key:
+        description: raw key, shown only once
+        type: string
+      keyPrefix:
+        type: string
+      name:
+        type: string
+    type: object
+  internal_presenters_api.CreateInviteRequest:
+    properties:
+      email:
+        type: string
+      expiresIn:
+        description: duration string, e.g. "24h"
+        type: string
+      role:
+        type: string
+    type: object
+  internal_presenters_api.CreateInviteResponse:
+    properties:
+      inviteId:
+        type: string
+      token:
+        type: string
+    type: object
   internal_presenters_api.ErrorBody:
     properties:
       error:
@@ -26,6 +80,21 @@ definitions:
       id:
         type: string
       vaultId:
+        type: string
+    type: object
+  internal_presenters_api.InviteResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      inviterId:
+        type: string
+      role:
         type: string
     type: object
   internal_presenters_api.ItemCreateRequest:
@@ -173,6 +242,20 @@ definitions:
         type: integer
       salt:
         description: base64
+        type: string
+    type: object
+  internal_presenters_api.RedeemInviteRequest:
+    properties:
+      token:
+        type: string
+    type: object
+  internal_presenters_api.RedeemInviteResponse:
+    properties:
+      email:
+        type: string
+      orgId:
+        type: string
+      role:
         type: string
     type: object
   internal_presenters_api.RefreshRequest:
@@ -347,6 +430,85 @@ info:
   title: vaultctl API
   version: "1.0"
 paths:
+  /api-keys:
+    get:
+      description: Returns all API keys for the authenticated user (without raw key
+        values)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.APIKeyResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List API keys
+      tags:
+      - API Keys
+    post:
+      consumes:
+      - application/json
+      description: Generate a new personal API key for programmatic access. The raw
+        key is returned only once.
+      parameters:
+      - description: API key creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateAPIKeyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.CreateAPIKeyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create API key
+      tags:
+      - API Keys
+  /api-keys/{id}:
+    delete:
+      description: Permanently delete a personal API key
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Delete API key
+      tags:
+      - API Keys
   /auth/login:
     post:
       consumes:
@@ -665,6 +827,131 @@ paths:
       summary: Health check
       tags:
       - System
+  /invites:
+    get:
+      description: Admin lists pending invites for an organization
+      parameters:
+      - description: Organization ID
+        in: query
+        name: orgId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.InviteResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List invites
+      tags:
+      - Invites
+    post:
+      consumes:
+      - application/json
+      description: Admin creates an invite token for a new member
+      parameters:
+      - description: Invite payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.CreateInviteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create invite
+      tags:
+      - Invites
+  /invites/{id}:
+    delete:
+      description: Admin revokes a pending invite by ID
+      parameters:
+      - description: Invite ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Revoke invite
+      tags:
+      - Invites
+  /invites/redeem:
+    post:
+      consumes:
+      - application/json
+      description: New user redeems an invite token during registration
+      parameters:
+      - description: Raw invite token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RedeemInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RedeemInviteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Redeem invite
+      tags:
+      - Invites
   /vaults:
     get:
       description: Returns all vaults the authenticated user has access to

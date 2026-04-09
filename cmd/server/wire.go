@@ -22,12 +22,14 @@ import (
 // adapters bundles every concrete adapter so main.go can wire handlers in
 // one shot.
 type adapters struct {
-	pool  *postgres.Pool
-	users *postgres.UserRepo
-	sess  *postgres.SessionStore
-	vaults *postgres.VaultRepo
-	items *postgres.ItemRepo
+	pool    *postgres.Pool
+	users   *postgres.UserRepo
+	sess    *postgres.SessionStore
+	vaults  *postgres.VaultRepo
+	items   *postgres.ItemRepo
 	folders *postgres.FolderRepo
+	apikeys *postgres.APIKeyRepo
+	invites *postgres.InviteRepo
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -90,6 +92,8 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		vaults:  &postgres.VaultRepo{Pool: pool},
 		items:   &postgres.ItemRepo{Pool: pool},
 		folders: &postgres.FolderRepo{Pool: pool},
+		apikeys: &postgres.APIKeyRepo{Pool: pool},
+		invites: &postgres.InviteRepo{Pool: pool},
 		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
 		hmac:    hmac,
 		jwt:     jwt,
@@ -145,6 +149,29 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		TOTPVerify:  &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
 	}
 
+	apiKeyHandlers := &api.APIKeyHandlers{
+		Create: &auth.CreateAPIKey{
+			APIKeys: a.apikeys, TokenGenerator: a.tokens,
+			HMAC: a.hmac, Clock: a.clock, IDs: a.ids,
+		},
+		List:   &auth.ListAPIKeys{APIKeys: a.apikeys},
+		Delete: &auth.DeleteAPIKey{APIKeys: a.apikeys},
+	}
+
+	inviteHandlers := &api.InviteHandlers{
+		CreateInvite: &auth.CreateInvite{
+			Invites: a.invites, HMAC: a.hmac, Tokens: a.tokens,
+			Clock: a.clock, IDs: a.ids,
+		},
+		RedeemInvite: &auth.RedeemInvite{
+			Invites: a.invites, HMAC: a.hmac, Clock: a.clock,
+		},
+		RevokeInvite: &auth.RevokeInvite{
+			Invites: a.invites, Clock: a.clock,
+		},
+		ListInvites: &auth.ListInvites{Invites: a.invites},
+	}
+
 	vaultHandlers := &api.VaultHandlers{
 		ListVaults:  &appvault.ListVaults{Vaults: a.vaults},
 		CreateVault: &appvault.CreateVault{Vaults: a.vaults, Clock: a.clock, IDs: a.ids},
@@ -170,6 +197,8 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		Clock:              a.clock,
 		Auth:               authHandlers,
 		Vault:              vaultHandlers,
+		APIKey:             apiKeyHandlers,
+		Invite:             inviteHandlers,
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 	}

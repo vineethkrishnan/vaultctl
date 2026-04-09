@@ -72,6 +72,12 @@ func mapErr(err error) (code string, status int, field string) {
 		return "SESSION_EXPIRED", http.StatusUnauthorized, ""
 	case errors.Is(err, auth.ErrStepUpRequired):
 		return "STEP_UP_REQUIRED", http.StatusForbidden, ""
+	case errors.Is(err, auth.ErrAPIKeyInvalid):
+		return "API_KEY_INVALID", http.StatusUnauthorized, ""
+	case errors.Is(err, auth.ErrAPIKeyExpired):
+		return "API_KEY_EXPIRED", http.StatusUnauthorized, ""
+	case errors.Is(err, auth.ErrInviteNotRedeemable):
+		return "INVITE_NOT_REDEEMABLE", http.StatusBadRequest, "token"
 	}
 	// Vault authorization
 	switch {

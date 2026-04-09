@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 )
 
@@ -60,6 +61,25 @@ type UserRepository interface {
 
 	// DisableTOTP sets totp_enabled = false and clears the secret.
 	DisableTOTP(ctx context.Context, id user.ID) error
+}
+
+// InviteRepository persists organisation invite tokens (M11).
+type InviteRepository interface {
+	Create(ctx context.Context, invite organization.Invite) error
+	GetByTokenHash(ctx context.Context, tokenHash []byte) (organization.Invite, error)
+	GetByID(ctx context.Context, id string) (organization.Invite, error)
+	ListByOrg(ctx context.Context, orgID string) ([]organization.Invite, error)
+	MarkUsed(ctx context.Context, id string, usedAt time.Time) error
+	MarkRevoked(ctx context.Context, id string, revokedAt time.Time) error
+}
+
+// APIKeyRepository persists API key rows.
+type APIKeyRepository interface {
+	Create(ctx context.Context, key user.APIKey) error
+	GetByHash(ctx context.Context, keyHash string) (user.APIKey, error)
+	ListByUser(ctx context.Context, userID user.ID) ([]user.APIKey, error)
+	Delete(ctx context.Context, userID user.ID, keyID user.APIKeyID) error
+	UpdateLastUsed(ctx context.Context, keyID user.APIKeyID, now time.Time) error
 }
 
 // SessionStore persists Session rows keyed off the HMAC'd refresh token.
