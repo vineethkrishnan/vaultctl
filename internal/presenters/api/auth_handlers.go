@@ -28,7 +28,18 @@ type AuthHandlers struct {
 	PasswordChange *auth.PasswordChange
 }
 
-// POST /api/v1/auth/register
+// HandleRegister creates a new user account.
+// @Summary Register new user
+// @Description Create a new user account with client-side derived crypto material
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body RegisterRequest true "Registration payload"
+// @Success 201 {object} RegisterResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 409 {object} ErrorBody "Email already taken"
+// @Failure 429 {object} ErrorBody "Rate limited"
+// @Router /auth/register [post]
 func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := readJSON(r, &req); err != nil {
@@ -106,7 +117,15 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, RegisterResponse{UserID: string(out.UserID), Role: string(out.Role)})
 }
 
-// GET /api/v1/auth/prelogin?email=...
+// HandlePrelogin returns KDF parameters for a given email.
+// @Summary Get KDF parameters
+// @Description Returns salt and KDF parameters needed to derive the auth hash client-side
+// @Tags Auth
+// @Produce json
+// @Param email query string true "User email address"
+// @Success 200 {object} PreloginResponse
+// @Failure 404 {object} ErrorBody
+// @Router /auth/prelogin [get]
 func (h *AuthHandlers) HandlePrelogin(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	out, err := h.Prelogin.Execute(r.Context(), auth.PreloginInput{Email: email})
@@ -119,7 +138,18 @@ func (h *AuthHandlers) HandlePrelogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /api/v1/auth/login
+// HandleLogin authenticates a user and returns tokens.
+// @Summary Login
+// @Description Authenticate with email and auth hash, returns JWT tokens and encrypted crypto material
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body LoginRequest true "Login credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 401 {object} ErrorBody "Invalid credentials"
+// @Failure 423 {object} ErrorBody "Account locked"
+// @Failure 429 {object} ErrorBody "Rate limited"
+// @Router /auth/login [post]
 func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := readJSON(r, &req); err != nil {
@@ -166,7 +196,16 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /api/v1/auth/refresh
+// HandleRefresh rotates the token pair.
+// @Summary Refresh tokens
+// @Description Exchange a valid refresh token for a new access/refresh token pair
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body RefreshRequest true "Refresh token"
+// @Success 200 {object} RefreshResponse
+// @Failure 401 {object} ErrorBody "Session expired"
+// @Router /auth/refresh [post]
 func (h *AuthHandlers) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := readJSON(r, &req); err != nil {
@@ -184,7 +223,15 @@ func (h *AuthHandlers) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// POST /api/v1/auth/logout
+// HandleLogout revokes the refresh token.
+// @Summary Logout
+// @Description Revoke the refresh token to end the session
+// @Tags Auth
+// @Accept json
+// @Param body body LogoutRequest true "Refresh token to revoke"
+// @Success 204 "No content"
+// @Failure 401 {object} ErrorBody
+// @Router /auth/logout [post]
 func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	var req LogoutRequest
 	if err := readJSON(r, &req); err != nil {
@@ -198,7 +245,18 @@ func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/v1/auth/step-up (requires JWT auth, no step-up)
+// HandleStepUp re-authenticates for sensitive operations.
+// @Summary Step-up authentication
+// @Description Re-verify master password to get a step-up token for sensitive operations
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body StepUpRequest true "Auth hash for re-authentication"
+// @Success 200 {object} StepUpResponse
+// @Failure 401 {object} ErrorBody
+// @Failure 429 {object} ErrorBody
+// @Router /auth/step-up [post]
 func (h *AuthHandlers) HandleStepUp(w http.ResponseWriter, r *http.Request) {
 	var req StepUpRequest
 	if err := readJSON(r, &req); err != nil {
@@ -223,7 +281,15 @@ func (h *AuthHandlers) HandleStepUp(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, StepUpResponse{AccessToken: out.AccessToken})
 }
 
-// POST /api/v1/auth/totp/setup (requires JWT + step-up)
+// HandleTOTPSetup generates a new TOTP secret.
+// @Summary Setup TOTP 2FA
+// @Description Generate a new TOTP secret and QR code URL. Requires step-up authentication.
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} TOTPSetupResponse
+// @Failure 403 {object} ErrorBody "Step-up required"
+// @Router /auth/totp/setup [post]
 func (h *AuthHandlers) HandleTOTPSetup(w http.ResponseWriter, r *http.Request) {
 	out, err := h.TOTPSetup.Execute(r.Context(), auth.TOTPSetupInput{
 		Caller: middleware.CallerID(r.Context()),
@@ -235,7 +301,16 @@ func (h *AuthHandlers) HandleTOTPSetup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, TOTPSetupResponse{Secret: out.Secret, OtpauthURL: out.OtpauthURL})
 }
 
-// POST /api/v1/auth/totp/enable (requires JWT, verifies code)
+// HandleTOTPEnable activates TOTP 2FA.
+// @Summary Enable TOTP 2FA
+// @Description Verify a TOTP code to activate two-factor authentication
+// @Tags Auth
+// @Accept json
+// @Security BearerAuth
+// @Param body body TOTPCodeRequest true "TOTP verification code"
+// @Success 204 "No content"
+// @Failure 400 {object} ErrorBody "Invalid code"
+// @Router /auth/totp/enable [post]
 func (h *AuthHandlers) HandleTOTPEnable(w http.ResponseWriter, r *http.Request) {
 	var req TOTPCodeRequest
 	if err := readJSON(r, &req); err != nil {
@@ -253,7 +328,14 @@ func (h *AuthHandlers) HandleTOTPEnable(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/v1/auth/totp/disable (requires JWT + step-up)
+// HandleTOTPDisable deactivates TOTP 2FA.
+// @Summary Disable TOTP 2FA
+// @Description Deactivate two-factor authentication. Requires step-up.
+// @Tags Auth
+// @Security BearerAuth
+// @Success 204 "No content"
+// @Failure 403 {object} ErrorBody "Step-up required"
+// @Router /auth/totp/disable [post]
 func (h *AuthHandlers) HandleTOTPDisable(w http.ResponseWriter, r *http.Request) {
 	err := h.TOTPDisable.Execute(r.Context(), auth.TOTPDisableInput{
 		Caller: middleware.CallerID(r.Context()),
@@ -265,7 +347,16 @@ func (h *AuthHandlers) HandleTOTPDisable(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/v1/auth/totp/verify (requires JWT, used during login 2FA step)
+// HandleTOTPVerify validates a TOTP code during login.
+// @Summary Verify TOTP code
+// @Description Validate a TOTP code during the two-factor authentication step of login
+// @Tags Auth
+// @Accept json
+// @Security BearerAuth
+// @Param body body TOTPCodeRequest true "TOTP code"
+// @Success 204 "No content"
+// @Failure 400 {object} ErrorBody "Invalid code"
+// @Router /auth/totp/verify [post]
 func (h *AuthHandlers) HandleTOTPVerify(w http.ResponseWriter, r *http.Request) {
 	var req TOTPCodeRequest
 	if err := readJSON(r, &req); err != nil {
@@ -283,7 +374,18 @@ func (h *AuthHandlers) HandleTOTPVerify(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/v1/auth/password/change (requires JWT + step-up)
+// HandlePasswordChange updates the master password.
+// @Summary Change master password
+// @Description Change master password and re-encrypt private keys. Requires step-up.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body PasswordChangeRequest true "Old and new auth hashes with re-encrypted keys"
+// @Success 200 {object} PasswordChangeResponse
+// @Failure 401 {object} ErrorBody
+// @Failure 403 {object} ErrorBody "Step-up required"
+// @Router /auth/password/change [post]
 func (h *AuthHandlers) HandlePasswordChange(w http.ResponseWriter, r *http.Request) {
 	var req PasswordChangeRequest
 	if err := readJSON(r, &req); err != nil {

@@ -31,7 +31,15 @@ type VaultHandlers struct {
 	ListFolders       *appvault.ListFolders
 }
 
-// GET /api/v1/vaults
+// HandleListVaults returns all vaults the caller is a member of.
+// @Summary List vaults
+// @Description Returns all vaults the authenticated user has access to
+// @Tags Vaults
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} VaultResponse
+// @Failure 401 {object} ErrorBody
+// @Router /vaults [get]
 func (h *VaultHandlers) HandleListVaults(w http.ResponseWriter, r *http.Request) {
 	results, err := h.ListVaults.Execute(r.Context(), appvault.ListVaultsInput{
 		Caller: middleware.CallerID(r.Context()),
@@ -56,7 +64,18 @@ func (h *VaultHandlers) HandleListVaults(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, out)
 }
 
-// POST /api/v1/vaults
+// HandleCreateVault creates a new vault.
+// @Summary Create vault
+// @Description Create a new vault with an encrypted vault key
+// @Tags Vaults
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body VaultCreateRequest true "Vault creation payload"
+// @Success 201 {object} VaultResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Router /vaults [post]
 func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request) {
 	var req VaultCreateRequest
 	if err := readJSON(r, &req); err != nil {
@@ -101,7 +120,19 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// POST /api/v1/vaults/:vaultId/items
+// HandleCreateItem creates a new encrypted item in a vault.
+// @Summary Create item
+// @Description Create a new encrypted item in the specified vault
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param body body ItemCreateRequest true "Item payload"
+// @Success 201 {object} ItemResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 404 {object} ErrorBody "Vault not found or not a member"
+// @Router /vaults/{vaultId}/items [post]
 func (h *VaultHandlers) HandleCreateItem(w http.ResponseWriter, r *http.Request) {
 	vaultID := vault.ID(chi.URLParam(r, "vaultId"))
 	var req ItemCreateRequest
@@ -137,7 +168,17 @@ func (h *VaultHandlers) HandleCreateItem(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusCreated, itemToDTO(it))
 }
 
-// GET /api/v1/vaults/:vaultId/items/:id
+// HandleGetItem retrieves a single item.
+// @Summary Get item
+// @Description Retrieve a single encrypted item by ID
+// @Tags Items
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param id path string true "Item ID"
+// @Success 200 {object} ItemResponse
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/items/{id} [get]
 func (h *VaultHandlers) HandleGetItem(w http.ResponseWriter, r *http.Request) {
 	it, err := h.GetItem.Execute(r.Context(), appvault.GetItemInput{
 		Caller:  middleware.CallerID(r.Context()),
@@ -151,7 +192,20 @@ func (h *VaultHandlers) HandleGetItem(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, itemToDTO(it))
 }
 
-// PUT /api/v1/vaults/:vaultId/items/:id
+// HandleUpdateItem updates an existing item.
+// @Summary Update item
+// @Description Update an existing encrypted item
+// @Tags Items
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param id path string true "Item ID"
+// @Param body body ItemUpdateRequest true "Updated item payload"
+// @Success 200 {object} ItemResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/items/{id} [put]
 func (h *VaultHandlers) HandleUpdateItem(w http.ResponseWriter, r *http.Request) {
 	var req ItemUpdateRequest
 	if err := readJSON(r, &req); err != nil {
@@ -187,7 +241,16 @@ func (h *VaultHandlers) HandleUpdateItem(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, itemToDTO(it))
 }
 
-// DELETE /api/v1/vaults/:vaultId/items/:id (soft)
+// HandleTrashItem soft-deletes an item.
+// @Summary Trash item
+// @Description Move an item to trash (soft delete)
+// @Tags Items
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param id path string true "Item ID"
+// @Success 204 "No content"
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/items/{id} [delete]
 func (h *VaultHandlers) HandleTrashItem(w http.ResponseWriter, r *http.Request) {
 	err := h.TrashItem.Execute(r.Context(), appvault.TrashItemInput{
 		Caller:  middleware.CallerID(r.Context()),
@@ -201,7 +264,16 @@ func (h *VaultHandlers) HandleTrashItem(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/v1/vaults/:vaultId/trash/:id/restore
+// HandleRestoreItem restores a trashed item.
+// @Summary Restore item
+// @Description Restore a soft-deleted item from trash
+// @Tags Trash
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param id path string true "Item ID"
+// @Success 204 "No content"
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/trash/{id}/restore [post]
 func (h *VaultHandlers) HandleRestoreItem(w http.ResponseWriter, r *http.Request) {
 	err := h.RestoreItem.Execute(r.Context(), appvault.RestoreItemInput{
 		Caller:  middleware.CallerID(r.Context()),
@@ -215,7 +287,17 @@ func (h *VaultHandlers) HandleRestoreItem(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DELETE /api/v1/vaults/:vaultId/trash/:id (hard, step-up required — wired at router)
+// HandlePurgeItem permanently deletes a trashed item.
+// @Summary Purge item
+// @Description Permanently delete a trashed item. Requires step-up authentication.
+// @Tags Trash
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param id path string true "Item ID"
+// @Success 204 "No content"
+// @Failure 403 {object} ErrorBody "Step-up required"
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/trash/{id} [delete]
 func (h *VaultHandlers) HandlePurgeItem(w http.ResponseWriter, r *http.Request) {
 	err := h.PurgeItem.Execute(r.Context(), appvault.PurgeItemInput{
 		Caller:  middleware.CallerID(r.Context()),
@@ -229,7 +311,19 @@ func (h *VaultHandlers) HandlePurgeItem(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /api/v1/vaults/:vaultId/items
+// HandleListItems returns active items in a vault.
+// @Summary List items
+// @Description List all active (non-trashed) items in a vault with optional filters
+// @Tags Items
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param favorites query bool false "Filter favorites only"
+// @Param folderId query string false "Filter by folder ID"
+// @Param itemType query string false "Filter by item type (login, note, card, identity, api_key, ssh_key, passkey)"
+// @Success 200 {array} ItemResponse
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/items [get]
 func (h *VaultHandlers) HandleListItems(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	opts := ports.ItemListOptions{FavoritesOnly: q.Get("favorites") == "true"}
@@ -255,7 +349,16 @@ func (h *VaultHandlers) HandleListItems(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, out)
 }
 
-// GET /api/v1/vaults/:vaultId/trash
+// HandleListTrash returns trashed items in a vault.
+// @Summary List trash
+// @Description List all soft-deleted items in a vault
+// @Tags Trash
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Success 200 {array} ItemResponse
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/trash [get]
 func (h *VaultHandlers) HandleListTrash(w http.ResponseWriter, r *http.Request) {
 	items, err := h.ListTrash.Execute(r.Context(), appvault.ListTrashInput{
 		Caller: middleware.CallerID(r.Context()), VaultID: vault.ID(chi.URLParam(r, "vaultId")),
@@ -283,7 +386,19 @@ func folderToDTO(f vault.Folder) FolderResponse {
 	}
 }
 
-// POST /api/v1/vaults/:vaultId/folders
+// HandleCreateFolder creates a new folder in a vault.
+// @Summary Create folder
+// @Description Create a new encrypted folder in the specified vault
+// @Tags Folders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param body body FolderCreateRequest true "Folder payload"
+// @Success 201 {object} FolderResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/folders [post]
 func (h *VaultHandlers) HandleCreateFolder(w http.ResponseWriter, r *http.Request) {
 	var req FolderCreateRequest
 	if err := readJSON(r, &req); err != nil {
@@ -306,7 +421,19 @@ func (h *VaultHandlers) HandleCreateFolder(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusCreated, folderToDTO(f))
 }
 
-// PUT /api/v1/vaults/:vaultId/folders/:folderId
+// HandleRenameFolder renames a folder.
+// @Summary Rename folder
+// @Description Update the encrypted name of a folder
+// @Tags Folders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param folderId path string true "Folder ID"
+// @Param body body FolderCreateRequest true "New encrypted name"
+// @Success 200 {object} FolderResponse
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/folders/{folderId} [put]
 func (h *VaultHandlers) HandleRenameFolder(w http.ResponseWriter, r *http.Request) {
 	var req FolderCreateRequest
 	if err := readJSON(r, &req); err != nil {
@@ -329,7 +456,16 @@ func (h *VaultHandlers) HandleRenameFolder(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, folderToDTO(f))
 }
 
-// DELETE /api/v1/vaults/:vaultId/folders/:folderId
+// HandleDeleteFolder deletes a folder.
+// @Summary Delete folder
+// @Description Delete a folder (items in the folder are not deleted, just unlinked)
+// @Tags Folders
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Param folderId path string true "Folder ID"
+// @Success 204 "No content"
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/folders/{folderId} [delete]
 func (h *VaultHandlers) HandleDeleteFolder(w http.ResponseWriter, r *http.Request) {
 	err := h.DeleteFolder.Execute(r.Context(), appvault.DeleteFolderInput{
 		Caller: middleware.CallerID(r.Context()), VaultID: vault.ID(chi.URLParam(r, "vaultId")),
@@ -342,7 +478,16 @@ func (h *VaultHandlers) HandleDeleteFolder(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /api/v1/vaults/:vaultId/folders
+// HandleListFolders returns all folders in a vault.
+// @Summary List folders
+// @Description List all folders in the specified vault
+// @Tags Folders
+// @Produce json
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Success 200 {array} FolderResponse
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId}/folders [get]
 func (h *VaultHandlers) HandleListFolders(w http.ResponseWriter, r *http.Request) {
 	folders, err := h.ListFolders.Execute(r.Context(), appvault.ListFoldersInput{
 		Caller: middleware.CallerID(r.Context()), VaultID: vault.ID(chi.URLParam(r, "vaultId")),

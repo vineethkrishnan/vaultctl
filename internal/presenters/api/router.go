@@ -7,9 +7,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
+
+	_ "github.com/vineethkrishnan/vaultctl/docs" // swagger generated docs
 )
 
 // Dependencies bundles the wired services the router needs.
@@ -36,6 +39,10 @@ func NewRouter(deps Dependencies) http.Handler {
 
 	requireAuth := middleware.RequireJWT(deps.Tokens)
 	requireStepUp := middleware.RequireStepUp(deps.Clock)
+
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
@@ -108,15 +115,26 @@ func NewRouter(deps Dependencies) http.Handler {
 	return r
 }
 
+// healthHandler returns server health status.
+// @Summary Health check
+// @Description Returns server health status
+// @Tags System
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /health [get]
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-// configHandler exposes server-side config that clients need to behave
-// correctly (e.g. clipboard timeout, vault lock timeout). It MUST NOT
-// expose any secret material.
+// configHandler returns public server configuration.
+// @Summary Server config
+// @Description Returns public server configuration (no secrets)
+// @Tags System
+// @Produce json
+// @Success 200 {object} map[string]any
+// @Router /config [get]
 func configHandler(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"version":          "v1",

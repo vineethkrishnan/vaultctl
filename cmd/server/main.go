@@ -6,6 +6,16 @@
 //   - vaultctl healthcheck  Probe /api/v1/health (used by container HEALTHCHECK)
 //   - vaultctl admin init   Bootstrap the first admin user
 //   - vaultctl <client>     Client commands (login, get, list, create, …) — M6 needed
+
+// @title vaultctl API
+// @version 1.0
+// @description Zero-knowledge, self-hosted password vault API
+// @host localhost:8080
+// @BasePath /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter "Bearer {token}" (include the word Bearer)
 package main
 
 import (
