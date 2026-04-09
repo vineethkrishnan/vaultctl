@@ -8,7 +8,8 @@ name: vaultctl-simple
 
 services:
   vaultctl:
-    image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-dev}
+    image: vineethnkrishnan/vaultctl:${VAULTCTL_VERSION:-latest}
+    command: ["server"]
     container_name: vaultctl-api
     restart: unless-stopped
     env_file: .env

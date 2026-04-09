@@ -65,7 +65,7 @@ migrate-down: ## Roll back one DB migration
 
 .PHONY: docker-build
 docker-build: ## Build the multi-stage Docker image
-	docker build -t ghcr.io/vineethkrishnan/vaultctl:$(VERSION) -t ghcr.io/vineethkrishnan/vaultctl:dev .
+	docker build -t ghcr.io/vineethkrishnan/vaultctl:$(VERSION) -t ghcr.io/vineethkrishnan/vaultctl:latest .
 
 .PHONY: compose-up
 compose-up: ## Start the Caddy + vaultctl + postgres stack

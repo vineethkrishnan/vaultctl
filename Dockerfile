@@ -43,3 +43,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD ["/usr/local/bin/vaultctl", "healthcheck"]
 
 ENTRYPOINT ["/usr/local/bin/vaultctl"]
+CMD ["server"]

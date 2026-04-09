@@ -46,7 +46,8 @@ confirm() {
   [[ "$answer" =~ ^[Yy]$ ]]
 }
 
-generate_secret() { openssl rand -base64 "$1"; }
+generate_secret() { openssl rand -base64 "$1" | tr -d '\n'; }
+generate_secret_urlsafe() { openssl rand -hex "$1"; }
 
 # =========================================================================
 print_banner
@@ -235,7 +236,8 @@ fi
 echo ""
 if confirm "Start vaultctl now?"; then
   info "Starting services with ${COMPOSE_FILE}..."
-  docker compose -f "$COMPOSE_FILE" up -d --build
+  docker compose -f "$COMPOSE_FILE" pull
+  docker compose -f "$COMPOSE_FILE" up -d
 
   # Wait for health
   info "Waiting for server to be ready..."
