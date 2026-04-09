@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.3...v1.1.4) (2026-04-09)
+
+
+### Bug Fixes
+
+* **ci:** deploy docs to production branch on cloudflare pages ([#25](https://github.com/vineethkrishnan/vaultctl/issues/25)) ([f38e16e](https://github.com/vineethkrishnan/vaultctl/commit/f38e16ed6cbd54d576811e1cf1deed67dbf3e73c))
+
 ## [1.1.3](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.2...v1.1.3) (2026-04-09)
 
 
