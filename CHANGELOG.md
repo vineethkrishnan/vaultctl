@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.0...v1.1.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **ci:** skip SLSA attestation on private repos ([77e6e7a](https://github.com/vineethkrishnan/vaultctl/commit/77e6e7a21be132bbeb0c956ed2e3d68d8080c864))
+* **docs:** repair cloudflare pages deployment for docs-site ([#20](https://github.com/vineethkrishnan/vaultctl/issues/20)) ([def6f41](https://github.com/vineethkrishnan/vaultctl/commit/def6f4110a5263ea39de25d15b57f79adba111b7))
+
 ## [1.1.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.0.1...v1.1.0) (2026-04-07)
 
 
