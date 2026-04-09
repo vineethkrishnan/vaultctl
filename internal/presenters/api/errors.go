@@ -10,6 +10,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 )
 
 // maxBodySize caps JSON request bodies at 1 MiB to prevent memory exhaustion.
@@ -82,6 +83,8 @@ func mapErr(err error) (code string, status int, field string) {
 		return "REGISTRATION_DISABLED", http.StatusForbidden, ""
 	case errors.Is(err, auth.ErrInviteRequired):
 		return "INVITE_REQUIRED", http.StatusBadRequest, "inviteToken"
+	case errors.Is(err, user.ErrInvalidRole):
+		return "INVALID_ROLE", http.StatusBadRequest, "role"
 	}
 	// Vault authorization
 	switch {

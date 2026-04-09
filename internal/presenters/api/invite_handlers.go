@@ -53,6 +53,15 @@ func (h *InviteHandlers) HandleCreateInvite(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	const (
+		minInviteTTL = 1 * time.Hour
+		maxInviteTTL = 30 * 24 * time.Hour // 30 days
+	)
+	if expiresIn < minInviteTTL || expiresIn > maxInviteTTL {
+		writeError(w, r, &domain.Invalid{Field: "expiresIn", Message: "must be between 1h and 30d"})
+		return
+	}
+
 	// TODO: resolve caller's org from membership; for now accept a
 	// hardcoded single-org model where the org_id is derived upstream.
 	// The admin's org is carried in their claims or looked up from their

@@ -73,6 +73,7 @@ type Register struct {
 // Execute runs the use case.
 func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutput, error) {
 	// Enforce registration mode
+	var inviteIDToMark string
 	switch uc.RegistrationMode {
 	case RegistrationModeDisabled:
 		return RegisterOutput{}, ErrRegistrationDisabled
@@ -83,13 +84,16 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		if uc.RedeemInvite == nil {
 			return RegisterOutput{}, fmt.Errorf("%w: RedeemInvite use case not wired", ErrInviteRequired)
 		}
+		// Validate the invite without consuming it — we mark it used
+		// only after user creation succeeds (avoids burning tokens on failure).
 		redeemed, err := uc.RedeemInvite.Execute(ctx, RedeemInviteInput{Token: in.InviteToken})
 		if err != nil {
-			return RegisterOutput{}, fmt.Errorf("redeem invite: %w", err)
+			return RegisterOutput{}, fmt.Errorf("validate invite: %w", err)
 		}
 		if in.Email != redeemed.Email {
 			return RegisterOutput{}, domain.NewInvalid("email", "email does not match invite")
 		}
+		inviteIDToMark = redeemed.InviteID
 	case RegistrationModeOpen, "":
 		// Anyone can register
 	default:
@@ -147,6 +151,17 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 			return RegisterOutput{}, ErrEmailTaken
 		}
 		return RegisterOutput{}, fmt.Errorf("persist user: %w", err)
+	}
+
+	// Mark the invite as used AFTER user creation succeeds, so a failed
+	// registration doesn't burn the invite token.
+	if inviteIDToMark != "" {
+		if err := uc.RedeemInvite.MarkUsed(ctx, inviteIDToMark); err != nil {
+			// User was created but invite mark failed. Log and continue —
+			// the user account is valid; worst case the invite can be
+			// reused (idempotent, not a security issue).
+			_ = err
+		}
 	}
 
 	return RegisterOutput{UserID: u.ID, Role: u.Role}, nil

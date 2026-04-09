@@ -103,7 +103,7 @@ func RequireStepUp(clock ports.Clock) func(http.Handler) http.Handler {
 
 // APIKeyValidator is the interface for validating API keys in middleware.
 type APIKeyValidator interface {
-	Validate(ctx context.Context, rawKey string) (userID string, err error)
+	Validate(ctx context.Context, rawKey string) (userID string, role string, err error)
 }
 
 // RequireJWTOrAPIKey tries JWT validation first; if that fails, falls back
@@ -126,9 +126,9 @@ func RequireJWTOrAPIKey(tokens ports.TokenIssuer, apiKeys APIKeyValidator) func(
 
 			// JWT failed — try API key
 			if apiKeys != nil {
-				userID, apiErr := apiKeys.Validate(r.Context(), tok)
+				userID, role, apiErr := apiKeys.Validate(r.Context(), tok)
 				if apiErr == nil {
-					next.ServeHTTP(w, injectCaller(r, user.ID(userID), user.RoleMember, nil))
+					next.ServeHTTP(w, injectCaller(r, user.ID(userID), user.Role(role), nil))
 					return
 				}
 			}
@@ -146,5 +146,6 @@ func extractBearer(h string) (string, bool) {
 	if !strings.EqualFold(parts[0], "Bearer") {
 		return "", false
 	}
-	return strings.TrimSpace(parts[1]), parts[1] != ""
+	tok := strings.TrimSpace(parts[1])
+	return tok, tok != ""
 }

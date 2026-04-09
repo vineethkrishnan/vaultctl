@@ -28,6 +28,7 @@ type Dependencies struct {
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
 	RegistrationMode   string
+	Env                string
 }
 
 // NewRouter assembles the chi router with the full middleware stack and
@@ -46,9 +47,11 @@ func NewRouter(deps Dependencies) http.Handler {
 	requireStepUp := middleware.RequireStepUp(deps.Clock)
 	requireAdmin := middleware.RequireRole(user.RoleAdmin)
 
-	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json"),
-	))
+	if deps.Env != "production" {
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		))
+	}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)

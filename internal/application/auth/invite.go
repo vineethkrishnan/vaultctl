@@ -105,19 +105,23 @@ type RedeemInviteInput struct {
 // RedeemInviteOutput returns the email + role so the registration flow can
 // pre-fill and enforce them.
 type RedeemInviteOutput struct {
-	OrgID string
-	Email string
-	Role  user.Role
+	InviteID string
+	OrgID    string
+	Email    string
+	Role     user.Role
 }
 
-// RedeemInvite validates and marks an invite as used.
+// RedeemInvite validates an invite token and returns its details. The invite
+// is NOT marked as used until MarkUsed is called — this allows the caller
+// to perform dependent operations (e.g. user creation) before consuming
+// the invite, avoiding TOCTOU races that burn tokens on failure.
 type RedeemInvite struct {
 	Invites ports.InviteRepository
 	HMAC    ports.HMACer
 	Clock   ports.Clock
 }
 
-// Execute redeems the invite.
+// Execute validates the invite and returns its details without consuming it.
 func (uc *RedeemInvite) Execute(ctx context.Context, in RedeemInviteInput) (RedeemInviteOutput, error) {
 	if in.Token == "" {
 		return RedeemInviteOutput{}, domain.NewInvalid("token", "required")
@@ -134,15 +138,18 @@ func (uc *RedeemInvite) Execute(ctx context.Context, in RedeemInviteInput) (Rede
 		return RedeemInviteOutput{}, ErrInviteNotRedeemable
 	}
 
-	if err := uc.Invites.MarkUsed(ctx, string(inv.ID), now); err != nil {
-		return RedeemInviteOutput{}, fmt.Errorf("mark invite used: %w", err)
-	}
-
 	return RedeemInviteOutput{
-		OrgID: string(inv.OrgID),
-		Email: inv.Email.String(),
-		Role:  inv.Role,
+		InviteID: string(inv.ID),
+		OrgID:    string(inv.OrgID),
+		Email:    inv.Email.String(),
+		Role:     inv.Role,
 	}, nil
+}
+
+// MarkUsed marks a validated invite as consumed. Call this AFTER the
+// dependent operation (e.g. user creation) has succeeded.
+func (uc *RedeemInvite) MarkUsed(ctx context.Context, inviteID string) error {
+	return uc.Invites.MarkUsed(ctx, inviteID, uc.Clock.Now())
 }
 
 // ===========================================================================
@@ -172,13 +179,13 @@ func (uc *RevokeInvite) Execute(ctx context.Context, in RevokeInviteInput) error
 		return err
 	}
 
-	now := uc.Clock.Now()
-	revoked := inv.Revoke(now)
-	if revoked.RevokedAt == nil {
-		// Already revoked — idempotent success
+	// Already revoked — idempotent success
+	if inv.RevokedAt != nil {
 		return nil
 	}
 
+	now := uc.Clock.Now()
+	revoked := inv.Revoke(now)
 	return uc.Invites.MarkRevoked(ctx, in.InviteID, *revoked.RevokedAt)
 }
 

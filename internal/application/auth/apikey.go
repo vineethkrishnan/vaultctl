@@ -51,11 +51,21 @@ type CreateAPIKey struct {
 	IDs            ports.IDGenerator
 }
 
+// API key TTL bounds.
+const (
+	minKeyTTL = 1 * time.Hour
+	maxKeyTTL = 365 * 24 * time.Hour // 1 year
+)
+
 // Execute generates a random key, HMAC-hashes it for storage, persists the
 // row, and returns the raw key exactly once.
 func (uc *CreateAPIKey) Execute(ctx context.Context, in CreateAPIKeyInput) (CreateAPIKeyOutput, error) {
 	if in.Name == "" {
 		return CreateAPIKeyOutput{}, domain.NewInvalid("name", "required")
+	}
+
+	if in.ExpiresIn != nil && (*in.ExpiresIn < minKeyTTL || *in.ExpiresIn > maxKeyTTL) {
+		return CreateAPIKeyOutput{}, domain.NewInvalid("expiresIn", "must be between 1h and 365d")
 	}
 
 	rawKey, err := uc.TokenGenerator.APIKey()

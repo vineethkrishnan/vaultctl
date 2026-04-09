@@ -197,7 +197,8 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 	}
 
 	apiKeyValidator := &apiKeyValidatorAdapter{
-		uc: &auth.ValidateAPIKey{APIKeys: a.apikeys, HMAC: a.hmac, Clock: a.clock},
+		uc:    &auth.ValidateAPIKey{APIKeys: a.apikeys, HMAC: a.hmac, Clock: a.clock},
+		Users: a.users,
 	}
 
 	return api.Dependencies{
@@ -211,6 +212,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 		RegistrationMode:   cfg.RegistrationMode,
+		Env:                string(cfg.Env),
 	}
 }
 
@@ -238,13 +240,21 @@ func (a *jwtServiceAdapter) Verify(token string) (ports.AccessClaims, error) {
 // apiKeyValidatorAdapter bridges the ValidateAPIKey use case into the
 // middleware.APIKeyValidator interface.
 type apiKeyValidatorAdapter struct {
-	uc *auth.ValidateAPIKey
+	uc    *auth.ValidateAPIKey
+	Users ports.UserRepository
 }
 
-func (a *apiKeyValidatorAdapter) Validate(ctx context.Context, rawKey string) (string, error) {
+func (a *apiKeyValidatorAdapter) Validate(ctx context.Context, rawKey string) (string, string, error) {
 	out, err := a.uc.Execute(ctx, auth.ValidateAPIKeyInput{RawKey: rawKey})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return string(out.UserID), nil
+
+	// Look up the user to get their current role and verify they still exist.
+	u, err := a.Users.FindByID(ctx, out.UserID)
+	if err != nil {
+		return "", "", err
+	}
+
+	return string(out.UserID), string(u.Role), nil
 }

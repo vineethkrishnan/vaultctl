@@ -31,7 +31,7 @@ func (r *APIKeyRepo) GetByHash(ctx context.Context, keyHash string) (user.APIKey
 
 func (r *APIKeyRepo) ListByUser(ctx context.Context, userID user.ID) ([]user.APIKey, error) {
 	rows, err := r.Pool.Query(ctx, `
-		SELECT id, user_id, name, key_hash, key_prefix, last_used_at, expires_at, created_at
+		SELECT id, user_id, name, '' as key_hash, key_prefix, last_used_at, expires_at, created_at
 		FROM api_keys WHERE user_id = $1 ORDER BY created_at DESC
 	`, string(userID))
 	if err != nil {
