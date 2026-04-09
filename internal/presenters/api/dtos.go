@@ -25,6 +25,7 @@ type RegisterRequest struct {
 	PublicKey                   string `json:"publicKey"`
 	PublicKeySignature          string `json:"publicKeySignature"`
 	IdentityPublicKey           string `json:"identityPublicKey"`
+	InviteToken                 string `json:"inviteToken,omitempty"` // required when registration mode is "invite"
 }
 
 type RegisterResponse struct {

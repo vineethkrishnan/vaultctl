@@ -24,6 +24,7 @@ type Dependencies struct {
 	Vault              *VaultHandlers
 	APIKey             *APIKeyHandlers
 	Invite             *InviteHandlers
+	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
 }
@@ -40,7 +41,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS(deps.CORSAllowedOrigins))
 
-	requireAuth := middleware.RequireJWT(deps.Tokens)
+	requireAuth := middleware.RequireJWTOrAPIKey(deps.Tokens, deps.APIKeyValidator)
 	requireStepUp := middleware.RequireStepUp(deps.Clock)
 	requireAdmin := middleware.RequireRole(user.RoleAdmin)
 

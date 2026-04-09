@@ -35,6 +35,9 @@ type RegisterInput struct {
 	// issuing a user row. It is NOT persisted, logged, or transmitted
 	// anywhere — the caller's handler strips it from logs (C4).
 	MasterPasswordPreflight string
+	// InviteToken is required when RegistrationMode is "invite".
+	// The server redeems it before creating the user.
+	InviteToken string
 }
 
 // RegisterOutput is what the API layer returns to the client.
@@ -43,18 +46,51 @@ type RegisterOutput struct {
 	Role   user.Role
 }
 
+// ErrRegistrationDisabled signals that new registrations are not allowed.
+var ErrRegistrationDisabled = errors.New("auth: registration is disabled")
+
+// ErrInviteRequired signals that an invite token is required to register.
+var ErrInviteRequired = errors.New("auth: invite token required")
+
 // Register is the user-creation use case.
 type Register struct {
-	Users    ports.UserRepository
-	Hasher   ports.AuthHasher
-	Clock    ports.Clock
-	IDs      ports.IDGenerator
-	Policy   user.MasterPasswordPolicy
-	DefaultRole user.Role
+	Users            ports.UserRepository
+	Hasher           ports.AuthHasher
+	Clock            ports.Clock
+	IDs              ports.IDGenerator
+	Policy           user.MasterPasswordPolicy
+	DefaultRole      user.Role
+	RegistrationMode string // "open", "invite", "disabled"
+	RedeemInvite     *RedeemInvite // nil when mode is "open"
 }
 
 // Execute runs the use case.
 func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutput, error) {
+	// Enforce registration mode
+	switch uc.RegistrationMode {
+	case "disabled":
+		return RegisterOutput{}, ErrRegistrationDisabled
+	case "invite":
+		if in.InviteToken == "" {
+			return RegisterOutput{}, ErrInviteRequired
+		}
+		if uc.RedeemInvite == nil {
+			return RegisterOutput{}, fmt.Errorf("invite mode configured but no RedeemInvite use case wired")
+		}
+		redeemed, err := uc.RedeemInvite.Execute(ctx, RedeemInviteInput{Token: in.InviteToken})
+		if err != nil {
+			return RegisterOutput{}, fmt.Errorf("redeem invite: %w", err)
+		}
+		// Enforce that registration email matches the invite
+		if in.Email != redeemed.Email {
+			return RegisterOutput{}, domain.NewInvalid("email", "email does not match invite")
+		}
+	case "open", "":
+		// Anyone can register
+	default:
+		return RegisterOutput{}, fmt.Errorf("unknown registration mode: %s", uc.RegistrationMode)
+	}
+
 	if err := user.ValidateMasterPassword(in.MasterPasswordPreflight, uc.Policy); err != nil {
 		return RegisterOutput{}, fmt.Errorf("%w: %v", ErrWeakMasterPassword, err) //nolint:errorlint // intentional: wrap sentinel, don't double-wrap cause
 	}

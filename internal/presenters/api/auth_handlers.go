@@ -109,6 +109,7 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		PublicKey:                   pubKey,
 		PublicKeySignature:          sig,
 		IdentityPublicKey:           idPub,
+		InviteToken:                 req.InviteToken,
 	})
 	if err != nil {
 		writeError(w, r, err)

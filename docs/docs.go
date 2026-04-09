@@ -2096,6 +2096,10 @@ const docTemplate = `{
                 "identityPublicKey": {
                     "type": "string"
                 },
+                "inviteToken": {
+                    "description": "required when registration mode is \"invite\"",
+                    "type": "string"
+                },
                 "kdfIterations": {
                     "type": "integer"
                 },

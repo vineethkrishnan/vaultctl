@@ -118,6 +118,10 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
 			Policy: user.DefaultPolicy(), DefaultRole: user.RoleMember,
+			RegistrationMode: cfg.RegistrationMode,
+			RedeemInvite: &auth.RedeemInvite{
+				Invites: a.invites, HMAC: a.hmac, Clock: a.clock,
+			},
 		},
 		Prelogin: &auth.Prelogin{Users: a.users, HMAC: a.hmac, DefaultKDF: user.DefaultKDFParams()},
 		Login: &auth.Login{
@@ -192,6 +196,10 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		RekeyVault:   &appvault.RekeyVault{Vaults: a.vaults, Items: a.items},
 	}
 
+	apiKeyValidator := &apiKeyValidatorAdapter{
+		uc: &auth.ValidateAPIKey{APIKeys: a.apikeys, HMAC: a.hmac, Clock: a.clock},
+	}
+
 	return api.Dependencies{
 		Tokens:             tokens,
 		Clock:              a.clock,
@@ -199,6 +207,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		Vault:              vaultHandlers,
 		APIKey:             apiKeyHandlers,
 		Invite:             inviteHandlers,
+		APIKeyValidator:    apiKeyValidator,
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 	}
@@ -223,4 +232,18 @@ func (a *jwtServiceAdapter) Verify(token string) (ports.AccessClaims, error) {
 		out.StepUpUntil = time.Unix(claims.StepUpExp, 0)
 	}
 	return out, nil
+}
+
+// apiKeyValidatorAdapter bridges the ValidateAPIKey use case into the
+// middleware.APIKeyValidator interface.
+type apiKeyValidatorAdapter struct {
+	uc *auth.ValidateAPIKey
+}
+
+func (a *apiKeyValidatorAdapter) Validate(ctx context.Context, rawKey string) (string, error) {
+	out, err := a.uc.Execute(ctx, auth.ValidateAPIKeyInput{RawKey: rawKey})
+	if err != nil {
+		return "", err
+	}
+	return string(out.UserID), nil
 }

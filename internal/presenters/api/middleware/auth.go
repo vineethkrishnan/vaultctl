@@ -95,6 +95,51 @@ func RequireStepUp(clock ports.Clock) func(http.Handler) http.Handler {
 	}
 }
 
+// APIKeyValidator is the interface for validating API keys in middleware.
+type APIKeyValidator interface {
+	Validate(ctx context.Context, rawKey string) (userID string, err error)
+}
+
+// RequireJWTOrAPIKey tries JWT validation first; if no Bearer token is present,
+// it falls back to API key validation. This allows endpoints to accept either
+// authentication method.
+func RequireJWTOrAPIKey(tokens ports.TokenIssuer, apiKeys APIKeyValidator) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tok, ok := extractBearer(r.Header.Get("Authorization"))
+			if !ok {
+				writeErr(w, http.StatusUnauthorized, "UNAUTHENTICATED", "missing bearer token")
+				return
+			}
+
+			// Try JWT first
+			claims, err := tokens.Verify(tok)
+			if err == nil {
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, ctxCallerID, user.ID(claims.UserID))
+				ctx = context.WithValue(ctx, ctxCallerRole, user.Role(claims.Role))
+				ctx = context.WithValue(ctx, ctxClaims, claims)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			// JWT failed — try API key
+			if apiKeys != nil {
+				userID, apiErr := apiKeys.Validate(r.Context(), tok)
+				if apiErr == nil {
+					ctx := r.Context()
+					ctx = context.WithValue(ctx, ctxCallerID, user.ID(userID))
+					ctx = context.WithValue(ctx, ctxCallerRole, user.Role("member"))
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
+
+			writeErr(w, http.StatusUnauthorized, "TOKEN_INVALID", "invalid or expired token")
+		})
+	}
+}
+
 func extractBearer(h string) (string, bool) {
 	parts := strings.SplitN(h, " ", 2)
 	if len(parts) != 2 {
