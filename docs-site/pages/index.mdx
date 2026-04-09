@@ -1,41 +1,97 @@
-# vaultctl
+{/* Landing page — no sidebar, full width */}
 
-## Zero-knowledge, self-hosted password vault
+<div className="hero">
+  <h1>Your passwords,<br/>your infrastructure</h1>
+  <p className="subtitle">
+    vaultctl is a zero-knowledge, self-hosted password vault. Encryption happens
+    on your device — the server stores only ciphertext. Not even the admin can
+    read your data.
+  </p>
 
-Your passwords are encrypted on your device before they ever leave it. The server never sees your plaintext data — not even we can read it.
+  <div className="hero-actions">
+    <a href="/getting-started/installation" className="primary">Get Started</a>
+    <a href="https://github.com/vineethkrishnan/vaultctl" target="_blank" rel="noopener" className="secondary">
+      View on GitHub
+    </a>
+  </div>
 
-import { Cards, Card } from 'nextra/components'
+  <div className="badges">
+    <img src="https://img.shields.io/github/v/release/vineethkrishnan/vaultctl?style=flat-square&color=0f172a" alt="Release" />
+    <img src="https://img.shields.io/github/license/vineethkrishnan/vaultctl?style=flat-square&color=334155" alt="License" />
+    <img src="https://img.shields.io/docker/pulls/vineethnkrishnan/vaultctl?style=flat-square&color=1e40af" alt="Docker pulls" />
+  </div>
+</div>
 
-<Cards>
-  <Card title="Getting Started" href="/getting-started" arrow>
-    Install in 2 minutes. One command setup.
-  </Card>
-  <Card title="User Manual" href="/user-manual" arrow>
-    Learn how to use every feature of vaultctl.
-  </Card>
-  <Card title="API Docs" href="/api-docs" arrow>
-    Full REST API reference for developers.
-  </Card>
-  <Card title="Knowledge Base" href="/knowledge-base" arrow>
-    Encryption, architecture, security deep-dives.
-  </Card>
-  <Card title="Help Center" href="/help-center" arrow>
-    FAQs, troubleshooting, self-hosting guides.
-  </Card>
-</Cards>
+<div className="features">
+  <div className="feature-card">
+    <div className="icon">🔐</div>
+    <h3>Zero-Knowledge Encryption</h3>
+    <p>AES-256-GCM with Argon2id key derivation. All crypto runs client-side — the server never sees plaintext.</p>
+  </div>
+
+  <div className="feature-card">
+    <div className="icon">🏠</div>
+    <h3>Fully Self-Hosted</h3>
+    <p>One command deploys everything. Docker, binary, or Kubernetes — your data stays on your infrastructure.</p>
+  </div>
+
+  <div className="feature-card">
+    <div className="icon">📦</div>
+    <h3>7 Item Types</h3>
+    <p>Logins, secure notes, cards, identities, API keys, SSH keys, and passkeys — all encrypted at rest.</p>
+  </div>
+
+  <div className="feature-card">
+    <div className="icon">🌐</div>
+    <h3>Browser Extension</h3>
+    <p>Chrome + Firefox with autofill, auto-save, and TOTP code generation built in.</p>
+  </div>
+
+  <div className="feature-card">
+    <div className="icon">🔄</div>
+    <h3>Easy Migration</h3>
+    <p>Import from Bitwarden, 1Password, LastPass, and other managers. Export anytime.</p>
+  </div>
+
+  <div className="feature-card">
+    <div className="icon">🛡️</div>
+    <h3>Open Source & Auditable</h3>
+    <p>AGPL-3.0 licensed. Cosign-signed releases with SLSA provenance and SBOM attestations.</p>
+  </div>
+</div>
+
+<div className="install-banner">
+  <p>Deploy in under 2 minutes</p>
+  <code>curl -fsSL https://vaultctl.dev/install.sh | bash</code>
+</div>
 
 ---
 
-### Why vaultctl?
+## Documentation
 
-| | |
-|---|---|
-| **Zero-Knowledge** | AES-256-GCM encryption happens in your browser. The server stores only ciphertext. |
-| **Self-Hosted** | One command deploys everything. Your data stays on your infrastructure. |
-| **7 Item Types** | Logins, notes, cards, identities, API keys, SSH keys, passkeys. |
-| **Browser Extension** | Chrome + Firefox with autofill, auto-save, TOTP code gen. |
-| **Open Source** | MIT licensed. Audit the code yourself. |
-
-```bash
-curl -fsSL https://vaultctl.dev/install.sh | bash
-```
+<div className="section-grid">
+  <a href="/getting-started" className="section-card">
+    <h3>Getting Started</h3>
+    <p>Install, create your first account, and learn the core concepts.</p>
+  </a>
+  <a href="/user-manual" className="section-card">
+    <h3>User Manual</h3>
+    <p>Vault items, folders, sharing, 2FA, browser extension, and more.</p>
+  </a>
+  <a href="/api-docs" className="section-card">
+    <h3>API Reference</h3>
+    <p>Full REST API docs for authentication, vaults, items, and TOTP.</p>
+  </a>
+  <a href="/knowledge-base" className="section-card">
+    <h3>Knowledge Base</h3>
+    <p>Encryption internals, zero-knowledge design, threat model, blob format.</p>
+  </a>
+  <a href="/help-center" className="section-card">
+    <h3>Help Center</h3>
+    <p>FAQs, troubleshooting, server configuration, reverse proxy, backups.</p>
+  </a>
+  <a href="/getting-started/installation" className="section-card">
+    <h3>All Install Methods</h3>
+    <p>Docker Hub, GHCR, Compose, binary, Kubernetes — every way to deploy.</p>
+  </a>
+</div>

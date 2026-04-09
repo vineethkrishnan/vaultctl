@@ -27,11 +27,66 @@ curl -fsSL https://vaultctl.dev/install.sh | bash
 
 ---
 
-## Manual Installation
+## Docker Images
 
-<Tabs items={['Docker Compose', 'Binary', 'Kubernetes']}>
+Official multi-arch images (`linux/amd64`, `linux/arm64`) are published to both registries on every release. All images are signed with [cosign](https://docs.sigstore.dev/cosign/overview/) keyless signatures.
+
+<Tabs items={['Docker Hub', 'GitHub Container Registry']}>
   <Tabs.Tab>
-### Docker Compose
+```bash
+docker pull vineethnkrishnan/vaultctl:latest
+
+# or pin to a specific version
+docker pull vineethnkrishnan/vaultctl:1.1.3
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+docker pull ghcr.io/vineethkrishnan/vaultctl:latest
+
+# or pin to a specific version
+docker pull ghcr.io/vineethkrishnan/vaultctl:1.1.3
+```
+  </Tabs.Tab>
+</Tabs>
+
+### Verify image signature
+
+```bash
+cosign verify vineethnkrishnan/vaultctl:latest \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp 'github\.com/vineethkrishnan/vaultctl'
+```
+
+### Run directly
+
+```bash
+docker run -d --name vaultctl \
+  -p 8080:8080 \
+  -e VAULTCTL_DATABASE_URL="postgres://user:pass@host:5432/vaultctl?sslmode=disable" \
+  -e VAULTCTL_JWT_SECRET_CURRENT="$(openssl rand -base64 32)" \
+  -e VAULTCTL_SERVER_PEPPER="$(openssl rand -base64 32)" \
+  -e VAULTCTL_ENUMERATION_PEPPER="$(openssl rand -base64 32)" \
+  -e VAULTCTL_DATA_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
+  vineethnkrishnan/vaultctl:latest
+```
+
+<Callout type="warning">
+  Always put a TLS-terminating reverse proxy (Caddy, nginx, Traefik) in front. Never expose port 8080 directly to the internet.
+</Callout>
+
+---
+
+## Docker Compose
+
+Two compose variants are provided in the repository.
+
+<Tabs items={['Full Stack (with TLS)', 'Simple (BYO Proxy)']}>
+  <Tabs.Tab>
+### Full Stack — Caddy + vaultctl + PostgreSQL
+
+Includes Caddy for automatic HTTPS via Let's Encrypt.
 
 <Steps>
 ### Clone the repository
@@ -51,7 +106,8 @@ Edit `.env` and set these required values:
 
 ```env
 VAULTCTL_ENV=production
-VAULTCTL_DATABASE_URL=postgres://vaultctl:changeme@db:5432/vaultctl?sslmode=disable
+VAULTCTL_BASE_URL=https://vault.yourdomain.com
+VAULTCTL_DB_PASSWORD=<generate-a-strong-password>
 
 # Generate each with: openssl rand -base64 32
 VAULTCTL_JWT_SECRET_CURRENT=<generate>
@@ -77,62 +133,129 @@ docker compose up -d
 ### Verify
 
 ```bash
-curl https://your-domain.com/api/v1/health
+curl https://vault.yourdomain.com/api/v1/health
 # → {"status":"ok"}
 ```
 </Steps>
   </Tabs.Tab>
 
   <Tabs.Tab>
-### Binary Installation
+### Simple — vaultctl + PostgreSQL (no Caddy)
 
-For servers where you don't want Docker.
+Use when you already have a reverse proxy (nginx, Traefik, Cloudflare Tunnel, etc.).
+The API is exposed on `127.0.0.1:8080` only.
 
 <Steps>
-### Download
+### Clone the repository
 
 ```bash
-# Linux (amd64)
+git clone https://github.com/vineethkrishnan/vaultctl.git
+cd vaultctl
+```
+
+### Configure environment
+
+```bash
+cp .env.example .env
+# Edit .env with your secrets (see Full Stack tab for required values)
+```
+
+### Start services
+
+```bash
+docker compose -f docker-compose.simple.yml up -d
+```
+
+### Verify
+
+```bash
+curl http://127.0.0.1:8080/api/v1/health
+# → {"status":"ok"}
+```
+</Steps>
+
+Point your reverse proxy at `127.0.0.1:8080`. See [Reverse Proxy Setup](/help-center/reverse-proxy) for examples.
+  </Tabs.Tab>
+</Tabs>
+
+---
+
+## Binary
+
+Pre-built binaries are available on [GitHub Releases](https://github.com/vineethkrishnan/vaultctl/releases/latest) for all major platforms. Each release includes SHA-256 checksums signed with cosign and per-archive SBOMs.
+
+<Tabs items={['Linux', 'macOS', 'Windows']}>
+  <Tabs.Tab>
+```bash
+# amd64
 curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_linux_amd64.tar.gz | tar xz
 
-# Linux (arm64)
+# arm64
 curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_linux_arm64.tar.gz | tar xz
 
-# macOS (Apple Silicon)
+sudo mv vaultctl /usr/local/bin/
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+```bash
+# Apple Silicon (M1/M2/M3/M4)
 curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_darwin_arm64.tar.gz | tar xz
+
+# Intel
+curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_darwin_amd64.tar.gz | tar xz
+
+sudo mv vaultctl /usr/local/bin/
+```
+  </Tabs.Tab>
+
+  <Tabs.Tab>
+Download from [GitHub Releases](https://github.com/vineethkrishnan/vaultctl/releases/latest):
+
+- `vaultctl_windows_amd64.zip`
+- `vaultctl_windows_arm64.zip`
+
+Extract and add the directory to your `PATH`.
+  </Tabs.Tab>
+</Tabs>
+
+### Verify checksums
+
+```bash
+# Download checksums and signature
+curl -LO https://github.com/vineethkrishnan/vaultctl/releases/latest/download/checksums.txt
+curl -LO https://github.com/vineethkrishnan/vaultctl/releases/latest/download/checksums.txt.sig
+curl -LO https://github.com/vineethkrishnan/vaultctl/releases/latest/download/checksums.txt.pem
+
+# Verify signature
+cosign verify-blob checksums.txt \
+  --signature checksums.txt.sig \
+  --certificate checksums.txt.pem \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp 'github\.com/vineethkrishnan/vaultctl'
+
+# Verify file integrity
+sha256sum -c checksums.txt --ignore-missing
 ```
 
 ### Prerequisites
 
 - PostgreSQL 16+ running and accessible
-- A database created for vaultctl
-- A reverse proxy (Caddy or nginx) for TLS
+- A reverse proxy (Caddy or nginx) for TLS termination
 
-### Configure
-
-```bash
-cp .env.example .env
-# Edit .env with your DATABASE_URL and secrets
-```
-
-### Run migrations
+### Run
 
 ```bash
-./vaultctl migrate up
+# Run database migrations
+vaultctl migrate up
+
+# Start the server (listens on :8080)
+vaultctl server
 ```
 
-### Start
+---
 
-```bash
-./vaultctl server
-```
-
-The server listens on `:8080` by default. Put a TLS-terminating reverse proxy in front.
-</Steps>
-  </Tabs.Tab>
-
-  <Tabs.Tab>
-### Kubernetes
+## Kubernetes
 
 A Helm chart is planned for a future release. For now, use the Docker image directly:
 
@@ -143,7 +266,13 @@ metadata:
   name: vaultctl
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: vaultctl
   template:
+    metadata:
+      labels:
+        app: vaultctl
     spec:
       containers:
         - name: vaultctl
@@ -158,11 +287,29 @@ spec:
               path: /api/v1/health
               port: 8080
             initialDelaySeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultctl
+spec:
+  selector:
+    app: vaultctl
+  ports:
+    - port: 80
+      targetPort: 8080
 ```
 
 Create a Secret with all required environment variables. See the [Configuration](/help-center/configuration) page for the complete list.
-  </Tabs.Tab>
-</Tabs>
+
+<Callout type="info">
+  You can use either `ghcr.io/vineethkrishnan/vaultctl` or `vineethnkrishnan/vaultctl` (Docker Hub) — both are identical multi-arch images.
+</Callout>
 
 ---
 

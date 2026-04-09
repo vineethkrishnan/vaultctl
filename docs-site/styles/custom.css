@@ -1,0 +1,253 @@
+/* ─── Landing page hero ─── */
+.hero {
+  padding: 4rem 0 3rem;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+:is(html[class~="dark"]) .hero h1 {
+  background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 50%, #60a5fa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.hero .subtitle {
+  font-size: 1.25rem;
+  color: #64748b;
+  max-width: 640px;
+  margin: 1.25rem auto 0;
+  line-height: 1.6;
+}
+
+:is(html[class~="dark"]) .hero .subtitle {
+  color: #94a3b8;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.hero-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.hero-actions .primary {
+  background: #0f172a;
+  color: #fff;
+  border: 1px solid #0f172a;
+}
+
+.hero-actions .primary:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+:is(html[class~="dark"]) .hero-actions .primary {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+:is(html[class~="dark"]) .hero-actions .primary:hover {
+  background: #f1f5f9;
+}
+
+.hero-actions .secondary {
+  background: transparent;
+  color: #0f172a;
+  border: 1px solid #d1d5db;
+}
+
+.hero-actions .secondary:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+:is(html[class~="dark"]) .hero-actions .secondary {
+  color: #e2e8f0;
+  border-color: #374151;
+}
+
+:is(html[class~="dark"]) .hero-actions .secondary:hover {
+  background: #1e293b;
+  border-color: #4b5563;
+}
+
+/* ─── Feature grid ─── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin: 3rem 0;
+}
+
+@media (max-width: 768px) {
+  .features {
+    grid-template-columns: 1fr;
+  }
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+}
+
+.feature-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+:is(html[class~="dark"]) .feature-card {
+  background: #111827;
+  border-color: #1f2937;
+}
+
+:is(html[class~="dark"]) .feature-card:hover {
+  border-color: #374151;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.feature-card .icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.feature-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.feature-card p {
+  font-size: 0.9rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+:is(html[class~="dark"]) .feature-card p {
+  color: #94a3b8;
+}
+
+/* ─── Install banner ─── */
+.install-banner {
+  margin: 2rem 0;
+  padding: 1.5rem 2rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+  text-align: center;
+}
+
+:is(html[class~="dark"]) .install-banner {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #1f2937;
+}
+
+.install-banner p {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.install-banner code {
+  display: inline-block;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+  font-size: 0.95rem;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+
+/* ─── Section cards (index pages) ─── */
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.section-card {
+  display: block;
+  padding: 1.25rem 1.5rem;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.section-card:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+:is(html[class~="dark"]) .section-card {
+  border-color: #1f2937;
+}
+
+:is(html[class~="dark"]) .section-card:hover {
+  border-color: #3b82f6;
+  background: #172554;
+}
+
+.section-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+}
+
+.section-card p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+:is(html[class~="dark"]) .section-card p {
+  color: #94a3b8;
+}
+
+/* ─── Badges row ─── */
+.badges {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.badges img {
+  height: 22px;
+}
