@@ -64,6 +64,19 @@ type UserRepository interface {
 
 	// DisableTOTP sets totp_enabled = false and clears the secret.
 	DisableTOTP(ctx context.Context, id user.ID) error
+
+	// GetHint returns the server-encrypted password hint for a user
+	// identified by email. Returns nil hint when no hint is set.
+	GetHint(ctx context.Context, email user.Email) ([]byte, error)
+
+	// GetRecoveryMaterial returns the encrypted key material needed for
+	// account recovery. The client uses its recovery key to try decrypting
+	// these blobs locally.
+	GetRecoveryMaterial(ctx context.Context, email user.Email) (u user.User, err error)
+
+	// UpdatePasswordMaterialAndHint atomically updates auth hash + re-encrypted
+	// private keys + optional password hint on recovery/password reset.
+	UpdatePasswordMaterialAndHint(ctx context.Context, id user.ID, authHash string, encPrivKey, encIDPrivKey, encHint []byte) error
 }
 
 // InviteRepository persists organisation invite tokens (M11).

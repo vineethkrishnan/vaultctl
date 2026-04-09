@@ -37,6 +37,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/backups": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List available backup files with size and creation time. Admin only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List backups",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ListBackupsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/api-keys": {
             "get": {
                 "security": [
@@ -297,6 +334,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/password/hint": {
+            "get": {
+                "description": "Returns the password hint for the given email. Returns empty hint for unknown emails (enumeration-safe).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get password hint",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User email address",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.PasswordHintResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/prelogin": {
             "get": {
                 "description": "Returns salt and KDF parameters needed to derive the auth hash client-side",
@@ -325,6 +391,104 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery/reset": {
+            "post": {
+                "description": "Reset password after client-side recovery key verification. Revokes all sessions and returns fresh tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset password via recovery",
+                "parameters": [
+                    {
+                        "description": "New auth credentials with re-encrypted keys",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RecoveryResetRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RecoveryResetResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unknown email",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limited",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery/verify": {
+            "post": {
+                "description": "Returns encrypted key material so the client can attempt decryption with its recovery key.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get recovery material",
+                "parameters": [
+                    {
+                        "description": "Email to recover",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RecoveryVerifyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RecoveryVerifyResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unknown email",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limited",
                         "schema": {
                             "$ref": "#/definitions/internal_presenters_api.ErrorBody"
                         }
@@ -685,6 +849,63 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Batch-import encrypted items into a vault. Client performs format conversion and encryption.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import/Export"
+                ],
+                "summary": "Import vault items",
+                "parameters": [
+                    {
+                        "description": "Import payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ImportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ImportResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Vault not found or not a member",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
                         }
                     }
                 }
@@ -2280,6 +2501,20 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_presenters_api.BackupInfoDTO": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_presenters_api.CreateAPIKeyRequest": {
             "type": "object",
             "properties": {
@@ -2388,6 +2623,47 @@ const docTemplate = `{
                 },
                 "vaultId": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.ImportItemDTO": {
+            "type": "object",
+            "properties": {
+                "encryptedData": {
+                    "description": "base64 wire-format blob",
+                    "type": "string"
+                },
+                "encryptedName": {
+                    "description": "base64 wire-format blob",
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "itemType": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.ImportRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.ImportItemDTO"
+                    }
+                },
+                "vaultId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.ImportResponse": {
+            "type": "object",
+            "properties": {
+                "importedCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -2507,6 +2783,17 @@ const docTemplate = `{
                 },
                 "reprompt": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_presenters_api.ListBackupsResponse": {
+            "type": "object",
+            "properties": {
+                "backups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.BackupInfoDTO"
+                    }
                 }
             }
         },
@@ -2654,6 +2941,14 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_presenters_api.PasswordHintResponse": {
+            "type": "object",
+            "properties": {
+                "hint": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_presenters_api.PreloginResponse": {
             "type": "object",
             "properties": {
@@ -2691,6 +2986,71 @@ const docTemplate = `{
             "properties": {
                 "purged": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_presenters_api.RecoveryResetRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "encryptedIdentityPrivateKey": {
+                    "description": "base64 wire blob",
+                    "type": "string"
+                },
+                "encryptedPrivateKey": {
+                    "description": "base64 wire blob",
+                    "type": "string"
+                },
+                "newAuthHash": {
+                    "description": "base64",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.RecoveryResetResponse": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "refreshExpiresAt": {
+                    "type": "string"
+                },
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.RecoveryVerifyRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.RecoveryVerifyResponse": {
+            "type": "object",
+            "properties": {
+                "encryptedIdentityPrivateKey": {
+                    "type": "string"
+                },
+                "encryptedPrivateKey": {
+                    "type": "string"
+                },
+                "iterations": {
+                    "type": "integer"
+                },
+                "memoryKB": {
+                    "type": "integer"
+                },
+                "parallelism": {
+                    "type": "integer"
+                },
+                "salt": {
+                    "type": "string"
                 }
             }
         },
@@ -2774,6 +3134,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "passwordHint": {
+                    "description": "optional plaintext hint, server-encrypted (H4)",
                     "type": "string"
                 },
                 "publicKey": {

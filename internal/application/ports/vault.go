@@ -91,6 +91,10 @@ type ItemRepository interface {
 	// single vault, returning the number purged. Used by the bulk trash
 	// purge API endpoint.
 	PurgeExpiredInVault(ctx context.Context, vaultID vault.ID, cutoff time.Time) (int, error)
+
+	// CreateBatch inserts multiple items in a single transaction. Used by
+	// the import endpoint.
+	CreateBatch(ctx context.Context, items []vault.Item) error
 }
 
 // ItemListOptions filters the active-items list. Only server-visible fields

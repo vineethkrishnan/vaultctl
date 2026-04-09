@@ -28,6 +28,7 @@ type Dependencies struct {
 	Org                *OrgHandlers
 	Admin              *AdminHandlers
 	Export             *ExportHandlers
+	Import             *ImportHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
@@ -69,9 +70,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			}
 			r.Post("/auth/register", deps.Auth.HandleRegister)
 			r.Get("/auth/prelogin", deps.Auth.HandlePrelogin)
+			r.Get("/auth/password/hint", deps.Auth.HandleGetPasswordHint)
 			r.Post("/auth/login", deps.Auth.HandleLogin)
 			r.Post("/auth/refresh", deps.Auth.HandleRefresh)
 			r.Post("/auth/logout", deps.Auth.HandleLogout)
+			r.Post("/auth/recovery/verify", deps.Auth.HandleVerifyRecoveryKey)
+			r.Post("/auth/recovery/reset", deps.Auth.HandleResetViaRecovery)
 
 			// Invite redemption is public — new users redeem before registering
 			r.Post("/invites/redeem", deps.Invite.HandleRedeemInvite)
@@ -128,9 +132,13 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			// Admin
 			r.With(requireAdmin).Post("/admin/backup", deps.Admin.HandleBackup)
+			r.With(requireAdmin).Get("/admin/backups", deps.Admin.HandleListBackups)
 
 			// Data export (step-up required — sensitive data)
 			r.With(requireStepUp).Get("/export", deps.Export.HandleExport)
+
+			// Data import
+			r.Post("/import", deps.Import.HandleImport)
 
 			// Vault management
 			r.Get("/vaults", deps.Vault.HandleListVaults)

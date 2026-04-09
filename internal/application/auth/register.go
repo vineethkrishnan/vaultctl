@@ -38,7 +38,13 @@ type RegisterInput struct {
 	// InviteToken is required when RegistrationMode is "invite".
 	// The server redeems it before creating the user.
 	InviteToken string
+	// PasswordHint is an optional plaintext hint that is server-encrypted
+	// (H4) before persistence. Empty means no hint.
+	PasswordHint string
 }
+
+// SetPasswordHintInput carries the data needed by the Encrypter to encrypt
+// the hint. The use case handles encryption internally.
 
 // RegisterOutput is what the API layer returns to the client.
 type RegisterOutput struct {
@@ -64,6 +70,7 @@ type Register struct {
 	Hasher           ports.AuthHasher
 	Clock            ports.Clock
 	IDs              ports.IDGenerator
+	Encrypter        ports.DataEncrypter // optional — for password hint encryption (H4)
 	Policy           user.MasterPasswordPolicy
 	DefaultRole      user.Role
 	RegistrationMode string // "open", "invite", "disabled"
@@ -122,6 +129,17 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	now := uc.Clock.Now()
+	// Encrypt password hint if provided (H4 server-side encryption)
+	var encryptedHint []byte
+	if in.PasswordHint != "" && uc.Encrypter != nil {
+		aad := []byte("password_hint:" + email.String())
+		blob, encErr := uc.Encrypter.Encrypt([]byte(in.PasswordHint), aad)
+		if encErr != nil {
+			return RegisterOutput{}, fmt.Errorf("encrypt password hint: %w", encErr)
+		}
+		encryptedHint = blob.Bytes()
+	}
+
 	u := user.User{
 		ID:                          user.ID(uc.IDs.NewID()),
 		Email:                       email,
@@ -133,6 +151,7 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		PublicKey:                   in.PublicKey,
 		PublicKeySignature:          in.PublicKeySignature,
 		IdentityPublicKey:           in.IdentityPublicKey,
+		EncryptedPasswordHint:       encryptedHint,
 		Role:                        role,
 		CreatedAt:                   now,
 		UpdatedAt:                   now,

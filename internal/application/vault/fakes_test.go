@@ -252,6 +252,14 @@ func (r *fakeItemRepo) PurgeExpiredInVault(_ context.Context, vaultID domainvaul
 	}
 	return n, nil
 }
+func (r *fakeItemRepo) CreateBatch(ctx context.Context, items []domainvault.Item) error {
+	for _, it := range items {
+		if err := r.Create(ctx, it); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // ===========================================================================
 // fakeFolderRepo

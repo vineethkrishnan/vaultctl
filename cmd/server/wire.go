@@ -119,6 +119,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 	authHandlers := &api.AuthHandlers{
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
+			Encrypter: a.aead,
 			Policy: user.DefaultPolicy(), DefaultRole: user.RoleMember,
 			RegistrationMode: cfg.RegistrationMode,
 			RedeemInvite: &auth.RedeemInvite{
@@ -153,6 +154,13 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		TOTPEnable:  &auth.TOTPEnable{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
 		TOTPDisable: &auth.TOTPDisable{Users: a.users},
 		TOTPVerify:  &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
+		GetPasswordHint:   &auth.GetPasswordHint{Users: a.users, Encrypter: a.aead},
+		VerifyRecoveryKey: &auth.VerifyRecoveryKey{Users: a.users},
+		ResetViaRecovery: &auth.ResetViaRecovery{
+			Users: a.users, Sessions: a.sess, Hasher: a.hasher,
+			Tokens: tokens, TokenGenerator: a.tokens, HMAC: a.hmac,
+			Clock: a.clock, IDs: a.ids, RefreshTTL: cfg.JWTRefreshTTL,
+		},
 	}
 
 	userHandlers := &api.UserHandlers{
@@ -233,8 +241,15 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		APIKey:             apiKeyHandlers,
 		Invite:             inviteHandlers,
 		Org:                orgHandlers,
-		Admin:              &api.AdminHandlers{},
-		Export:             exportHandlers,
+		Admin: &api.AdminHandlers{
+			ListBackups: &auth.ListBackups{BackupDir: "/backups"},
+		},
+		Export: exportHandlers,
+		Import: &api.ImportHandlers{
+			Import: &appvault.ImportItems{
+				Vaults: a.vaults, Items: a.items, Clock: a.clock, IDs: a.ids,
+			},
+		},
 		APIKeyValidator:    apiKeyValidator,
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,

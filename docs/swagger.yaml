@@ -73,6 +73,15 @@ definitions:
       name:
         type: string
     type: object
+  internal_presenters_api.BackupInfoDTO:
+    properties:
+      createdAt:
+        type: string
+      filename:
+        type: string
+      size:
+        type: integer
+    type: object
   internal_presenters_api.CreateAPIKeyRequest:
     properties:
       expiresIn:
@@ -144,6 +153,33 @@ definitions:
         type: string
       vaultId:
         type: string
+    type: object
+  internal_presenters_api.ImportItemDTO:
+    properties:
+      encryptedData:
+        description: base64 wire-format blob
+        type: string
+      encryptedName:
+        description: base64 wire-format blob
+        type: string
+      folderId:
+        type: string
+      itemType:
+        type: string
+    type: object
+  internal_presenters_api.ImportRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_presenters_api.ImportItemDTO'
+        type: array
+      vaultId:
+        type: string
+    type: object
+  internal_presenters_api.ImportResponse:
+    properties:
+      importedCount:
+        type: integer
     type: object
   internal_presenters_api.InviteResponse:
     properties:
@@ -222,6 +258,13 @@ definitions:
         type: string
       reprompt:
         type: boolean
+    type: object
+  internal_presenters_api.ListBackupsResponse:
+    properties:
+      backups:
+        items:
+          $ref: '#/definitions/internal_presenters_api.BackupInfoDTO'
+        type: array
     type: object
   internal_presenters_api.LoginRequest:
     properties:
@@ -319,6 +362,11 @@ definitions:
       refreshToken:
         type: string
     type: object
+  internal_presenters_api.PasswordHintResponse:
+    properties:
+      hint:
+        type: string
+    type: object
   internal_presenters_api.PreloginResponse:
     properties:
       iterations:
@@ -344,6 +392,49 @@ definitions:
     properties:
       purged:
         type: integer
+    type: object
+  internal_presenters_api.RecoveryResetRequest:
+    properties:
+      email:
+        type: string
+      encryptedIdentityPrivateKey:
+        description: base64 wire blob
+        type: string
+      encryptedPrivateKey:
+        description: base64 wire blob
+        type: string
+      newAuthHash:
+        description: base64
+        type: string
+    type: object
+  internal_presenters_api.RecoveryResetResponse:
+    properties:
+      accessToken:
+        type: string
+      refreshExpiresAt:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.RecoveryVerifyRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  internal_presenters_api.RecoveryVerifyResponse:
+    properties:
+      encryptedIdentityPrivateKey:
+        type: string
+      encryptedPrivateKey:
+        type: string
+      iterations:
+        type: integer
+      memoryKB:
+        type: integer
+      parallelism:
+        type: integer
+      salt:
+        type: string
     type: object
   internal_presenters_api.RedeemInviteRequest:
     properties:
@@ -398,6 +489,9 @@ definitions:
       masterPasswordPreflight:
         type: string
       name:
+        type: string
+      passwordHint:
+        description: optional plaintext hint, server-encrypted (H4)
         type: string
       publicKey:
         type: string
@@ -584,6 +678,30 @@ paths:
       summary: Trigger backup
       tags:
       - Admin
+  /admin/backups:
+    get:
+      description: List available backup files with size and creation time. Admin
+        only.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ListBackupsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Admin required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List backups
+      tags:
+      - Admin
   /api-keys:
     get:
       description: Returns all API keys for the authenticated user (without raw key
@@ -752,6 +870,26 @@ paths:
       summary: Change master password
       tags:
       - Auth
+  /auth/password/hint:
+    get:
+      description: Returns the password hint for the given email. Returns empty hint
+        for unknown emails (enumeration-safe).
+      parameters:
+      - description: User email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.PasswordHintResponse'
+      summary: Get password hint
+      tags:
+      - Auth
   /auth/prelogin:
     get:
       description: Returns salt and KDF parameters needed to derive the auth hash
@@ -774,6 +912,72 @@ paths:
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
       summary: Get KDF parameters
+      tags:
+      - Auth
+  /auth/recovery/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset password after client-side recovery key verification. Revokes
+        all sessions and returns fresh tokens.
+      parameters:
+      - description: New auth credentials with re-encrypted keys
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RecoveryResetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RecoveryResetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unknown email
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Rate limited
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Reset password via recovery
+      tags:
+      - Auth
+  /auth/recovery/verify:
+    post:
+      consumes:
+      - application/json
+      description: Returns encrypted key material so the client can attempt decryption
+        with its recovery key.
+      parameters:
+      - description: Email to recover
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RecoveryVerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RecoveryVerifyResponse'
+        "401":
+          description: Unknown email
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Rate limited
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Get recovery material
       tags:
       - Auth
   /auth/refresh:
@@ -1005,6 +1209,43 @@ paths:
       summary: Health check
       tags:
       - System
+  /import:
+    post:
+      consumes:
+      - application/json
+      description: Batch-import encrypted items into a vault. Client performs format
+        conversion and encryption.
+      parameters:
+      - description: Import payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.ImportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ImportResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Vault not found or not a member
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Import vault items
+      tags:
+      - Import/Export
   /invites:
     get:
       description: Admin lists pending invites for an organization

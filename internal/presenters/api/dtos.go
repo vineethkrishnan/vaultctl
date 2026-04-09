@@ -25,7 +25,8 @@ type RegisterRequest struct {
 	PublicKey                   string `json:"publicKey"`
 	PublicKeySignature          string `json:"publicKeySignature"`
 	IdentityPublicKey           string `json:"identityPublicKey"`
-	InviteToken                 string `json:"inviteToken,omitempty"` // required when registration mode is "invite"
+	InviteToken                 string `json:"inviteToken,omitempty"`    // required when registration mode is "invite"
+	PasswordHint                string `json:"passwordHint,omitempty"`   // optional plaintext hint, server-encrypted (H4)
 }
 
 type RegisterResponse struct {
@@ -89,6 +90,78 @@ type PreloginResponse struct {
 	Iterations  uint32 `json:"iterations"`
 	MemoryKB    uint32 `json:"memoryKB"`
 	Parallelism uint8  `json:"parallelism"`
+}
+
+// ===========================================================================
+// Password Hint DTOs
+// ===========================================================================
+
+type PasswordHintResponse struct {
+	Hint string `json:"hint"`
+}
+
+// ===========================================================================
+// Recovery DTOs
+// ===========================================================================
+
+type RecoveryVerifyRequest struct {
+	Email string `json:"email"`
+}
+
+type RecoveryVerifyResponse struct {
+	EncryptedPrivateKey         string `json:"encryptedPrivateKey"`
+	EncryptedIdentityPrivateKey string `json:"encryptedIdentityPrivateKey"`
+	Salt                        string `json:"salt"`
+	Iterations                  uint32 `json:"iterations"`
+	MemoryKB                    uint32 `json:"memoryKB"`
+	Parallelism                 uint8  `json:"parallelism"`
+}
+
+type RecoveryResetRequest struct {
+	Email                       string `json:"email"`
+	NewAuthHash                 string `json:"newAuthHash"`                 // base64
+	EncryptedPrivateKey         string `json:"encryptedPrivateKey"`         // base64 wire blob
+	EncryptedIdentityPrivateKey string `json:"encryptedIdentityPrivateKey"` // base64 wire blob
+}
+
+type RecoveryResetResponse struct {
+	AccessToken      string `json:"accessToken"`
+	RefreshToken     string `json:"refreshToken"`
+	RefreshExpiresAt string `json:"refreshExpiresAt"`
+}
+
+// ===========================================================================
+// Import DTOs
+// ===========================================================================
+
+type ImportItemDTO struct {
+	ItemType      string  `json:"itemType"`
+	EncryptedData string  `json:"encryptedData"` // base64 wire-format blob
+	EncryptedName string  `json:"encryptedName"` // base64 wire-format blob
+	FolderID      *string `json:"folderId,omitempty"`
+}
+
+type ImportRequest struct {
+	VaultID string          `json:"vaultId"`
+	Items   []ImportItemDTO `json:"items"`
+}
+
+type ImportResponse struct {
+	ImportedCount int `json:"importedCount"`
+}
+
+// ===========================================================================
+// Admin Backup DTOs
+// ===========================================================================
+
+type BackupInfoDTO struct {
+	Filename  string `json:"filename"`
+	Size      int64  `json:"size"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type ListBackupsResponse struct {
+	Backups []BackupInfoDTO `json:"backups"`
 }
 
 // ===========================================================================

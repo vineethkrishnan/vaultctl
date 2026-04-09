@@ -13,17 +13,20 @@ import (
 
 // AuthHandlers ties HTTP to the auth use cases.
 type AuthHandlers struct {
-	Register *auth.Register
-	Prelogin *auth.Prelogin
-	Login    *auth.Login
-	Refresh  *auth.Refresh
-	Logout   *auth.Logout
-	StepUp      *auth.StepUp
-	TOTPSetup      *auth.TOTPSetup
-	TOTPEnable     *auth.TOTPEnable
-	TOTPDisable    *auth.TOTPDisable
-	TOTPVerify     *auth.TOTPVerify
-	PasswordChange *auth.PasswordChange
+	Register           *auth.Register
+	Prelogin           *auth.Prelogin
+	Login              *auth.Login
+	Refresh            *auth.Refresh
+	Logout             *auth.Logout
+	StepUp             *auth.StepUp
+	TOTPSetup          *auth.TOTPSetup
+	TOTPEnable         *auth.TOTPEnable
+	TOTPDisable        *auth.TOTPDisable
+	TOTPVerify         *auth.TOTPVerify
+	PasswordChange     *auth.PasswordChange
+	GetPasswordHint    *auth.GetPasswordHint
+	VerifyRecoveryKey  *auth.VerifyRecoveryKey
+	ResetViaRecovery   *auth.ResetViaRecovery
 }
 
 // HandleRegister creates a new user account.
@@ -93,6 +96,7 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		PublicKeySignature:          sig,
 		IdentityPublicKey:           idPub,
 		InviteToken:                 req.InviteToken,
+		PasswordHint:                req.PasswordHint,
 	})
 	if err != nil {
 		writeError(w, r, err)
@@ -410,6 +414,106 @@ func (h *AuthHandlers) HandlePasswordChange(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	writeJSON(w, http.StatusOK, PasswordChangeResponse{
+		AccessToken:      out.AccessToken,
+		RefreshToken:     out.RefreshToken,
+		RefreshExpiresAt: out.RefreshExpiresAt.UTC().Format(timeFormat),
+	})
+}
+
+// HandleGetPasswordHint returns the decrypted password hint for an email.
+// @Summary Get password hint
+// @Description Returns the password hint for the given email. Returns empty hint for unknown emails (enumeration-safe).
+// @Tags Auth
+// @Produce json
+// @Param email query string true "User email address"
+// @Success 200 {object} PasswordHintResponse
+// @Router /auth/password/hint [get]
+func (h *AuthHandlers) HandleGetPasswordHint(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	out, err := h.GetPasswordHint.Execute(r.Context(), auth.GetPasswordHintInput{Email: email})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, PasswordHintResponse{Hint: out.Hint})
+}
+
+// HandleVerifyRecoveryKey returns encrypted key material for account recovery.
+// @Summary Get recovery material
+// @Description Returns encrypted key material so the client can attempt decryption with its recovery key.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body RecoveryVerifyRequest true "Email to recover"
+// @Success 200 {object} RecoveryVerifyResponse
+// @Failure 401 {object} ErrorBody "Unknown email"
+// @Failure 429 {object} ErrorBody "Rate limited"
+// @Router /auth/recovery/verify [post]
+func (h *AuthHandlers) HandleVerifyRecoveryKey(w http.ResponseWriter, r *http.Request) {
+	var req RecoveryVerifyRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	out, err := h.VerifyRecoveryKey.Execute(r.Context(), auth.VerifyRecoveryKeyInput{Email: req.Email})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, RecoveryVerifyResponse{
+		EncryptedPrivateKey:         encodeB64Blob(out.EncryptedPrivateKey),
+		EncryptedIdentityPrivateKey: encodeB64Blob(out.EncryptedIdentityPrivateKey),
+		Salt:                        encodeB64(out.Salt),
+		Iterations:                  out.KDFParams.Iterations,
+		MemoryKB:                    out.KDFParams.MemoryKB,
+		Parallelism:                 out.KDFParams.Parallelism,
+	})
+}
+
+// HandleResetViaRecovery resets the password via recovery key.
+// @Summary Reset password via recovery
+// @Description Reset password after client-side recovery key verification. Revokes all sessions and returns fresh tokens.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body RecoveryResetRequest true "New auth credentials with re-encrypted keys"
+// @Success 200 {object} RecoveryResetResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody "Unknown email"
+// @Failure 429 {object} ErrorBody "Rate limited"
+// @Router /auth/recovery/reset [post]
+func (h *AuthHandlers) HandleResetViaRecovery(w http.ResponseWriter, r *http.Request) {
+	var req RecoveryResetRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	newHash, err := decodeB64(req.NewAuthHash)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	encPriv, err := decodeB64(req.EncryptedPrivateKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	encIDPriv, err := decodeB64(req.EncryptedIdentityPrivateKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	out, err := h.ResetViaRecovery.Execute(r.Context(), auth.ResetViaRecoveryInput{
+		Email:                       req.Email,
+		NewAuthHash:                 newHash,
+		EncryptedPrivateKey:         encPriv,
+		EncryptedIdentityPrivateKey: encIDPriv,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, RecoveryResetResponse{
 		AccessToken:      out.AccessToken,
 		RefreshToken:     out.RefreshToken,
 		RefreshExpiresAt: out.RefreshExpiresAt.UTC().Format(timeFormat),

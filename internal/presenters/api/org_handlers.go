@@ -9,6 +9,7 @@ import (
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
 
@@ -150,7 +151,9 @@ func (h *OrgHandlers) HandleUpdateMemberRole(w http.ResponseWriter, r *http.Requ
 // ===========================================================================
 
 // AdminHandlers ties HTTP to admin-only operations.
-type AdminHandlers struct{}
+type AdminHandlers struct {
+	ListBackups *auth.ListBackups
+}
 
 // HandleBackup returns 501 Not Implemented, directing users to the CLI.
 // @Summary Trigger backup
@@ -164,6 +167,34 @@ func (h *AdminHandlers) HandleBackup(w http.ResponseWriter, _ *http.Request) {
 		"error":   "not_implemented",
 		"message": "backup requires shell access (pg_dump); use `vaultctl backup` CLI command instead",
 	})
+}
+
+// HandleListBackups returns available backup files.
+// @Summary List backups
+// @Description List available backup files with size and creation time. Admin only.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} ListBackupsResponse
+// @Failure 401 {object} ErrorBody
+// @Failure 403 {object} ErrorBody "Admin required"
+// @Router /admin/backups [get]
+func (h *AdminHandlers) HandleListBackups(w http.ResponseWriter, r *http.Request) {
+	out, err := h.ListBackups.Execute()
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	backups := make([]BackupInfoDTO, 0, len(out.Backups))
+	for _, b := range out.Backups {
+		backups = append(backups, BackupInfoDTO{
+			Filename:  b.Filename,
+			Size:      b.Size,
+			CreatedAt: b.CreatedAt.UTC().Format(timeFormat),
+		})
+	}
+	writeJSON(w, http.StatusOK, ListBackupsResponse{Backups: backups})
 }
 
 // ===========================================================================
@@ -197,6 +228,74 @@ func (h *ExportHandlers) HandleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, data)
+}
+
+// ===========================================================================
+// Import handler
+// ===========================================================================
+
+// ImportHandlers ties HTTP to the import use case.
+type ImportHandlers struct {
+	Import *appvault.ImportItems
+}
+
+// HandleImport batch-creates vault items from an import payload.
+// @Summary Import vault items
+// @Description Batch-import encrypted items into a vault. Client performs format conversion and encryption.
+// @Tags Import/Export
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body ImportRequest true "Import payload"
+// @Success 200 {object} ImportResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Failure 404 {object} ErrorBody "Vault not found or not a member"
+// @Router /import [post]
+func (h *ImportHandlers) HandleImport(w http.ResponseWriter, r *http.Request) {
+	var req ImportRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	items := make([]appvault.ImportedItem, 0, len(req.Items))
+	for _, dto := range req.Items {
+		data, err := decodeB64Blob(dto.EncryptedData)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		name, err := decodeB64Blob(dto.EncryptedName)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		var folderID *vault.FolderID
+		if dto.FolderID != nil {
+			v := vault.FolderID(*dto.FolderID)
+			folderID = &v
+		}
+		items = append(items, appvault.ImportedItem{
+			ItemType:      vault.ItemType(dto.ItemType),
+			EncryptedData: data,
+			EncryptedName: name,
+			FolderID:      folderID,
+		})
+	}
+
+	callerID := middleware.CallerID(r.Context())
+	out, err := h.Import.Execute(r.Context(), appvault.ImportItemsInput{
+		Caller:  callerID,
+		VaultID: vault.ID(req.VaultID),
+		Items:   items,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ImportResponse{ImportedCount: out.ImportedCount})
 }
 
 // ===========================================================================
