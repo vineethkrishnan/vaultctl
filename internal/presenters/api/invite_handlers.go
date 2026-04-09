@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
+	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
@@ -58,10 +59,15 @@ func (h *InviteHandlers) HandleCreateInvite(w http.ResponseWriter, r *http.Reque
 	// membership. For the initial implementation we use a placeholder
 	// that the caller's admin-middleware has already validated.
 	callerID := middleware.CallerID(r.Context())
+	orgID := r.URL.Query().Get("orgId")
+	if orgID == "" {
+		writeError(w, r, &domain.Invalid{Field: "orgId", Message: "required"})
+		return
+	}
 
 	out, err := h.CreateInvite.Execute(r.Context(), auth.CreateInviteInput{
 		Caller:    callerID,
-		OrgID:     organization.ID(r.URL.Query().Get("orgId")),
+		OrgID:     organization.ID(orgID),
 		Email:     req.Email,
 		Role:      role,
 		ExpiresIn: expiresIn,
@@ -150,7 +156,12 @@ func (h *InviteHandlers) HandleRevokeInvite(w http.ResponseWriter, r *http.Reque
 // @Router /invites [get]
 func (h *InviteHandlers) HandleListInvites(w http.ResponseWriter, r *http.Request) {
 	callerID := middleware.CallerID(r.Context())
-	orgID := organization.ID(r.URL.Query().Get("orgId"))
+	rawOrgID := r.URL.Query().Get("orgId")
+	if rawOrgID == "" {
+		writeError(w, r, &domain.Invalid{Field: "orgId", Message: "required"})
+		return
+	}
+	orgID := organization.ID(rawOrgID)
 
 	invites, err := h.ListInvites.Execute(r.Context(), auth.ListInvitesInput{
 		Caller: callerID,

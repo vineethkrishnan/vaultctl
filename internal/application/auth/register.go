@@ -96,6 +96,13 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		return RegisterOutput{}, fmt.Errorf("%w: unknown mode %q", ErrRegistrationDisabled, uc.RegistrationMode)
 	}
 
+	// Cheap guards first — reject trivially bad input before expensive work
+	if len(in.AuthHash) == 0 {
+		return RegisterOutput{}, domain.NewInvalid("auth_hash", "required")
+	}
+	if len(in.Salt) == 0 {
+		return RegisterOutput{}, domain.NewInvalid("salt", "required")
+	}
 	if err := user.ValidateMasterPassword(in.MasterPasswordPreflight, uc.Policy); err != nil {
 		return RegisterOutput{}, fmt.Errorf("%w: %v", ErrWeakMasterPassword, err) //nolint:errorlint // intentional: wrap sentinel, don't double-wrap cause
 	}
@@ -128,13 +135,6 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 	if err := u.Validate(); err != nil {
 		return RegisterOutput{}, err
-	}
-	// Refuse to call the hasher with a trivially wrong authHash.
-	if len(in.AuthHash) == 0 {
-		return RegisterOutput{}, domain.NewInvalid("auth_hash", "required")
-	}
-	if len(in.Salt) == 0 {
-		return RegisterOutput{}, domain.NewInvalid("salt", "required")
 	}
 
 	hashed, err := uc.Hasher.Hash(in.AuthHash)

@@ -210,6 +210,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		APIKeyValidator:    apiKeyValidator,
 		RateLimiter:        a.rateLimiter,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
+		RegistrationMode:   cfg.RegistrationMode,
 	}
 }
 

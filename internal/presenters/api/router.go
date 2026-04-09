@@ -27,6 +27,7 @@ type Dependencies struct {
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
+	RegistrationMode   string
 }
 
 // NewRouter assembles the chi router with the full middleware stack and
@@ -51,7 +52,7 @@ func NewRouter(deps Dependencies) http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler)
-		r.Get("/config", configHandler)
+		r.Get("/config", configHandler(deps.RegistrationMode))
 
 		// ===== Auth (unauthenticated) =====
 		r.Group(func(r chi.Router) {
@@ -158,11 +159,13 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 // @Produce json
 // @Success 200 {object} map[string]any
 // @Router /config [get]
-func configHandler(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"version":          "v1",
-		"registrationMode": "invite",
-	})
+func configHandler(registrationMode string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"version":          "v1",
+			"registrationMode": registrationMode,
+		})
+	}
 }
 
 // rateLimitOrNoop returns the PerIP middleware as a slice suitable for

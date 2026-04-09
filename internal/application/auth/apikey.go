@@ -65,10 +65,10 @@ func (uc *CreateAPIKey) Execute(ctx context.Context, in CreateAPIKeyInput) (Crea
 
 	keyHash := hex.EncodeToString(uc.HMAC.HashString(rawKey))
 
-	// Store first 8 chars of the raw key for identification
+	const keyPrefixLen = 8
 	prefix := rawKey
-	if len(prefix) > 8 {
-		prefix = prefix[:8]
+	if len(prefix) > keyPrefixLen {
+		prefix = prefix[:keyPrefixLen]
 	}
 
 	now := uc.Clock.Now()
