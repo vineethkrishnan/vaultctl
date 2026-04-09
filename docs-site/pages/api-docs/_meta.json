@@ -5,5 +5,9 @@
   "items": "Items",
   "folders": "Folders",
   "totp": "TOTP (2FA)",
+  "users": "Users",
+  "organizations": "Organizations",
+  "invites": "Invites",
+  "api-keys": "API Keys",
   "errors": "Error Codes"
 }

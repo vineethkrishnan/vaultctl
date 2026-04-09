@@ -1,0 +1,146 @@
+# API Keys
+
+import { Callout } from 'nextra/components'
+
+Personal API keys provide programmatic access to the API without JWT token management. All endpoints require a JWT access token.
+
+## Create API Key
+
+Generate a new personal API key. The raw key is returned only once.
+
+```
+POST /api-keys
+```
+
+### Request
+
+```json
+{
+  "name": "CI Pipeline",
+  "expiresIn": "90d"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Descriptive name for the key |
+| `expiresIn` | string | no | Duration string (e.g. `30d`, `90d`, `1y`). Omit for no expiry |
+
+### Response — `201 Created`
+
+```json
+{
+  "id": "key-uuid",
+  "name": "CI Pipeline",
+  "key": "vctl_a1b2c3d4e5f6...",
+  "keyPrefix": "vctl_a1b2",
+  "expiresAt": "2026-07-08T12:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | API key UUID |
+| `name` | string | Key name |
+| `key` | string | Raw API key (shown only once) |
+| `keyPrefix` | string | First few characters for identification |
+| `expiresAt` | string | Expiration timestamp (null if no expiry) |
+
+<Callout type="warning">
+  The raw `key` value is returned **only once** at creation. Store it securely -- it cannot be retrieved later.
+</Callout>
+
+### Errors
+
+- `400 INVALID` -- Validation failed (missing name)
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/api-keys \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "CI Pipeline", "expiresIn": "90d"}'
+```
+
+---
+
+## List API Keys
+
+List all API keys for the authenticated user. Raw key values are not returned.
+
+```
+GET /api-keys
+```
+
+### Response — `200 OK`
+
+```json
+[
+  {
+    "id": "key-uuid",
+    "name": "CI Pipeline",
+    "keyPrefix": "vctl_a1b2",
+    "expiresAt": "2026-07-08T12:00:00Z",
+    "lastUsedAt": "2026-04-09T08:30:00Z",
+    "createdAt": "2026-04-01T10:00:00Z"
+  }
+]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | API key UUID |
+| `name` | string | Key name |
+| `keyPrefix` | string | First few characters for identification |
+| `expiresAt` | string | Expiration timestamp (null if no expiry) |
+| `lastUsedAt` | string | Last time the key was used (null if never) |
+| `createdAt` | string | Creation timestamp |
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/api-keys
+```
+
+---
+
+## Delete API Key
+
+Permanently delete an API key. Any requests using this key will immediately fail.
+
+```
+DELETE /api-keys/:id
+```
+
+### Response — `204 No Content`
+
+No response body.
+
+### Errors
+
+- `404 NOT_FOUND` -- API key not found or does not belong to user
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/api-keys/key-uuid
+```
+
+---
+
+## Using API Keys
+
+Pass the API key in the `Authorization` header using the `Bearer` scheme, just like a JWT:
+
+```bash
+curl -H "Authorization: Bearer vctl_a1b2c3d4e5f6..." \
+     https://vault.example.com/api/v1/vaults
+```
+
+### Errors
+
+- `401 API_KEY_INVALID` -- API key not found or has been deleted
+- `401 API_KEY_EXPIRED` -- API key has passed its expiration date

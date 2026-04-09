@@ -1,0 +1,182 @@
+# Organizations API
+
+import { Callout } from 'nextra/components'
+
+Organizations group users for shared vault management. All endpoints require a JWT access token.
+
+## Create Organization
+
+Create a new organization. The creating user becomes the organization owner.
+
+```
+POST /orgs
+```
+
+### Request
+
+```json
+{
+  "name": "Acme Corp"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Organization display name |
+
+### Response — `201 Created`
+
+```json
+{
+  "id": "org-uuid",
+  "name": "Acme Corp",
+  "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+  "createdAt": "2026-04-09T12:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Organization UUID |
+| `name` | string | Organization name |
+| `createdBy` | string | UUID of the user who created it |
+| `createdAt` | string | ISO 8601 creation timestamp |
+
+### Errors
+
+- `400 INVALID` -- Validation failed
+- `403 FORBIDDEN` -- Not authorized to create organizations
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/orgs \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Acme Corp"}'
+```
+
+---
+
+## List Members
+
+List all members of an organization.
+
+```
+GET /orgs/:orgId/members
+```
+
+### Response — `200 OK`
+
+```json
+[
+  {
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "orgId": "org-uuid",
+    "role": "owner",
+    "invitedAt": "2026-04-01T10:00:00Z",
+    "acceptedAt": "2026-04-01T10:05:00Z"
+  }
+]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | string | Member's user UUID |
+| `orgId` | string | Organization UUID |
+| `role` | string | Role within org: `owner`, `admin`, or `member` |
+| `invitedAt` | string | When the member was invited |
+| `acceptedAt` | string | When the member accepted (null if pending) |
+
+### Errors
+
+- `404 NOT_FOUND` -- Organization not found
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/orgs/org-uuid/members
+```
+
+---
+
+## Update Member Role
+
+Change a member's role within an organization.
+
+```
+PUT /orgs/:orgId/members/:userId
+```
+
+### Request
+
+```json
+{
+  "role": "admin"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `role` | string | yes | New role: `owner`, `admin`, or `member` |
+
+### Response — `204 No Content`
+
+No response body.
+
+### Errors
+
+- `400 INVALID_ROLE` -- Invalid role value
+- `403 FORBIDDEN` -- Not authorized to change roles
+- `404 NOT_FOUND` -- Organization or member not found
+
+### Example
+
+```bash
+curl -X PUT https://vault.example.com/api/v1/orgs/org-uuid/members/user-uuid \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "admin"}'
+```
+
+---
+
+## Get Member Public Key
+
+Retrieve a member's public keys for encrypting shared vault keys.
+
+```
+GET /orgs/:orgId/members/:userId/pubkey
+```
+
+### Response — `200 OK`
+
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "publicKey": "base64-encoded-rsa-public-key",
+  "identityPublicKey": "base64-encoded-ed25519-public-key"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `userId` | string | Member's user UUID |
+| `publicKey` | string | Base64-encoded RSA public key (for vault key wrapping) |
+| `identityPublicKey` | string | Base64-encoded Ed25519 public key (for signature verification) |
+
+### Errors
+
+- `404 NOT_FOUND` -- Organization or member not found
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/orgs/org-uuid/members/user-uuid/pubkey
+```
+
+<Callout type="info">
+  Use this endpoint to fetch a member's public key before sharing a vault with them. The RSA public key is used to wrap the vault key via RSA-OAEP-SHA256.
+</Callout>

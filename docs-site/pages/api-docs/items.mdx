@@ -303,6 +303,11 @@ DELETE /vaults/:vaultId/trash/:itemId
 
 No response body.
 
+### Errors
+
+- `403 STEP_UP_REQUIRED` -- Step-up token not provided
+- `404 NOT_FOUND` -- Item not found in trash
+
 <Callout type="warning">
   Purging permanently destroys the encrypted data. This cannot be undone. A [step-up token](/api-docs/authentication#step-up-authentication) is required.
 </Callout>
@@ -312,4 +317,45 @@ No response body.
 ```bash
 curl -X DELETE -H "Authorization: Bearer <step_up_token>" \
      https://vault.example.com/api/v1/vaults/660e8400-.../trash/880e8400-...
+```
+
+---
+
+## Bulk Purge Expired Trash
+
+Permanently delete all trashed items older than 30 days in a vault.
+
+```
+DELETE /vaults/:vaultId/trash
+```
+
+**Requires:** JWT access token with `step_up` claim.
+
+### Response — `200 OK`
+
+```json
+{
+  "purged": 5
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `purged` | integer | Number of items permanently deleted |
+
+### Errors
+
+- `401 UNAUTHENTICATED` -- Missing or invalid token
+- `403 STEP_UP_REQUIRED` -- Step-up token not provided
+- `404 NOT_FOUND` -- Vault not found
+
+<Callout type="info">
+  Only items trashed more than 30 days ago are purged. Recently trashed items are not affected.
+</Callout>
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <step_up_token>" \
+     https://vault.example.com/api/v1/vaults/660e8400-.../trash
 ```

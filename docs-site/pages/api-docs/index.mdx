@@ -48,8 +48,11 @@ curl -H "Authorization: Bearer <access_token>" \
 | `POST` | `/auth/login` | Log in |
 | `POST` | `/auth/refresh` | Refresh tokens |
 | `POST` | `/auth/logout` | Log out |
+| `POST` | `/invites/redeem` | Redeem invite token |
 
 ### Authenticated (JWT)
+
+#### [Authentication](/api-docs/authentication)
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -59,17 +62,83 @@ curl -H "Authorization: Bearer <access_token>" \
 | `POST` | `/auth/totp/disable` | Disable 2FA (step-up) |
 | `POST` | `/auth/totp/verify` | Verify TOTP code |
 | `POST` | `/auth/password/change` | Change password (step-up) |
+
+#### [Vaults](/api-docs/vaults)
+
+| Method | Path | Description |
+|--------|------|-------------|
 | `GET` | `/vaults` | List vaults |
 | `POST` | `/vaults` | Create vault |
+| `POST` | `/vaults/:id/members` | Share vault (add member) |
+| `DELETE` | `/vaults/:id/members/:userId` | Remove member |
+| `POST` | `/vaults/:id/rekey` | Rekey vault after member removal |
+
+#### [Items](/api-docs/items)
+
+| Method | Path | Description |
+|--------|------|-------------|
 | `GET` | `/vaults/:id/items` | List items |
 | `POST` | `/vaults/:id/items` | Create item |
 | `GET` | `/vaults/:id/items/:id` | Get item |
 | `PUT` | `/vaults/:id/items/:id` | Update item |
 | `DELETE` | `/vaults/:id/items/:id` | Trash item |
 | `GET` | `/vaults/:id/trash` | List trash |
-| `POST` | `/vaults/:id/trash/:id/restore` | Restore |
-| `DELETE` | `/vaults/:id/trash/:id` | Purge (step-up) |
+| `POST` | `/vaults/:id/trash/:id/restore` | Restore item |
+| `DELETE` | `/vaults/:id/trash/:id` | Purge item (step-up) |
+| `DELETE` | `/vaults/:id/trash` | Bulk purge expired trash (step-up) |
+
+#### [Folders](/api-docs/folders)
+
+| Method | Path | Description |
+|--------|------|-------------|
 | `GET` | `/vaults/:id/folders` | List folders |
 | `POST` | `/vaults/:id/folders` | Create folder |
 | `PUT` | `/vaults/:id/folders/:id` | Rename folder |
 | `DELETE` | `/vaults/:id/folders/:id` | Delete folder |
+
+#### [Users](/api-docs/users)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/users/me` | Get user profile |
+| `PUT` | `/users/me` | Update user profile |
+| `GET` | `/users/me/sessions` | List active sessions |
+| `DELETE` | `/users/me/sessions/:id` | Revoke session |
+
+#### [Organizations](/api-docs/organizations)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/orgs` | Create organization |
+| `GET` | `/orgs/:id/members` | List org members |
+| `PUT` | `/orgs/:id/members/:userId` | Update member role |
+| `GET` | `/orgs/:id/members/:userId/pubkey` | Get member public key |
+
+#### [Invites](/api-docs/invites)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/invites` | Create invite |
+| `GET` | `/invites?orgId=` | List invites |
+| `DELETE` | `/invites/:id` | Revoke invite |
+| `POST` | `/invites/redeem` | Redeem invite (public) |
+
+#### [API Keys](/api-docs/api-keys)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api-keys` | Create API key |
+| `GET` | `/api-keys` | List API keys |
+| `DELETE` | `/api-keys/:id` | Delete API key |
+
+#### [Import/Export](/api-docs/errors)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/export` | Export vault data (step-up) |
+
+#### Admin
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/admin/backup` | Trigger backup (CLI only, returns 501) |

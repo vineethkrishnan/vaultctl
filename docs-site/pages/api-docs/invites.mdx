@@ -1,0 +1,201 @@
+# Invites API
+
+import { Callout } from 'nextra/components'
+
+Invites allow admins to invite new users to an organization. When the server registration mode is set to `invite`, users must redeem an invite token during registration.
+
+## Create Invite
+
+Admin creates an invite token for a new member.
+
+```
+POST /invites
+```
+
+**Requires:** JWT access token with `admin` or `owner` role.
+
+### Request
+
+```json
+{
+  "email": "bob@example.com",
+  "role": "member",
+  "expiresIn": "72h"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | yes | Email address to invite |
+| `role` | string | yes | Role to assign: `admin` or `member` |
+| `expiresIn` | string | no | Duration string (e.g. `24h`, `72h`). Defaults to server setting |
+
+### Response — `201 Created`
+
+```json
+{
+  "inviteId": "invite-uuid",
+  "token": "raw-invite-token"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `inviteId` | string | Invite UUID |
+| `token` | string | Raw invite token to share with the invitee (shown only once) |
+
+### Errors
+
+- `400 INVALID` -- Validation failed
+- `403 FORBIDDEN` -- Not authorized to create invites
+
+<Callout type="warning">
+  The raw `token` value is returned only once at creation time. Store it securely or share it immediately with the invitee.
+</Callout>
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/invites \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "bob@example.com",
+    "role": "member",
+    "expiresIn": "72h"
+  }'
+```
+
+---
+
+## List Invites
+
+List all pending invites for an organization.
+
+```
+GET /invites?orgId=<org-uuid>
+```
+
+**Requires:** JWT access token with `admin` or `owner` role.
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `orgId` | string | yes | Organization ID to list invites for |
+
+### Response — `200 OK`
+
+```json
+[
+  {
+    "id": "invite-uuid",
+    "email": "bob@example.com",
+    "role": "member",
+    "inviterId": "550e8400-...",
+    "expiresAt": "2026-04-12T12:00:00Z",
+    "createdAt": "2026-04-09T12:00:00Z"
+  }
+]
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Invite UUID |
+| `email` | string | Invited email address |
+| `role` | string | Role that will be assigned |
+| `inviterId` | string | UUID of the admin who created the invite |
+| `expiresAt` | string | Invite expiration timestamp |
+| `createdAt` | string | Invite creation timestamp |
+
+### Errors
+
+- `403 FORBIDDEN` -- Not authorized to list invites
+
+### Example
+
+```bash
+curl -H "Authorization: Bearer <access_token>" \
+     "https://vault.example.com/api/v1/invites?orgId=org-uuid"
+```
+
+---
+
+## Revoke Invite
+
+Admin revokes a pending invite.
+
+```
+DELETE /invites/:inviteId
+```
+
+**Requires:** JWT access token with `admin` or `owner` role.
+
+### Response — `204 No Content`
+
+No response body.
+
+### Errors
+
+- `403 FORBIDDEN` -- Not authorized to revoke invites
+- `404 NOT_FOUND` -- Invite not found
+
+### Example
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <access_token>" \
+     https://vault.example.com/api/v1/invites/invite-uuid
+```
+
+---
+
+## Redeem Invite
+
+New user redeems an invite token during registration. This validates the token and returns the organization and role details. The returned information is then used during the `/auth/register` call (pass the token as `inviteToken`).
+
+```
+POST /invites/redeem
+```
+
+This endpoint is **public** (no JWT required).
+
+### Request
+
+```json
+{
+  "token": "raw-invite-token"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token` | string | yes | The raw invite token received from admin |
+
+### Response — `200 OK`
+
+```json
+{
+  "orgId": "org-uuid",
+  "email": "bob@example.com",
+  "role": "member"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `orgId` | string | Organization the invite belongs to |
+| `email` | string | Email the invite was issued for |
+| `role` | string | Role that will be assigned upon registration |
+
+### Errors
+
+- `400 INVITE_NOT_REDEEMABLE` -- Token is expired, already used, or revoked
+- `404 NOT_FOUND` -- Invite token not found
+
+### Example
+
+```bash
+curl -X POST https://vault.example.com/api/v1/invites/redeem \
+  -H "Content-Type: application/json" \
+  -d '{"token": "raw-invite-token"}'
+```

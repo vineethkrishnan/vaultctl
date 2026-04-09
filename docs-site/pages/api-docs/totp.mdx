@@ -53,13 +53,13 @@ POST /auth/totp/enable
 }
 ```
 
-### Response — `200 OK`
+### Response — `204 No Content`
 
-```json
-{
-  "message": "TOTP enabled"
-}
-```
+No response body.
+
+### Errors
+
+- `400 INVALID` -- Invalid TOTP code
 
 ### Example
 
@@ -74,7 +74,7 @@ curl -X POST https://vault.example.com/api/v1/auth/totp/enable \
 
 ## Verify TOTP
 
-Verify a TOTP code during login or other verification flows.
+Validate a TOTP code during the two-factor authentication step of login.
 
 ```
 POST /auth/totp/verify
@@ -88,13 +88,13 @@ POST /auth/totp/verify
 }
 ```
 
-### Response — `200 OK`
+### Response — `204 No Content`
 
-```json
-{
-  "message": "TOTP verified"
-}
-```
+No response body.
+
+### Errors
+
+- `400 INVALID` -- Invalid TOTP code
 
 ### Example
 
@@ -109,7 +109,7 @@ curl -X POST https://vault.example.com/api/v1/auth/totp/verify \
 
 ## Disable TOTP
 
-Remove TOTP two-factor authentication from the account.
+Deactivate two-factor authentication for the account.
 
 ```
 POST /auth/totp/disable
@@ -117,13 +117,13 @@ POST /auth/totp/disable
 
 **Requires:** JWT access token with `step_up` claim.
 
-### Response — `200 OK`
+### Response — `204 No Content`
 
-```json
-{
-  "message": "TOTP disabled"
-}
-```
+No response body.
+
+### Errors
+
+- `403 STEP_UP_REQUIRED` -- Step-up token not provided
 
 ### Example
 
