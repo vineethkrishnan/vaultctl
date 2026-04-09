@@ -1,21 +1,14 @@
-name: Deploy Docs to Cloudflare Pages
+name: Docs Build Check
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "docs-site/**"
   pull_request:
     branches: [main]
     paths:
       - "docs-site/**"
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
     defaults:
       run:
         working-directory: docs-site
@@ -33,12 +26,3 @@ jobs:
 
       - name: Build
         run: npm run build
-
-      - name: Deploy to Cloudflare Pages
-        if: github.event_name == 'push'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy out --project-name=vaultctl-docs
-          workingDirectory: docs-site
