@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
@@ -18,6 +19,10 @@ type OrgHandlers struct {
 	CreateOrg        *auth.CreateOrganization
 	ListMembers      *auth.ListOrgMembers
 	UpdateMemberRole *auth.UpdateOrgMemberRole
+	RemoveMember     *auth.RemoveOrgMember
+
+	// Audit is the cross-cutting audit-log writer (M13).
+	Audit *audit.Writer
 }
 
 // HandleCreateOrg creates a new organization.
@@ -49,6 +54,7 @@ func (h *OrgHandlers) HandleCreateOrg(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.OrgCreated(r.Context(), string(callerID), string(org.ID), middleware.ClientIP(r), r.UserAgent())
 
 	writeJSON(w, http.StatusCreated, OrgResponse{
 		ID:        string(org.ID),
@@ -142,8 +148,50 @@ func (h *OrgHandlers) HandleUpdateMemberRole(w http.ResponseWriter, r *http.Requ
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.OrgRoleChanged(r.Context(), string(callerID), string(orgID), string(targetID), middleware.ClientIP(r), r.UserAgent())
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleRemoveOrgMember removes a member from an organization and cascades
+// the removal into every shared vault membership the user held (C2).
+// @Summary Remove org member
+// @Description Remove a user from the organization. Cascades into shared-vault memberships and triggers an unconditional client-driven rekey of every affected vault.
+// @Tags Organizations
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Organization ID"
+// @Param userId path string true "User ID to remove"
+// @Success 200 {object} RemoveOrgMemberResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Failure 403 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /orgs/{id}/members/{userId} [delete]
+func (h *OrgHandlers) HandleRemoveOrgMember(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	orgID := organization.ID(chi.URLParam(r, "id"))
+	targetID := user.ID(chi.URLParam(r, "userId"))
+
+	out, err := h.RemoveMember.Execute(r.Context(), auth.RemoveOrgMemberInput{
+		Caller:   callerID,
+		OrgID:    orgID,
+		TargetID: targetID,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	h.Audit.OrgMemberRemoved(r.Context(), string(callerID), string(orgID), string(targetID), middleware.ClientIP(r), r.UserAgent())
+
+	affected := make([]string, 0, len(out.AffectedVaults))
+	for _, vid := range out.AffectedVaults {
+		affected = append(affected, string(vid))
+	}
+	writeJSON(w, http.StatusOK, RemoveOrgMemberResponse{
+		RekeyJobID:     out.RekeyJobID,
+		AffectedVaults: affected,
+	})
 }
 
 // ===========================================================================

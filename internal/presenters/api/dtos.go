@@ -5,7 +5,24 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
+
+// decodeAuthHashSecret decodes a base64-encoded authHash into a memguard
+// Secret. The decoded source slice is wiped by memguard during the copy,
+// so the caller receives a Secret whose bytes live in locked memory.
+// Callers MUST defer Destroy on the returned Secret.
+//
+// Returning a Secret (rather than raw []byte) forces every auth handler
+// to borrow the bytes through Secret.Open — any plaintext authHash copy
+// is confined to the narrow window of a single handler call.
+func decodeAuthHashSecret(s string) (*secure.Secret, error) {
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	return secure.NewSecretFromBytes(raw), nil
+}
 
 // ===========================================================================
 // Auth DTOs
@@ -443,6 +460,14 @@ type OrgMemberResponse struct {
 
 type UpdateMemberRoleRequest struct {
 	Role string `json:"role"`
+}
+
+// RemoveOrgMemberResponse carries the rekey correlation handle and the list
+// of shared vaults the admin client must re-encrypt after a member removal
+// (C2 unconditional rekey).
+type RemoveOrgMemberResponse struct {
+	RekeyJobID     string   `json:"rekeyJobId"`
+	AffectedVaults []string `json:"affectedVaults"`
 }
 
 // ===========================================================================

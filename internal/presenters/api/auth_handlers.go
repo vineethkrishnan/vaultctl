@@ -3,30 +3,42 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
+	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
 
 // AuthHandlers ties HTTP to the auth use cases.
 type AuthHandlers struct {
-	Register           *auth.Register
-	Prelogin           *auth.Prelogin
-	Login              *auth.Login
-	Refresh            *auth.Refresh
-	Logout             *auth.Logout
-	StepUp             *auth.StepUp
-	TOTPSetup          *auth.TOTPSetup
-	TOTPEnable         *auth.TOTPEnable
-	TOTPDisable        *auth.TOTPDisable
-	TOTPVerify         *auth.TOTPVerify
-	PasswordChange     *auth.PasswordChange
-	GetPasswordHint    *auth.GetPasswordHint
-	VerifyRecoveryKey  *auth.VerifyRecoveryKey
-	ResetViaRecovery   *auth.ResetViaRecovery
+	Register          *auth.Register
+	Prelogin          *auth.Prelogin
+	Login             *auth.Login
+	Refresh           *auth.Refresh
+	Logout            *auth.Logout
+	StepUp            *auth.StepUp
+	TOTPSetup         *auth.TOTPSetup
+	TOTPEnable        *auth.TOTPEnable
+	TOTPDisable       *auth.TOTPDisable
+	TOTPVerify        *auth.TOTPVerify
+	PasswordChange    *auth.PasswordChange
+	GetPasswordHint   *auth.GetPasswordHint
+	VerifyRecoveryKey *auth.VerifyRecoveryKey
+	ResetViaRecovery  *auth.ResetViaRecovery
+
+	// Users is used by HandleLogin to resolve a user ID for
+	// login.failed audit rows without storing the raw email.
+	Users ports.UserRepository
+
+	// Audit is the cross-cutting audit-log writer (M13). Never nil in
+	// wired production; handler tests may pass audit.NewNoop().
+	Audit *audit.Writer
 }
 
 // HandleRegister creates a new user account.
@@ -47,11 +59,12 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	authHash, err := decodeB64(req.AuthHash)
+	authSecret, err := decodeAuthHashSecret(req.AuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	defer authSecret.Destroy()
 	salt, err := decodeB64(req.Salt)
 	if err != nil {
 		writeError(w, r, err)
@@ -83,20 +96,23 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := h.Register.Execute(r.Context(), auth.RegisterInput{
-		Email:                       req.Email,
-		Name:                        req.Name,
-		AuthHash:                    authHash,
-		Salt:                        salt,
-		MasterPasswordPreflight:     req.MasterPasswordPreflight,
-		KDFParams:                   user.KDFParams{Iterations: req.KDFIterations, MemoryKB: req.KDFMemoryKB, Parallelism: req.KDFParallelism},
-		EncryptedPrivateKey:         encPriv,
-		EncryptedIdentityPrivateKey: encIDPriv,
-		PublicKey:                   pubKey,
-		PublicKeySignature:          sig,
-		IdentityPublicKey:           idPub,
-		InviteToken:                 req.InviteToken,
-		PasswordHint:                req.PasswordHint,
+	var out auth.RegisterOutput
+	authSecret.Open(func(authHash []byte) {
+		out, err = h.Register.Execute(r.Context(), auth.RegisterInput{
+			Email:                       req.Email,
+			Name:                        req.Name,
+			AuthHash:                    authHash,
+			Salt:                        salt,
+			MasterPasswordPreflight:     req.MasterPasswordPreflight,
+			KDFParams:                   user.KDFParams{Iterations: req.KDFIterations, MemoryKB: req.KDFMemoryKB, Parallelism: req.KDFParallelism},
+			EncryptedPrivateKey:         encPriv,
+			EncryptedIdentityPrivateKey: encIDPriv,
+			PublicKey:                   pubKey,
+			PublicKeySignature:          sig,
+			IdentityPublicKey:           idPub,
+			InviteToken:                 req.InviteToken,
+			PasswordHint:                req.PasswordHint,
+		})
 	})
 	if err != nil {
 		writeError(w, r, err)
@@ -144,19 +160,32 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	authHash, err := decodeB64(req.AuthHash)
+	authSecret, err := decodeAuthHashSecret(req.AuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	out, err := h.Login.Execute(r.Context(), auth.LoginInput{
-		Email: req.Email, AuthHash: authHash, DeviceName: req.DeviceName,
-		IPAddress: r.RemoteAddr,
+	defer authSecret.Destroy()
+
+	ip := middleware.ClientIP(r)
+	userAgent := r.UserAgent()
+
+	var out auth.LoginOutput
+	authSecret.Open(func(authHash []byte) {
+		out, err = h.Login.Execute(r.Context(), auth.LoginInput{
+			Email: req.Email, AuthHash: authHash, DeviceName: req.DeviceName,
+			IPAddress: ip,
+		})
 	})
 	if err != nil {
+		// Audit the failure BEFORE returning 401, so forensics always
+		// see the event. Resolve the user ID if the email is known;
+		// never store the raw email.
+		h.auditLoginFailure(r, req.Email, ip, userAgent)
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.LoginSuccess(r.Context(), string(out.UserID), ip, userAgent)
 	vaults := make([]VaultMembershipDTO, 0, len(out.Vaults))
 	for _, v := range out.Vaults {
 		vaults = append(vaults, VaultMembershipDTO{
@@ -205,6 +234,7 @@ func (h *AuthHandlers) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.Refreshed(r.Context(), string(out.UserID), string(out.SessionID), middleware.ClientIP(r), r.UserAgent())
 	writeJSON(w, http.StatusOK, RefreshResponse{
 		AccessToken: out.AccessToken, RefreshToken: out.RefreshToken,
 		RefreshExpiresAt: out.RefreshExpiresAt.UTC().Format(timeFormat),
@@ -226,9 +256,15 @@ func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	if err := h.Logout.Execute(r.Context(), auth.LogoutInput{RefreshToken: req.RefreshToken}); err != nil {
+	out, err := h.Logout.Execute(r.Context(), auth.LogoutInput{RefreshToken: req.RefreshToken})
+	if err != nil {
 		writeError(w, r, err)
 		return
+	}
+	// Only audit when an actual session was revoked — a miss is a
+	// silent idempotent no-op and not a security-interesting event.
+	if out.SessionID != "" {
+		h.Audit.Logout(r.Context(), string(out.UserID), string(out.SessionID), middleware.ClientIP(r), r.UserAgent())
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -251,21 +287,28 @@ func (h *AuthHandlers) HandleStepUp(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	authHash, err := decodeB64(req.AuthHash)
+	authSecret, err := decodeAuthHashSecret(req.AuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	defer authSecret.Destroy()
+
 	claims, _ := middleware.CallerClaims(r.Context())
-	out, err := h.StepUp.Execute(r.Context(), auth.StepUpInput{
-		Caller:   middleware.CallerID(r.Context()),
-		Role:     user.Role(claims.Role),
-		AuthHash: authHash,
+	callerID := middleware.CallerID(r.Context())
+	var out auth.StepUpOutput
+	authSecret.Open(func(authHash []byte) {
+		out, err = h.StepUp.Execute(r.Context(), auth.StepUpInput{
+			Caller:   callerID,
+			Role:     user.Role(claims.Role),
+			AuthHash: authHash,
+		})
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.StepUp(r.Context(), string(callerID), middleware.ClientIP(r), r.UserAgent())
 	writeJSON(w, http.StatusOK, StepUpResponse{AccessToken: out.AccessToken})
 }
 
@@ -305,14 +348,16 @@ func (h *AuthHandlers) HandleTOTPEnable(w http.ResponseWriter, r *http.Request) 
 		writeError(w, r, err)
 		return
 	}
+	callerID := middleware.CallerID(r.Context())
 	err := h.TOTPEnable.Execute(r.Context(), auth.TOTPEnableInput{
-		Caller: middleware.CallerID(r.Context()),
+		Caller: callerID,
 		Code:   req.Code,
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.TOTPEnabled(r.Context(), string(callerID), middleware.ClientIP(r), r.UserAgent())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -325,13 +370,15 @@ func (h *AuthHandlers) HandleTOTPEnable(w http.ResponseWriter, r *http.Request) 
 // @Failure 403 {object} ErrorBody "Step-up required"
 // @Router /auth/totp/disable [post]
 func (h *AuthHandlers) HandleTOTPDisable(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
 	err := h.TOTPDisable.Execute(r.Context(), auth.TOTPDisableInput{
-		Caller: middleware.CallerID(r.Context()),
+		Caller: callerID,
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.TOTPDisabled(r.Context(), string(callerID), middleware.ClientIP(r), r.UserAgent())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -380,16 +427,18 @@ func (h *AuthHandlers) HandlePasswordChange(w http.ResponseWriter, r *http.Reque
 		writeError(w, r, err)
 		return
 	}
-	oldHash, err := decodeB64(req.OldAuthHash)
+	oldSecret, err := decodeAuthHashSecret(req.OldAuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	newHash, err := decodeB64(req.NewAuthHash)
+	defer oldSecret.Destroy()
+	newSecret, err := decodeAuthHashSecret(req.NewAuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	defer newSecret.Destroy()
 	encPriv, err := decodeB64(req.EncryptedPrivateKey)
 	if err != nil {
 		writeError(w, r, err)
@@ -401,18 +450,25 @@ func (h *AuthHandlers) HandlePasswordChange(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	claims, _ := middleware.CallerClaims(r.Context())
-	out, err := h.PasswordChange.Execute(r.Context(), auth.PasswordChangeInput{
-		Caller:                      middleware.CallerID(r.Context()),
-		Role:                        user.Role(claims.Role),
-		OldAuthHash:                 oldHash,
-		NewAuthHash:                 newHash,
-		EncryptedPrivateKey:         encPriv,
-		EncryptedIdentityPrivateKey: encIDPriv,
+	callerID := middleware.CallerID(r.Context())
+	var out auth.PasswordChangeOutput
+	oldSecret.Open(func(oldHash []byte) {
+		newSecret.Open(func(newHash []byte) {
+			out, err = h.PasswordChange.Execute(r.Context(), auth.PasswordChangeInput{
+				Caller:                      callerID,
+				Role:                        user.Role(claims.Role),
+				OldAuthHash:                 oldHash,
+				NewAuthHash:                 newHash,
+				EncryptedPrivateKey:         encPriv,
+				EncryptedIdentityPrivateKey: encIDPriv,
+			})
+		})
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.PasswordChanged(r.Context(), string(callerID), middleware.ClientIP(r), r.UserAgent())
 	writeJSON(w, http.StatusOK, PasswordChangeResponse{
 		AccessToken:      out.AccessToken,
 		RefreshToken:     out.RefreshToken,
@@ -488,11 +544,12 @@ func (h *AuthHandlers) HandleResetViaRecovery(w http.ResponseWriter, r *http.Req
 		writeError(w, r, err)
 		return
 	}
-	newHash, err := decodeB64(req.NewAuthHash)
+	newSecret, err := decodeAuthHashSecret(req.NewAuthHash)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	defer newSecret.Destroy()
 	encPriv, err := decodeB64(req.EncryptedPrivateKey)
 	if err != nil {
 		writeError(w, r, err)
@@ -503,21 +560,55 @@ func (h *AuthHandlers) HandleResetViaRecovery(w http.ResponseWriter, r *http.Req
 		writeError(w, r, err)
 		return
 	}
-	out, err := h.ResetViaRecovery.Execute(r.Context(), auth.ResetViaRecoveryInput{
-		Email:                       req.Email,
-		NewAuthHash:                 newHash,
-		EncryptedPrivateKey:         encPriv,
-		EncryptedIdentityPrivateKey: encIDPriv,
+	var out auth.ResetViaRecoveryOutput
+	newSecret.Open(func(newHash []byte) {
+		out, err = h.ResetViaRecovery.Execute(r.Context(), auth.ResetViaRecoveryInput{
+			Email:                       req.Email,
+			NewAuthHash:                 newHash,
+			EncryptedPrivateKey:         encPriv,
+			EncryptedIdentityPrivateKey: encIDPriv,
+		})
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.RecoveryReset(r.Context(), string(out.UserID), middleware.ClientIP(r), r.UserAgent())
 	writeJSON(w, http.StatusOK, RecoveryResetResponse{
 		AccessToken:      out.AccessToken,
 		RefreshToken:     out.RefreshToken,
 		RefreshExpiresAt: out.RefreshExpiresAt.UTC().Format(timeFormat),
 	})
+}
+
+// auditLoginFailure resolves the user ID for a failed login attempt
+// (via email lookup) and emits the appropriate audit row. Raw emails
+// are NEVER stored — only the resolved user ID, or NULL for unknown
+// emails. Any error from the user lookup is treated as "unknown email"
+// to avoid leaking enumeration signals into the audit log.
+func (h *AuthHandlers) auditLoginFailure(r *http.Request, email, ip, userAgent string) {
+	if h.Audit == nil {
+		return
+	}
+	ctx := r.Context()
+	if h.Users == nil || email == "" {
+		h.Audit.LoginFailedUnknownEmail(ctx, ip, userAgent)
+		return
+	}
+	normalised, err := user.NewEmail(email)
+	if err != nil {
+		h.Audit.LoginFailedUnknownEmail(ctx, ip, userAgent)
+		return
+	}
+	found, err := h.Users.FindByEmail(ctx, normalised)
+	if err != nil {
+		// ErrNotFound is expected for unknown emails; anything else
+		// also resolves to "unknown" so audit writes never block.
+		_ = errors.Is(err, domain.ErrNotFound)
+		h.Audit.LoginFailedUnknownEmail(ctx, ip, userAgent)
+		return
+	}
+	h.Audit.LoginFailed(ctx, string(found.ID), ip, userAgent)
 }
 
 // extractLoginEmail reads the request body to pull the email field, then

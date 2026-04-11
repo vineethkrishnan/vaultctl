@@ -76,6 +76,7 @@ type ResetViaRecoveryInput struct {
 
 // ResetViaRecoveryOutput returns fresh tokens after successful password reset.
 type ResetViaRecoveryOutput struct {
+	UserID           user.ID
 	AccessToken      string
 	RefreshToken     string
 	RefreshExpiresAt time.Time
@@ -174,6 +175,7 @@ func (uc *ResetViaRecovery) Execute(ctx context.Context, in ResetViaRecoveryInpu
 	}
 
 	return ResetViaRecoveryOutput{
+		UserID:           u.ID,
 		AccessToken:      access,
 		RefreshToken:     refresh,
 		RefreshExpiresAt: refreshExpiresAt,

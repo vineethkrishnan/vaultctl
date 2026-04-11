@@ -10,6 +10,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
 
 // ===========================================================================
@@ -118,6 +119,91 @@ func (uc *UpdateOrgMemberRole) Execute(ctx context.Context, in UpdateOrgMemberRo
 		return domain.NewInvalid("role", "invalid")
 	}
 	return uc.Orgs.UpdateMemberRole(ctx, in.OrgID, in.TargetID, in.Role)
+}
+
+// ===========================================================================
+// RemoveOrgMember  —  C2 unconditional vault rekey trigger
+// ===========================================================================
+
+// RemoveOrgMemberInput identifies the caller, org, and target member.
+type RemoveOrgMemberInput struct {
+	Caller   user.ID
+	OrgID    organization.ID
+	TargetID user.ID
+}
+
+// RemoveOrgMemberOutput tells the admin client which shared vaults must be
+// re-encrypted. The rekey job ID is a correlation handle the client can use
+// when submitting the rekey payloads.
+type RemoveOrgMemberOutput struct {
+	RekeyJobID     string
+	AffectedVaults []vault.ID
+}
+
+// RemoveOrgMember removes a user from an organization and cascades the
+// removal into every shared vault the user held membership in. After this
+// runs, the admin client MUST issue a rekey for each affected vault (C2).
+type RemoveOrgMember struct {
+	Orgs   ports.OrganizationRepository
+	Vaults ports.VaultRepository
+	IDs    ports.IDGenerator
+}
+
+// Execute revokes vault memberships, then the org membership.
+//
+// Order matters: vault memberships are soft-deleted first so that a crash
+// between the two writes leaves the target without access to the vaults —
+// which is the safer failure mode for a "remove" operation.
+func (uc *RemoveOrgMember) Execute(ctx context.Context, in RemoveOrgMemberInput) (RemoveOrgMemberOutput, error) {
+	if in.OrgID.IsZero() {
+		return RemoveOrgMemberOutput{}, domain.NewInvalid("org_id", "required")
+	}
+	if in.TargetID.IsZero() {
+		return RemoveOrgMemberOutput{}, domain.NewInvalid("user_id", "required")
+	}
+	if in.Caller == in.TargetID {
+		return RemoveOrgMemberOutput{}, domain.NewInvalid("target_user", "cannot remove yourself; transfer ownership first")
+	}
+
+	// Verify caller is an org admin/owner
+	callerMembership, err := uc.Orgs.GetMembership(ctx, in.OrgID, in.Caller)
+	if err != nil {
+		return RemoveOrgMemberOutput{}, err
+	}
+	if !callerMembership.Role.CanAdminister() {
+		return RemoveOrgMemberOutput{}, domain.NewInvalid("caller", "insufficient org role")
+	}
+
+	// Confirm target is a member (so we return 404 before doing any work
+	// when the caller typo'd the user ID)
+	target, err := uc.Orgs.GetMembership(ctx, in.OrgID, in.TargetID)
+	if err != nil {
+		return RemoveOrgMemberOutput{}, err
+	}
+	if target.Role == user.RoleOwner {
+		return RemoveOrgMemberOutput{}, domain.NewInvalid("target_user", "cannot remove the org owner")
+	}
+
+	// Find affected shared vaults and soft-delete each membership (C2)
+	affected, err := uc.Vaults.ListSharedByOrgMember(ctx, in.OrgID, in.TargetID)
+	if err != nil {
+		return RemoveOrgMemberOutput{}, fmt.Errorf("list affected vaults: %w", err)
+	}
+	for _, vid := range affected {
+		if err := uc.Vaults.RemoveMember(ctx, vid, in.TargetID); err != nil {
+			return RemoveOrgMemberOutput{}, fmt.Errorf("revoke vault %s membership: %w", vid, err)
+		}
+	}
+
+	// Finally drop the org membership row
+	if err := uc.Orgs.RemoveMember(ctx, in.OrgID, in.TargetID); err != nil {
+		return RemoveOrgMemberOutput{}, fmt.Errorf("remove org membership: %w", err)
+	}
+
+	return RemoveOrgMemberOutput{
+		RekeyJobID:     uc.IDs.NewID(),
+		AffectedVaults: affected,
+	}, nil
 }
 
 // ===========================================================================

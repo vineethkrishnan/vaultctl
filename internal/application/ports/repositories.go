@@ -4,9 +4,20 @@ import (
 	"context"
 	"time"
 
+	"github.com/vineethkrishnan/vaultctl/internal/domain/auditlog"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 )
+
+// AuditLogRepository persists audit_logs rows (M13). The single Write
+// method mirrors a single INSERT; the port is intentionally minimal so
+// that the cross-cutting audit.Writer facade can be the only caller.
+type AuditLogRepository interface {
+	// Write persists one audit entry. Errors MUST be logged and swallowed
+	// by the caller — an audit write is never allowed to take down a
+	// business request.
+	Write(ctx context.Context, entry auditlog.Entry) error
+}
 
 // UserRepository persists the User aggregate.
 //
@@ -111,6 +122,15 @@ type OrganizationRepository interface {
 
 	// UpdateMemberRole changes a member's org-level role.
 	UpdateMemberRole(ctx context.Context, orgID organization.ID, userID user.ID, role user.Role) error
+
+	// GetMembership loads a single org membership row. Returns ErrNotFound
+	// when the user is not a member of the org.
+	GetMembership(ctx context.Context, orgID organization.ID, userID user.ID) (organization.Membership, error)
+
+	// RemoveMember hard-deletes a member from the org (C2). Shared vault
+	// memberships within the org must be revoked separately — see the
+	// RemoveOrgMember use case for the full flow.
+	RemoveMember(ctx context.Context, orgID organization.ID, userID user.ID) error
 }
 
 // SessionStore persists Session rows keyed off the HMAC'd refresh token.

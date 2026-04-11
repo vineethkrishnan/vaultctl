@@ -6,6 +6,8 @@ import (
 	"crypto/subtle"
 	"errors"
 	"strings"
+
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
 
 // ErrEmptyPepper indicates a misconfigured HMAC pepper — either the server
@@ -17,10 +19,11 @@ var ErrEmptyPepper = errors.New("auth: HMAC pepper is empty")
 //   - H7: HMAC(server_pepper, api_key) for api_keys.key_hash
 //   - H2: HMAC(enumeration_pepper, email) for prelogin fake-salt
 //
-// The service never handles raw secrets for longer than one call.
+// Peppers live inside memguard LockedBuffers for the process lifetime and
+// are borrowed through Secret.Open only for the narrow HMAC call window.
 type HMACService struct {
-	serverPepper      []byte
-	enumerationPepper []byte
+	serverPepper      *secure.Secret
+	enumerationPepper *secure.Secret
 }
 
 // NewHMACService builds an HMACService. Both peppers are required and MUST
@@ -34,17 +37,21 @@ func NewHMACService(serverPepper, enumerationPepper string) (*HMACService, error
 		return nil, ErrEmptyPepper
 	}
 	return &HMACService{
-		serverPepper:      []byte(serverPepper),
-		enumerationPepper: []byte(enumerationPepper),
+		serverPepper:      secure.NewSecretFromString(serverPepper),
+		enumerationPepper: secure.NewSecretFromString(enumerationPepper),
 	}, nil
 }
 
 // Hash computes HMAC-SHA256(serverPepper, input). Used for refresh-token and
 // API-key hashing.
 func (s *HMACService) Hash(input []byte) []byte {
-	m := hmac.New(sha256.New, s.serverPepper)
-	m.Write(input)
-	return m.Sum(nil)
+	var out []byte
+	s.serverPepper.Open(func(key []byte) {
+		m := hmac.New(sha256.New, key)
+		m.Write(input)
+		out = m.Sum(nil)
+	})
+	return out
 }
 
 // HashString is a string-input convenience for tokens.
@@ -61,7 +68,17 @@ func (s *HMACService) Equal(a, b []byte) bool {
 // Used by the prelogin handler to produce a deterministic pseudo-salt for
 // unknown emails (H2). The normalised email MUST come from user.Email.String().
 func (s *HMACService) EnumerationSalt(normalizedEmail string) []byte {
-	m := hmac.New(sha256.New, s.enumerationPepper)
-	m.Write([]byte(normalizedEmail))
-	return m.Sum(nil)
+	var out []byte
+	s.enumerationPepper.Open(func(key []byte) {
+		m := hmac.New(sha256.New, key)
+		m.Write([]byte(normalizedEmail))
+		out = m.Sum(nil)
+	})
+	return out
+}
+
+// Close wipes both peppers. Call from the server shutdown path.
+func (s *HMACService) Close() {
+	s.serverPepper.Destroy()
+	s.enumerationPepper.Destroy()
 }

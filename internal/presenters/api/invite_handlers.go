@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
@@ -19,21 +20,25 @@ type InviteHandlers struct {
 	RedeemInvite *auth.RedeemInvite
 	RevokeInvite *auth.RevokeInvite
 	ListInvites  *auth.ListInvites
+
+	// Audit is the cross-cutting audit-log writer (M13).
+	Audit *audit.Writer
 }
 
 // HandleCreateInvite issues a new org invite.
 // @Summary Create invite
-// @Description Admin creates an invite token for a new member
+// @Description Admin creates an invite token for a new member of the org
 // @Tags Invites
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param id path string true "Organization ID"
 // @Param body body CreateInviteRequest true "Invite payload"
 // @Success 201 {object} CreateInviteResponse
 // @Failure 400 {object} ErrorBody
 // @Failure 401 {object} ErrorBody
 // @Failure 403 {object} ErrorBody
-// @Router /invites [post]
+// @Router /orgs/{id}/invites [post]
 func (h *InviteHandlers) HandleCreateInvite(w http.ResponseWriter, r *http.Request) {
 	var req CreateInviteRequest
 	if err := readJSON(r, &req); err != nil {
@@ -62,13 +67,8 @@ func (h *InviteHandlers) HandleCreateInvite(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// TODO: resolve caller's org from membership; for now accept a
-	// hardcoded single-org model where the org_id is derived upstream.
-	// The admin's org is carried in their claims or looked up from their
-	// membership. For the initial implementation we use a placeholder
-	// that the caller's admin-middleware has already validated.
 	callerID := middleware.CallerID(r.Context())
-	orgID := r.URL.Query().Get("orgId")
+	orgID := chi.URLParam(r, "id")
 	if orgID == "" {
 		writeError(w, r, &domain.Invalid{Field: "orgId", Message: "required"})
 		return
@@ -85,6 +85,7 @@ func (h *InviteHandlers) HandleCreateInvite(w http.ResponseWriter, r *http.Reque
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.InviteCreated(r.Context(), string(callerID), orgID, out.InviteID, middleware.ClientIP(r), r.UserAgent())
 
 	writeJSON(w, http.StatusCreated, CreateInviteResponse{
 		InviteID: out.InviteID,
@@ -102,7 +103,7 @@ func (h *InviteHandlers) HandleCreateInvite(w http.ResponseWriter, r *http.Reque
 // @Success 200 {object} RedeemInviteResponse
 // @Failure 400 {object} ErrorBody
 // @Failure 404 {object} ErrorBody
-// @Router /invites/redeem [post]
+// @Router /auth/invites/redeem [post]
 func (h *InviteHandlers) HandleRedeemInvite(w http.ResponseWriter, r *http.Request) {
 	var req RedeemInviteRequest
 	if err := readJSON(r, &req); err != nil {
@@ -127,17 +128,18 @@ func (h *InviteHandlers) HandleRedeemInvite(w http.ResponseWriter, r *http.Reque
 
 // HandleRevokeInvite cancels a pending invite.
 // @Summary Revoke invite
-// @Description Admin revokes a pending invite by ID
+// @Description Admin revokes a pending org invite by ID
 // @Tags Invites
 // @Security BearerAuth
-// @Param id path string true "Invite ID"
+// @Param id path string true "Organization ID"
+// @Param inviteId path string true "Invite ID"
 // @Success 204 "No content"
 // @Failure 401 {object} ErrorBody
 // @Failure 403 {object} ErrorBody
 // @Failure 404 {object} ErrorBody
-// @Router /invites/{id} [delete]
+// @Router /orgs/{id}/invites/{inviteId} [delete]
 func (h *InviteHandlers) HandleRevokeInvite(w http.ResponseWriter, r *http.Request) {
-	inviteID := chi.URLParam(r, "id")
+	inviteID := chi.URLParam(r, "inviteId")
 	callerID := middleware.CallerID(r.Context())
 
 	err := h.RevokeInvite.Execute(r.Context(), auth.RevokeInviteInput{
@@ -148,6 +150,9 @@ func (h *InviteHandlers) HandleRevokeInvite(w http.ResponseWriter, r *http.Reque
 		writeError(w, r, err)
 		return
 	}
+	// orgID is unknown here (the URL does not carry it); store empty —
+	// the resource_id on the invite row is the stable forensic anchor.
+	h.Audit.InviteRevoked(r.Context(), string(callerID), "", inviteID, middleware.ClientIP(r), r.UserAgent())
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -158,14 +163,14 @@ func (h *InviteHandlers) HandleRevokeInvite(w http.ResponseWriter, r *http.Reque
 // @Tags Invites
 // @Produce json
 // @Security BearerAuth
-// @Param orgId query string true "Organization ID"
+// @Param id path string true "Organization ID"
 // @Success 200 {array} InviteResponse
 // @Failure 401 {object} ErrorBody
 // @Failure 403 {object} ErrorBody
-// @Router /invites [get]
+// @Router /orgs/{id}/invites [get]
 func (h *InviteHandlers) HandleListInvites(w http.ResponseWriter, r *http.Request) {
 	callerID := middleware.CallerID(r.Context())
-	rawOrgID := r.URL.Query().Get("orgId")
+	rawOrgID := chi.URLParam(r, "id")
 	if rawOrgID == "" {
 		writeError(w, r, &domain.Invalid{Field: "orgId", Message: "required"})
 		return

@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +12,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
+	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
 )
 
 func newBackupCmd() *cobra.Command {
@@ -56,11 +61,61 @@ func newBackupCmd() *cobra.Command {
 				return fmt.Errorf("pg_dump: %w", err)
 			}
 			cmd.Printf("backup written to %s\n", filename)
+
+			// Prune dumps older than VAULTCTL_BACKUP_RETENTION_DAYS (M12).
+			// Retention <= 0 disables pruning so operators can opt out.
+			if cfg.BackupRetentionDays > 0 {
+				pruned, err := pruneOldBackups(output, cfg.BackupRetentionDays, time.Now())
+				if err != nil {
+					// Don't fail the backup run on cleanup errors —
+					// the dump itself is already safe on disk.
+					cmd.PrintErrf("warning: retention cleanup failed: %v\n", err)
+				} else if pruned > 0 {
+					cmd.Printf("pruned %d backup(s) older than %d days\n", pruned, cfg.BackupRetentionDays)
+				}
+			}
+
+			// Best-effort audit log entry (M13). The CLI has no HTTP
+			// context, so user_id / ip / user_agent are empty. Any
+			// error here must NOT fail the backup.
+			writeBackupAuditEntry(cmd.Context(), cfg)
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&output, "output", "", "destination directory")
 	return cmd
+}
+
+// pruneOldBackups deletes vaultctl-*.dump files in dir whose mtime is older
+// than retentionDays from now. Returns the count of files removed.
+// Files that don't match the vaultctl- prefix are left alone.
+func pruneOldBackups(dir string, retentionDays int, now time.Time) (int, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0, fmt.Errorf("read backup dir: %w", err)
+	}
+	cutoff := now.Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	removed := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, "vaultctl-") || !strings.HasSuffix(name, ".dump") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			if err := os.Remove(filepath.Join(dir, name)); err != nil {
+				return removed, fmt.Errorf("remove %s: %w", name, err)
+			}
+			removed++
+		}
+	}
+	return removed, nil
 }
 
 // writeTempPgpass creates a temporary .pgpass file with 0600 perms and returns
@@ -89,6 +144,21 @@ func writeTempPgpass(host string, port int, dbname, user, password string) (stri
 		return "", fmt.Errorf("close pgpass: %w", err)
 	}
 	return f.Name(), nil
+}
+
+// writeBackupAuditEntry opens a short-lived pool, writes a single
+// backup.run audit row, and closes. Any failure is logged and swallowed
+// — an audit miss must never fail the backup operation itself.
+func writeBackupAuditEntry(ctx context.Context, cfg *config.Config) {
+	pool, err := postgres.Connect(ctx, cfg)
+	if err != nil {
+		slog.Default().WarnContext(ctx, "audit connect failed", slog.Any("error", err))
+		return
+	}
+	defer pool.Close()
+	repo := &postgres.AuditRepo{Pool: pool}
+	writer := audit.New(repo, ports.RealClock(), slog.Default())
+	writer.BackupRun(ctx, "", "", "vaultctl-cli/backup")
 }
 
 // assertKeySeparation refuses to write a backup if the directory contains

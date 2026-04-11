@@ -187,7 +187,7 @@ func TestJWTService_DefaultsIssuer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewJWTService: %v", err)
 	}
-	if svc.cfg.Issuer != "vaultctl" {
-		t.Fatalf("Issuer default not applied: %q", svc.cfg.Issuer)
+	if svc.issuer != "vaultctl" {
+		t.Fatalf("Issuer default not applied: %q", svc.issuer)
 	}
 }

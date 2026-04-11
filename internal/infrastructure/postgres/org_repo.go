@@ -107,6 +107,31 @@ func (r *OrgRepo) UpdateMemberRole(ctx context.Context, orgID organization.ID, u
 	return nil
 }
 
+// GetMembership loads a single membership row.
+func (r *OrgRepo) GetMembership(ctx context.Context, orgID organization.ID, userID user.ID) (organization.Membership, error) {
+	row := r.Pool.QueryRow(ctx, `
+		SELECT org_id, user_id, role, invited_at, accepted_at
+		FROM org_members
+		WHERE org_id = $1 AND user_id = $2
+	`, string(orgID), string(userID))
+	return scanMembership(row)
+}
+
+// RemoveMember hard-deletes an org membership row (C2).
+func (r *OrgRepo) RemoveMember(ctx context.Context, orgID organization.ID, userID user.ID) error {
+	tag, err := r.Pool.Exec(ctx, `
+		DELETE FROM org_members
+		WHERE org_id = $1 AND user_id = $2
+	`, string(orgID), string(userID))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 // ===========================================================================
 // internal
 // ===========================================================================

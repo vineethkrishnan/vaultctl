@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
@@ -31,6 +33,7 @@ type adapters struct {
 	apikeys *postgres.APIKeyRepo
 	invites *postgres.InviteRepo
 	orgs    *postgres.OrgRepo
+	audit   *postgres.AuditRepo
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -96,6 +99,7 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		apikeys: &postgres.APIKeyRepo{Pool: pool},
 		invites: &postgres.InviteRepo{Pool: pool},
 		orgs:    &postgres.OrgRepo{Pool: pool},
+		audit:   &postgres.AuditRepo{Pool: pool},
 		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
 		hmac:    hmac,
 		jwt:     jwt,
@@ -116,11 +120,18 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 	tokens := &jwtServiceAdapter{svc: a.jwt}
 
+	// Audit writer (M13): cross-cutting side-effect sink. All handlers
+	// that mutate state share the same instance so a single INSERT path
+	// feeds every action.
+	auditWriter := audit.New(a.audit, a.clock, slog.Default())
+
 	authHandlers := &api.AuthHandlers{
+		Users: a.users,
+		Audit: auditWriter,
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
-			Encrypter: a.aead,
-			Policy: user.DefaultPolicy(), DefaultRole: user.RoleMember,
+			Encrypter:        a.aead,
+			Policy:           user.DefaultPolicy(), DefaultRole: user.RoleMember,
 			RegistrationMode: cfg.RegistrationMode,
 			RedeemInvite: &auth.RedeemInvite{
 				Invites: a.invites, HMAC: a.hmac, Clock: a.clock,
@@ -150,10 +161,10 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 			Tokens: tokens, TokenGenerator: a.tokens, HMAC: a.hmac,
 			Clock: a.clock, IDs: a.ids, RefreshTTL: cfg.JWTRefreshTTL,
 		},
-		TOTPSetup:   &auth.TOTPSetup{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Issuer: "vaultctl"},
-		TOTPEnable:  &auth.TOTPEnable{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
-		TOTPDisable: &auth.TOTPDisable{Users: a.users},
-		TOTPVerify:  &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
+		TOTPSetup:         &auth.TOTPSetup{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Issuer: "vaultctl"},
+		TOTPEnable:        &auth.TOTPEnable{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
+		TOTPDisable:       &auth.TOTPDisable{Users: a.users},
+		TOTPVerify:        &auth.TOTPVerify{Users: a.users, TOTP: a.totp, Encrypter: a.aead, Clock: a.clock},
 		GetPasswordHint:   &auth.GetPasswordHint{Users: a.users, Encrypter: a.aead},
 		VerifyRecoveryKey: &auth.VerifyRecoveryKey{Users: a.users},
 		ResetViaRecovery: &auth.ResetViaRecovery{
@@ -166,6 +177,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 	userHandlers := &api.UserHandlers{
 		Users:    a.users,
 		Sessions: a.sess,
+		Audit:    auditWriter,
 	}
 
 	apiKeyHandlers := &api.APIKeyHandlers{
@@ -175,6 +187,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		},
 		List:   &auth.ListAPIKeys{APIKeys: a.apikeys},
 		Delete: &auth.DeleteAPIKey{APIKeys: a.apikeys},
+		Audit:  auditWriter,
 	}
 
 	inviteHandlers := &api.InviteHandlers{
@@ -189,6 +202,7 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 			Invites: a.invites, Clock: a.clock,
 		},
 		ListInvites: &auth.ListInvites{Invites: a.invites},
+		Audit:       auditWriter,
 	}
 
 	vaultHandlers := &api.VaultHandlers{
@@ -213,12 +227,17 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		ShareVault:   &appvault.ShareVault{Vaults: a.vaults, Clock: a.clock},
 		RemoveMember: &appvault.RemoveMember{Vaults: a.vaults},
 		RekeyVault:   &appvault.RekeyVault{Vaults: a.vaults, Items: a.items},
+		Audit:        auditWriter,
 	}
 
 	orgHandlers := &api.OrgHandlers{
 		CreateOrg:        &auth.CreateOrganization{Orgs: a.orgs, Clock: a.clock, IDs: a.ids},
 		ListMembers:      &auth.ListOrgMembers{Orgs: a.orgs},
 		UpdateMemberRole: &auth.UpdateOrgMemberRole{Orgs: a.orgs},
+		RemoveMember: &auth.RemoveOrgMember{
+			Orgs: a.orgs, Vaults: a.vaults, IDs: a.ids,
+		},
+		Audit: auditWriter,
 	}
 
 	exportHandlers := &api.ExportHandlers{
@@ -233,14 +252,14 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 	}
 
 	return api.Dependencies{
-		Tokens:             tokens,
-		Clock:              a.clock,
-		Auth:               authHandlers,
-		User:               userHandlers,
-		Vault:              vaultHandlers,
-		APIKey:             apiKeyHandlers,
-		Invite:             inviteHandlers,
-		Org:                orgHandlers,
+		Tokens: tokens,
+		Clock:  a.clock,
+		Auth:   authHandlers,
+		User:   userHandlers,
+		Vault:  vaultHandlers,
+		APIKey: apiKeyHandlers,
+		Invite: inviteHandlers,
+		Org:    orgHandlers,
 		Admin: &api.AdminHandlers{
 			ListBackups: &auth.ListBackups{BackupDir: "/backups"},
 		},

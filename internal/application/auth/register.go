@@ -129,15 +129,9 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	now := uc.Clock.Now()
-	// Encrypt password hint if provided (H4 server-side encryption)
-	var encryptedHint []byte
-	if in.PasswordHint != "" && uc.Encrypter != nil {
-		aad := []byte("password_hint:" + email.String())
-		blob, encErr := uc.Encrypter.Encrypt([]byte(in.PasswordHint), aad)
-		if encErr != nil {
-			return RegisterOutput{}, fmt.Errorf("encrypt password hint: %w", encErr)
-		}
-		encryptedHint = blob.Bytes()
+	encryptedHint, err := uc.encryptPasswordHint(in.PasswordHint, email)
+	if err != nil {
+		return RegisterOutput{}, err
 	}
 
 	u := user.User{
@@ -184,4 +178,19 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	return RegisterOutput{UserID: u.ID, Role: u.Role}, nil
+}
+
+// encryptPasswordHint wraps the optional plaintext hint under H4's
+// server-side data key. Returns nil when no hint was provided or no
+// encrypter is wired.
+func (uc *Register) encryptPasswordHint(hint string, email user.Email) ([]byte, error) {
+	if hint == "" || uc.Encrypter == nil {
+		return nil, nil
+	}
+	aad := []byte("password_hint:" + email.String())
+	blob, err := uc.Encrypter.Encrypt([]byte(hint), aad)
+	if err != nil {
+		return nil, fmt.Errorf("encrypt password hint: %w", err)
+	}
+	return blob.Bytes(), nil
 }

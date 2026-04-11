@@ -33,6 +33,9 @@ func NewRootCmd() *cobra.Command {
 		Version:       fmt.Sprintf("%s (%s)", Version, Commit),
 	}
 
+	// Global --json flag — every client command honours it via isJSON().
+	root.PersistentFlags().Bool("json", false, "Emit JSON output instead of tables")
+
 	root.AddCommand(newServerCmd(), newHealthCheckCmd(), newAdminCmd(), newBackupCmd())
 	root.AddCommand(newClientCmds()...)
 

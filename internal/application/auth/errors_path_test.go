@@ -166,7 +166,7 @@ func TestLogout_SessionLookupErr(t *testing.T) {
 	t.Parallel()
 	sess := newFakeSessionStore()
 	uc := &Logout{Sessions: &sessionFindErr{fakeSessionStore: sess}, HMAC: fakeHMAC{}}
-	err := uc.Execute(context.Background(), LogoutInput{RefreshToken: "token"})
+	_, err := uc.Execute(context.Background(), LogoutInput{RefreshToken: "token"})
 	if err == nil || !strings.Contains(err.Error(), "load session") {
 		t.Fatalf("expected load session wrapping, got %v", err)
 	}

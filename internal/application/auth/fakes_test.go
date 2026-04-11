@@ -10,6 +10,7 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
@@ -341,4 +342,7 @@ func (emptyVaultRepo) ListMembers(_ context.Context, _ vault.ID) ([]vault.Member
 }
 func (emptyVaultRepo) MemberForUser(_ context.Context, _ vault.ID, _ user.ID) (vault.Member, error) {
 	return vault.Member{}, nil
+}
+func (emptyVaultRepo) ListSharedByOrgMember(_ context.Context, _ organization.ID, _ user.ID) ([]vault.ID, error) {
+	return nil, nil
 }
