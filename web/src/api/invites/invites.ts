@@ -28,7 +28,6 @@ import type {
   CreateInviteRequest,
   CreateInviteResponse,
   ErrorBody,
-  GetInvitesParams,
   InviteResponse,
   RedeemInviteRequest,
   RedeemInviteResponse
@@ -40,274 +39,44 @@ import { apiFetcher } from '../../lib/api-fetcher';
 
 
 /**
- * Admin lists pending invites for an organization
- * @summary List invites
- */
-export type getInvitesResponse200 = {
-  data: InviteResponse[]
-  status: 200
-}
-
-export type getInvitesResponse401 = {
-  data: ErrorBody
-  status: 401
-}
-
-export type getInvitesResponse403 = {
-  data: ErrorBody
-  status: 403
-}
-
-export type getInvitesResponseSuccess = (getInvitesResponse200) & {
-  headers: Headers;
-};
-export type getInvitesResponseError = (getInvitesResponse401 | getInvitesResponse403) & {
-  headers: Headers;
-};
-
-export type getInvitesResponse = (getInvitesResponseSuccess | getInvitesResponseError)
-
-export const getGetInvitesUrl = (params: GetInvitesParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : value.toString())
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/invites?${stringifiedParams}` : `/invites`
-}
-
-export const getInvites = async (params: GetInvitesParams, options?: RequestInit): Promise<getInvitesResponse> => {
-
-  return apiFetcher<getInvitesResponse>(getGetInvitesUrl(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetInvitesQueryKey = (params?: GetInvitesParams,) => {
-    return [
-    `/invites`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getGetInvitesQueryOptions = <TData = Awaited<ReturnType<typeof getInvites>>, TError = ErrorBody>(params: GetInvitesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvites>>, TError, TData>>, }
-) => {
-
-const {query: queryOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetInvitesQueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvites>>> = ({ signal }) => getInvites(params, { signal });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvites>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetInvitesQueryResult = NonNullable<Awaited<ReturnType<typeof getInvites>>>
-export type GetInvitesQueryError = ErrorBody
-
-
-export function useGetInvites<TData = Awaited<ReturnType<typeof getInvites>>, TError = ErrorBody>(
- params: GetInvitesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvites>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInvites>>,
-          TError,
-          Awaited<ReturnType<typeof getInvites>>
-        > , 'initialData'
-      >, }
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetInvites<TData = Awaited<ReturnType<typeof getInvites>>, TError = ErrorBody>(
- params: GetInvitesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvites>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInvites>>,
-          TError,
-          Awaited<ReturnType<typeof getInvites>>
-        > , 'initialData'
-      >, }
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetInvites<TData = Awaited<ReturnType<typeof getInvites>>, TError = ErrorBody>(
- params: GetInvitesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvites>>, TError, TData>>, }
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List invites
- */
-
-export function useGetInvites<TData = Awaited<ReturnType<typeof getInvites>>, TError = ErrorBody>(
- params: GetInvitesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getInvites>>, TError, TData>>, }
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetInvitesQueryOptions(params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-/**
- * Admin creates an invite token for a new member
- * @summary Create invite
- */
-export type postInvitesResponse201 = {
-  data: CreateInviteResponse
-  status: 201
-}
-
-export type postInvitesResponse400 = {
-  data: ErrorBody
-  status: 400
-}
-
-export type postInvitesResponse401 = {
-  data: ErrorBody
-  status: 401
-}
-
-export type postInvitesResponse403 = {
-  data: ErrorBody
-  status: 403
-}
-
-export type postInvitesResponseSuccess = (postInvitesResponse201) & {
-  headers: Headers;
-};
-export type postInvitesResponseError = (postInvitesResponse400 | postInvitesResponse401 | postInvitesResponse403) & {
-  headers: Headers;
-};
-
-export type postInvitesResponse = (postInvitesResponseSuccess | postInvitesResponseError)
-
-export const getPostInvitesUrl = () => {
-
-
-
-
-  return `/invites`
-}
-
-export const postInvites = async (createInviteRequest: CreateInviteRequest, options?: RequestInit): Promise<postInvitesResponse> => {
-
-  return apiFetcher<postInvitesResponse>(getPostInvitesUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(
-      createInviteRequest,)
-  }
-);}
-
-
-
-
-export const getPostInvitesMutationOptions = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvites>>, TError,{data: CreateInviteRequest}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof postInvites>>, TError,{data: CreateInviteRequest}, TContext> => {
-
-const mutationKey = ['postInvites'];
-const {mutation: mutationOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postInvites>>, {data: CreateInviteRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  postInvites(data,)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PostInvitesMutationResult = NonNullable<Awaited<ReturnType<typeof postInvites>>>
-    export type PostInvitesMutationBody = CreateInviteRequest
-    export type PostInvitesMutationError = ErrorBody
-
-    /**
- * @summary Create invite
- */
-export const usePostInvites = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvites>>, TError,{data: CreateInviteRequest}, TContext>, }
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postInvites>>,
-        TError,
-        {data: CreateInviteRequest},
-        TContext
-      > => {
-      return useMutation(getPostInvitesMutationOptions(options), queryClient);
-    }
-    /**
  * New user redeems an invite token during registration
  * @summary Redeem invite
  */
-export type postInvitesRedeemResponse200 = {
+export type postAuthInvitesRedeemResponse200 = {
   data: RedeemInviteResponse
   status: 200
 }
 
-export type postInvitesRedeemResponse400 = {
+export type postAuthInvitesRedeemResponse400 = {
   data: ErrorBody
   status: 400
 }
 
-export type postInvitesRedeemResponse404 = {
+export type postAuthInvitesRedeemResponse404 = {
   data: ErrorBody
   status: 404
 }
 
-export type postInvitesRedeemResponseSuccess = (postInvitesRedeemResponse200) & {
+export type postAuthInvitesRedeemResponseSuccess = (postAuthInvitesRedeemResponse200) & {
   headers: Headers;
 };
-export type postInvitesRedeemResponseError = (postInvitesRedeemResponse400 | postInvitesRedeemResponse404) & {
+export type postAuthInvitesRedeemResponseError = (postAuthInvitesRedeemResponse400 | postAuthInvitesRedeemResponse404) & {
   headers: Headers;
 };
 
-export type postInvitesRedeemResponse = (postInvitesRedeemResponseSuccess | postInvitesRedeemResponseError)
+export type postAuthInvitesRedeemResponse = (postAuthInvitesRedeemResponseSuccess | postAuthInvitesRedeemResponseError)
 
-export const getPostInvitesRedeemUrl = () => {
-
-
+export const getPostAuthInvitesRedeemUrl = () => {
 
 
-  return `/invites/redeem`
+
+
+  return `/auth/invites/redeem`
 }
 
-export const postInvitesRedeem = async (redeemInviteRequest: RedeemInviteRequest, options?: RequestInit): Promise<postInvitesRedeemResponse> => {
+export const postAuthInvitesRedeem = async (redeemInviteRequest: RedeemInviteRequest, options?: RequestInit): Promise<postAuthInvitesRedeemResponse> => {
 
-  return apiFetcher<postInvitesRedeemResponse>(getPostInvitesRedeemUrl(),
+  return apiFetcher<postAuthInvitesRedeemResponse>(getPostAuthInvitesRedeemUrl(),
   {
     ...options,
     method: 'POST',
@@ -320,11 +89,11 @@ export const postInvitesRedeem = async (redeemInviteRequest: RedeemInviteRequest
 
 
 
-export const getPostInvitesRedeemMutationOptions = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvitesRedeem>>, TError,{data: RedeemInviteRequest}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof postInvitesRedeem>>, TError,{data: RedeemInviteRequest}, TContext> => {
+export const getPostAuthInvitesRedeemMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthInvitesRedeem>>, TError,{data: RedeemInviteRequest}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthInvitesRedeem>>, TError,{data: RedeemInviteRequest}, TContext> => {
 
-const mutationKey = ['postInvitesRedeem'];
+const mutationKey = ['postAuthInvitesRedeem'];
 const {mutation: mutationOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -334,10 +103,10 @@ const {mutation: mutationOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postInvitesRedeem>>, {data: RedeemInviteRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthInvitesRedeem>>, {data: RedeemInviteRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  postInvitesRedeem(data,)
+          return  postAuthInvitesRedeem(data,)
         }
 
 
@@ -347,67 +116,293 @@ const {mutation: mutationOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostInvitesRedeemMutationResult = NonNullable<Awaited<ReturnType<typeof postInvitesRedeem>>>
-    export type PostInvitesRedeemMutationBody = RedeemInviteRequest
-    export type PostInvitesRedeemMutationError = ErrorBody
+    export type PostAuthInvitesRedeemMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthInvitesRedeem>>>
+    export type PostAuthInvitesRedeemMutationBody = RedeemInviteRequest
+    export type PostAuthInvitesRedeemMutationError = ErrorBody
 
     /**
  * @summary Redeem invite
  */
-export const usePostInvitesRedeem = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postInvitesRedeem>>, TError,{data: RedeemInviteRequest}, TContext>, }
+export const usePostAuthInvitesRedeem = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthInvitesRedeem>>, TError,{data: RedeemInviteRequest}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postInvitesRedeem>>,
+        Awaited<ReturnType<typeof postAuthInvitesRedeem>>,
         TError,
         {data: RedeemInviteRequest},
         TContext
       > => {
-      return useMutation(getPostInvitesRedeemMutationOptions(options), queryClient);
+      return useMutation(getPostAuthInvitesRedeemMutationOptions(options), queryClient);
     }
     /**
- * Admin revokes a pending invite by ID
- * @summary Revoke invite
+ * Admin lists pending invites for an organization
+ * @summary List invites
  */
-export type deleteInvitesIdResponse204 = {
-  data: void
-  status: 204
+export type getOrgsIdInvitesResponse200 = {
+  data: InviteResponse[]
+  status: 200
 }
 
-export type deleteInvitesIdResponse401 = {
+export type getOrgsIdInvitesResponse401 = {
   data: ErrorBody
   status: 401
 }
 
-export type deleteInvitesIdResponse403 = {
+export type getOrgsIdInvitesResponse403 = {
   data: ErrorBody
   status: 403
 }
 
-export type deleteInvitesIdResponse404 = {
+export type getOrgsIdInvitesResponseSuccess = (getOrgsIdInvitesResponse200) & {
+  headers: Headers;
+};
+export type getOrgsIdInvitesResponseError = (getOrgsIdInvitesResponse401 | getOrgsIdInvitesResponse403) & {
+  headers: Headers;
+};
+
+export type getOrgsIdInvitesResponse = (getOrgsIdInvitesResponseSuccess | getOrgsIdInvitesResponseError)
+
+export const getGetOrgsIdInvitesUrl = (id: string,) => {
+
+
+
+
+  return `/orgs/${id}/invites`
+}
+
+export const getOrgsIdInvites = async (id: string, options?: RequestInit): Promise<getOrgsIdInvitesResponse> => {
+
+  return apiFetcher<getOrgsIdInvitesResponse>(getGetOrgsIdInvitesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrgsIdInvitesQueryKey = (id: string,) => {
+    return [
+    `/orgs/${id}/invites`
+    ] as const;
+    }
+
+
+export const getGetOrgsIdInvitesQueryOptions = <TData = Awaited<ReturnType<typeof getOrgsIdInvites>>, TError = ErrorBody>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrgsIdInvites>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrgsIdInvitesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgsIdInvites>>> = ({ signal }) => getOrgsIdInvites(id, { signal });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrgsIdInvites>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetOrgsIdInvitesQueryResult = NonNullable<Awaited<ReturnType<typeof getOrgsIdInvites>>>
+export type GetOrgsIdInvitesQueryError = ErrorBody
+
+
+export function useGetOrgsIdInvites<TData = Awaited<ReturnType<typeof getOrgsIdInvites>>, TError = ErrorBody>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrgsIdInvites>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOrgsIdInvites>>,
+          TError,
+          Awaited<ReturnType<typeof getOrgsIdInvites>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetOrgsIdInvites<TData = Awaited<ReturnType<typeof getOrgsIdInvites>>, TError = ErrorBody>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrgsIdInvites>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOrgsIdInvites>>,
+          TError,
+          Awaited<ReturnType<typeof getOrgsIdInvites>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetOrgsIdInvites<TData = Awaited<ReturnType<typeof getOrgsIdInvites>>, TError = ErrorBody>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrgsIdInvites>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List invites
+ */
+
+export function useGetOrgsIdInvites<TData = Awaited<ReturnType<typeof getOrgsIdInvites>>, TError = ErrorBody>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getOrgsIdInvites>>, TError, TData>>, }
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetOrgsIdInvitesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
+ * Admin creates an invite token for a new member of the org
+ * @summary Create invite
+ */
+export type postOrgsIdInvitesResponse201 = {
+  data: CreateInviteResponse
+  status: 201
+}
+
+export type postOrgsIdInvitesResponse400 = {
+  data: ErrorBody
+  status: 400
+}
+
+export type postOrgsIdInvitesResponse401 = {
+  data: ErrorBody
+  status: 401
+}
+
+export type postOrgsIdInvitesResponse403 = {
+  data: ErrorBody
+  status: 403
+}
+
+export type postOrgsIdInvitesResponseSuccess = (postOrgsIdInvitesResponse201) & {
+  headers: Headers;
+};
+export type postOrgsIdInvitesResponseError = (postOrgsIdInvitesResponse400 | postOrgsIdInvitesResponse401 | postOrgsIdInvitesResponse403) & {
+  headers: Headers;
+};
+
+export type postOrgsIdInvitesResponse = (postOrgsIdInvitesResponseSuccess | postOrgsIdInvitesResponseError)
+
+export const getPostOrgsIdInvitesUrl = (id: string,) => {
+
+
+
+
+  return `/orgs/${id}/invites`
+}
+
+export const postOrgsIdInvites = async (id: string,
+    createInviteRequest: CreateInviteRequest, options?: RequestInit): Promise<postOrgsIdInvitesResponse> => {
+
+  return apiFetcher<postOrgsIdInvitesResponse>(getPostOrgsIdInvitesUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createInviteRequest,)
+  }
+);}
+
+
+
+
+export const getPostOrgsIdInvitesMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postOrgsIdInvites>>, TError,{id: string;data: CreateInviteRequest}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postOrgsIdInvites>>, TError,{id: string;data: CreateInviteRequest}, TContext> => {
+
+const mutationKey = ['postOrgsIdInvites'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postOrgsIdInvites>>, {id: string;data: CreateInviteRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postOrgsIdInvites(id,data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostOrgsIdInvitesMutationResult = NonNullable<Awaited<ReturnType<typeof postOrgsIdInvites>>>
+    export type PostOrgsIdInvitesMutationBody = CreateInviteRequest
+    export type PostOrgsIdInvitesMutationError = ErrorBody
+
+    /**
+ * @summary Create invite
+ */
+export const usePostOrgsIdInvites = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postOrgsIdInvites>>, TError,{id: string;data: CreateInviteRequest}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postOrgsIdInvites>>,
+        TError,
+        {id: string;data: CreateInviteRequest},
+        TContext
+      > => {
+      return useMutation(getPostOrgsIdInvitesMutationOptions(options), queryClient);
+    }
+    /**
+ * Admin revokes a pending org invite by ID
+ * @summary Revoke invite
+ */
+export type deleteOrgsIdInvitesInviteIdResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteOrgsIdInvitesInviteIdResponse401 = {
+  data: ErrorBody
+  status: 401
+}
+
+export type deleteOrgsIdInvitesInviteIdResponse403 = {
+  data: ErrorBody
+  status: 403
+}
+
+export type deleteOrgsIdInvitesInviteIdResponse404 = {
   data: ErrorBody
   status: 404
 }
 
-export type deleteInvitesIdResponseSuccess = (deleteInvitesIdResponse204) & {
+export type deleteOrgsIdInvitesInviteIdResponseSuccess = (deleteOrgsIdInvitesInviteIdResponse204) & {
   headers: Headers;
 };
-export type deleteInvitesIdResponseError = (deleteInvitesIdResponse401 | deleteInvitesIdResponse403 | deleteInvitesIdResponse404) & {
+export type deleteOrgsIdInvitesInviteIdResponseError = (deleteOrgsIdInvitesInviteIdResponse401 | deleteOrgsIdInvitesInviteIdResponse403 | deleteOrgsIdInvitesInviteIdResponse404) & {
   headers: Headers;
 };
 
-export type deleteInvitesIdResponse = (deleteInvitesIdResponseSuccess | deleteInvitesIdResponseError)
+export type deleteOrgsIdInvitesInviteIdResponse = (deleteOrgsIdInvitesInviteIdResponseSuccess | deleteOrgsIdInvitesInviteIdResponseError)
 
-export const getDeleteInvitesIdUrl = (id: string,) => {
+export const getDeleteOrgsIdInvitesInviteIdUrl = (id: string,
+    inviteId: string,) => {
 
 
 
 
-  return `/invites/${id}`
+  return `/orgs/${id}/invites/${inviteId}`
 }
 
-export const deleteInvitesId = async (id: string, options?: RequestInit): Promise<deleteInvitesIdResponse> => {
+export const deleteOrgsIdInvitesInviteId = async (id: string,
+    inviteId: string, options?: RequestInit): Promise<deleteOrgsIdInvitesInviteIdResponse> => {
 
-  return apiFetcher<deleteInvitesIdResponse>(getDeleteInvitesIdUrl(id),
+  return apiFetcher<deleteOrgsIdInvitesInviteIdResponse>(getDeleteOrgsIdInvitesInviteIdUrl(id,inviteId),
   {
     ...options,
     method: 'DELETE'
@@ -419,11 +414,11 @@ export const deleteInvitesId = async (id: string, options?: RequestInit): Promis
 
 
 
-export const getDeleteInvitesIdMutationOptions = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteInvitesId>>, TError,{id: string}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof deleteInvitesId>>, TError,{id: string}, TContext> => {
+export const getDeleteOrgsIdInvitesInviteIdMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrgsIdInvitesInviteId>>, TError,{id: string;inviteId: string}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteOrgsIdInvitesInviteId>>, TError,{id: string;inviteId: string}, TContext> => {
 
-const mutationKey = ['deleteInvitesId'];
+const mutationKey = ['deleteOrgsIdInvitesInviteId'];
 const {mutation: mutationOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -433,10 +428,10 @@ const {mutation: mutationOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteInvitesId>>, {id: string}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteOrgsIdInvitesInviteId>>, {id: string;inviteId: string}> = (props) => {
+          const {id,inviteId} = props ?? {};
 
-          return  deleteInvitesId(id,)
+          return  deleteOrgsIdInvitesInviteId(id,inviteId,)
         }
 
 
@@ -446,20 +441,20 @@ const {mutation: mutationOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type DeleteInvitesIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteInvitesId>>>
+    export type DeleteOrgsIdInvitesInviteIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteOrgsIdInvitesInviteId>>>
 
-    export type DeleteInvitesIdMutationError = ErrorBody
+    export type DeleteOrgsIdInvitesInviteIdMutationError = ErrorBody
 
     /**
  * @summary Revoke invite
  */
-export const useDeleteInvitesId = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteInvitesId>>, TError,{id: string}, TContext>, }
+export const useDeleteOrgsIdInvitesInviteId = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrgsIdInvitesInviteId>>, TError,{id: string;inviteId: string}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteInvitesId>>,
+        Awaited<ReturnType<typeof deleteOrgsIdInvitesInviteId>>,
         TError,
-        {id: string},
+        {id: string;inviteId: string},
         TContext
       > => {
-      return useMutation(getDeleteInvitesIdMutationOptions(options), queryClient);
+      return useMutation(getDeleteOrgsIdInvitesInviteIdMutationOptions(options), queryClient);
     }

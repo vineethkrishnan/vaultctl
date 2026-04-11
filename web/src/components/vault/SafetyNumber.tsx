@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Fingerprint, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
-import { buf } from "@/shared/crypto";
+import { fromBase64, sha256 } from "@/shared/crypto";
 
 interface Props {
   identityPublicKey: string; // base64
@@ -16,15 +16,7 @@ interface Props {
  * Displayed in groups of 5 for readability (C1).
  */
 async function deriveSafetyNumber(publicKeyB64: string): Promise<string> {
-  const binary = atob(publicKeyB64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  const hash = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", buf(bytes)),
-  );
+  const hash = await sha256(fromBase64(publicKeyB64));
 
   // Take first 30 bytes → 60 digits
   let digits = "";

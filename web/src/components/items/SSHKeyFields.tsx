@@ -1,5 +1,6 @@
 import type { SSHKeyData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface Props {
   data: SSHKeyData;
@@ -19,6 +20,10 @@ export function SSHKeyFields({ data, onChange }: Props) {
       <Field label="Fingerprint" value={data.fingerprint} onChange={(v) => set("fingerprint", v)} readOnly copyable />
       <Field label="Host" value={data.host} onChange={(v) => set("host", v)} />
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }

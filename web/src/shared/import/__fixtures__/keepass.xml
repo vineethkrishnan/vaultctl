@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KeePassFile>
+  <Meta>
+    <DatabaseName>Test</DatabaseName>
+  </Meta>
+  <Root>
+    <Group>
+      <Name>Root</Name>
+      <Group>
+        <Name>Work</Name>
+        <Entry>
+          <String>
+            <Key>Title</Key>
+            <Value>GitHub</Value>
+          </String>
+          <String>
+            <Key>UserName</Key>
+            <Value>octocat</Value>
+          </String>
+          <String>
+            <Key>Password</Key>
+            <Value>hunter2</Value>
+          </String>
+          <String>
+            <Key>URL</Key>
+            <Value>https://github.com</Value>
+          </String>
+          <String>
+            <Key>Notes</Key>
+            <Value>Work GitHub with &amp; without 2FA</Value>
+          </String>
+          <String>
+            <Key>SecretQuestion</Key>
+            <Value>First pet</Value>
+          </String>
+        </Entry>
+      </Group>
+      <Entry>
+        <String>
+          <Key>Title</Key>
+          <Value>Gmail</Value>
+        </String>
+        <String>
+          <Key>UserName</Key>
+          <Value>alice@example.com</Value>
+        </String>
+        <String>
+          <Key>Password</Key>
+          <Value>pa$$w0rd</Value>
+        </String>
+        <String>
+          <Key>URL</Key>
+          <Value>https://mail.google.com</Value>
+        </String>
+        <String>
+          <Key>Notes</Key>
+          <Value></Value>
+        </String>
+      </Entry>
+      <Entry>
+        <String>
+          <Key>Title</Key>
+          <Value>Wifi Password</Value>
+        </String>
+        <String>
+          <Key>UserName</Key>
+          <Value></Value>
+        </String>
+        <String>
+          <Key>Password</Key>
+          <Value></Value>
+        </String>
+        <String>
+          <Key>URL</Key>
+          <Value></Value>
+        </String>
+        <String>
+          <Key>Notes</Key>
+          <Value><![CDATA[SSID: HomeNet
+Passphrase: correct horse battery staple]]></Value>
+        </String>
+      </Entry>
+    </Group>
+  </Root>
+</KeePassFile>

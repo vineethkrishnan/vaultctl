@@ -53,3 +53,12 @@ export function fromBase64(b64: string): Uint8Array {
   }
   return bytes;
 }
+
+/**
+ * SHA-256 digest. Keeps all raw WebCrypto calls inside the crypto module
+ * so features go through typed helpers (M6 acceptance criterion).
+ */
+export async function sha256(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest("SHA-256", buf(data));
+  return new Uint8Array(hash);
+}

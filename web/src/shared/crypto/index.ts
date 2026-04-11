@@ -73,4 +73,5 @@ export {
   concat,
   toBase64,
   fromBase64,
+  sha256,
 } from "./utils.js";

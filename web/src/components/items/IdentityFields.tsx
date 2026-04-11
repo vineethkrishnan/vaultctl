@@ -1,5 +1,6 @@
 import type { IdentityData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface Props {
   data: IdentityData;
@@ -29,6 +30,10 @@ export function IdentityFields({ data, onChange }: Props) {
       <Field label="Passport Number" value={data.passportNumber} onChange={(v) => set("passportNumber", v)} type="password" />
       <Field label="License Number" value={data.licenseNumber} onChange={(v) => set("licenseNumber", v)} />
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }

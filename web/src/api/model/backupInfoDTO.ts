@@ -6,9 +6,8 @@
  * OpenAPI spec version: 1.0
  */
 
-export type GetInvitesParams = {
-/**
- * Organization ID
- */
-orgId: string;
-};
+export interface BackupInfoDTO {
+  createdAt?: string;
+  filename?: string;
+  size?: number;
+}

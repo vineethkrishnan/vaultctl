@@ -24,6 +24,7 @@ import {
   timingSafeEqual,
   importRSAPrivateKey,
   importEd25519PrivateKey,
+  ed25519Sign,
   rsaOaepDecrypt,
 } from "../shared/crypto/index.js";
 import type {
@@ -190,6 +191,28 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
           op: "resultBool",
           requestId: msg.requestId,
           value: stretchedKey !== null,
+        });
+        break;
+      }
+
+      case "signIdentity": {
+        if (!identityKey.value) {
+          respond({
+            op: "error",
+            requestId: msg.requestId,
+            message: "Identity key not loaded",
+          });
+          break;
+        }
+        const message = new Uint8Array(msg.message);
+        const sig = await ed25519Sign(identityKey.value, message);
+        respond({
+          op: "result",
+          requestId: msg.requestId,
+          data: sig.buffer.slice(
+            sig.byteOffset,
+            sig.byteOffset + sig.byteLength,
+          ) as ArrayBuffer,
         });
         break;
       }

@@ -13,11 +13,15 @@ export interface RegisterRequest {
   encryptedIdentityPrivateKey?: string;
   encryptedPrivateKey?: string;
   identityPublicKey?: string;
+  /** required when registration mode is "invite" */
+  inviteToken?: string;
   kdfIterations?: number;
   kdfMemoryKB?: number;
   kdfParallelism?: number;
   masterPasswordPreflight?: string;
   name?: string;
+  /** optional plaintext hint, server-encrypted (H4) */
+  passwordHint?: string;
   publicKey?: string;
   publicKeySignature?: string;
   /** base64 */

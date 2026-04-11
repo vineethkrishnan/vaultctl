@@ -1,0 +1,6 @@
+folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp,card_cardholdername,card_number,card_expmonth,card_expyear,card_code,card_brand,identity_firstname,identity_lastname,identity_email,identity_phone,identity_address1,identity_city,identity_state,identity_country,identity_postalcode,identity_ssn,identity_passportnumber,identity_licensenumber
+Work,0,login,GitHub,"my work notes, with a comma",,0,https://github.com,octocat,hunter2,,,,,,,,,,,,,,,,,,,
+Personal,1,login,Gmail,,,0,https://mail.google.com,alice@example.com,pa$$w0rd,otpauth://totp/example,,,,,,,,,,,,,,,,,,,
+Personal,0,note,Recovery Codes,"line one
+line two
+line three",,0,,,,,,,,,,,,,,,,,,,,,,

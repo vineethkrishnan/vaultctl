@@ -1,5 +1,6 @@
 import type { SecureNoteData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface Props {
   data: SecureNoteData;
@@ -14,6 +15,10 @@ export function SecureNoteFields({ data, onChange }: Props) {
     <div className="space-y-4">
       <Field label="Content" value={data.content} onChange={(v) => set("content", v)} type="textarea" />
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }
