@@ -1,0 +1,115 @@
+name: zap
+
+# M15 OWASP ZAP baseline scan. Runs weekly against a freshly-built
+# vaultctl server. The baseline profile is passive + conservative — it
+# catches missing security headers, TLS config smells, CSP gaps, unsafe
+# default CORS, the whole OWASP top-10 surface that doesn't require
+# credentials. A full active scan is opt-in via repository variables,
+# not via workflow_dispatch inputs (we keep user-controlled strings out
+# of run: steps on principle).
+
+on:
+  schedule:
+    # Every Monday at 04:00 UTC
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write  # zap-baseline posts findings as an issue
+
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    name: zap baseline scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vaultctl
+          POSTGRES_PASSWORD: vaultctl
+          POSTGRES_DB: vaultctl
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      VAULTCTL_ENV: development
+      VAULTCTL_DB_HOST: localhost
+      VAULTCTL_DB_PORT: '5432'
+      VAULTCTL_DB_USER: vaultctl
+      VAULTCTL_DB_PASSWORD: vaultctl
+      VAULTCTL_DB_NAME: vaultctl
+      VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_JWT_SECRET_CURRENT: zap-scan-jwt-secret-at-least-32-bytes-ok
+      VAULTCTL_SERVER_PEPPER: zap-scan-server-pepper-32-bytes-ok
+      VAULTCTL_ENUMERATION_PEPPER: zap-scan-enum-pepper-32-bytes-ok
+      VAULTCTL_DATA_ENCRYPTION_KEY: LBrXjzRmKOwYu7V5rHYqStuwJ7pSu8+Wt4w5cKfYk5A=
+      VAULTCTL_BASE_URL: http://localhost:8080
+      VAULTCTL_REGISTRATION_MODE: open
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: install migrate
+        run: |
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin migrate
+
+      - name: run migrations
+        run: migrate -path migrations -database "postgres://vaultctl:vaultctl@localhost:5432/vaultctl?sslmode=disable" up
+
+      - name: build vaultctl
+        run: go build -o ./vaultctl ./cmd/server
+
+      - name: start vaultctl server
+        run: |
+          ./vaultctl server > server.log 2>&1 &
+          echo $! > server.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/v1/health >/dev/null 2>&1; then
+              echo "server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server failed to start"
+          cat server.log
+          exit 1
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:8080/api/v1/health
+          rules_file_name: .zap/rules.tsv
+          cmd_options: "-a -j -T 10 -m 3"
+          fail_action: true
+          allow_issue_writing: true
+          issue_title: "ZAP baseline scan findings"
+
+      - name: stop vaultctl server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill "$(cat server.pid)" || true
+          fi
+
+      - name: upload server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log-zap
+          path: server.log
+          retention-days: 7
