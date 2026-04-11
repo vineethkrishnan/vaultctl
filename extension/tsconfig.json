@@ -1,3 +1,41 @@
 {
-  "extends": "./.wxt/tsconfig.json"
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@": [".."],
+      "@/*": ["../*"],
+      "~": [".."],
+      "~/*": ["../*"],
+      "@@": [".."],
+      "@@/*": ["../*"],
+      "~~": [".."],
+      "~~/*": ["../*"],
+      "@shared/crypto": ["../web/src/shared/crypto/index.ts"],
+      "@shared/crypto/*": ["../web/src/shared/crypto/*"],
+      "hash-wasm": ["./node_modules/hash-wasm/dist/lib/index.d.ts"]
+    }
+  },
+  "include": [
+    "./entrypoints/**/*",
+    "./components/**/*",
+    "./utils/**/*",
+    "./assets/**/*",
+    "./wxt.config.ts",
+    "./.wxt/wxt.d.ts",
+    "../web/src/shared/crypto/aes-gcm.ts",
+    "../web/src/shared/crypto/aes-kw.ts",
+    "../web/src/shared/crypto/algorithm.ts",
+    "../web/src/shared/crypto/argon2.ts",
+    "../web/src/shared/crypto/blob.ts",
+    "../web/src/shared/crypto/ed25519.ts",
+    "../web/src/shared/crypto/hkdf.ts",
+    "../web/src/shared/crypto/index.ts",
+    "../web/src/shared/crypto/kdf.ts",
+    "../web/src/shared/crypto/padding.ts",
+    "../web/src/shared/crypto/recovery-kit.ts",
+    "../web/src/shared/crypto/rsa-oaep.ts",
+    "../web/src/shared/crypto/utils.ts"
+  ],
+  "exclude": [".output", "node_modules", "**/*.test.ts"]
 }
