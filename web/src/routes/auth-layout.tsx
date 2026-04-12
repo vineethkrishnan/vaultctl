@@ -11,8 +11,14 @@ export function AuthLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <VaultSidebar />
-      <main className="flex-1 overflow-y-auto p-6">
+      <main id="main-content" className="flex-1 overflow-y-auto p-6" role="main">
         <Outlet />
       </main>
     </div>
