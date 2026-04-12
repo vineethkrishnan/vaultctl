@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { LoginData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { PasswordHistory } from "./PasswordHistory";
 import { PasswordGenerator } from "@/components/vault/PasswordGenerator";
 import { Wand2 } from "lucide-react";
 
@@ -43,6 +44,7 @@ export function LoginFields({ data, onChange }: Props) {
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}
       />
+      <PasswordHistory entries={data.passwordHistory} />
     </div>
   );
 }
