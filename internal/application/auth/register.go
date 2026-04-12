@@ -38,7 +38,13 @@ type RegisterInput struct {
 	// InviteToken is required when RegistrationMode is "invite".
 	// The server redeems it before creating the user.
 	InviteToken string
+	// PasswordHint is an optional plaintext hint that is server-encrypted
+	// (H4) before persistence. Empty means no hint.
+	PasswordHint string
 }
+
+// SetPasswordHintInput carries the data needed by the Encrypter to encrypt
+// the hint. The use case handles encryption internally.
 
 // RegisterOutput is what the API layer returns to the client.
 type RegisterOutput struct {
@@ -64,6 +70,7 @@ type Register struct {
 	Hasher           ports.AuthHasher
 	Clock            ports.Clock
 	IDs              ports.IDGenerator
+	Encrypter        ports.DataEncrypter // optional — for password hint encryption (H4)
 	Policy           user.MasterPasswordPolicy
 	DefaultRole      user.Role
 	RegistrationMode string // "open", "invite", "disabled"
@@ -122,6 +129,11 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	now := uc.Clock.Now()
+	encryptedHint, err := uc.encryptPasswordHint(in.PasswordHint, email)
+	if err != nil {
+		return RegisterOutput{}, err
+	}
+
 	u := user.User{
 		ID:                          user.ID(uc.IDs.NewID()),
 		Email:                       email,
@@ -133,6 +145,7 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		PublicKey:                   in.PublicKey,
 		PublicKeySignature:          in.PublicKeySignature,
 		IdentityPublicKey:           in.IdentityPublicKey,
+		EncryptedPasswordHint:       encryptedHint,
 		Role:                        role,
 		CreatedAt:                   now,
 		UpdatedAt:                   now,
@@ -165,4 +178,19 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	return RegisterOutput{UserID: u.ID, Role: u.Role}, nil
+}
+
+// encryptPasswordHint wraps the optional plaintext hint under H4's
+// server-side data key. Returns nil when no hint was provided or no
+// encrypter is wired.
+func (uc *Register) encryptPasswordHint(hint string, email user.Email) ([]byte, error) {
+	if hint == "" || uc.Encrypter == nil {
+		return nil, nil
+	}
+	aad := []byte("password_hint:" + email.String())
+	blob, err := uc.Encrypter.Encrypt([]byte(hint), aad)
+	if err != nil {
+		return nil, fmt.Errorf("encrypt password hint: %w", err)
+	}
+	return blob.Bytes(), nil
 }

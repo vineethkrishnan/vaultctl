@@ -199,6 +199,22 @@ export async function workerVerifyPassword(params: {
   });
 }
 
+/**
+ * Sign arbitrary bytes with the Ed25519 identity private key held in the
+ * Worker. The key never crosses back to the main thread; only the 64-byte
+ * signature does. Used by the M9 export envelope flow.
+ */
+export async function workerSignIdentity(
+  message: Uint8Array,
+): Promise<Uint8Array> {
+  const buf = message.buffer.slice(
+    message.byteOffset,
+    message.byteOffset + message.byteLength,
+  );
+  const ab = await send<ArrayBuffer>({ op: "signIdentity", message: buf });
+  return new Uint8Array(ab);
+}
+
 /** Lock: zero all keys in the Worker. */
 export function workerLock(): void {
   if (worker) {

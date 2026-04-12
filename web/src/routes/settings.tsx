@@ -4,6 +4,9 @@ import { SafetyNumber } from "@/components/vault/SafetyNumber";
 import { TOTPSetup } from "@/components/auth/TOTPSetup";
 import { PasswordChangeForm } from "@/components/auth/PasswordChangeForm";
 import { ImportDialog } from "@/components/vault/ImportDialog";
+import { ExportDialog } from "@/components/vault/ExportDialog";
+import { RestoreDialog } from "@/components/vault/RestoreDialog";
+import { SessionsPanel } from "@/components/settings/SessionsPanel";
 import { Settings, Shield, Clock, User, Key, Check } from "lucide-react";
 
 const LOCK_OPTIONS = [
@@ -147,9 +150,24 @@ export function SettingsPage() {
         )}
       </section>
 
+      {/* Sessions */}
+      <section className="rounded-lg border border-border p-4">
+        <SessionsPanel />
+      </section>
+
       {/* Import */}
       <section className="rounded-lg border border-border p-4">
         <ImportDialog />
+      </section>
+
+      {/* Export */}
+      <section className="rounded-lg border border-border p-4">
+        <ExportDialog />
+      </section>
+
+      {/* Restore */}
+      <section className="rounded-lg border border-border p-4">
+        <RestoreDialog />
       </section>
     </div>
   );

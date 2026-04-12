@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
@@ -15,6 +16,9 @@ import (
 type UserHandlers struct {
 	Users    ports.UserRepository
 	Sessions ports.SessionStore
+
+	// Audit is the cross-cutting audit-log writer (M13).
+	Audit *audit.Writer
 }
 
 // HandleGetProfile returns the authenticated user's profile.
@@ -158,6 +162,7 @@ func (h *UserHandlers) HandleRevokeSession(w http.ResponseWriter, r *http.Reques
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.SessionRevoked(r.Context(), string(callerID), string(sessionID), middleware.ClientIP(r), r.UserAgent())
 	w.WriteHeader(http.StatusNoContent)
 }
 

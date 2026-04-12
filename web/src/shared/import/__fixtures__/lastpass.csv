@@ -1,0 +1,6 @@
+url,username,password,totp,extra,name,grouping,fav
+https://github.com,octocat,hunter2,,"Primary GitHub account",GitHub,Work,0
+https://aws.amazon.com,admin@example.com,s3cretKey!,otpauth://totp/aws,,AWS Console,Work,1
+http://sn,,,,"Shell aliases
+export PATH=/usr/local/bin:$PATH
+alias ll='ls -la'",Dotfile Notes,Personal,0

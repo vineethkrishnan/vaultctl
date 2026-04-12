@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
@@ -179,6 +180,34 @@ func (r *VaultRepo) MemberForUser(ctx context.Context, vaultID vault.ID, userID 
 		VaultID: vault.ID(vid), UserID: user.ID(uid), EncryptedVaultKey: blob,
 		SenderID: user.ID(sender), WrapSignature: sigv, Role: user.Role(role), AddedAt: addedAt,
 	}, nil
+}
+
+// ListSharedByOrgMember returns shared-vault IDs within an org where the
+// target user is an active member. Used to cascade rekey on org removal.
+func (r *VaultRepo) ListSharedByOrgMember(ctx context.Context, orgID organization.ID, userID user.ID) ([]vault.ID, error) {
+	rows, err := r.Pool.Query(ctx, `
+		SELECT v.id
+		FROM vaults v
+		JOIN vault_members m ON m.vault_id = v.id
+		WHERE v.org_id = $1
+		  AND v.type = 'shared'
+		  AND m.user_id = $2
+		  AND m.removed_at IS NULL
+		ORDER BY v.created_at
+	`, string(orgID), string(userID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []vault.ID{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, vault.ID(id))
+	}
+	return out, rows.Err()
 }
 
 func (r *VaultRepo) ListMembers(ctx context.Context, vaultID vault.ID) ([]vault.Member, error) {

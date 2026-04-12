@@ -223,31 +223,31 @@ export const useDeleteVaultsVaultIdMembersUserId = <TError = ErrorBody,
  * Atomically re-encrypt all items and re-wrap vault keys for remaining members
  * @summary Rekey vault
  */
-export type postVaultsVaultIdRekeyResponse204 = {
+export type putVaultsVaultIdRekeyResponse204 = {
   data: void
   status: 204
 }
 
-export type postVaultsVaultIdRekeyResponse400 = {
+export type putVaultsVaultIdRekeyResponse400 = {
   data: ErrorBody
   status: 400
 }
 
-export type postVaultsVaultIdRekeyResponse404 = {
+export type putVaultsVaultIdRekeyResponse404 = {
   data: ErrorBody
   status: 404
 }
 
-export type postVaultsVaultIdRekeyResponseSuccess = (postVaultsVaultIdRekeyResponse204) & {
+export type putVaultsVaultIdRekeyResponseSuccess = (putVaultsVaultIdRekeyResponse204) & {
   headers: Headers;
 };
-export type postVaultsVaultIdRekeyResponseError = (postVaultsVaultIdRekeyResponse400 | postVaultsVaultIdRekeyResponse404) & {
+export type putVaultsVaultIdRekeyResponseError = (putVaultsVaultIdRekeyResponse400 | putVaultsVaultIdRekeyResponse404) & {
   headers: Headers;
 };
 
-export type postVaultsVaultIdRekeyResponse = (postVaultsVaultIdRekeyResponseSuccess | postVaultsVaultIdRekeyResponseError)
+export type putVaultsVaultIdRekeyResponse = (putVaultsVaultIdRekeyResponseSuccess | putVaultsVaultIdRekeyResponseError)
 
-export const getPostVaultsVaultIdRekeyUrl = (vaultId: string,) => {
+export const getPutVaultsVaultIdRekeyUrl = (vaultId: string,) => {
 
 
 
@@ -255,13 +255,13 @@ export const getPostVaultsVaultIdRekeyUrl = (vaultId: string,) => {
   return `/vaults/${vaultId}/rekey`
 }
 
-export const postVaultsVaultIdRekey = async (vaultId: string,
-    rekeyVaultRequest: RekeyVaultRequest, options?: RequestInit): Promise<postVaultsVaultIdRekeyResponse> => {
+export const putVaultsVaultIdRekey = async (vaultId: string,
+    rekeyVaultRequest: RekeyVaultRequest, options?: RequestInit): Promise<putVaultsVaultIdRekeyResponse> => {
 
-  return apiFetcher<postVaultsVaultIdRekeyResponse>(getPostVaultsVaultIdRekeyUrl(vaultId),
+  return apiFetcher<putVaultsVaultIdRekeyResponse>(getPutVaultsVaultIdRekeyUrl(vaultId),
   {
     ...options,
-    method: 'POST',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
       rekeyVaultRequest,)
@@ -271,11 +271,11 @@ export const postVaultsVaultIdRekey = async (vaultId: string,
 
 
 
-export const getPostVaultsVaultIdRekeyMutationOptions = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postVaultsVaultIdRekey>>, TError,{vaultId: string;data: RekeyVaultRequest}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof postVaultsVaultIdRekey>>, TError,{vaultId: string;data: RekeyVaultRequest}, TContext> => {
+export const getPutVaultsVaultIdRekeyMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putVaultsVaultIdRekey>>, TError,{vaultId: string;data: RekeyVaultRequest}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof putVaultsVaultIdRekey>>, TError,{vaultId: string;data: RekeyVaultRequest}, TContext> => {
 
-const mutationKey = ['postVaultsVaultIdRekey'];
+const mutationKey = ['putVaultsVaultIdRekey'];
 const {mutation: mutationOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -285,10 +285,10 @@ const {mutation: mutationOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postVaultsVaultIdRekey>>, {vaultId: string;data: RekeyVaultRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putVaultsVaultIdRekey>>, {vaultId: string;data: RekeyVaultRequest}> = (props) => {
           const {vaultId,data} = props ?? {};
 
-          return  postVaultsVaultIdRekey(vaultId,data,)
+          return  putVaultsVaultIdRekey(vaultId,data,)
         }
 
 
@@ -298,20 +298,20 @@ const {mutation: mutationOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostVaultsVaultIdRekeyMutationResult = NonNullable<Awaited<ReturnType<typeof postVaultsVaultIdRekey>>>
-    export type PostVaultsVaultIdRekeyMutationBody = RekeyVaultRequest
-    export type PostVaultsVaultIdRekeyMutationError = ErrorBody
+    export type PutVaultsVaultIdRekeyMutationResult = NonNullable<Awaited<ReturnType<typeof putVaultsVaultIdRekey>>>
+    export type PutVaultsVaultIdRekeyMutationBody = RekeyVaultRequest
+    export type PutVaultsVaultIdRekeyMutationError = ErrorBody
 
     /**
  * @summary Rekey vault
  */
-export const usePostVaultsVaultIdRekey = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postVaultsVaultIdRekey>>, TError,{vaultId: string;data: RekeyVaultRequest}, TContext>, }
+export const usePutVaultsVaultIdRekey = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putVaultsVaultIdRekey>>, TError,{vaultId: string;data: RekeyVaultRequest}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postVaultsVaultIdRekey>>,
+        Awaited<ReturnType<typeof putVaultsVaultIdRekey>>,
         TError,
         {vaultId: string;data: RekeyVaultRequest},
         TContext
       > => {
-      return useMutation(getPostVaultsVaultIdRekeyMutationOptions(options), queryClient);
+      return useMutation(getPutVaultsVaultIdRekeyMutationOptions(options), queryClient);
     }

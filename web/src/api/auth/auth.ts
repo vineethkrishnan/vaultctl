@@ -26,13 +26,19 @@ import type {
 
 import type {
   ErrorBody,
+  GetAuthPasswordHintParams,
   GetAuthPreloginParams,
   LoginRequest,
   LoginResponse,
   LogoutRequest,
   PasswordChangeRequest,
   PasswordChangeResponse,
+  PasswordHintResponse,
   PreloginResponse,
+  RecoveryResetRequest,
+  RecoveryResetResponse,
+  RecoveryVerifyRequest,
+  RecoveryVerifyResponse,
   RefreshRequest,
   RefreshResponse,
   RegisterRequest,
@@ -334,6 +340,124 @@ export const usePostAuthPasswordChange = <TError = ErrorBody,
       return useMutation(getPostAuthPasswordChangeMutationOptions(options), queryClient);
     }
     /**
+ * Returns the password hint for the given email. Returns empty hint for unknown emails (enumeration-safe).
+ * @summary Get password hint
+ */
+export type getAuthPasswordHintResponse200 = {
+  data: PasswordHintResponse
+  status: 200
+}
+
+export type getAuthPasswordHintResponseSuccess = (getAuthPasswordHintResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getAuthPasswordHintResponse = (getAuthPasswordHintResponseSuccess)
+
+export const getGetAuthPasswordHintUrl = (params: GetAuthPasswordHintParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/auth/password/hint?${stringifiedParams}` : `/auth/password/hint`
+}
+
+export const getAuthPasswordHint = async (params: GetAuthPasswordHintParams, options?: RequestInit): Promise<getAuthPasswordHintResponse> => {
+
+  return apiFetcher<getAuthPasswordHintResponse>(getGetAuthPasswordHintUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthPasswordHintQueryKey = (params?: GetAuthPasswordHintParams,) => {
+    return [
+    `/auth/password/hint`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAuthPasswordHintQueryOptions = <TData = Awaited<ReturnType<typeof getAuthPasswordHint>>, TError = unknown>(params: GetAuthPasswordHintParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthPasswordHint>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthPasswordHintQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthPasswordHint>>> = ({ signal }) => getAuthPasswordHint(params, { signal });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthPasswordHint>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAuthPasswordHintQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthPasswordHint>>>
+export type GetAuthPasswordHintQueryError = unknown
+
+
+export function useGetAuthPasswordHint<TData = Awaited<ReturnType<typeof getAuthPasswordHint>>, TError = unknown>(
+ params: GetAuthPasswordHintParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthPasswordHint>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthPasswordHint>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthPasswordHint>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthPasswordHint<TData = Awaited<ReturnType<typeof getAuthPasswordHint>>, TError = unknown>(
+ params: GetAuthPasswordHintParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthPasswordHint>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthPasswordHint>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthPasswordHint>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthPasswordHint<TData = Awaited<ReturnType<typeof getAuthPasswordHint>>, TError = unknown>(
+ params: GetAuthPasswordHintParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthPasswordHint>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get password hint
+ */
+
+export function useGetAuthPasswordHint<TData = Awaited<ReturnType<typeof getAuthPasswordHint>>, TError = unknown>(
+ params: GetAuthPasswordHintParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthPasswordHint>>, TError, TData>>, }
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAuthPasswordHintQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+/**
  * Returns salt and KDF parameters needed to derive the auth hash client-side
  * @summary Get KDF parameters
  */
@@ -459,6 +583,201 @@ export function useGetAuthPrelogin<TData = Awaited<ReturnType<typeof getAuthPrel
 
 
 /**
+ * Reset password after client-side recovery key verification. Revokes all sessions and returns fresh tokens.
+ * @summary Reset password via recovery
+ */
+export type postAuthRecoveryResetResponse200 = {
+  data: RecoveryResetResponse
+  status: 200
+}
+
+export type postAuthRecoveryResetResponse400 = {
+  data: ErrorBody
+  status: 400
+}
+
+export type postAuthRecoveryResetResponse401 = {
+  data: ErrorBody
+  status: 401
+}
+
+export type postAuthRecoveryResetResponse429 = {
+  data: ErrorBody
+  status: 429
+}
+
+export type postAuthRecoveryResetResponseSuccess = (postAuthRecoveryResetResponse200) & {
+  headers: Headers;
+};
+export type postAuthRecoveryResetResponseError = (postAuthRecoveryResetResponse400 | postAuthRecoveryResetResponse401 | postAuthRecoveryResetResponse429) & {
+  headers: Headers;
+};
+
+export type postAuthRecoveryResetResponse = (postAuthRecoveryResetResponseSuccess | postAuthRecoveryResetResponseError)
+
+export const getPostAuthRecoveryResetUrl = () => {
+
+
+
+
+  return `/auth/recovery/reset`
+}
+
+export const postAuthRecoveryReset = async (recoveryResetRequest: RecoveryResetRequest, options?: RequestInit): Promise<postAuthRecoveryResetResponse> => {
+
+  return apiFetcher<postAuthRecoveryResetResponse>(getPostAuthRecoveryResetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      recoveryResetRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthRecoveryResetMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthRecoveryReset>>, TError,{data: RecoveryResetRequest}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthRecoveryReset>>, TError,{data: RecoveryResetRequest}, TContext> => {
+
+const mutationKey = ['postAuthRecoveryReset'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthRecoveryReset>>, {data: RecoveryResetRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthRecoveryReset(data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthRecoveryResetMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthRecoveryReset>>>
+    export type PostAuthRecoveryResetMutationBody = RecoveryResetRequest
+    export type PostAuthRecoveryResetMutationError = ErrorBody
+
+    /**
+ * @summary Reset password via recovery
+ */
+export const usePostAuthRecoveryReset = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthRecoveryReset>>, TError,{data: RecoveryResetRequest}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthRecoveryReset>>,
+        TError,
+        {data: RecoveryResetRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthRecoveryResetMutationOptions(options), queryClient);
+    }
+    /**
+ * Returns encrypted key material so the client can attempt decryption with its recovery key.
+ * @summary Get recovery material
+ */
+export type postAuthRecoveryVerifyResponse200 = {
+  data: RecoveryVerifyResponse
+  status: 200
+}
+
+export type postAuthRecoveryVerifyResponse401 = {
+  data: ErrorBody
+  status: 401
+}
+
+export type postAuthRecoveryVerifyResponse429 = {
+  data: ErrorBody
+  status: 429
+}
+
+export type postAuthRecoveryVerifyResponseSuccess = (postAuthRecoveryVerifyResponse200) & {
+  headers: Headers;
+};
+export type postAuthRecoveryVerifyResponseError = (postAuthRecoveryVerifyResponse401 | postAuthRecoveryVerifyResponse429) & {
+  headers: Headers;
+};
+
+export type postAuthRecoveryVerifyResponse = (postAuthRecoveryVerifyResponseSuccess | postAuthRecoveryVerifyResponseError)
+
+export const getPostAuthRecoveryVerifyUrl = () => {
+
+
+
+
+  return `/auth/recovery/verify`
+}
+
+export const postAuthRecoveryVerify = async (recoveryVerifyRequest: RecoveryVerifyRequest, options?: RequestInit): Promise<postAuthRecoveryVerifyResponse> => {
+
+  return apiFetcher<postAuthRecoveryVerifyResponse>(getPostAuthRecoveryVerifyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      recoveryVerifyRequest,)
+  }
+);}
+
+
+
+
+export const getPostAuthRecoveryVerifyMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthRecoveryVerify>>, TError,{data: RecoveryVerifyRequest}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postAuthRecoveryVerify>>, TError,{data: RecoveryVerifyRequest}, TContext> => {
+
+const mutationKey = ['postAuthRecoveryVerify'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postAuthRecoveryVerify>>, {data: RecoveryVerifyRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  postAuthRecoveryVerify(data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostAuthRecoveryVerifyMutationResult = NonNullable<Awaited<ReturnType<typeof postAuthRecoveryVerify>>>
+    export type PostAuthRecoveryVerifyMutationBody = RecoveryVerifyRequest
+    export type PostAuthRecoveryVerifyMutationError = ErrorBody
+
+    /**
+ * @summary Get recovery material
+ */
+export const usePostAuthRecoveryVerify = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postAuthRecoveryVerify>>, TError,{data: RecoveryVerifyRequest}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof postAuthRecoveryVerify>>,
+        TError,
+        {data: RecoveryVerifyRequest},
+        TContext
+      > => {
+      return useMutation(getPostAuthRecoveryVerifyMutationOptions(options), queryClient);
+    }
+    /**
  * Exchange a valid refresh token for a new access/refresh token pair
  * @summary Refresh tokens
  */

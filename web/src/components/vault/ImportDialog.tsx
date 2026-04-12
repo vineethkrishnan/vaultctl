@@ -5,174 +5,63 @@ import { apiPost } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { encryptData, encryptName } from "@/lib/key-holder";
 import type { ItemResponse } from "@/shared/types/api";
+import {
+  detectFormat,
+  getImporter,
+  listImporters,
+  type ImportFormat,
+  type ParsedItem,
+} from "@/shared/import";
 import { Upload, FileText, Check, AlertTriangle } from "lucide-react";
 
 const encoder = new TextEncoder();
 
-interface ParsedItem {
-  name: string;
-  type: string;
-  data: Record<string, unknown>;
-}
-
-/**
- * Parse Bitwarden CSV export format.
- *
- * Bitwarden CSV columns:
- * folder, favorite, type, name, notes, fields, reprompt,
- * login_uri, login_username, login_password, login_totp
- */
-function parseBitwardenCSV(csv: string): ParsedItem[] {
-  const lines = csv.split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return [];
-
-  const headers = parseCSVRow(lines[0]!);
-  const items: ParsedItem[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const cols = parseCSVRow(lines[i]!);
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h.trim().toLowerCase()] = cols[idx] ?? "";
-    });
-
-    const bwType = (row["type"] ?? "").toLowerCase();
-    const name = row["name"] ?? "Untitled";
-
-    if (bwType === "login" || bwType === "1") {
-      items.push({
-        name,
-        type: "login",
-        data: {
-          username: row["login_username"] ?? "",
-          password: row["login_password"] ?? "",
-          uri: row["login_uri"] ?? "",
-          totp: row["login_totp"] ?? "",
-          notes: row["notes"] ?? "",
-          customFields: [],
-        },
-      });
-    } else if (bwType === "note" || bwType === "securenote" || bwType === "2") {
-      items.push({
-        name,
-        type: "secure_note",
-        data: {
-          content: row["notes"] ?? "",
-          notes: "",
-          customFields: [],
-        },
-      });
-    } else if (bwType === "card" || bwType === "3") {
-      items.push({
-        name,
-        type: "credit_card",
-        data: {
-          cardholderName: row["card_cardholdername"] ?? "",
-          number: row["card_number"] ?? "",
-          expiry: row["card_expmonth"] && row["card_expyear"]
-            ? `${row["card_expmonth"]}/${row["card_expyear"]?.slice(-2)}`
-            : "",
-          cvv: row["card_code"] ?? "",
-          cardType: row["card_brand"] ?? "",
-          notes: row["notes"] ?? "",
-          customFields: [],
-        },
-      });
-    } else if (bwType === "identity" || bwType === "4") {
-      items.push({
-        name,
-        type: "identity",
-        data: {
-          firstName: row["identity_firstname"] ?? "",
-          lastName: row["identity_lastname"] ?? "",
-          email: row["identity_email"] ?? "",
-          phone: row["identity_phone"] ?? "",
-          address: [row["identity_address1"], row["identity_address2"]].filter(Boolean).join(", "),
-          city: row["identity_city"] ?? "",
-          state: row["identity_state"] ?? "",
-          country: row["identity_country"] ?? "",
-          postalCode: row["identity_postalcode"] ?? "",
-          ssn: row["identity_ssn"] ?? "",
-          passportNumber: row["identity_passportnumber"] ?? "",
-          licenseNumber: row["identity_licensenumber"] ?? "",
-          notes: row["notes"] ?? "",
-          customFields: [],
-        },
-      });
-    } else {
-      // Default to secure note for unknown types
-      items.push({
-        name,
-        type: "secure_note",
-        data: {
-          content: row["notes"] ?? "",
-          notes: "",
-          customFields: [],
-        },
-      });
-    }
-  }
-
-  return items;
-}
-
-/** Simple CSV row parser handling quoted fields. */
-function parseCSVRow(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current);
-  return result;
-}
+const DEFAULT_FORMAT: ImportFormat = "bitwarden-csv";
 
 export function ImportDialog() {
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [format, setFormat] = useState<ImportFormat>(DEFAULT_FORMAT);
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  const importers = listImporters();
+  const activeImporter = getImporter(format);
+
+  async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     setError(null);
     setResult(null);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const items = parseBitwardenCSV(reader.result as string);
-        if (items.length === 0) {
-          setError("No items found in CSV");
-          return;
-        }
-        setParsedItems(items);
-      } catch {
-        setError("Failed to parse CSV file");
+    // Try auto-detection; fall back to the currently selected format if the
+    // sniff is inconclusive (user can always re-pick from the dropdown).
+    let effectiveFormat = format;
+    try {
+      const detected = await detectFormat(file);
+      if (detected) {
+        effectiveFormat = detected;
+        setFormat(detected);
       }
-    };
-    reader.readAsText(file);
+    } catch {
+      // Detection is best-effort.
+    }
+
+    try {
+      const items = await getImporter(effectiveFormat).parse(file);
+      if (items.length === 0) {
+        setError("No items found in file");
+        return;
+      }
+      setParsedItems(items);
+    } catch {
+      setError("Failed to parse file");
+    }
   }
 
   const importMutation = useMutation({
@@ -201,8 +90,8 @@ export function ImportDialog() {
       }
       return { success, failed };
     },
-    onSuccess: (res) => {
-      setResult(res);
+    onSuccess: (summary) => {
+      setResult(summary);
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) });
     },
   });
@@ -227,14 +116,34 @@ export function ImportDialog() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Import items from a Bitwarden CSV export. All data is encrypted client-side
-        before being sent to the server.
+        Import items from a password manager export. All data is encrypted
+        client-side before being sent to the server.
       </p>
+
+      {!parsedItems.length && !result && (
+        <div className="space-y-2">
+          <label htmlFor="import-format" className="text-sm font-medium">
+            Format
+          </label>
+          <select
+            id="import-format"
+            value={format}
+            onChange={(event) => setFormat(event.target.value as ImportFormat)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            {importers.map((importer) => (
+              <option key={importer.id} value={importer.id}>
+                {importer.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv"
+        accept={activeImporter.accept}
         onChange={handleFileSelect}
         className="hidden"
       />
@@ -245,7 +154,7 @@ export function ImportDialog() {
           className="flex items-center gap-2 rounded-md border border-dashed border-border px-4 py-8 text-sm text-muted-foreground hover:border-primary hover:text-foreground w-full justify-center"
         >
           <FileText className="h-5 w-5" />
-          Select Bitwarden CSV file
+          Select {activeImporter.label} file
         </button>
       )}
 
@@ -261,13 +170,13 @@ export function ImportDialog() {
             <strong>{parsedItems.length}</strong> items found:
             <ul className="mt-1 space-y-0.5 text-muted-foreground">
               {Object.entries(
-                parsedItems.reduce<Record<string, number>>((acc, item) => {
-                  acc[item.type] = (acc[item.type] ?? 0) + 1;
-                  return acc;
+                parsedItems.reduce<Record<string, number>>((counts, item) => {
+                  counts[item.type] = (counts[item.type] ?? 0) + 1;
+                  return counts;
                 }, {}),
-              ).map(([type, count]) => (
-                <li key={type}>
-                  {count} {type.replace("_", " ")}(s)
+              ).map(([itemType, count]) => (
+                <li key={itemType}>
+                  {count} {itemType.replace("_", " ")}(s)
                 </li>
               ))}
             </ul>

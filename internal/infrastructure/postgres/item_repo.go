@@ -142,6 +142,36 @@ func (r *ItemRepo) PurgeExpiredInVault(ctx context.Context, vaultID vault.ID, cu
 	return int(tag.RowsAffected()), nil
 }
 
+func (r *ItemRepo) CreateBatch(ctx context.Context, items []vault.Item) error {
+	if len(items) == 0 {
+		return nil
+	}
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is no-op
+
+	for _, it := range items {
+		var folderID *string
+		if it.FolderID != nil {
+			s := string(*it.FolderID)
+			folderID = &s
+		}
+		_, err := tx.Exec(ctx, `
+			INSERT INTO vault_items (id, vault_id, folder_id, item_type, encrypted_data, encrypted_name,
+			                         favorite, reprompt, created_at, updated_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		`, string(it.ID), string(it.VaultID), folderID, string(it.ItemType),
+			encodeBlob(it.EncryptedData), encodeBlob(it.EncryptedName),
+			it.Favorite, it.Reprompt, it.CreatedAt, it.UpdatedAt)
+		if err != nil {
+			return fmt.Errorf("insert item %s: %w", it.ID, err)
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 func (r *ItemRepo) queryItems(ctx context.Context, sql string, args ...any) ([]vault.Item, error) {
 	rows, err := r.Pool.Query(ctx, sql, args...)
 	if err != nil {

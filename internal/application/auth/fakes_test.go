@@ -10,6 +10,7 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
@@ -236,6 +237,15 @@ func (r *fakeUserRepo) DisableTOTP(_ context.Context, _ user.ID) error {
 func (r *fakeUserRepo) UpdatePasswordMaterial(_ context.Context, _ user.ID, _ string, _, _ []byte) error {
 	return nil
 }
+func (r *fakeUserRepo) GetHint(_ context.Context, _ user.Email) ([]byte, error) {
+	return nil, domain.ErrNotFound
+}
+func (r *fakeUserRepo) GetRecoveryMaterial(ctx context.Context, email user.Email) (user.User, error) {
+	return r.FindByEmail(ctx, email)
+}
+func (r *fakeUserRepo) UpdatePasswordMaterialAndHint(_ context.Context, _ user.ID, _ string, _, _, _ []byte) error {
+	return nil
+}
 
 // fakeSessionStore is an in-memory SessionStore.
 type fakeSessionStore struct {
@@ -332,4 +342,7 @@ func (emptyVaultRepo) ListMembers(_ context.Context, _ vault.ID) ([]vault.Member
 }
 func (emptyVaultRepo) MemberForUser(_ context.Context, _ vault.ID, _ user.ID) (vault.Member, error) {
 	return vault.Member{}, nil
+}
+func (emptyVaultRepo) ListSharedByOrgMember(_ context.Context, _ organization.ID, _ user.ID) ([]vault.ID, error) {
+	return nil, nil
 }

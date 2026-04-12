@@ -73,6 +73,15 @@ definitions:
       name:
         type: string
     type: object
+  internal_presenters_api.BackupInfoDTO:
+    properties:
+      createdAt:
+        type: string
+      filename:
+        type: string
+      size:
+        type: integer
+    type: object
   internal_presenters_api.CreateAPIKeyRequest:
     properties:
       expiresIn:
@@ -144,6 +153,33 @@ definitions:
         type: string
       vaultId:
         type: string
+    type: object
+  internal_presenters_api.ImportItemDTO:
+    properties:
+      encryptedData:
+        description: base64 wire-format blob
+        type: string
+      encryptedName:
+        description: base64 wire-format blob
+        type: string
+      folderId:
+        type: string
+      itemType:
+        type: string
+    type: object
+  internal_presenters_api.ImportRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_presenters_api.ImportItemDTO'
+        type: array
+      vaultId:
+        type: string
+    type: object
+  internal_presenters_api.ImportResponse:
+    properties:
+      importedCount:
+        type: integer
     type: object
   internal_presenters_api.InviteResponse:
     properties:
@@ -222,6 +258,13 @@ definitions:
         type: string
       reprompt:
         type: boolean
+    type: object
+  internal_presenters_api.ListBackupsResponse:
+    properties:
+      backups:
+        items:
+          $ref: '#/definitions/internal_presenters_api.BackupInfoDTO'
+        type: array
     type: object
   internal_presenters_api.LoginRequest:
     properties:
@@ -319,6 +362,11 @@ definitions:
       refreshToken:
         type: string
     type: object
+  internal_presenters_api.PasswordHintResponse:
+    properties:
+      hint:
+        type: string
+    type: object
   internal_presenters_api.PreloginResponse:
     properties:
       iterations:
@@ -344,6 +392,49 @@ definitions:
     properties:
       purged:
         type: integer
+    type: object
+  internal_presenters_api.RecoveryResetRequest:
+    properties:
+      email:
+        type: string
+      encryptedIdentityPrivateKey:
+        description: base64 wire blob
+        type: string
+      encryptedPrivateKey:
+        description: base64 wire blob
+        type: string
+      newAuthHash:
+        description: base64
+        type: string
+    type: object
+  internal_presenters_api.RecoveryResetResponse:
+    properties:
+      accessToken:
+        type: string
+      refreshExpiresAt:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.RecoveryVerifyRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  internal_presenters_api.RecoveryVerifyResponse:
+    properties:
+      encryptedIdentityPrivateKey:
+        type: string
+      encryptedPrivateKey:
+        type: string
+      iterations:
+        type: integer
+      memoryKB:
+        type: integer
+      parallelism:
+        type: integer
+      salt:
+        type: string
     type: object
   internal_presenters_api.RedeemInviteRequest:
     properties:
@@ -399,6 +490,9 @@ definitions:
         type: string
       name:
         type: string
+      passwordHint:
+        description: optional plaintext hint, server-encrypted (H4)
+        type: string
       publicKey:
         type: string
       publicKeySignature:
@@ -442,6 +536,15 @@ definitions:
         items:
           $ref: '#/definitions/internal_presenters_api.VaultMembershipDTO'
         type: array
+    type: object
+  internal_presenters_api.RemoveOrgMemberResponse:
+    properties:
+      affectedVaults:
+        items:
+          type: string
+        type: array
+      rekeyJobId:
+        type: string
     type: object
   internal_presenters_api.SessionResponse:
     properties:
@@ -584,85 +687,60 @@ paths:
       summary: Trigger backup
       tags:
       - Admin
-  /api-keys:
+  /admin/backups:
     get:
-      description: Returns all API keys for the authenticated user (without raw key
-        values)
+      description: List available backup files with size and creation time. Admin
+        only.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/internal_presenters_api.APIKeyResponse'
-            type: array
+            $ref: '#/definitions/internal_presenters_api.ListBackupsResponse'
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Admin required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
       security:
       - BearerAuth: []
-      summary: List API keys
+      summary: List backups
       tags:
-      - API Keys
+      - Admin
+  /auth/invites/redeem:
     post:
       consumes:
       - application/json
-      description: Generate a new personal API key for programmatic access. The raw
-        key is returned only once.
+      description: New user redeems an invite token during registration
       parameters:
-      - description: API key creation payload
+      - description: Raw invite token
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_presenters_api.CreateAPIKeyRequest'
+          $ref: '#/definitions/internal_presenters_api.RedeemInviteRequest'
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/internal_presenters_api.CreateAPIKeyResponse'
+            $ref: '#/definitions/internal_presenters_api.RedeemInviteResponse'
         "400":
           description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-      security:
-      - BearerAuth: []
-      summary: Create API key
-      tags:
-      - API Keys
-  /api-keys/{id}:
-    delete:
-      description: Permanently delete a personal API key
-      parameters:
-      - description: API Key ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No content
-        "401":
-          description: Unauthorized
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
-      security:
-      - BearerAuth: []
-      summary: Delete API key
+      summary: Redeem invite
       tags:
-      - API Keys
+      - Invites
   /auth/login:
     post:
       consumes:
@@ -752,6 +830,26 @@ paths:
       summary: Change master password
       tags:
       - Auth
+  /auth/password/hint:
+    get:
+      description: Returns the password hint for the given email. Returns empty hint
+        for unknown emails (enumeration-safe).
+      parameters:
+      - description: User email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.PasswordHintResponse'
+      summary: Get password hint
+      tags:
+      - Auth
   /auth/prelogin:
     get:
       description: Returns salt and KDF parameters needed to derive the auth hash
@@ -774,6 +872,72 @@ paths:
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
       summary: Get KDF parameters
+      tags:
+      - Auth
+  /auth/recovery/reset:
+    post:
+      consumes:
+      - application/json
+      description: Reset password after client-side recovery key verification. Revokes
+        all sessions and returns fresh tokens.
+      parameters:
+      - description: New auth credentials with re-encrypted keys
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RecoveryResetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RecoveryResetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unknown email
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Rate limited
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Reset password via recovery
+      tags:
+      - Auth
+  /auth/recovery/verify:
+    post:
+      consumes:
+      - application/json
+      description: Returns encrypted key material so the client can attempt decryption
+        with its recovery key.
+      parameters:
+      - description: Email to recover
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RecoveryVerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RecoveryVerifyResponse'
+        "401":
+          description: Unknown email
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "429":
+          description: Rate limited
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      summary: Get recovery material
       tags:
       - Auth
   /auth/refresh:
@@ -1005,55 +1169,26 @@ paths:
       summary: Health check
       tags:
       - System
-  /invites:
-    get:
-      description: Admin lists pending invites for an organization
+  /import:
+    post:
+      consumes:
+      - application/json
+      description: Batch-import encrypted items into a vault. Client performs format
+        conversion and encryption.
       parameters:
-      - description: Organization ID
-        in: query
-        name: orgId
+      - description: Import payload
+        in: body
+        name: body
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/internal_presenters_api.ImportRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/internal_presenters_api.InviteResponse'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-      security:
-      - BearerAuth: []
-      summary: List invites
-      tags:
-      - Invites
-    post:
-      consumes:
-      - application/json
-      description: Admin creates an invite token for a new member
-      parameters:
-      - description: Invite payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/internal_presenters_api.CreateInviteRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/internal_presenters_api.CreateInviteResponse'
+            $ref: '#/definitions/internal_presenters_api.ImportResponse'
         "400":
           description: Bad Request
           schema:
@@ -1062,74 +1197,15 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
-        "403":
-          description: Forbidden
+        "404":
+          description: Vault not found or not a member
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
       security:
       - BearerAuth: []
-      summary: Create invite
+      summary: Import vault items
       tags:
-      - Invites
-  /invites/{id}:
-    delete:
-      description: Admin revokes a pending invite by ID
-      parameters:
-      - description: Invite ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No content
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-      security:
-      - BearerAuth: []
-      summary: Revoke invite
-      tags:
-      - Invites
-  /invites/redeem:
-    post:
-      consumes:
-      - application/json
-      description: New user redeems an invite token during registration
-      parameters:
-      - description: Raw invite token
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/internal_presenters_api.RedeemInviteRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/internal_presenters_api.RedeemInviteResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/internal_presenters_api.ErrorBody'
-      summary: Redeem invite
-      tags:
-      - Invites
+      - Import/Export
   /orgs:
     post:
       consumes:
@@ -1166,6 +1242,111 @@ paths:
       summary: Create organization
       tags:
       - Organizations
+  /orgs/{id}/invites:
+    get:
+      description: Admin lists pending invites for an organization
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.InviteResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List invites
+      tags:
+      - Invites
+    post:
+      consumes:
+      - application/json
+      description: Admin creates an invite token for a new member of the org
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Invite payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.CreateInviteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create invite
+      tags:
+      - Invites
+  /orgs/{id}/invites/{inviteId}:
+    delete:
+      description: Admin revokes a pending org invite by ID
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Invite ID
+        in: path
+        name: inviteId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Revoke invite
+      tags:
+      - Invites
   /orgs/{id}/members:
     get:
       description: List all members of an organization
@@ -1198,6 +1379,49 @@ paths:
       tags:
       - Organizations
   /orgs/{id}/members/{userId}:
+    delete:
+      description: Remove a user from the organization. Cascades into shared-vault
+        memberships and triggers an unconditional client-driven rekey of every affected
+        vault.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RemoveOrgMemberResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Remove org member
+      tags:
+      - Organizations
     put:
       consumes:
       - application/json
@@ -1335,6 +1559,85 @@ paths:
       summary: Update user profile
       tags:
       - Users
+  /users/me/api-keys:
+    get:
+      description: Returns all API keys for the authenticated user (without raw key
+        values)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.APIKeyResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List API keys
+      tags:
+      - API Keys
+    post:
+      consumes:
+      - application/json
+      description: Generate a new personal API key for programmatic access. The raw
+        key is returned only once.
+      parameters:
+      - description: API key creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.CreateAPIKeyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_presenters_api.CreateAPIKeyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Create API key
+      tags:
+      - API Keys
+  /users/me/api-keys/{id}:
+    delete:
+      description: Permanently delete a personal API key
+      parameters:
+      - description: API Key ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Delete API key
+      tags:
+      - API Keys
   /users/me/sessions:
     get:
       description: Returns all active sessions for the authenticated user
@@ -1799,7 +2102,7 @@ paths:
       tags:
       - Sharing
   /vaults/{vaultId}/rekey:
-    post:
+    put:
       consumes:
       - application/json
       description: Atomically re-encrypt all items and re-wrap vault keys for remaining

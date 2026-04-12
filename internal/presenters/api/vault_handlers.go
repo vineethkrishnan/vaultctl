@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
@@ -32,6 +33,9 @@ type VaultHandlers struct {
 	ShareVault         *appvault.ShareVault
 	RemoveMember       *appvault.RemoveMember
 	RekeyVault         *appvault.RekeyVault
+
+	// Audit is the cross-cutting audit-log writer (M13).
+	Audit *audit.Writer
 }
 
 // HandleListVaults returns all vaults the caller is a member of.
@@ -95,8 +99,9 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 		writeError(w, r, err)
 		return
 	}
+	callerID := middleware.CallerID(r.Context())
 	vm, err := h.CreateVault.Execute(r.Context(), appvault.CreateVaultInput{
-		Caller:            middleware.CallerID(r.Context()),
+		Caller:            callerID,
 		Name:              req.Name,
 		Type:              req.Type,
 		EncryptedVaultKey: encKey,
@@ -106,6 +111,7 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.VaultCreated(r.Context(), string(callerID), string(vm.Vault.ID), middleware.ClientIP(r), r.UserAgent())
 	writeJSON(w, http.StatusCreated, VaultResponse{
 		ID:                string(vm.Vault.ID),
 		Name:              vm.Vault.Name,
@@ -533,10 +539,13 @@ func (h *VaultHandlers) HandleShareVault(w http.ResponseWriter, r *http.Request)
 		writeError(w, r, err)
 		return
 	}
+	callerID := middleware.CallerID(r.Context())
+	vaultID := vault.ID(chi.URLParam(r, "vaultId"))
+	recipient := user.ID(req.RecipientUserID)
 	err = h.ShareVault.Execute(r.Context(), appvault.ShareVaultInput{
-		Caller:            middleware.CallerID(r.Context()),
-		VaultID:           vault.ID(chi.URLParam(r, "vaultId")),
-		RecipientUserID:   user.ID(req.RecipientUserID),
+		Caller:            callerID,
+		VaultID:           vaultID,
+		RecipientUserID:   recipient,
 		EncryptedVaultKey: encKey,
 		WrapSignature:     sig,
 		Role:              user.Role(req.Role),
@@ -545,6 +554,7 @@ func (h *VaultHandlers) HandleShareVault(w http.ResponseWriter, r *http.Request)
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.VaultMemberAdded(r.Context(), string(callerID), string(vaultID), string(recipient), middleware.ClientIP(r), r.UserAgent())
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -561,15 +571,19 @@ func (h *VaultHandlers) HandleShareVault(w http.ResponseWriter, r *http.Request)
 // @Failure 404 {object} ErrorBody
 // @Router /vaults/{vaultId}/members/{userId} [delete]
 func (h *VaultHandlers) HandleRemoveMember(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	vaultID := vault.ID(chi.URLParam(r, "vaultId"))
+	targetID := user.ID(chi.URLParam(r, "userId"))
 	out, err := h.RemoveMember.Execute(r.Context(), appvault.RemoveMemberInput{
-		Caller:     middleware.CallerID(r.Context()),
-		VaultID:    vault.ID(chi.URLParam(r, "vaultId")),
-		TargetUser: user.ID(chi.URLParam(r, "userId")),
+		Caller:     callerID,
+		VaultID:    vaultID,
+		TargetUser: targetID,
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.VaultMemberRemoved(r.Context(), string(callerID), string(vaultID), string(targetID), middleware.ClientIP(r), r.UserAgent())
 	members := make([]VaultMembershipDTO, 0, len(out.RemainingMembers))
 	for _, m := range out.RemainingMembers {
 		members = append(members, VaultMembershipDTO{
@@ -599,7 +613,7 @@ func (h *VaultHandlers) HandleRemoveMember(w http.ResponseWriter, r *http.Reques
 // @Success 204 "No content"
 // @Failure 400 {object} ErrorBody
 // @Failure 404 {object} ErrorBody
-// @Router /vaults/{vaultId}/rekey [post]
+// @Router /vaults/{vaultId}/rekey [put]
 func (h *VaultHandlers) HandleRekeyVault(w http.ResponseWriter, r *http.Request) {
 	var req RekeyVaultRequest
 	if err := readJSON(r, &req); err != nil {
@@ -646,8 +660,9 @@ func (h *VaultHandlers) HandleRekeyVault(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
+	callerID := middleware.CallerID(r.Context())
 	err := h.RekeyVault.Execute(r.Context(), appvault.RekeyVaultInput{
-		Caller:  middleware.CallerID(r.Context()),
+		Caller:  callerID,
 		VaultID: vaultID,
 		NewKeys: newKeys,
 		Items:   items,
@@ -656,5 +671,6 @@ func (h *VaultHandlers) HandleRekeyVault(w http.ResponseWriter, r *http.Request)
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.VaultRekeyed(r.Context(), string(callerID), string(vaultID), middleware.ClientIP(r), r.UserAgent())
 	w.WriteHeader(http.StatusNoContent)
 }

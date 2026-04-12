@@ -16,6 +16,7 @@ import {
   workerEncryptName,
   workerDecryptName,
   workerLock,
+  workerSignIdentity,
   workerTerminate,
   workerIsUnlocked,
 } from "@/worker/worker-client";
@@ -77,6 +78,15 @@ export async function decryptName(
   encryptedB64: string,
 ): Promise<string> {
   return workerDecryptName(vaultId, encryptedB64);
+}
+
+/**
+ * Sign arbitrary bytes with the Ed25519 identity private key. The private
+ * key never leaves the Worker; only the signature bytes come back. Used by
+ * the export-envelope flow (M9).
+ */
+export async function signIdentity(message: Uint8Array): Promise<Uint8Array> {
+  return workerSignIdentity(message);
 }
 
 /** Lock the vault: zero all key material in the Worker. */

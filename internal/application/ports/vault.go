@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
@@ -47,6 +48,11 @@ type VaultRepository interface {
 	// MemberForUser returns the caller's membership row for a vault.
 	// Returns ErrNotFound if the user is not an active member.
 	MemberForUser(ctx context.Context, vaultID vault.ID, userID user.ID) (vault.Member, error)
+
+	// ListSharedByOrgMember returns every shared-vault ID within the given
+	// org where userID is still an active member. Used by the org-level
+	// member removal flow (C2) to build the cascade rekey list.
+	ListSharedByOrgMember(ctx context.Context, orgID organization.ID, userID user.ID) ([]vault.ID, error)
 }
 
 // ItemRepository persists vault_items rows.
@@ -91,6 +97,10 @@ type ItemRepository interface {
 	// single vault, returning the number purged. Used by the bulk trash
 	// purge API endpoint.
 	PurgeExpiredInVault(ctx context.Context, vaultID vault.ID, cutoff time.Time) (int, error)
+
+	// CreateBatch inserts multiple items in a single transaction. Used by
+	// the import endpoint.
+	CreateBatch(ctx context.Context, items []vault.Item) error
 }
 
 // ItemListOptions filters the active-items list. Only server-visible fields

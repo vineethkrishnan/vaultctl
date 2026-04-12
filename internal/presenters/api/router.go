@@ -28,6 +28,7 @@ type Dependencies struct {
 	Org                *OrgHandlers
 	Admin              *AdminHandlers
 	Export             *ExportHandlers
+	Import             *ImportHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	CORSAllowedOrigins []string
@@ -69,12 +70,15 @@ func NewRouter(deps Dependencies) http.Handler {
 			}
 			r.Post("/auth/register", deps.Auth.HandleRegister)
 			r.Get("/auth/prelogin", deps.Auth.HandlePrelogin)
+			r.Get("/auth/password/hint", deps.Auth.HandleGetPasswordHint)
 			r.Post("/auth/login", deps.Auth.HandleLogin)
 			r.Post("/auth/refresh", deps.Auth.HandleRefresh)
 			r.Post("/auth/logout", deps.Auth.HandleLogout)
+			r.Post("/auth/recovery/verify", deps.Auth.HandleVerifyRecoveryKey)
+			r.Post("/auth/recovery/reset", deps.Auth.HandleResetViaRecovery)
 
 			// Invite redemption is public — new users redeem before registering
-			r.Post("/invites/redeem", deps.Invite.HandleRedeemInvite)
+			r.Post("/auth/invites/redeem", deps.Invite.HandleRedeemInvite)
 		})
 
 		// ===== Authenticated routes =====
@@ -101,15 +105,10 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Password change (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/password/change", deps.Auth.HandlePasswordChange)
 
-			// Invite management (admin only)
-			r.With(requireAdmin).Post("/invites", deps.Invite.HandleCreateInvite)
-			r.With(requireAdmin).Get("/invites", deps.Invite.HandleListInvites)
-			r.With(requireAdmin).Delete("/invites/{id}", deps.Invite.HandleRevokeInvite)
-
-			// API keys
-			r.Post("/api-keys", deps.APIKey.HandleCreateAPIKey)
-			r.Get("/api-keys", deps.APIKey.HandleListAPIKeys)
-			r.Delete("/api-keys/{id}", deps.APIKey.HandleDeleteAPIKey)
+			// API keys (PRD §10.5)
+			r.Post("/users/me/api-keys", deps.APIKey.HandleCreateAPIKey)
+			r.Get("/users/me/api-keys", deps.APIKey.HandleListAPIKeys)
+			r.Delete("/users/me/api-keys/{id}", deps.APIKey.HandleDeleteAPIKey)
 
 			// User profile & sessions
 			r.Get("/users/me", deps.User.HandleGetProfile)
@@ -122,15 +121,27 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Route("/orgs/{id}", func(r chi.Router) {
 				r.Get("/members", deps.Org.HandleListOrgMembers)
 				r.With(requireAdmin).Put("/members/{userId}", deps.Org.HandleUpdateMemberRole)
+				// C2 unconditional vault rekey trigger: cascades into every
+				// shared vault the target user belonged to.
+				r.With(requireAdmin).Delete("/members/{userId}", deps.Org.HandleRemoveOrgMember)
 				// Organization member public key
 				r.Get("/members/{userId}/pubkey", deps.User.HandleGetMemberPublicKey)
+
+				// Invite management (admin only) — scoped to the org
+				r.With(requireAdmin).Post("/invites", deps.Invite.HandleCreateInvite)
+				r.With(requireAdmin).Get("/invites", deps.Invite.HandleListInvites)
+				r.With(requireAdmin).Delete("/invites/{inviteId}", deps.Invite.HandleRevokeInvite)
 			})
 
 			// Admin
 			r.With(requireAdmin).Post("/admin/backup", deps.Admin.HandleBackup)
+			r.With(requireAdmin).Get("/admin/backups", deps.Admin.HandleListBackups)
 
 			// Data export (step-up required — sensitive data)
 			r.With(requireStepUp).Get("/export", deps.Export.HandleExport)
+
+			// Data import
+			r.Post("/import", deps.Import.HandleImport)
 
 			// Vault management
 			r.Get("/vaults", deps.Vault.HandleListVaults)
@@ -161,7 +172,7 @@ func NewRouter(deps Dependencies) http.Handler {
 				// Sharing
 				r.Post("/members", deps.Vault.HandleShareVault)
 				r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
-				r.Post("/rekey", deps.Vault.HandleRekeyVault)
+				r.Put("/rekey", deps.Vault.HandleRekeyVault)
 			})
 		})
 	})

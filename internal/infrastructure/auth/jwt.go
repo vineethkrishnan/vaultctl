@@ -7,14 +7,25 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
 
 // JWTKey identifies a single signing key in the keyring. The kid is
 // surfaced on every issued token's header so verifiers can pick the right
-// key without guessing.
+// key without guessing. Secret holds the raw HMAC key bytes that the
+// constructor copies into a memguard-backed Secret; callers MUST NOT
+// retain the slice past NewJWTService.
 type JWTKey struct {
 	Kid    string
 	Secret []byte
+}
+
+// secureKey is the internal, post-construction representation of a JWTKey
+// where the raw bytes have been moved into a memguard LockedBuffer.
+type secureKey struct {
+	kid    string
+	secret *secure.Secret
 }
 
 // JWTConfig drives the JWTService. Current is the key that signs NEW
@@ -49,7 +60,11 @@ type AccessClaims struct {
 
 // JWTService issues and verifies access tokens.
 type JWTService struct {
-	cfg JWTConfig
+	current   secureKey
+	next      *secureKey
+	issuer    string
+	accessTTL time.Duration
+	nowFunc   func() time.Time
 }
 
 // NewJWTService constructs the service from cfg. Returns ErrJWTMisconfigured
@@ -70,7 +85,30 @@ func NewJWTService(cfg JWTConfig) (*JWTService, error) {
 	if cfg.NowFunc == nil {
 		cfg.NowFunc = time.Now
 	}
-	return &JWTService{cfg: cfg}, nil
+	svc := &JWTService{
+		current: secureKey{
+			kid:    cfg.Current.Kid,
+			secret: secure.NewSecretFromBytes(cfg.Current.Secret),
+		},
+		issuer:    cfg.Issuer,
+		accessTTL: cfg.AccessTTL,
+		nowFunc:   cfg.NowFunc,
+	}
+	if cfg.Next != nil && len(cfg.Next.Secret) > 0 {
+		svc.next = &secureKey{
+			kid:    cfg.Next.Kid,
+			secret: secure.NewSecretFromBytes(cfg.Next.Secret),
+		}
+	}
+	return svc, nil
+}
+
+// Close wipes all stored signing keys. Call from shutdown.
+func (s *JWTService) Close() {
+	s.current.secret.Destroy()
+	if s.next != nil {
+		s.next.secret.Destroy()
+	}
 }
 
 // Issue signs a new access token for userID. now is injected for testability.
@@ -79,9 +117,9 @@ func (s *JWTService) Issue(userID, role string, now time.Time, stepUpUntil time.
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    s.cfg.Issuer,
+			Issuer:    s.issuer,
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.AccessTTL)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessTTL)),
 			NotBefore: jwt.NewNumericDate(now),
 		},
 	}
@@ -89,8 +127,14 @@ func (s *JWTService) Issue(userID, role string, now time.Time, stepUpUntil time.
 		claims.StepUpExp = stepUpUntil.Unix()
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tok.Header["kid"] = s.cfg.Current.Kid
-	return tok.SignedString(s.cfg.Current.Secret)
+	tok.Header["kid"] = s.current.kid
+
+	var signed string
+	var signErr error
+	s.current.secret.Open(func(key []byte) {
+		signed, signErr = tok.SignedString(key)
+	})
+	return signed, signErr
 }
 
 // ErrInvalidToken is returned for any signature / expiry / structural
@@ -102,9 +146,9 @@ var ErrInvalidToken = errors.New("jwt: invalid token")
 func (s *JWTService) Verify(tokenString string) (*AccessClaims, error) {
 	out := &AccessClaims{}
 	parserOpts := []jwt.ParserOption{
-		jwt.WithIssuer(s.cfg.Issuer),
+		jwt.WithIssuer(s.issuer),
 		jwt.WithValidMethods([]string{"HS256"}),
-		jwt.WithTimeFunc(s.cfg.NowFunc),
+		jwt.WithTimeFunc(s.nowFunc),
 	}
 	_, err := jwt.ParseWithClaims(tokenString, out, func(tok *jwt.Token) (any, error) {
 		if _, ok := tok.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -112,13 +156,13 @@ func (s *JWTService) Verify(tokenString string) (*AccessClaims, error) {
 		}
 		kid, _ := tok.Header["kid"].(string)
 		switch kid {
-		case s.cfg.Current.Kid:
-			return s.cfg.Current.Secret, nil
+		case s.current.kid:
+			return borrowKey(s.current.secret), nil
 		case "":
 			return nil, fmt.Errorf("%w: missing kid", ErrInvalidToken)
 		default:
-			if s.cfg.Next != nil && s.cfg.Next.Kid == kid {
-				return s.cfg.Next.Secret, nil
+			if s.next != nil && s.next.kid == kid {
+				return borrowKey(s.next.secret), nil
 			}
 			return nil, fmt.Errorf("%w: unknown kid %q", ErrInvalidToken, kid)
 		}
@@ -127,6 +171,18 @@ func (s *JWTService) Verify(tokenString string) (*AccessClaims, error) {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidToken, err) //nolint:errorlint // wrap sentinel only
 	}
 	return out, nil
+}
+
+// borrowKey copies the Secret's bytes into a transient slice for the JWT
+// library's verification callback. The copy is unavoidable: jwt.ParseWith-
+// Claims is a pull-based API that can't run inside Secret.Open's closure.
+// The returned slice is short-lived and garbage-collected after the parse.
+func borrowKey(s *secure.Secret) []byte {
+	return secure.WithBytes(s, func(b []byte) []byte {
+		out := make([]byte, len(b))
+		copy(out, b)
+		return out
+	})
 }
 
 // HasValidStepUp reports whether the token still carries a fresh step-up

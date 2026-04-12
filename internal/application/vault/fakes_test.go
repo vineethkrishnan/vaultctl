@@ -9,6 +9,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	domainvault "github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
@@ -69,12 +70,20 @@ type membershipKey struct {
 type fakeVaultRepo struct {
 	mu          sync.Mutex
 	memberships map[membershipKey]user.Role
-	failOps     map[string]error
+	// members is the richer view used by sharing/rekey/cascade tests.
+	// When populated it supersedes memberships for IsActiveMember +
+	// ListMembers + MemberForUser. The two maps coexist so that legacy
+	// tests that only call `seed()` keep working.
+	members map[membershipKey]*domainvault.Member
+	vaults  map[domainvault.ID]domainvault.Vault
+	failOps map[string]error
 }
 
 func newFakeVaultRepo() *fakeVaultRepo {
 	return &fakeVaultRepo{
 		memberships: map[membershipKey]user.Role{},
+		members:     map[membershipKey]*domainvault.Member{},
+		vaults:      map[domainvault.ID]domainvault.Vault{},
 		failOps:     map[string]error{},
 	}
 }
@@ -84,14 +93,48 @@ func (r *fakeVaultRepo) seed(vaultID domainvault.ID, userID user.ID, role user.R
 	r.memberships[membershipKey{vaultID, userID}] = role
 }
 
+// seedVault registers a Vault row so Get returns it.
+func (r *fakeVaultRepo) seedVault(v domainvault.Vault) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.vaults[v.ID] = v
+}
+
+// seedMember installs a full Member row for sharing/rekey tests. Also
+// mirrors the role into memberships for legacy IsActiveMember callers.
+func (r *fakeVaultRepo) seedMember(m domainvault.Member) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cp := m
+	r.members[membershipKey{m.VaultID, m.UserID}] = &cp
+	r.memberships[membershipKey{m.VaultID, m.UserID}] = m.Role
+}
+
 func (r *fakeVaultRepo) Create(_ context.Context, _ domainvault.Vault, _ domainvault.Member) error {
 	return nil
 }
-func (r *fakeVaultRepo) Get(_ context.Context, _ domainvault.ID) (domainvault.Vault, error) {
-	return domainvault.Vault{}, nil
+func (r *fakeVaultRepo) Get(_ context.Context, id domainvault.ID) (domainvault.Vault, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	v, ok := r.vaults[id]
+	if !ok {
+		return domainvault.Vault{}, nil
+	}
+	return v, nil
 }
-func (r *fakeVaultRepo) ListForUser(_ context.Context, _ user.ID) ([]domainvault.Vault, error) {
-	return nil, nil
+func (r *fakeVaultRepo) ListForUser(_ context.Context, userID user.ID) ([]domainvault.Vault, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []domainvault.Vault{}
+	for k, m := range r.members {
+		if k.userID != userID || !m.IsActive() {
+			continue
+		}
+		if v, ok := r.vaults[k.vaultID]; ok {
+			out = append(out, v)
+		}
+	}
+	return out, nil
 }
 func (r *fakeVaultRepo) IsActiveMember(_ context.Context, u user.ID, v domainvault.ID) (user.Role, bool, error) {
 	if err := r.failOps["IsActiveMember"]; err != nil {
@@ -99,21 +142,79 @@ func (r *fakeVaultRepo) IsActiveMember(_ context.Context, u user.ID, v domainvau
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// Rich members table wins — it carries RemovedAt soft-delete state.
+	if m, ok := r.members[membershipKey{v, u}]; ok {
+		if !m.IsActive() {
+			return "", false, nil
+		}
+		return m.Role, true, nil
+	}
 	role, ok := r.memberships[membershipKey{v, u}]
 	return role, ok, nil
 }
-func (r *fakeVaultRepo) AddMember(_ context.Context, _ domainvault.Member) error { return nil }
-func (r *fakeVaultRepo) RemoveMember(_ context.Context, _ domainvault.ID, _ user.ID) error {
+func (r *fakeVaultRepo) AddMember(_ context.Context, m domainvault.Member) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cp := m
+	r.members[membershipKey{m.VaultID, m.UserID}] = &cp
+	r.memberships[membershipKey{m.VaultID, m.UserID}] = m.Role
+	return nil
+}
+func (r *fakeVaultRepo) RemoveMember(_ context.Context, vaultID domainvault.ID, userID user.ID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := membershipKey{vaultID, userID}
+	if m, ok := r.members[key]; ok {
+		now := time.Now()
+		m.RemovedAt = &now
+	}
+	delete(r.memberships, key)
 	return nil
 }
 func (r *fakeVaultRepo) UpdateMemberRole(_ context.Context, _ domainvault.ID, _ user.ID, _ user.Role) error {
 	return nil
 }
-func (r *fakeVaultRepo) ListMembers(_ context.Context, _ domainvault.ID) ([]domainvault.Member, error) {
-	return nil, nil
+func (r *fakeVaultRepo) ListMembers(_ context.Context, vaultID domainvault.ID) ([]domainvault.Member, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []domainvault.Member{}
+	for k, m := range r.members {
+		if k.vaultID == vaultID && m.IsActive() {
+			out = append(out, *m)
+		}
+	}
+	return out, nil
 }
-func (r *fakeVaultRepo) MemberForUser(_ context.Context, _ domainvault.ID, _ user.ID) (domainvault.Member, error) {
-	return domainvault.Member{}, nil
+func (r *fakeVaultRepo) MemberForUser(_ context.Context, vaultID domainvault.ID, userID user.ID) (domainvault.Member, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	m, ok := r.members[membershipKey{vaultID, userID}]
+	if !ok || !m.IsActive() {
+		return domainvault.Member{}, domain.ErrNotFound
+	}
+	return *m, nil
+}
+func (r *fakeVaultRepo) ListSharedByOrgMember(_ context.Context, orgID organization.ID, userID user.ID) ([]domainvault.ID, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []domainvault.ID{}
+	for k, m := range r.members {
+		if k.userID != userID || !m.IsActive() {
+			continue
+		}
+		v, ok := r.vaults[k.vaultID]
+		if !ok {
+			continue
+		}
+		if v.Type != domainvault.TypeShared {
+			continue
+		}
+		if v.OrgID != string(orgID) {
+			continue
+		}
+		out = append(out, k.vaultID)
+	}
+	return out, nil
 }
 
 // ===========================================================================
@@ -251,6 +352,14 @@ func (r *fakeItemRepo) PurgeExpiredInVault(_ context.Context, vaultID domainvaul
 		}
 	}
 	return n, nil
+}
+func (r *fakeItemRepo) CreateBatch(ctx context.Context, items []domainvault.Item) error {
+	for _, it := range items {
+		if err := r.Create(ctx, it); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ===========================================================================

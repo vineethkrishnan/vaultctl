@@ -71,6 +71,11 @@ type User struct {
 	PublicKeySignature   crypto.Signature // Ed25519(id_priv, public_key)  (C1)
 	IdentityPublicKey    crypto.PublicKey // Ed25519                       (C1)
 
+	// EncryptedPasswordHint is a server-encrypted (H4/AES-256-GCM) hint that
+	// helps the user remember their master password. Optional — nil means no
+	// hint was set during registration.
+	EncryptedPasswordHint []byte
+
 	Role         Role
 	TOTPEnabled  bool
 

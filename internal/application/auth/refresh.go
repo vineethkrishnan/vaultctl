@@ -24,6 +24,12 @@ type RefreshOutput struct {
 	AccessToken      string
 	RefreshToken     string
 	RefreshExpiresAt time.Time
+
+	// UserID and SessionID are exposed so the HTTP layer can emit audit
+	// rows. They are NOT marshalled back to the client — the API DTO
+	// only carries the token triple.
+	UserID    user.ID
+	SessionID user.SessionID
 }
 
 // Refresh rotates an access+refresh pair.
@@ -90,5 +96,7 @@ func (uc *Refresh) Execute(ctx context.Context, in RefreshInput) (RefreshOutput,
 		AccessToken:      access,
 		RefreshToken:     newRefresh,
 		RefreshExpiresAt: newExpiresAt,
+		UserID:           session.UserID,
+		SessionID:        session.ID,
 	}, nil
 }

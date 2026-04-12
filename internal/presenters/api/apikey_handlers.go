@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
@@ -16,6 +17,9 @@ type APIKeyHandlers struct {
 	Create *auth.CreateAPIKey
 	List   *auth.ListAPIKeys
 	Delete *auth.DeleteAPIKey
+
+	// Audit is the cross-cutting audit-log writer (M13).
+	Audit *audit.Writer
 }
 
 // HandleCreateAPIKey creates a new personal API key.
@@ -29,7 +33,7 @@ type APIKeyHandlers struct {
 // @Success 201 {object} CreateAPIKeyResponse
 // @Failure 400 {object} ErrorBody
 // @Failure 401 {object} ErrorBody
-// @Router /api-keys [post]
+// @Router /users/me/api-keys [post]
 func (h *APIKeyHandlers) HandleCreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	var req CreateAPIKeyRequest
 	if err := readJSON(r, &req); err != nil {
@@ -47,8 +51,9 @@ func (h *APIKeyHandlers) HandleCreateAPIKey(w http.ResponseWriter, r *http.Reque
 		expiresIn = &d
 	}
 
+	callerID := middleware.CallerID(r.Context())
 	out, err := h.Create.Execute(r.Context(), auth.CreateAPIKeyInput{
-		Caller:    middleware.CallerID(r.Context()),
+		Caller:    callerID,
 		Name:      req.Name,
 		ExpiresIn: expiresIn,
 	})
@@ -56,6 +61,7 @@ func (h *APIKeyHandlers) HandleCreateAPIKey(w http.ResponseWriter, r *http.Reque
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.APIKeyCreated(r.Context(), string(callerID), out.KeyID, middleware.ClientIP(r), r.UserAgent())
 
 	resp := CreateAPIKeyResponse{
 		ID:        out.KeyID,
@@ -78,7 +84,7 @@ func (h *APIKeyHandlers) HandleCreateAPIKey(w http.ResponseWriter, r *http.Reque
 // @Security BearerAuth
 // @Success 200 {array} APIKeyResponse
 // @Failure 401 {object} ErrorBody
-// @Router /api-keys [get]
+// @Router /users/me/api-keys [get]
 func (h *APIKeyHandlers) HandleListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	keys, err := h.List.Execute(r.Context(), auth.ListAPIKeysInput{
 		Caller: middleware.CallerID(r.Context()),
@@ -118,15 +124,18 @@ func (h *APIKeyHandlers) HandleListAPIKeys(w http.ResponseWriter, r *http.Reques
 // @Success 204 "No content"
 // @Failure 401 {object} ErrorBody
 // @Failure 404 {object} ErrorBody
-// @Router /api-keys/{id} [delete]
+// @Router /users/me/api-keys/{id} [delete]
 func (h *APIKeyHandlers) HandleDeleteAPIKey(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	keyID := user.APIKeyID(chi.URLParam(r, "id"))
 	err := h.Delete.Execute(r.Context(), auth.DeleteAPIKeyInput{
-		Caller: middleware.CallerID(r.Context()),
-		KeyID:  user.APIKeyID(chi.URLParam(r, "id")),
+		Caller: callerID,
+		KeyID:  keyID,
 	})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.APIKeyRevoked(r.Context(), string(callerID), string(keyID), middleware.ClientIP(r), r.UserAgent())
 	w.WriteHeader(http.StatusNoContent)
 }

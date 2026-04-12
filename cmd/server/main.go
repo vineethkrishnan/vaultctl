@@ -26,11 +26,17 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/logging"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/scheduler"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/cli"
 )
 
 func main() {
+	// Install memguard signal handlers so every LockedBuffer is wiped on
+	// SIGINT/SIGTERM (architecture §12.1). Normal exits call secure.Purge
+	// from the runServer cleanup path.
+	secure.Init()
+
 	// Register the server runner so `vaultctl server` can reach back into
 	// the composition root without creating an import cycle.
 	cli.RegisterServerRunner(runServer)
@@ -53,6 +59,11 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 		schedCtx := sched.Stop()
 		<-schedCtx.Done()
 		adapters.pool.Close()
+		// Wipe every live LockedBuffer — this is the normal-exit path.
+		// Signal exits are covered by secure.Init's handler.
+		adapters.hmac.Close()
+		adapters.jwt.Close()
+		secure.Purge()
 		return nil
 	}
 	return api.NewRouter(deps), cleanup, nil

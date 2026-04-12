@@ -5,7 +5,24 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
+
+// decodeAuthHashSecret decodes a base64-encoded authHash into a memguard
+// Secret. The decoded source slice is wiped by memguard during the copy,
+// so the caller receives a Secret whose bytes live in locked memory.
+// Callers MUST defer Destroy on the returned Secret.
+//
+// Returning a Secret (rather than raw []byte) forces every auth handler
+// to borrow the bytes through Secret.Open — any plaintext authHash copy
+// is confined to the narrow window of a single handler call.
+func decodeAuthHashSecret(s string) (*secure.Secret, error) {
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	return secure.NewSecretFromBytes(raw), nil
+}
 
 // ===========================================================================
 // Auth DTOs
@@ -25,7 +42,8 @@ type RegisterRequest struct {
 	PublicKey                   string `json:"publicKey"`
 	PublicKeySignature          string `json:"publicKeySignature"`
 	IdentityPublicKey           string `json:"identityPublicKey"`
-	InviteToken                 string `json:"inviteToken,omitempty"` // required when registration mode is "invite"
+	InviteToken                 string `json:"inviteToken,omitempty"`    // required when registration mode is "invite"
+	PasswordHint                string `json:"passwordHint,omitempty"`   // optional plaintext hint, server-encrypted (H4)
 }
 
 type RegisterResponse struct {
@@ -89,6 +107,78 @@ type PreloginResponse struct {
 	Iterations  uint32 `json:"iterations"`
 	MemoryKB    uint32 `json:"memoryKB"`
 	Parallelism uint8  `json:"parallelism"`
+}
+
+// ===========================================================================
+// Password Hint DTOs
+// ===========================================================================
+
+type PasswordHintResponse struct {
+	Hint string `json:"hint"`
+}
+
+// ===========================================================================
+// Recovery DTOs
+// ===========================================================================
+
+type RecoveryVerifyRequest struct {
+	Email string `json:"email"`
+}
+
+type RecoveryVerifyResponse struct {
+	EncryptedPrivateKey         string `json:"encryptedPrivateKey"`
+	EncryptedIdentityPrivateKey string `json:"encryptedIdentityPrivateKey"`
+	Salt                        string `json:"salt"`
+	Iterations                  uint32 `json:"iterations"`
+	MemoryKB                    uint32 `json:"memoryKB"`
+	Parallelism                 uint8  `json:"parallelism"`
+}
+
+type RecoveryResetRequest struct {
+	Email                       string `json:"email"`
+	NewAuthHash                 string `json:"newAuthHash"`                 // base64
+	EncryptedPrivateKey         string `json:"encryptedPrivateKey"`         // base64 wire blob
+	EncryptedIdentityPrivateKey string `json:"encryptedIdentityPrivateKey"` // base64 wire blob
+}
+
+type RecoveryResetResponse struct {
+	AccessToken      string `json:"accessToken"`
+	RefreshToken     string `json:"refreshToken"`
+	RefreshExpiresAt string `json:"refreshExpiresAt"`
+}
+
+// ===========================================================================
+// Import DTOs
+// ===========================================================================
+
+type ImportItemDTO struct {
+	ItemType      string  `json:"itemType"`
+	EncryptedData string  `json:"encryptedData"` // base64 wire-format blob
+	EncryptedName string  `json:"encryptedName"` // base64 wire-format blob
+	FolderID      *string `json:"folderId,omitempty"`
+}
+
+type ImportRequest struct {
+	VaultID string          `json:"vaultId"`
+	Items   []ImportItemDTO `json:"items"`
+}
+
+type ImportResponse struct {
+	ImportedCount int `json:"importedCount"`
+}
+
+// ===========================================================================
+// Admin Backup DTOs
+// ===========================================================================
+
+type BackupInfoDTO struct {
+	Filename  string `json:"filename"`
+	Size      int64  `json:"size"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type ListBackupsResponse struct {
+	Backups []BackupInfoDTO `json:"backups"`
 }
 
 // ===========================================================================
@@ -370,6 +460,14 @@ type OrgMemberResponse struct {
 
 type UpdateMemberRoleRequest struct {
 	Role string `json:"role"`
+}
+
+// RemoveOrgMemberResponse carries the rekey correlation handle and the list
+// of shared vaults the admin client must re-encrypt after a member removal
+// (C2 unconditional rekey).
+type RemoveOrgMemberResponse struct {
+	RekeyJobID     string   `json:"rekeyJobId"`
+	AffectedVaults []string `json:"affectedVaults"`
 }
 
 // ===========================================================================

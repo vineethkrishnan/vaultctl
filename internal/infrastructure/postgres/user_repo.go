@@ -23,13 +23,15 @@ func (r *UserRepo) Create(ctx context.Context, u user.User, authHash string) err
 			kdf_iterations, kdf_memory, kdf_parallelism,
 			encrypted_private_key, public_key, public_key_signature,
 			identity_public_key, encrypted_identity_private_key,
+			encrypted_password_hint,
 			role, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 	`,
 		u.ID, u.Email.String(), u.Name, authHash, u.Salt,
 		u.KDFParams.Iterations, u.KDFParams.MemoryKB, u.KDFParams.Parallelism,
 		encodeBlob(u.EncryptedPrivateKey), encodePublicKey(u.PublicKey), encodeSig(u.PublicKeySignature),
 		encodePublicKey(u.IdentityPublicKey), encodeBlob(u.EncryptedIdentityPrivateKey),
+		u.EncryptedPasswordHint,
 		string(u.Role), u.CreatedAt, u.UpdatedAt,
 	)
 	if isUniqueViolation(err) {
@@ -234,6 +236,45 @@ func (r *UserRepo) DisableTOTP(ctx context.Context, id user.ID) error {
 func (r *UserRepo) UpdateTOTPCounter(ctx context.Context, id user.ID, counter int64) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE users SET totp_last_counter = $1 WHERE id = $2`, counter, string(id))
 	return err
+}
+
+// GetHint returns the server-encrypted password hint for a user by email.
+func (r *UserRepo) GetHint(ctx context.Context, email user.Email) ([]byte, error) {
+	var hint []byte
+	err := r.Pool.QueryRow(ctx,
+		`SELECT encrypted_password_hint FROM users WHERE email = $1`,
+		email.String()).Scan(&hint)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return hint, nil
+}
+
+// GetRecoveryMaterial returns the user's crypto material for recovery.
+// This reuses FindByEmail — the domain already returns all needed fields.
+func (r *UserRepo) GetRecoveryMaterial(ctx context.Context, email user.Email) (user.User, error) {
+	return r.FindByEmail(ctx, email)
+}
+
+// UpdatePasswordMaterialAndHint atomically updates auth hash + re-encrypted
+// private keys + encrypted password hint.
+func (r *UserRepo) UpdatePasswordMaterialAndHint(ctx context.Context, id user.ID, authHash string, encPrivKey, encIDPrivKey, encHint []byte) error {
+	tag, err := r.Pool.Exec(ctx, `
+		UPDATE users SET auth_hash = $1, encrypted_private_key = $2,
+		       encrypted_identity_private_key = $3, encrypted_password_hint = $4,
+		       updated_at = NOW()
+		WHERE id = $5`,
+		authHash, encPrivKey, encIDPrivKey, encHint, string(id))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 // ===========================================================================

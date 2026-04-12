@@ -1,5 +1,6 @@
 import type { PasskeyData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface Props {
   data: PasskeyData;
@@ -30,6 +31,10 @@ export function PasskeyFields({ data, onChange }: Props) {
         </label>
       </div>
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }

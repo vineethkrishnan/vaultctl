@@ -5,10 +5,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
 
@@ -17,6 +19,10 @@ type OrgHandlers struct {
 	CreateOrg        *auth.CreateOrganization
 	ListMembers      *auth.ListOrgMembers
 	UpdateMemberRole *auth.UpdateOrgMemberRole
+	RemoveMember     *auth.RemoveOrgMember
+
+	// Audit is the cross-cutting audit-log writer (M13).
+	Audit *audit.Writer
 }
 
 // HandleCreateOrg creates a new organization.
@@ -48,6 +54,7 @@ func (h *OrgHandlers) HandleCreateOrg(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.OrgCreated(r.Context(), string(callerID), string(org.ID), middleware.ClientIP(r), r.UserAgent())
 
 	writeJSON(w, http.StatusCreated, OrgResponse{
 		ID:        string(org.ID),
@@ -141,8 +148,50 @@ func (h *OrgHandlers) HandleUpdateMemberRole(w http.ResponseWriter, r *http.Requ
 		writeError(w, r, err)
 		return
 	}
+	h.Audit.OrgRoleChanged(r.Context(), string(callerID), string(orgID), string(targetID), middleware.ClientIP(r), r.UserAgent())
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleRemoveOrgMember removes a member from an organization and cascades
+// the removal into every shared vault membership the user held (C2).
+// @Summary Remove org member
+// @Description Remove a user from the organization. Cascades into shared-vault memberships and triggers an unconditional client-driven rekey of every affected vault.
+// @Tags Organizations
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Organization ID"
+// @Param userId path string true "User ID to remove"
+// @Success 200 {object} RemoveOrgMemberResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Failure 403 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /orgs/{id}/members/{userId} [delete]
+func (h *OrgHandlers) HandleRemoveOrgMember(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	orgID := organization.ID(chi.URLParam(r, "id"))
+	targetID := user.ID(chi.URLParam(r, "userId"))
+
+	out, err := h.RemoveMember.Execute(r.Context(), auth.RemoveOrgMemberInput{
+		Caller:   callerID,
+		OrgID:    orgID,
+		TargetID: targetID,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	h.Audit.OrgMemberRemoved(r.Context(), string(callerID), string(orgID), string(targetID), middleware.ClientIP(r), r.UserAgent())
+
+	affected := make([]string, 0, len(out.AffectedVaults))
+	for _, vid := range out.AffectedVaults {
+		affected = append(affected, string(vid))
+	}
+	writeJSON(w, http.StatusOK, RemoveOrgMemberResponse{
+		RekeyJobID:     out.RekeyJobID,
+		AffectedVaults: affected,
+	})
 }
 
 // ===========================================================================
@@ -150,7 +199,9 @@ func (h *OrgHandlers) HandleUpdateMemberRole(w http.ResponseWriter, r *http.Requ
 // ===========================================================================
 
 // AdminHandlers ties HTTP to admin-only operations.
-type AdminHandlers struct{}
+type AdminHandlers struct {
+	ListBackups *auth.ListBackups
+}
 
 // HandleBackup returns 501 Not Implemented, directing users to the CLI.
 // @Summary Trigger backup
@@ -164,6 +215,34 @@ func (h *AdminHandlers) HandleBackup(w http.ResponseWriter, _ *http.Request) {
 		"error":   "not_implemented",
 		"message": "backup requires shell access (pg_dump); use `vaultctl backup` CLI command instead",
 	})
+}
+
+// HandleListBackups returns available backup files.
+// @Summary List backups
+// @Description List available backup files with size and creation time. Admin only.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} ListBackupsResponse
+// @Failure 401 {object} ErrorBody
+// @Failure 403 {object} ErrorBody "Admin required"
+// @Router /admin/backups [get]
+func (h *AdminHandlers) HandleListBackups(w http.ResponseWriter, r *http.Request) {
+	out, err := h.ListBackups.Execute()
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	backups := make([]BackupInfoDTO, 0, len(out.Backups))
+	for _, b := range out.Backups {
+		backups = append(backups, BackupInfoDTO{
+			Filename:  b.Filename,
+			Size:      b.Size,
+			CreatedAt: b.CreatedAt.UTC().Format(timeFormat),
+		})
+	}
+	writeJSON(w, http.StatusOK, ListBackupsResponse{Backups: backups})
 }
 
 // ===========================================================================
@@ -197,6 +276,74 @@ func (h *ExportHandlers) HandleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, data)
+}
+
+// ===========================================================================
+// Import handler
+// ===========================================================================
+
+// ImportHandlers ties HTTP to the import use case.
+type ImportHandlers struct {
+	Import *appvault.ImportItems
+}
+
+// HandleImport batch-creates vault items from an import payload.
+// @Summary Import vault items
+// @Description Batch-import encrypted items into a vault. Client performs format conversion and encryption.
+// @Tags Import/Export
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body ImportRequest true "Import payload"
+// @Success 200 {object} ImportResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Failure 404 {object} ErrorBody "Vault not found or not a member"
+// @Router /import [post]
+func (h *ImportHandlers) HandleImport(w http.ResponseWriter, r *http.Request) {
+	var req ImportRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	items := make([]appvault.ImportedItem, 0, len(req.Items))
+	for _, dto := range req.Items {
+		data, err := decodeB64Blob(dto.EncryptedData)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		name, err := decodeB64Blob(dto.EncryptedName)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		var folderID *vault.FolderID
+		if dto.FolderID != nil {
+			v := vault.FolderID(*dto.FolderID)
+			folderID = &v
+		}
+		items = append(items, appvault.ImportedItem{
+			ItemType:      vault.ItemType(dto.ItemType),
+			EncryptedData: data,
+			EncryptedName: name,
+			FolderID:      folderID,
+		})
+	}
+
+	callerID := middleware.CallerID(r.Context())
+	out, err := h.Import.Execute(r.Context(), appvault.ImportItemsInput{
+		Caller:  callerID,
+		VaultID: vault.ID(req.VaultID),
+		Items:   items,
+	})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ImportResponse{ImportedCount: out.ImportedCount})
 }
 
 // ===========================================================================

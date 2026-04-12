@@ -1,0 +1,99 @@
+name: backup-restore
+
+# M15 backup/restore integrity check. Runs weekly (and on demand) against
+# a freshly-built vaultctl binary + a postgres service container. The
+# driver script lives at test/integrity/backup-restore.sh and keeps all
+# user-controllable data inside a SQL heredoc — no workflow-level
+# interpolation reaches run: lines.
+
+on:
+  schedule:
+    # Every Monday at 05:00 UTC — one hour after the ZAP scan so they
+    # never contend for the shared postgres service container quota.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-restore-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integrity:
+    name: backup/restore row-count integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vaultctl
+          POSTGRES_PASSWORD: vaultctl
+          POSTGRES_DB: vaultctl
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      # --- DB connection for both src and dst (dst is created by the script) ---
+      SRC_HOST: localhost
+      SRC_PORT: '5432'
+      SRC_USER: vaultctl
+      SRC_PASSWORD: vaultctl
+      SRC_DB: vaultctl
+      DST_DB: vaultctl_restore
+
+      # --- config for the vaultctl binary used to take the backup ---
+      VAULTCTL_ENV: development
+      VAULTCTL_DB_HOST: localhost
+      VAULTCTL_DB_PORT: '5432'
+      VAULTCTL_DB_USER: vaultctl
+      VAULTCTL_DB_PASSWORD: vaultctl
+      VAULTCTL_DB_NAME: vaultctl
+      VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_JWT_SECRET_CURRENT: integrity-jwt-secret-at-least-32-bytes-ok
+      VAULTCTL_SERVER_PEPPER: integrity-server-pepper-32-bytes-ok
+      VAULTCTL_ENUMERATION_PEPPER: integrity-enum-pepper-32-bytes-ok
+      VAULTCTL_DATA_ENCRYPTION_KEY: LBrXjzRmKOwYu7V5rHYqStuwJ7pSu8+Wt4w5cKfYk5A=
+      VAULTCTL_BASE_URL: http://localhost:8080
+      VAULTCTL_REGISTRATION_MODE: open
+      VAULTCTL_BACKUP_RETENTION_DAYS: '0'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: install postgresql-client + migrate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          curl -fsSL https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz \
+            | sudo tar -xz -C /usr/local/bin migrate
+
+      - name: run migrations on source db
+        run: migrate -path migrations -database "postgres://vaultctl:vaultctl@localhost:5432/vaultctl?sslmode=disable" up
+
+      - name: build vaultctl
+        run: |
+          go build -o ./vaultctl ./cmd/server
+          echo "VAULTCTL_BIN=$PWD/vaultctl" >> "$GITHUB_ENV"
+
+      - name: run backup/restore integrity script
+        run: ./test/integrity/backup-restore.sh
+
+      - name: upload fingerprints on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fingerprints
+          path: /tmp/vaultctl-integrity-*/
+          retention-days: 7
+          if-no-files-found: warn

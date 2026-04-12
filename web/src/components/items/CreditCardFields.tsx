@@ -1,5 +1,6 @@
 import type { CreditCardData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface Props {
   data: CreditCardData;
@@ -20,6 +21,10 @@ export function CreditCardFields({ data, onChange }: Props) {
       </div>
       <Field label="Card Type" value={data.cardType} onChange={(v) => set("cardType", v)} placeholder="Visa, Mastercard..." />
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }

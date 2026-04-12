@@ -15,6 +15,14 @@ type LogoutInput struct {
 	RefreshToken string
 }
 
+// LogoutOutput carries the resolved session identity so the HTTP layer
+// can emit an audit row. Both fields are zero when no session matched
+// (idempotent path).
+type LogoutOutput struct {
+	UserID    user.ID
+	SessionID user.SessionID
+}
+
 // Logout revokes the session behind a refresh token. Idempotent: repeated
 // logouts with the same token are no-ops.
 type Logout struct {
@@ -23,20 +31,20 @@ type Logout struct {
 }
 
 // Execute revokes the session, if any, matching the refresh token's hash.
-func (uc *Logout) Execute(ctx context.Context, in LogoutInput) error {
+func (uc *Logout) Execute(ctx context.Context, in LogoutInput) (LogoutOutput, error) {
 	hash, err := user.NewRefreshTokenHash(uc.HMAC.HashString(in.RefreshToken))
 	if err != nil {
-		return nil // nothing to revoke; idempotent
+		return LogoutOutput{}, nil // nothing to revoke; idempotent
 	}
 	session, err := uc.Sessions.FindByTokenHash(ctx, hash)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			return nil
+			return LogoutOutput{}, nil
 		}
-		return fmt.Errorf("load session: %w", err)
+		return LogoutOutput{}, fmt.Errorf("load session: %w", err)
 	}
 	if err := uc.Sessions.Revoke(ctx, session.ID); err != nil {
-		return fmt.Errorf("revoke session: %w", err)
+		return LogoutOutput{}, fmt.Errorf("revoke session: %w", err)
 	}
-	return nil
+	return LogoutOutput{UserID: session.UserID, SessionID: session.ID}, nil
 }

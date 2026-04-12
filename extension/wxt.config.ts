@@ -1,15 +1,49 @@
 import { defineConfig } from "wxt";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
+
+// Resolve the shared crypto module that lives under web/src/shared/crypto.
+// The extension reuses the M6 TS crypto primitives rather than duplicating them.
+const thisDir = dirname(fileURLToPath(import.meta.url));
+const sharedCryptoDir = resolve(thisDir, "../web/src/shared/crypto");
+// hash-wasm is declared as a dep of extension/package.json but the shared
+// crypto module lives outside extension/, so the bundler cannot walk
+// node_modules from the importer — alias it explicitly.
+const hashWasmEntry = resolve(
+  thisDir,
+  "node_modules/hash-wasm/dist/index.esm.js",
+);
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
+  manifestVersion: 3,
   vite: () => ({
     plugins: [tailwindcss()],
+    resolve: {
+      alias: {
+        "@shared/crypto": resolve(sharedCryptoDir, "index.ts"),
+        "@shared/crypto/": `${sharedCryptoDir}/`,
+        "hash-wasm": hashWasmEntry,
+      },
+    },
   }),
   manifest: {
     name: "vaultctl",
     description: "Zero-knowledge password vault",
-    permissions: ["activeTab", "storage", "clipboardWrite"],
+    permissions: [
+      "activeTab",
+      "storage",
+      "clipboardWrite",
+      "notifications",
+      "scripting",
+    ],
     host_permissions: ["<all_urls>"],
+    browser_specific_settings: {
+      gecko: {
+        id: "vaultctl@vineethkrishnan.dev",
+        strict_min_version: "115.0",
+      },
+    },
   },
 });

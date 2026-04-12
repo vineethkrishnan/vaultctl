@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { LoginData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { PasswordGenerator } from "@/components/vault/PasswordGenerator";
 import { Wand2 } from "lucide-react";
 
@@ -38,6 +39,10 @@ export function LoginFields({ data, onChange }: Props) {
       <Field label="URI" value={data.uri} onChange={(v) => set("uri", v)} type="url" copyable />
       <Field label="TOTP Secret" value={data.totp} onChange={(v) => set("totp", v)} type="password" />
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }

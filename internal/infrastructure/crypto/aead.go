@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	domaincrypto "github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
 
 // KeyBase64 is the encoding expected from env (openssl rand -base64 32).
@@ -107,16 +108,34 @@ func (a *ServerAEAD) Decrypt(blob domaincrypto.EncryptedBlob, aad []byte) ([]byt
 // helpers
 // ===========================================================================
 
+// buildAEAD decodes the env-supplied base64 key into a memguard Secret,
+// initialises the AES-256-GCM cipher while the Secret is open, then
+// destroys the Secret. Residual key material remains inside the cipher's
+// internal block state (unavoidable — Go's crypto/aes copies the key
+// during NewCipher), but the raw decoded bytes no longer sit on the heap.
 func buildAEAD(b64 string) (cipher.AEAD, error) {
-	key, err := decodeKey(b64)
+	keyBytes, err := decodeKey(b64)
 	if err != nil {
 		return nil, err
 	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrBadDataKey, err) //nolint:errorlint // wrap sentinel only
+	// Move the decoded bytes into memguard; source is wiped by the wrapper.
+	keySecret := secure.NewSecretFromBytes(keyBytes)
+	defer keySecret.Destroy()
+
+	var aead cipher.AEAD
+	var buildErr error
+	keySecret.Open(func(key []byte) {
+		block, e := aes.NewCipher(key)
+		if e != nil {
+			buildErr = fmt.Errorf("%w: %v", ErrBadDataKey, e) //nolint:errorlint // wrap sentinel only
+			return
+		}
+		aead, buildErr = cipher.NewGCM(block)
+	})
+	if buildErr != nil {
+		return nil, buildErr
 	}
-	return cipher.NewGCM(block)
+	return aead, nil
 }
 
 func decodeKey(b64 string) ([]byte, error) {

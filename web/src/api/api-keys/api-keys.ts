@@ -40,36 +40,36 @@ import { apiFetcher } from '../../lib/api-fetcher';
  * Returns all API keys for the authenticated user (without raw key values)
  * @summary List API keys
  */
-export type getApiKeysResponse200 = {
+export type getUsersMeApiKeysResponse200 = {
   data: APIKeyResponse[]
   status: 200
 }
 
-export type getApiKeysResponse401 = {
+export type getUsersMeApiKeysResponse401 = {
   data: ErrorBody
   status: 401
 }
 
-export type getApiKeysResponseSuccess = (getApiKeysResponse200) & {
+export type getUsersMeApiKeysResponseSuccess = (getUsersMeApiKeysResponse200) & {
   headers: Headers;
 };
-export type getApiKeysResponseError = (getApiKeysResponse401) & {
+export type getUsersMeApiKeysResponseError = (getUsersMeApiKeysResponse401) & {
   headers: Headers;
 };
 
-export type getApiKeysResponse = (getApiKeysResponseSuccess | getApiKeysResponseError)
+export type getUsersMeApiKeysResponse = (getUsersMeApiKeysResponseSuccess | getUsersMeApiKeysResponseError)
 
-export const getGetApiKeysUrl = () => {
-
-
+export const getGetUsersMeApiKeysUrl = () => {
 
 
-  return `/api-keys`
+
+
+  return `/users/me/api-keys`
 }
 
-export const getApiKeys = async ( options?: RequestInit): Promise<getApiKeysResponse> => {
+export const getUsersMeApiKeys = async ( options?: RequestInit): Promise<getUsersMeApiKeysResponse> => {
 
-  return apiFetcher<getApiKeysResponse>(getGetApiKeysUrl(),
+  return apiFetcher<getUsersMeApiKeysResponse>(getGetUsersMeApiKeysUrl(),
   {
     ...options,
     method: 'GET'
@@ -82,69 +82,69 @@ export const getApiKeys = async ( options?: RequestInit): Promise<getApiKeysResp
 
 
 
-export const getGetApiKeysQueryKey = () => {
+export const getGetUsersMeApiKeysQueryKey = () => {
     return [
-    `/api-keys`
+    `/users/me/api-keys`
     ] as const;
     }
 
 
-export const getGetApiKeysQueryOptions = <TData = Awaited<ReturnType<typeof getApiKeys>>, TError = ErrorBody>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>>, }
+export const getGetUsersMeApiKeysQueryOptions = <TData = Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError = ErrorBody>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError, TData>>, }
 ) => {
 
 const {query: queryOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetApiKeysQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetUsersMeApiKeysQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiKeys>>> = ({ signal }) => getApiKeys({ signal });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUsersMeApiKeys>>> = ({ signal }) => getUsersMeApiKeys({ signal });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiKeysQueryResult = NonNullable<Awaited<ReturnType<typeof getApiKeys>>>
-export type GetApiKeysQueryError = ErrorBody
+export type GetUsersMeApiKeysQueryResult = NonNullable<Awaited<ReturnType<typeof getUsersMeApiKeys>>>
+export type GetUsersMeApiKeysQueryError = ErrorBody
 
 
-export function useGetApiKeys<TData = Awaited<ReturnType<typeof getApiKeys>>, TError = ErrorBody>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>> & Pick<
+export function useGetUsersMeApiKeys<TData = Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError = ErrorBody>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiKeys>>,
+          Awaited<ReturnType<typeof getUsersMeApiKeys>>,
           TError,
-          Awaited<ReturnType<typeof getApiKeys>>
+          Awaited<ReturnType<typeof getUsersMeApiKeys>>
         > , 'initialData'
       >, }
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiKeys<TData = Awaited<ReturnType<typeof getApiKeys>>, TError = ErrorBody>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>> & Pick<
+export function useGetUsersMeApiKeys<TData = Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError = ErrorBody>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiKeys>>,
+          Awaited<ReturnType<typeof getUsersMeApiKeys>>,
           TError,
-          Awaited<ReturnType<typeof getApiKeys>>
+          Awaited<ReturnType<typeof getUsersMeApiKeys>>
         > , 'initialData'
       >, }
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetApiKeys<TData = Awaited<ReturnType<typeof getApiKeys>>, TError = ErrorBody>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>>, }
+export function useGetUsersMeApiKeys<TData = Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError = ErrorBody>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError, TData>>, }
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List API keys
  */
 
-export function useGetApiKeys<TData = Awaited<ReturnType<typeof getApiKeys>>, TError = ErrorBody>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiKeys>>, TError, TData>>, }
+export function useGetUsersMeApiKeys<TData = Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError = ErrorBody>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUsersMeApiKeys>>, TError, TData>>, }
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetApiKeysQueryOptions(options)
+  const queryOptions = getGetUsersMeApiKeysQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -158,41 +158,41 @@ export function useGetApiKeys<TData = Awaited<ReturnType<typeof getApiKeys>>, TE
  * Generate a new personal API key for programmatic access. The raw key is returned only once.
  * @summary Create API key
  */
-export type postApiKeysResponse201 = {
+export type postUsersMeApiKeysResponse201 = {
   data: CreateAPIKeyResponse
   status: 201
 }
 
-export type postApiKeysResponse400 = {
+export type postUsersMeApiKeysResponse400 = {
   data: ErrorBody
   status: 400
 }
 
-export type postApiKeysResponse401 = {
+export type postUsersMeApiKeysResponse401 = {
   data: ErrorBody
   status: 401
 }
 
-export type postApiKeysResponseSuccess = (postApiKeysResponse201) & {
+export type postUsersMeApiKeysResponseSuccess = (postUsersMeApiKeysResponse201) & {
   headers: Headers;
 };
-export type postApiKeysResponseError = (postApiKeysResponse400 | postApiKeysResponse401) & {
+export type postUsersMeApiKeysResponseError = (postUsersMeApiKeysResponse400 | postUsersMeApiKeysResponse401) & {
   headers: Headers;
 };
 
-export type postApiKeysResponse = (postApiKeysResponseSuccess | postApiKeysResponseError)
+export type postUsersMeApiKeysResponse = (postUsersMeApiKeysResponseSuccess | postUsersMeApiKeysResponseError)
 
-export const getPostApiKeysUrl = () => {
-
-
+export const getPostUsersMeApiKeysUrl = () => {
 
 
-  return `/api-keys`
+
+
+  return `/users/me/api-keys`
 }
 
-export const postApiKeys = async (createAPIKeyRequest: CreateAPIKeyRequest, options?: RequestInit): Promise<postApiKeysResponse> => {
+export const postUsersMeApiKeys = async (createAPIKeyRequest: CreateAPIKeyRequest, options?: RequestInit): Promise<postUsersMeApiKeysResponse> => {
 
-  return apiFetcher<postApiKeysResponse>(getPostApiKeysUrl(),
+  return apiFetcher<postUsersMeApiKeysResponse>(getPostUsersMeApiKeysUrl(),
   {
     ...options,
     method: 'POST',
@@ -205,11 +205,11 @@ export const postApiKeys = async (createAPIKeyRequest: CreateAPIKeyRequest, opti
 
 
 
-export const getPostApiKeysMutationOptions = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiKeys>>, TError,{data: CreateAPIKeyRequest}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof postApiKeys>>, TError,{data: CreateAPIKeyRequest}, TContext> => {
+export const getPostUsersMeApiKeysMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postUsersMeApiKeys>>, TError,{data: CreateAPIKeyRequest}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof postUsersMeApiKeys>>, TError,{data: CreateAPIKeyRequest}, TContext> => {
 
-const mutationKey = ['postApiKeys'];
+const mutationKey = ['postUsersMeApiKeys'];
 const {mutation: mutationOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -219,10 +219,10 @@ const {mutation: mutationOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postApiKeys>>, {data: CreateAPIKeyRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postUsersMeApiKeys>>, {data: CreateAPIKeyRequest}> = (props) => {
           const {data} = props ?? {};
 
-          return  postApiKeys(data,)
+          return  postUsersMeApiKeys(data,)
         }
 
 
@@ -232,62 +232,62 @@ const {mutation: mutationOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type PostApiKeysMutationResult = NonNullable<Awaited<ReturnType<typeof postApiKeys>>>
-    export type PostApiKeysMutationBody = CreateAPIKeyRequest
-    export type PostApiKeysMutationError = ErrorBody
+    export type PostUsersMeApiKeysMutationResult = NonNullable<Awaited<ReturnType<typeof postUsersMeApiKeys>>>
+    export type PostUsersMeApiKeysMutationBody = CreateAPIKeyRequest
+    export type PostUsersMeApiKeysMutationError = ErrorBody
 
     /**
  * @summary Create API key
  */
-export const usePostApiKeys = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postApiKeys>>, TError,{data: CreateAPIKeyRequest}, TContext>, }
+export const usePostUsersMeApiKeys = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postUsersMeApiKeys>>, TError,{data: CreateAPIKeyRequest}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof postApiKeys>>,
+        Awaited<ReturnType<typeof postUsersMeApiKeys>>,
         TError,
         {data: CreateAPIKeyRequest},
         TContext
       > => {
-      return useMutation(getPostApiKeysMutationOptions(options), queryClient);
+      return useMutation(getPostUsersMeApiKeysMutationOptions(options), queryClient);
     }
     /**
  * Permanently delete a personal API key
  * @summary Delete API key
  */
-export type deleteApiKeysIdResponse204 = {
+export type deleteUsersMeApiKeysIdResponse204 = {
   data: void
   status: 204
 }
 
-export type deleteApiKeysIdResponse401 = {
+export type deleteUsersMeApiKeysIdResponse401 = {
   data: ErrorBody
   status: 401
 }
 
-export type deleteApiKeysIdResponse404 = {
+export type deleteUsersMeApiKeysIdResponse404 = {
   data: ErrorBody
   status: 404
 }
 
-export type deleteApiKeysIdResponseSuccess = (deleteApiKeysIdResponse204) & {
+export type deleteUsersMeApiKeysIdResponseSuccess = (deleteUsersMeApiKeysIdResponse204) & {
   headers: Headers;
 };
-export type deleteApiKeysIdResponseError = (deleteApiKeysIdResponse401 | deleteApiKeysIdResponse404) & {
+export type deleteUsersMeApiKeysIdResponseError = (deleteUsersMeApiKeysIdResponse401 | deleteUsersMeApiKeysIdResponse404) & {
   headers: Headers;
 };
 
-export type deleteApiKeysIdResponse = (deleteApiKeysIdResponseSuccess | deleteApiKeysIdResponseError)
+export type deleteUsersMeApiKeysIdResponse = (deleteUsersMeApiKeysIdResponseSuccess | deleteUsersMeApiKeysIdResponseError)
 
-export const getDeleteApiKeysIdUrl = (id: string,) => {
-
-
+export const getDeleteUsersMeApiKeysIdUrl = (id: string,) => {
 
 
-  return `/api-keys/${id}`
+
+
+  return `/users/me/api-keys/${id}`
 }
 
-export const deleteApiKeysId = async (id: string, options?: RequestInit): Promise<deleteApiKeysIdResponse> => {
+export const deleteUsersMeApiKeysId = async (id: string, options?: RequestInit): Promise<deleteUsersMeApiKeysIdResponse> => {
 
-  return apiFetcher<deleteApiKeysIdResponse>(getDeleteApiKeysIdUrl(id),
+  return apiFetcher<deleteUsersMeApiKeysIdResponse>(getDeleteUsersMeApiKeysIdUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -299,11 +299,11 @@ export const deleteApiKeysId = async (id: string, options?: RequestInit): Promis
 
 
 
-export const getDeleteApiKeysIdMutationOptions = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiKeysId>>, TError,{id: string}, TContext>, }
-): UseMutationOptions<Awaited<ReturnType<typeof deleteApiKeysId>>, TError,{id: string}, TContext> => {
+export const getDeleteUsersMeApiKeysIdMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUsersMeApiKeysId>>, TError,{id: string}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteUsersMeApiKeysId>>, TError,{id: string}, TContext> => {
 
-const mutationKey = ['deleteApiKeysId'];
+const mutationKey = ['deleteUsersMeApiKeysId'];
 const {mutation: mutationOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -313,10 +313,10 @@ const {mutation: mutationOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiKeysId>>, {id: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteUsersMeApiKeysId>>, {id: string}> = (props) => {
           const {id} = props ?? {};
 
-          return  deleteApiKeysId(id,)
+          return  deleteUsersMeApiKeysId(id,)
         }
 
 
@@ -326,20 +326,20 @@ const {mutation: mutationOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type DeleteApiKeysIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiKeysId>>>
+    export type DeleteUsersMeApiKeysIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUsersMeApiKeysId>>>
 
-    export type DeleteApiKeysIdMutationError = ErrorBody
+    export type DeleteUsersMeApiKeysIdMutationError = ErrorBody
 
     /**
  * @summary Delete API key
  */
-export const useDeleteApiKeysId = <TError = ErrorBody,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiKeysId>>, TError,{id: string}, TContext>, }
+export const useDeleteUsersMeApiKeysId = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUsersMeApiKeysId>>, TError,{id: string}, TContext>, }
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof deleteApiKeysId>>,
+        Awaited<ReturnType<typeof deleteUsersMeApiKeysId>>,
         TError,
         {id: string},
         TContext
       > => {
-      return useMutation(getDeleteApiKeysIdMutationOptions(options), queryClient);
+      return useMutation(getDeleteUsersMeApiKeysIdMutationOptions(options), queryClient);
     }

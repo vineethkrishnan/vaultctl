@@ -26,7 +26,8 @@ import type {
 
 import type {
   ErrorBody,
-  ItemResponse
+  ItemResponse,
+  PurgeTrashResponse
 } from '../model';
 
 import { apiFetcher } from '../../lib/api-fetcher';
@@ -153,6 +154,105 @@ export function useGetVaultsVaultIdTrash<TData = Awaited<ReturnType<typeof getVa
 
 
 /**
+ * Permanently delete all trashed items older than 30 days in a vault. Requires step-up authentication.
+ * @summary Purge expired trash
+ */
+export type deleteVaultsVaultIdTrashResponse200 = {
+  data: PurgeTrashResponse
+  status: 200
+}
+
+export type deleteVaultsVaultIdTrashResponse401 = {
+  data: ErrorBody
+  status: 401
+}
+
+export type deleteVaultsVaultIdTrashResponse403 = {
+  data: ErrorBody
+  status: 403
+}
+
+export type deleteVaultsVaultIdTrashResponse404 = {
+  data: ErrorBody
+  status: 404
+}
+
+export type deleteVaultsVaultIdTrashResponseSuccess = (deleteVaultsVaultIdTrashResponse200) & {
+  headers: Headers;
+};
+export type deleteVaultsVaultIdTrashResponseError = (deleteVaultsVaultIdTrashResponse401 | deleteVaultsVaultIdTrashResponse403 | deleteVaultsVaultIdTrashResponse404) & {
+  headers: Headers;
+};
+
+export type deleteVaultsVaultIdTrashResponse = (deleteVaultsVaultIdTrashResponseSuccess | deleteVaultsVaultIdTrashResponseError)
+
+export const getDeleteVaultsVaultIdTrashUrl = (vaultId: string,) => {
+
+
+
+
+  return `/vaults/${vaultId}/trash`
+}
+
+export const deleteVaultsVaultIdTrash = async (vaultId: string, options?: RequestInit): Promise<deleteVaultsVaultIdTrashResponse> => {
+
+  return apiFetcher<deleteVaultsVaultIdTrashResponse>(getDeleteVaultsVaultIdTrashUrl(vaultId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteVaultsVaultIdTrashMutationOptions = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVaultsVaultIdTrash>>, TError,{vaultId: string}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof deleteVaultsVaultIdTrash>>, TError,{vaultId: string}, TContext> => {
+
+const mutationKey = ['deleteVaultsVaultIdTrash'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteVaultsVaultIdTrash>>, {vaultId: string}> = (props) => {
+          const {vaultId} = props ?? {};
+
+          return  deleteVaultsVaultIdTrash(vaultId,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteVaultsVaultIdTrashMutationResult = NonNullable<Awaited<ReturnType<typeof deleteVaultsVaultIdTrash>>>
+
+    export type DeleteVaultsVaultIdTrashMutationError = ErrorBody
+
+    /**
+ * @summary Purge expired trash
+ */
+export const useDeleteVaultsVaultIdTrash = <TError = ErrorBody,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVaultsVaultIdTrash>>, TError,{vaultId: string}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteVaultsVaultIdTrash>>,
+        TError,
+        {vaultId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteVaultsVaultIdTrashMutationOptions(options), queryClient);
+    }
+    /**
  * Permanently delete a trashed item. Requires step-up authentication.
  * @summary Purge item
  */

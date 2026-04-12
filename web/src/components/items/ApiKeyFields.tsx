@@ -1,5 +1,6 @@
 import type { ApiKeyData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface Props {
   data: ApiKeyData;
@@ -17,6 +18,10 @@ export function ApiKeyFields({ data, onChange }: Props) {
       <Field label="Service URL" value={data.serviceUrl} onChange={(v) => set("serviceUrl", v)} type="url" />
       <Field label="Expires At" value={data.expiresAt} onChange={(v) => set("expiresAt", v)} placeholder="YYYY-MM-DD" />
       <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <CustomFieldsEditor
+        fields={data.customFields}
+        onChange={(customFields) => set("customFields", customFields)}
+      />
     </div>
   );
 }
