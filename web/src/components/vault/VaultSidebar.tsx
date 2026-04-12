@@ -25,6 +25,8 @@ import {
 export function VaultSidebar() {
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
   const logout = useAuthStore((s) => s.logout);
+  const role = useAuthStore((s) => s.role);
+  const isAdmin = role === "admin" || role === "owner";
   const { theme, toggleTheme } = useTheme();
 
   const { data: vaults } = useQuery({
@@ -133,13 +135,15 @@ export function VaultSidebar() {
           <Settings className="h-4 w-4" />
           Settings
         </Link>
-        <Link
-          to="/admin"
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
-        >
-          <ShieldAlert className="h-4 w-4" />
-          Admin
-        </Link>
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
+          >
+            <ShieldAlert className="h-4 w-4" />
+            Admin
+          </Link>
+        )}
         <button
           onClick={toggleTheme}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"

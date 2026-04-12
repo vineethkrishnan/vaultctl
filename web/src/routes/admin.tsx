@@ -47,10 +47,10 @@ function OrgSection() {
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
 
   const createOrg = useMutation({
-    mutationFn: () => postOrgs({ name: orgName } as any),
+    mutationFn: () => postOrgs({ name: orgName }),
     onSuccess: (res) => {
       if (res.status === 201) {
-        setActiveOrgId((res.data as any).id);
+        setActiveOrgId(res.data.id ?? null);
         setOrgName("");
       }
     },

@@ -95,6 +95,14 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	// Validate recovery blob format when provided — same treatment as other
+	// crypto fields. Decoded value is not used; we store the base64 string.
+	if req.RecoveryEncryptedPrivateKey != "" {
+		if _, err := decodeB64Blob(req.RecoveryEncryptedPrivateKey); err != nil {
+			writeError(w, r, err)
+			return
+		}
+	}
 
 	var out auth.RegisterOutput
 	authSecret.Open(func(authHash []byte) {

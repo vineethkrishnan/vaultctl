@@ -19,7 +19,7 @@ export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
     );
   }, [recoveryKey]);
 
-  function handleDownloadPDF() {
+  function handleDownloadKit() {
     const qrDataUrl = canvasRef.current?.toDataURL("image/png") ?? "";
     const html = buildRecoveryHTML(recoveryKey, qrDataUrl);
     const blob = new Blob([html], { type: "text/html" });
@@ -35,10 +35,10 @@ export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
 
   return (
     <div className="space-y-3">
-      {/* QR code */}
+      {/* Visual fingerprint */}
       <div className="flex items-center gap-2">
         <QrCode className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">QR Code</span>
+        <span className="text-sm font-medium">Visual fingerprint</span>
       </div>
       <div className="flex justify-center rounded-md border border-border bg-white p-4">
         <canvas ref={canvasRef} width={200} height={200} />
@@ -46,7 +46,7 @@ export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
 
       {/* Download button */}
       <button
-        onClick={handleDownloadPDF}
+        onClick={handleDownloadKit}
         disabled={!qrReady}
         className="flex w-full items-center justify-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
       >

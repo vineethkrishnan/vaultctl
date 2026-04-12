@@ -95,11 +95,17 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
-// Admin route
+// Admin route (admin role required)
 const adminRoute = createRoute({
   getParentRoute: () => authLayout,
   path: "/admin",
   component: AdminPage,
+  beforeLoad: () => {
+    const { role } = useAuthStore.getState();
+    if (role !== "admin" && role !== "owner") {
+      throw redirect({ to: "/settings" });
+    }
+  },
 });
 
 // Index redirect

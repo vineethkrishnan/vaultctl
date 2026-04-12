@@ -7,7 +7,7 @@ interface PasswordHistoryProps {
 }
 
 export function PasswordHistory({ entries }: PasswordHistoryProps) {
-  if (entries.length === 0) return null;
+  if (!entries || entries.length === 0) return null;
 
   return (
     <div className="space-y-2">
@@ -32,9 +32,13 @@ function PasswordHistoryRow({ entry }: { entry: PasswordHistoryEntry }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(entry.password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(entry.password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access denied — fail silently (no sensitive data to leak)
+    }
   }
 
   return (

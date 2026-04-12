@@ -56,6 +56,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		       kdf_iterations, kdf_memory, kdf_parallelism,
 		       encrypted_private_key, public_key, public_key_signature,
 		       identity_public_key, encrypted_identity_private_key,
+		       recovery_encrypted_private_key,
 		       totp_enabled, totp_last_counter, failed_login_attempts, locked_until,
 		       role, created_at, updated_at
 		FROM users WHERE `+where, arg)
@@ -67,6 +68,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		iter, mem                                           uint32
 		par                                                 uint8
 		encPriv, pubKey, pubKeySig, idPub, encIDPriv        string
+		recoveryEncPriv                                     *string
 		totpEnabled                                         bool
 		totpCounter                                         *int64
 		failedAttempts                                      int
@@ -76,6 +78,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 	)
 	err := row.Scan(&uid, &email, &name, &salt, &iter, &mem, &par,
 		&encPriv, &pubKey, &pubKeySig, &idPub, &encIDPriv,
+		&recoveryEncPriv,
 		&totpEnabled, &totpCounter, &failedAttempts, &lockedUntil,
 		&role, &createdAt, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -116,6 +119,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		KDFParams:                   user.KDFParams{Iterations: iter, MemoryKB: mem, Parallelism: par},
 		EncryptedPrivateKey:         priv,
 		EncryptedIdentityPrivateKey: idPriv,
+		RecoveryEncryptedPrivateKey: recoveryEncPriv,
 		PublicKey:                   pub,
 		IdentityPublicKey:           idp,
 		PublicKeySignature:          sig,
