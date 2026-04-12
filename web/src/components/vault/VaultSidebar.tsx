@@ -16,6 +16,7 @@ import {
   LogOut,
   Plus,
   Shield,
+  ShieldAlert,
   Sun,
   Moon,
   Settings,
@@ -131,6 +132,13 @@ export function VaultSidebar() {
         >
           <Settings className="h-4 w-4" />
           Settings
+        </Link>
+        <Link
+          to="/admin"
+          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
+        >
+          <ShieldAlert className="h-4 w-4" />
+          Admin
         </Link>
         <button
           onClick={toggleTheme}

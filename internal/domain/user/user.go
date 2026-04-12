@@ -71,6 +71,13 @@ type User struct {
 	PublicKeySignature   crypto.Signature // Ed25519(id_priv, public_key)  (C1)
 	IdentityPublicKey    crypto.PublicKey // Ed25519                       (C1)
 
+	// RecoveryEncryptedPrivateKey stores the RSA private key wrapped with the
+	// client-generated recovery key (AES-GCM). The recovery key is never sent
+	// to the server — only this blob. During account recovery, the server
+	// returns this blob so the client can decrypt it with the recovery key.
+	// Optional — nil if no recovery kit was generated.
+	RecoveryEncryptedPrivateKey *string
+
 	// EncryptedPasswordHint is a server-encrypted (H4/AES-256-GCM) hint that
 	// helps the user remember their master password. Optional — nil means no
 	// hint was set during registration.

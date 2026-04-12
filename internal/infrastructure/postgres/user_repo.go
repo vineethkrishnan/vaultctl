@@ -23,15 +23,15 @@ func (r *UserRepo) Create(ctx context.Context, u user.User, authHash string) err
 			kdf_iterations, kdf_memory, kdf_parallelism,
 			encrypted_private_key, public_key, public_key_signature,
 			identity_public_key, encrypted_identity_private_key,
-			encrypted_password_hint,
+			encrypted_password_hint, recovery_encrypted_private_key,
 			role, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 	`,
 		u.ID, u.Email.String(), u.Name, authHash, u.Salt,
 		u.KDFParams.Iterations, u.KDFParams.MemoryKB, u.KDFParams.Parallelism,
 		encodeBlob(u.EncryptedPrivateKey), encodePublicKey(u.PublicKey), encodeSig(u.PublicKeySignature),
 		encodePublicKey(u.IdentityPublicKey), encodeBlob(u.EncryptedIdentityPrivateKey),
-		u.EncryptedPasswordHint,
+		u.EncryptedPasswordHint, u.RecoveryEncryptedPrivateKey,
 		string(u.Role), u.CreatedAt, u.UpdatedAt,
 	)
 	if isUniqueViolation(err) {

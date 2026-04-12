@@ -42,6 +42,7 @@ type RegisterRequest struct {
 	PublicKey                   string `json:"publicKey"`
 	PublicKeySignature          string `json:"publicKeySignature"`
 	IdentityPublicKey           string `json:"identityPublicKey"`
+	RecoveryEncryptedPrivateKey  string `json:"recoveryEncryptedPrivateKey,omitempty"` // base64 wire blob, AES-GCM(recoveryKey, privKey)
 	InviteToken                 string `json:"inviteToken,omitempty"`    // required when registration mode is "invite"
 	PasswordHint                string `json:"passwordHint,omitempty"`   // optional plaintext hint, server-encrypted (H4)
 }
@@ -128,6 +129,7 @@ type RecoveryVerifyRequest struct {
 type RecoveryVerifyResponse struct {
 	EncryptedPrivateKey         string `json:"encryptedPrivateKey"`
 	EncryptedIdentityPrivateKey string `json:"encryptedIdentityPrivateKey"`
+	RecoveryEncryptedPrivateKey string `json:"recoveryEncryptedPrivateKey,omitempty"` // AES-GCM(recoveryKey, privKey)
 	Salt                        string `json:"salt"`
 	Iterations                  uint32 `json:"iterations"`
 	MemoryKB                    uint32 `json:"memoryKB"`

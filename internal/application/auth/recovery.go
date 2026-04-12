@@ -28,6 +28,7 @@ type VerifyRecoveryKeyInput struct {
 type VerifyRecoveryKeyOutput struct {
 	EncryptedPrivateKey         crypto.EncryptedBlob
 	EncryptedIdentityPrivateKey crypto.EncryptedBlob
+	RecoveryEncryptedPrivateKey *string // AES-GCM(recoveryKey, privKey) — nil if no kit stored
 	Salt                        []byte
 	KDFParams                   user.KDFParams
 }
@@ -55,6 +56,7 @@ func (uc *VerifyRecoveryKey) Execute(ctx context.Context, in VerifyRecoveryKeyIn
 	return VerifyRecoveryKeyOutput{
 		EncryptedPrivateKey:         u.EncryptedPrivateKey,
 		EncryptedIdentityPrivateKey: u.EncryptedIdentityPrivateKey,
+		RecoveryEncryptedPrivateKey: u.RecoveryEncryptedPrivateKey,
 		Salt:                        u.Salt,
 		KDFParams:                   u.KDFParams,
 	}, nil

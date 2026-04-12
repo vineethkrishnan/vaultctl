@@ -96,10 +96,11 @@ export function RegisterPage() {
       const wrapSig = await ed25519Sign(idPrivKey, wrapSigData);
 
       // Generate recovery kit
-      const { recoveryKey } = await generateRecoveryKit(rsaKp.privateKey);
+      const { recoveryKey, recoveryWrappedPrivKey } = await generateRecoveryKit(rsaKp.privateKey);
       setRecoveryKeyFormatted(formatRecoveryKey(recoveryKey));
 
-      // Register user
+      // Register user — include recovery-wrapped private key so the server
+      // can return it during account recovery (M12).
       await apiPost<RegisterResponse>("/api/v1/auth/register", {
         email,
         name,
@@ -111,6 +112,7 @@ export function RegisterPage() {
         kdfParallelism: DEFAULT_KDF_PARAMS.parallelism,
         encryptedPrivateKey: toBase64(serializeBlob(encPrivKey)),
         encryptedIdentityPrivateKey: toBase64(serializeBlob(encIdPrivKey)),
+        recoveryEncryptedPrivateKey: toBase64(serializeBlob(recoveryWrappedPrivKey)),
         publicKey: toBase64(rsaKp.publicKey),
         publicKeySignature: toBase64(pubKeySig),
         identityPublicKey: toBase64(ed25519Kp.publicKey),

@@ -35,6 +35,11 @@ type RegisterInput struct {
 	// issuing a user row. It is NOT persisted, logged, or transmitted
 	// anywhere — the caller's handler strips it from logs (C4).
 	MasterPasswordPreflight string
+	// RecoveryEncryptedPrivateKey is the RSA private key wrapped with the
+	// client-generated recovery key (M12). The server stores it opaquely
+	// and returns it during account recovery. Optional — empty means no
+	// recovery kit was generated.
+	RecoveryEncryptedPrivateKey string
 	// InviteToken is required when RegistrationMode is "invite".
 	// The server redeems it before creating the user.
 	InviteToken string
@@ -145,6 +150,7 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		PublicKey:                   in.PublicKey,
 		PublicKeySignature:          in.PublicKeySignature,
 		IdentityPublicKey:           in.IdentityPublicKey,
+		RecoveryEncryptedPrivateKey: ptrIf(in.RecoveryEncryptedPrivateKey),
 		EncryptedPasswordHint:       encryptedHint,
 		Role:                        role,
 		CreatedAt:                   now,
@@ -178,6 +184,14 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	return RegisterOutput{UserID: u.ID, Role: u.Role}, nil
+}
+
+// ptrIf returns a pointer to s if non-empty, nil otherwise.
+func ptrIf(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // encryptPasswordHint wraps the optional plaintext hint under H4's

@@ -110,6 +110,7 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 			PublicKey:                   pubKey,
 			PublicKeySignature:          sig,
 			IdentityPublicKey:           idPub,
+			RecoveryEncryptedPrivateKey: req.RecoveryEncryptedPrivateKey,
 			InviteToken:                 req.InviteToken,
 			PasswordHint:                req.PasswordHint,
 		})
@@ -516,14 +517,18 @@ func (h *AuthHandlers) HandleVerifyRecoveryKey(w http.ResponseWriter, r *http.Re
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, RecoveryVerifyResponse{
+	resp := RecoveryVerifyResponse{
 		EncryptedPrivateKey:         encodeB64Blob(out.EncryptedPrivateKey),
 		EncryptedIdentityPrivateKey: encodeB64Blob(out.EncryptedIdentityPrivateKey),
 		Salt:                        encodeB64(out.Salt),
 		Iterations:                  out.KDFParams.Iterations,
 		MemoryKB:                    out.KDFParams.MemoryKB,
 		Parallelism:                 out.KDFParams.Parallelism,
-	})
+	}
+	if out.RecoveryEncryptedPrivateKey != nil {
+		resp.RecoveryEncryptedPrivateKey = *out.RecoveryEncryptedPrivateKey
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleResetViaRecovery resets the password via recovery key.
