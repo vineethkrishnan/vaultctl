@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.6...v1.2.0) (2026-04-12)
+
+
+### Features
+
+* **api:** complete all architecture endpoints — 53 total ([#32](https://github.com/vineethkrishnan/vaultctl/issues/32)) ([0e3c25c](https://github.com/vineethkrishnan/vaultctl/commit/0e3c25c0c2d0d6fc7db18e336cf294d10f0d7e30))
+* swagger UI, 48 API endpoints, orval codegen, security hardening ([#30](https://github.com/vineethkrishnan/vaultctl/issues/30)) ([c882a61](https://github.com/vineethkrishnan/vaultctl/commit/c882a615216c449a57213f7e970f93736bd46df2))
+
+
+### Bug Fixes
+
+* **web:** import dialog vault picker + unskip sessions e2e ([#33](https://github.com/vineethkrishnan/vaultctl/issues/33)) ([297a86a](https://github.com/vineethkrishnan/vaultctl/commit/297a86a9cad2882b3b071a8dbc7b8664cfa6347f))
+
 ## [1.1.6](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.5...v1.1.6) (2026-04-09)
 
 
