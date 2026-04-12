@@ -24,6 +24,16 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          router: ["@tanstack/react-router"],
+          query: ["@tanstack/react-query"],
+          crypto: ["hash-wasm"],
+        },
+      },
+    },
   },
   test: {
     globals: true,

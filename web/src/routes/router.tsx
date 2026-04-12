@@ -14,6 +14,7 @@ import { VaultItemsPage } from "./vault-items";
 import { VaultItemDetailPage } from "./vault-item-detail";
 import { VaultNewItemPage } from "./vault-new-item";
 import { SettingsPage } from "./settings";
+import { AdminPage } from "./admin";
 import { VaultTrashPage } from "./vault-trash";
 
 // Root route
@@ -94,6 +95,13 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+// Admin route
+const adminRoute = createRoute({
+  getParentRoute: () => authLayout,
+  path: "/admin",
+  component: AdminPage,
+});
+
 // Index redirect
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -116,6 +124,7 @@ const routeTree = rootRoute.addChildren([
   lockRoute,
   authLayout.addChildren([
     settingsRoute,
+    adminRoute,
     vaultRoute.addChildren([
       vaultItemsRoute,
       vaultNewItemRoute,

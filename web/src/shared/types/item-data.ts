@@ -13,6 +13,13 @@ const customFieldSchema = z.object({
 
 export type CustomField = z.infer<typeof customFieldSchema>;
 
+const passwordHistoryEntrySchema = z.object({
+  password: z.string(),
+  changedAt: z.string(),
+});
+
+export type PasswordHistoryEntry = z.infer<typeof passwordHistoryEntrySchema>;
+
 // ===========================================================================
 // Login
 // ===========================================================================
@@ -24,6 +31,7 @@ export const loginDataSchema = z.object({
   totp: z.string().default(""),
   notes: z.string().default(""),
   customFields: z.array(customFieldSchema).default([]),
+  passwordHistory: z.array(passwordHistoryEntrySchema).default([]),
 });
 export type LoginData = z.infer<typeof loginDataSchema>;
 

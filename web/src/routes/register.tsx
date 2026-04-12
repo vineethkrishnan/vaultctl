@@ -17,6 +17,7 @@ import {
   zero,
 } from "@/shared/crypto";
 import type { RegisterResponse } from "@/shared/types/api";
+import { RecoveryKitDownload } from "@/components/auth/RecoveryKitDownload";
 
 type Step = "form" | "processing" | "recovery" | "done";
 
@@ -175,6 +176,8 @@ export function RegisterPage() {
           <div className="rounded-md border border-border bg-card p-4 font-mono text-sm break-all select-all">
             {recoveryKeyFormatted}
           </div>
+
+          <RecoveryKitDownload recoveryKey={recoveryKeyFormatted} />
 
           <div className="flex items-start gap-2">
             <input

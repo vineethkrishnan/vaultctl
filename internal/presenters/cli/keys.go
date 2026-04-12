@@ -104,7 +104,7 @@ func unwrapVaultKey(vaultMeta SessionVault, rsaPriv *rsa.PrivateKey, stretchedKe
 		// Personal vault — key was wrapped with stretchedKey using AEAD.
 		return clientcrypto.Decrypt(stretchedKey, blob, nil)
 	case domaincrypto.AlgAES256KW:
-		return nil, errors.New("AES-KW unwrap not yet supported by CLI")
+		return clientcrypto.AESKeyUnwrap(stretchedKey, blob)
 	default:
 		return nil, fmt.Errorf("unknown vault-key alg: %s", blob.Alg)
 	}
