@@ -29,10 +29,8 @@ async function pageFetch(
 
 // SessionsPanel flows.
 //
-// UI GAP: SessionsPanel does not yet exist in the current web client
-// (no component, no Settings section, no revoke UI). We verify the route
-// mock contract directly so the REST surface is still exercised. When
-// the panel lands, add click-through assertions here.
+// The first block verifies the mock route contract directly. The second
+// block drives the actual SessionsPanel UI on the Settings page.
 
 test.describe.serial("Sessions — API contract", () => {
   let state: MockState;
@@ -84,11 +82,67 @@ test.describe.serial("Sessions — API contract", () => {
     const sessions = listResponse.body as Array<{ id: string }>;
     expect(sessions.map((session) => session.id)).not.toContain("sess-current");
   });
+});
 
-  // TODO: SessionsPanel UI does not exist yet. When it ships, replace
-  // these direct fetches with: navigate to Settings -> Sessions, click
-  // Revoke on a row, assert the DELETE fires and the row disappears.
-  test.skip("end-to-end revoke via UI (no UI yet)", async () => {
-    // Placeholder — remove when SessionsPanel ships.
+test.describe.serial("Sessions — UI", () => {
+  let state: MockState;
+
+  test.beforeEach(async ({ page }) => {
+    state = createMockState({
+      vaults: [{ id: "vault-1", name: "Personal", type: "personal" }],
+      sessions: [
+        // Use "test-session-id" for the current session — matches
+        // the sessionStorage value seeded by the mock auth flow.
+        { id: "test-session-id", deviceName: "This Browser", current: true },
+        { id: "sess-phone", deviceName: "iPhone" },
+        { id: "sess-laptop", deviceName: "Work Laptop" },
+      ],
+    });
+    await stubCryptoWorker(page);
+    await mockApiFull(page, state);
+  });
+
+  test("SessionsPanel renders sessions and revokes non-current via UI", async ({
+    page,
+  }) => {
+    // Login and navigate to settings
+    await page.goto("/login");
+    await page.getByLabel("Email").fill("test@example.com");
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByLabel("Master Password").fill("test-master-password-123");
+    await page.getByRole("button", { name: "Unlock" }).click();
+    await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
+
+    await page.getByRole("link", { name: "Settings" }).click();
+    await expect(page).toHaveURL(/\/settings/);
+
+    // SessionsPanel should render all three sessions
+    await expect(page.getByText("Active sessions")).toBeVisible();
+    await expect(page.getByText("This Browser")).toBeVisible();
+    await expect(page.getByText("iPhone")).toBeVisible();
+    await expect(page.getByText("Work Laptop")).toBeVisible();
+
+    // Current session shows "This device" badge
+    await expect(page.getByText("This device")).toBeVisible();
+
+    // Track DELETE calls
+    const deletePaths: string[] = [];
+    page.on("requestfinished", (request) => {
+      if (request.method() === "DELETE") {
+        deletePaths.push(new URL(request.url()).pathname);
+      }
+    });
+
+    // Revoke the "iPhone" session (non-current) via its row's button
+    const iphoneRow = page.locator("li", { hasText: "iPhone" });
+    await iphoneRow.getByRole("button").click();
+
+    // iPhone row should disappear after revoke
+    await expect(page.getByText("iPhone")).not.toBeVisible({ timeout: 5_000 });
+    expect(deletePaths).toContain("/api/v1/users/me/sessions/sess-phone");
+
+    // "This Browser" and "Work Laptop" should still be visible
+    await expect(page.getByText("This Browser")).toBeVisible();
+    await expect(page.getByText("Work Laptop")).toBeVisible();
   });
 });
