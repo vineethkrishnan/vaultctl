@@ -124,7 +124,7 @@ func parseBitwardenCSV(records [][]string) ([]importItem, error) {
 		}
 		itemType := csvCol(row, idx, "type")
 		if itemType == "" {
-			itemType = "login"
+			itemType = itemTypeLogin
 		}
 
 		items = append(items, importItem{
@@ -154,9 +154,9 @@ func parseLastPassCSV(records [][]string) ([]importItem, error) {
 		if name == "" {
 			continue
 		}
-		itemType := "login"
+		itemType := itemTypeLogin
 		if csvCol(row, idx, "url") == "http://sn" {
-			itemType = "secure_note"
+			itemType = itemTypeSecureNote
 		}
 
 		items = append(items, importItem{
@@ -190,17 +190,22 @@ func csvCol(row []string, idx map[string]int, key string) string {
 	return strings.TrimSpace(row[i])
 }
 
+const (
+	itemTypeLogin      = "login"
+	itemTypeSecureNote = "secure_note"
+)
+
 func mapItemType(raw string) string {
 	switch strings.ToLower(raw) {
 	case "login", "1":
-		return "login"
+		return itemTypeLogin
 	case "note", "secure_note", "securenote", "2":
-		return "secure_note"
+		return itemTypeSecureNote
 	case "card", "credit_card", "3":
 		return "credit_card"
 	case "identity", "4":
 		return "identity"
 	default:
-		return "login"
+		return itemTypeLogin
 	}
 }
