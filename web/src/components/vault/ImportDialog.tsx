@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiPost } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { encryptData, encryptName } from "@/lib/key-holder";
+import { useGetVaults } from "@/api/vaults/vaults";
 import type { ItemResponse } from "@/shared/types/api";
 import {
   detectFormat,
@@ -19,7 +20,11 @@ const encoder = new TextEncoder();
 const DEFAULT_FORMAT: ImportFormat = "bitwarden-csv";
 
 export function ImportDialog() {
-  const { vaultId } = useParams({ strict: false }) as { vaultId: string };
+  const params = useParams({ strict: false }) as { vaultId?: string };
+  const { data: vaultsRes } = useGetVaults();
+  const vaults = vaultsRes?.status === 200 ? vaultsRes.data : [];
+  const [selectedVaultId, setSelectedVaultId] = useState<string>("");
+  const vaultId = params.vaultId ?? selectedVaultId;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,6 +127,26 @@ export function ImportDialog() {
 
       {!parsedItems.length && !result && (
         <div className="space-y-2">
+          {!params.vaultId && (
+            <>
+              <label htmlFor="import-vault" className="text-sm font-medium">
+                Target vault
+              </label>
+              <select
+                id="import-vault"
+                value={selectedVaultId}
+                onChange={(event) => setSelectedVaultId(event.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select a vault…</option>
+                {vaults.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name ?? v.id}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <label htmlFor="import-format" className="text-sm font-medium">
             Format
           </label>
@@ -151,10 +176,11 @@ export function ImportDialog() {
       {!parsedItems.length && !result && (
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 rounded-md border border-dashed border-border px-4 py-8 text-sm text-muted-foreground hover:border-primary hover:text-foreground w-full justify-center"
+          disabled={!vaultId}
+          className="flex items-center gap-2 rounded-md border border-dashed border-border px-4 py-8 text-sm text-muted-foreground hover:border-primary hover:text-foreground w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileText className="h-5 w-5" />
-          Select {activeImporter.label} file
+          {vaultId ? `Select ${activeImporter.label} file` : "Select a vault first"}
         </button>
       )}
 

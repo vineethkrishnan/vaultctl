@@ -57,12 +57,6 @@ test.describe.serial("Import / Export / Restore", () => {
   test("imports a Bitwarden CSV from settings and fires one POST per item", async ({
     page,
   }) => {
-    // Bypass login to reach /settings. The ImportDialog reads vaultId from
-    // useParams which only resolves inside /vault/:id routes. Since
-    // Settings doesn't expose one, the dialog's mutation will fire with an
-    // undefined vaultId — we therefore intercept the import POST on any
-    // vault path.
-    //
     // Seed auth by visiting login, filling it, and letting the mocked
     // backend complete login.
     await page.goto("/login");
@@ -78,10 +72,11 @@ test.describe.serial("Import / Export / Restore", () => {
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings/);
 
-    // Upload CSV via the hidden file input. The importer refactor
-    // (parsers agent) broadened the accept attribute from ".csv" to
-    // ".csv,text/csv", so match on type alone and let the browser sort
-    // it out.
+    // Select target vault from the picker (shown on /settings since
+    // there is no vaultId in the URL params).
+    await page.locator("#import-vault").selectOption("vault-1");
+
+    // Upload CSV via the hidden file input.
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.setInputFiles({
       name: "bitwarden-export.csv",
@@ -93,13 +88,10 @@ test.describe.serial("Import / Export / Restore", () => {
     await expect(page.getByText(/3\s*items found/)).toBeVisible({ timeout: 5_000 });
 
     // Click Import All and wait for the backend POSTs.
-    // Note: ImportDialog is mounted in settings where vaultId is undefined,
-    // so the client POSTs to /vaults/undefined/items. Our mock matches
-    // any vault id, so we count requests instead of routes.
     const itemPosts: string[] = [];
     page.on("requestfinished", (request) => {
       const url = new URL(request.url()).pathname;
-      if (/\/api\/v1\/vaults\/[^/]+\/items$/.test(url) && request.method() === "POST") {
+      if (url === "/api/v1/vaults/vault-1/items" && request.method() === "POST") {
         itemPosts.push(url);
       }
     });
