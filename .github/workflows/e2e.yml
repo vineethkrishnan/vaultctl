@@ -1,0 +1,116 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    name: playwright e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vaultctl
+          POSTGRES_PASSWORD: vaultctl
+          POSTGRES_DB: vaultctl
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    env:
+      VAULTCTL_ENV: development
+      VAULTCTL_DB_HOST: localhost
+      VAULTCTL_DB_PORT: '5432'
+      VAULTCTL_DB_USER: vaultctl
+      VAULTCTL_DB_PASSWORD: vaultctl
+      VAULTCTL_DB_NAME: vaultctl
+      VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_JWT_SECRET_CURRENT: e2e-jwt-secret-at-least-32-bytes-ok
+      VAULTCTL_SERVER_PEPPER: e2e-server-pepper-32-bytes-ok
+      VAULTCTL_ENUMERATION_PEPPER: e2e-enum-pepper-32-bytes-ok
+      VAULTCTL_DATA_ENCRYPTION_KEY: LBrXjzRmKOwYu7V5rHYqStuwJ7pSu8+Wt4w5cKfYk5A=
+      VAULTCTL_BASE_URL: http://localhost:8080
+      VAULTCTL_REGISTRATION_MODE: open
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: build web bundle for embed
+        working-directory: web
+        run: npm ci && npm run build
+
+      - name: build vaultctl
+        run: go build -o ./vaultctl ./cmd/server
+
+      - name: apply embedded migrations
+        run: ./vaultctl migrate up
+
+      - name: start vaultctl server
+        run: |
+          ./vaultctl server > server.log 2>&1 &
+          echo $! > server.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/api/v1/health >/dev/null 2>&1; then
+              echo "server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server failed to start"
+          cat server.log
+          exit 1
+
+      - name: install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: run Playwright e2e
+        working-directory: web
+        run: npx playwright test --reporter=list
+
+      - name: stop vaultctl server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill "$(cat server.pid)" || true
+          fi
+
+      - name: upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-log
+          path: server.log
+          retention-days: 7
+
+      - name: upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7

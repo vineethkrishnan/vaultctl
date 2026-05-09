@@ -203,6 +203,15 @@ func mountSPA(r chi.Router) {
 
 	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
 		path := strings.TrimPrefix(req.URL.Path, "/")
+
+		// Don't blanket-serve the SPA shell on reserved server-side prefixes.
+		// Chi already handled the real /api/v1 routes above; anything left
+		// under these prefixes is a real 404, not a deep link.
+		if strings.HasPrefix(path, "api/") || strings.HasPrefix(path, "swagger/") {
+			http.NotFound(w, req)
+			return
+		}
+
 		if path == "" {
 			serveIndex(w, indexBytes)
 			return
