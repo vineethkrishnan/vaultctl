@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package organization owns the Organization + Membership + Invite
 // aggregates. Shared vaults live under an Organization; personal vaults
 // never do.

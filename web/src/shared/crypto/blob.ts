@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * EncryptedBlob — versioned ciphertext envelope (PRD §9.9, C5).
  *

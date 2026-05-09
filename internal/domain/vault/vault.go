@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package vault owns the Vault aggregate: containers for items, plus their
 // membership, folders, and items themselves.
 package vault

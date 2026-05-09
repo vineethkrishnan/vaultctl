@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Outlet } from "@tanstack/react-router";
 import { VaultSidebar } from "@/components/vault/VaultSidebar";
 import { useAutoLock } from "@/hooks/use-auto-lock";

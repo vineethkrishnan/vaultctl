@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package application hosts use cases and the ports (interfaces) through
 // which the domain reaches infrastructure.
 //

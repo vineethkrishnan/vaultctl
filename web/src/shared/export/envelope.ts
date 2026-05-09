@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Export envelope — Ed25519-signed wrapper over a vaultctl export payload
  * (architecture.md §M9, PRD hardening item M6).

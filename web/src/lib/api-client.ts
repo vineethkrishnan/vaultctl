@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useAuthStore } from "./auth-store";
 
 export interface ApiError {

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Bitwarden CSV parser tests, including the round-trip integrity test that
  * verifies parse → serialize → parse yields the same ParsedItem array.

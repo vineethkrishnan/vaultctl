@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useAuthStore } from "./auth-store";
 
 const BASE_URL = "/api/v1";

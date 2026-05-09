@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Argon2id key derivation via hash-wasm (WASM).
  *

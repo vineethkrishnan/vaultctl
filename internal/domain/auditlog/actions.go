@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package auditlog defines the audit-log domain type plus the stable
 // action enum written to the audit_logs table (M13).
 //

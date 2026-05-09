@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package auth contains authentication use cases: register, prelogin,
 // login, refresh, logout. Each use case accepts its ports via a struct
 // and exposes a single Execute/Run-style method.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package middleware hosts the HTTP middleware stack: JWT auth, rate
 // limiting, step-up enforcement, security headers, body redaction, audit.
 package middleware

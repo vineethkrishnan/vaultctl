@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Public entrypoint for the import module. Components should import from
  * here rather than pulling individual parsers.

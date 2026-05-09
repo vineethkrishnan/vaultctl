@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package ports declares the interfaces through which the application layer
 // reaches infrastructure. Use cases depend on these interfaces only; concrete
 // adapters live in internal/infrastructure/*.

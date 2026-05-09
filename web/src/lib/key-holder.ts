@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Key custody facade — delegates to the crypto Web Worker (M9).
  *

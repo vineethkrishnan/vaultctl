@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package clientcrypto contains the CLI-side cryptographic helpers that
 // mirror the M6 TypeScript module in web/src/shared/crypto/. vaultctl is a
 // zero-knowledge system: every sensitive byte leaving the CLI towards the

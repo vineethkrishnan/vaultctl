@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { describe, it, expect } from "vitest";
 import { zero, timingSafeEqual, concat, toBase64, fromBase64 } from "./utils.js";
 

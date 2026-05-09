@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package crypto hosts infrastructure crypto adapters. Unlike the
 // internal/domain/crypto package (which only carries value objects), this
 // package DOES perform cryptographic operations — and is therefore the only

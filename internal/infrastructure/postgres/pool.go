@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package postgres hosts the pgx/v5-backed adapters that implement the
 // repository ports. Every query is parameterised (no string concat into
 // SQL), and every item/folder query is keyed by (vault_id, id) so the

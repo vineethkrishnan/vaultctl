@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Deterministic JSON canonicalization for envelope_mac signing (M9 / M6 hardening).
  *

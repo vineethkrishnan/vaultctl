@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { defineConfig } from "wxt";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";

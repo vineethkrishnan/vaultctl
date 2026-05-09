@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package audit is a cross-cutting facade over the audit_logs table
 // (M13). It is intentionally NOT a use case: audit writes are passive
 // side effects of other business operations and must never fail the

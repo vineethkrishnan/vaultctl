@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * RSA-OAEP-SHA256-2048 via Web Crypto API.
  *

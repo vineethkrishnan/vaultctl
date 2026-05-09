@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useRef, useState } from "react";
 import { Upload, FileText, Check, AlertTriangle, Shield } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";

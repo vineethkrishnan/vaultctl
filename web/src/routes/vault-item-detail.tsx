@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useParams } from "@tanstack/react-router";
 import { ItemEditor } from "@/components/vault/ItemEditor";
 

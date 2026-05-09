@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { test, expect, type Page } from "@playwright/test";
 import {
   createMockState,
