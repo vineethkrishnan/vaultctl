@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+const sslModeDisable = "disable"
+
 // setEnv sets a batch of env vars for the duration of a test.
 func setEnv(t *testing.T, kv map[string]string) {
 	t.Helper()
@@ -78,7 +80,7 @@ func TestLoad_Production_RejectsMissingSecret(t *testing.T) {
 
 func TestLoad_Production_RejectsSSLDisable_H12(t *testing.T) {
 	env := productionMinimum()
-	env["VAULTCTL_DB_SSL_MODE"] = "disable"
+	env["VAULTCTL_DB_SSL_MODE"] = sslModeDisable
 	setEnv(t, env)
 	_, err := Load()
 	if !errors.Is(err, ErrMissingProdSecrets) {
@@ -86,6 +88,16 @@ func TestLoad_Production_RejectsSSLDisable_H12(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "H12") {
 		t.Fatalf("error should cite H12, got: %v", err)
+	}
+}
+
+func TestLoad_Production_AllowsSSLDisable_WithExplicitInsecureOK_H12(t *testing.T) {
+	env := productionMinimum()
+	env["VAULTCTL_DB_SSL_MODE"] = sslModeDisable
+	env["VAULTCTL_DB_SSL_INSECURE_OK"] = "true"
+	setEnv(t, env)
+	if _, err := Load(); err != nil {
+		t.Fatalf("explicit insecure-ok opt-in should permit ssl_mode=disable, got %v", err)
 	}
 }
 

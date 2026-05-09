@@ -3,10 +3,15 @@ package api
 import (
 	"encoding/base64"
 
+	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
+
+func badBase64(field string) error {
+	return domain.NewInvalid(field, "invalid base64")
+}
 
 // decodeAuthHashSecret decodes a base64-encoded authHash into a memguard
 // Secret. The decoded source slice is wiped by memguard during the copy,
@@ -19,7 +24,7 @@ import (
 func decodeAuthHashSecret(s string) (*secure.Secret, error) {
 	raw, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return nil, err
+		return nil, badBase64("authHash")
 	}
 	return secure.NewSecretFromBytes(raw), nil
 }
@@ -486,7 +491,7 @@ type PurgeTrashResponse struct {
 func decodeB64Blob(s string) (crypto.EncryptedBlob, error) {
 	raw, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return crypto.EncryptedBlob{}, err
+		return crypto.EncryptedBlob{}, badBase64("encryptedBlob")
 	}
 	return crypto.ParseBlob(raw)
 }
@@ -503,14 +508,18 @@ func encodeB64(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
 
 // decodeB64 decodes a base64 string to raw bytes.
 func decodeB64(s string) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(s)
+	raw, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, badBase64("base64Field")
+	}
+	return raw, nil
 }
 
 // decodeB64Signature decodes a base64-encoded Ed25519 signature.
 func decodeB64Signature(s string) (crypto.Signature, error) {
 	raw, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return crypto.Signature{}, err
+		return crypto.Signature{}, badBase64("signature")
 	}
 	return crypto.NewEd25519Signature(raw)
 }
@@ -519,7 +528,7 @@ func decodeB64Signature(s string) (crypto.Signature, error) {
 func decodeB64PublicKey(s string) (crypto.PublicKey, error) {
 	raw, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return crypto.PublicKey{}, err
+		return crypto.PublicKey{}, badBase64("publicKey")
 	}
 	return crypto.NewPublicKey(raw)
 }

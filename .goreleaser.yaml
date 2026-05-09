@@ -10,6 +10,8 @@ before:
   hooks:
     - go mod tidy
     - go mod download
+    # H14: build SPA bundle so it gets embedded into the Go binary via web/embed.go
+    - sh -c "cd web && npm ci && npm run build"
 
 builds:
   - id: vaultctl

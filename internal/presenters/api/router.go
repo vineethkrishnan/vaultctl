@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +14,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
+	webembed "github.com/vineethkrishnan/vaultctl/web"
 
 	_ "github.com/vineethkrishnan/vaultctl/docs" // swagger generated docs
 )
@@ -177,7 +180,59 @@ func NewRouter(deps Dependencies) http.Handler {
 		})
 	})
 
+	mountSPA(r)
+
 	return r
+}
+
+// mountSPA serves the embedded web/dist bundle. Hashed assets get long-lived
+// caching; every other path falls back to index.html so the React Router
+// owns client-side routing. /api/v1 and /swagger are reserved by chi above.
+func mountSPA(r chi.Router) {
+	dist, err := webembed.DistFS()
+	if err != nil {
+		return
+	}
+
+	indexBytes, err := fs.ReadFile(dist, "index.html")
+	if err != nil {
+		return
+	}
+
+	fileServer := http.FileServer(http.FS(dist))
+
+	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
+		path := strings.TrimPrefix(req.URL.Path, "/")
+		if path == "" {
+			serveIndex(w, indexBytes)
+			return
+		}
+
+		f, err := dist.Open(path)
+		if err != nil {
+			serveIndex(w, indexBytes)
+			return
+		}
+		defer func() { _ = f.Close() }()
+
+		stat, err := f.Stat()
+		if err != nil || stat.IsDir() {
+			serveIndex(w, indexBytes)
+			return
+		}
+
+		if strings.HasPrefix(path, "assets/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		fileServer.ServeHTTP(w, req)
+	})
+}
+
+func serveIndex(w http.ResponseWriter, body []byte) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
 }
 
 // healthHandler returns server health status.

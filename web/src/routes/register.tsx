@@ -16,13 +16,15 @@ import {
   toBase64,
   zero,
 } from "@/shared/crypto";
-import type { RegisterResponse } from "@/shared/types/api";
+import type { RegisterResponse, LoginResponse } from "@/shared/types/api";
+import { useAuthStore } from "@/lib/auth-store";
 import { RecoveryKitDownload } from "@/components/auth/RecoveryKitDownload";
 
 type Step = "form" | "processing" | "recovery" | "done";
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
   const [step, setStep] = useState<Step>("form");
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +116,21 @@ export function RegisterPage() {
         publicKey: toBase64(rsaKp.publicKey),
         publicKeySignature: toBase64(pubKeySig),
         identityPublicKey: toBase64(ed25519Kp.publicKey),
+      });
+
+      // Register returns {userId, role} only — exchange for tokens before
+      // any authenticated call (vault create, etc.).
+      const loginRes = await apiPost<LoginResponse>("/api/v1/auth/login", {
+        email,
+        authHash: toBase64(authHash),
+        deviceName: navigator.userAgent.slice(0, 128),
+      });
+      setAuth({
+        userId: loginRes.userId,
+        role: loginRes.role,
+        accessToken: loginRes.accessToken,
+        refreshToken: loginRes.refreshToken,
+        sessionId: loginRes.sessionId,
       });
 
       // Create personal vault

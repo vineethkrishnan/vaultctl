@@ -111,7 +111,7 @@ func readJSON(r *http.Request, dst any) error {
 		if errors.As(err, &maxErr) {
 			return &domain.Invalid{Field: "body", Message: "request body too large"}
 		}
-		return err
+		return &domain.Invalid{Field: "body", Message: "malformed JSON"}
 	}
 	// Reject trailing junk — ensures exactly one JSON value.
 	if _, err := io.ReadAll(r.Body); err != nil {

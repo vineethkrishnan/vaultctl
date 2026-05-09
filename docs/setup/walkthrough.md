@@ -1,0 +1,82 @@
+# Setup walkthrough
+
+End-to-end first-deploy walkthrough on a fresh host. Captured against the bundled `docker-compose.simple.yml` stack with the SPA served by the embedded Go binary on `http://localhost:8090` (the production compose with Caddy uses `${VAULTCTL_BASE_URL}` and auto-TLS — the UI flow is the same).
+
+## 1. Bring up the stack
+
+Clone, fill in `.env`, then start:
+
+```bash
+git clone https://github.com/vineethkrishnan/vaultctl.git
+cd vaultctl
+cp .env.example .env
+# fill every secret. generate values with:
+#   openssl rand -base64 32   # 32-byte values
+#   openssl rand -base64 64   # JWT secrets
+
+docker compose up -d                              # caddy + vaultctl + postgres
+docker compose exec vaultctl vaultctl migrate up  # apply embedded migrations
+```
+
+Confirm the API is up:
+
+```bash
+curl -fsS https://${VAULTCTL_BASE_URL}/api/v1/health
+# {"status":"ok"}
+```
+
+## 2. Open the SPA
+
+The same Go binary serves the API and the embedded React SPA. Open `https://${VAULTCTL_BASE_URL}/` in a browser. You land on the login screen with a "Create one" link.
+
+![Login screen](screenshots/01-login.png)
+
+## 3. Register the first user
+
+Click **Create one**. Fill in email, name, master password, and confirm.
+
+![Empty register form](screenshots/02-register-empty.png)
+
+The password is the only thing that ever derives your encryption keys — there is no way to recover items without it (or the recovery kit shown next). Pick something strong; the embedded denylist will reject the obvious offenders.
+
+![Filled register form](screenshots/03-register-filled.png)
+
+Submit. The browser does the heavy crypto in a worker — Argon2id key derivation, RSA-2048 keypair, Ed25519 identity keypair, AES-KW vault key wrap — before anything hits the server. You then land on the recovery kit screen.
+
+## 4. Save the recovery kit
+
+The 24-word recovery key (rendered both as text and as a QR code) is shown **once**. Click **Download Recovery Kit** to grab a printable HTML copy. Store the file somewhere offline; this is the only path back to your vault if you forget the master password.
+
+![Recovery kit screen](screenshots/04-recovery-kit.png)
+
+Tick the confirmation, click **Continue to Login**, and re-enter your email and master password. You land on your empty Personal Vault.
+
+![Empty personal vault](screenshots/05-empty-vault.png)
+
+## 5. Add the first item
+
+Click **New Item**. Choose a type — Login, Secure Note, Credit Card, Identity, API Key, SSH Key, or Passkey.
+
+![Item type picker](screenshots/06-new-item-types.png)
+
+Fill in the fields. Use the built-in **Generate password** button if you'd rather a strong random password than typing one in.
+
+![New login filled](screenshots/07-new-item-filled.png)
+
+Save. Every encrypted blob round-trips through the worker — the server only ever sees ciphertext. The item shows up in the vault list:
+
+![Vault with item](screenshots/08-vault-with-item.png)
+
+## 6. From here
+
+- **CLI:** `vaultctl login`, `vaultctl ls`, `vaultctl get GitHub` — uses the same backend, decrypts client-side. See [`README.md`](../../README.md#cli).
+- **Browser extension:** build with `cd extension && npm run build`, load `extension/.output/chrome-mv3/` into Chrome (`chrome://extensions` -> Developer mode -> Load unpacked).
+- **Sharing:** create a shared vault, then invite a teammate from **Admin** -> **Invites**.
+- **Backups:** `vaultctl backup --output /var/backups/vaultctl` runs an encrypted dump and prunes per `VAULTCTL_BACKUP_RETENTION_DAYS`.
+- **Verify the release** you actually installed: see [`docs/security/verifying-releases.md`](../security/verifying-releases.md).
+
+## Notes on this walkthrough
+
+- The screenshots were captured against branch `chore/production-deploy-readiness` running locally on `127.0.0.1:8090` (avoiding port 8080 which was held by an unrelated process). Production stacks normally bind 8080 behind Caddy on 443.
+- The demo email `alice@example.com` and demo password `Sandbox-Walkthrough-Demo-2026!` are walkthrough-only. Use real credentials in your own deploy.
+- The recovery key visible in the screenshot is from the throwaway sandbox. Each user gets their own.

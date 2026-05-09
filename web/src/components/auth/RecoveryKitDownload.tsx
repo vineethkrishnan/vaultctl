@@ -92,7 +92,8 @@ async function renderQR(
     for (let col = 0; col < size; col++) {
       const byteIdx = Math.floor(bitIndex / 8);
       const bitPos = 7 - (bitIndex % 8);
-      if (byteIdx < bytes.length && (bytes[byteIdx] >> bitPos) & 1) {
+      const byte = bytes[byteIdx];
+      if (byte !== undefined && (byte >> bitPos) & 1) {
         ctx.fillRect(
           offset + col * cellSize,
           offset + row * cellSize,

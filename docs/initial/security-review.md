@@ -446,7 +446,7 @@ Zero-knowledge means losing the master password = losing the vault. This is corr
 - [ ] H2 — Prelogin returns deterministic fake salt for unknown emails
 - [ ] H5 — Add `VAULTCTL_DATA_ENCRYPTION_KEY` to env template + rotation docs
 - [ ] H8 — Document JWT signing-key rotation procedure
-- [ ] H12 — Flip `VAULTCTL_DB_SSL_MODE` default to `require`
+- [x] H12 — Flip `VAULTCTL_DB_SSL_MODE` default to `require`; require explicit `VAULTCTL_DB_SSL_INSECURE_OK=true` to permit `disable` in production
 - [ ] H13 — Commit to cosign-signing release artifacts
 - [ ] M9 — Pick and document client key-persistence strategy
 - [ ] M12 — Design Recovery Kit flow

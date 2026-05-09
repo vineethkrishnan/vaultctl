@@ -15,6 +15,7 @@ services:
     env_file: .env
     environment:
       VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_DB_SSL_INSECURE_OK: "true"
       VAULTCTL_DB_HOST: vaultctl-db
     ports:
       - "127.0.0.1:8080:8080"
