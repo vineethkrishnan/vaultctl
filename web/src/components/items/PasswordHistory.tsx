@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState } from "react";
 import { History, Eye, EyeOff, Copy, Check } from "lucide-react";
 import type { PasswordHistoryEntry } from "@/shared/types/item-data";

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package config loads vaultctl server configuration from environment variables.
 //
 // Every key here mirrors the VAULTCTL_ prefix enumerated in prd.md §11.1.

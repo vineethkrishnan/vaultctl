@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 import { SafetyNumber } from "@/components/vault/SafetyNumber";

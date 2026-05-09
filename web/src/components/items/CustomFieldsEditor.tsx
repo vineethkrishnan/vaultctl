@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState } from "react";
 import { Plus, Trash2, Eye, EyeOff, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";

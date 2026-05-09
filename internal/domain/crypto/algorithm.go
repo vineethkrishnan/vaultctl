@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package crypto holds domain-level crypto value objects. It describes what
 // a ciphertext blob, symmetric key, and identity key ARE — it does NOT
 // perform any cryptographic operation. Actual encrypt/decrypt lives in

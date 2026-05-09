@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Ed25519 signing via Web Crypto API (Ed25519 support landed in all major
  * browsers as of 2024).

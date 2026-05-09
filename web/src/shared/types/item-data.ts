@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Zod schemas for the decrypted JSON payload inside each item's encryptedData.
  * These describe the PLAINTEXT structure after client-side decryption.

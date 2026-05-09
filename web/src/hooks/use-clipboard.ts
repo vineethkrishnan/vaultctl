@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useCallback, useRef } from "react";
 
 const DEFAULT_CLEAR_MS = 30_000;

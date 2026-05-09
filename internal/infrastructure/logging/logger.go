@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package logging wires slog with the redaction layer mandated by architecture §6.5 (C4).
 //
 // M0 contribution: build a slog handler that honours Config.LogLevel / LogFormat

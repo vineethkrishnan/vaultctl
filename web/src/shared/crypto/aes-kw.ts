@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * AES-256 Key Wrap (NIST SP 800-38F / RFC 3394) via Web Crypto API.
  *

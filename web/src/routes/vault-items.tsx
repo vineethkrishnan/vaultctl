@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { ItemList } from "@/components/vault/ItemList";
 import { SharingPanel } from "@/components/vault/SharingPanel";
 

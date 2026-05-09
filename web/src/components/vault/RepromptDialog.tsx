@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState, useRef, useEffect } from "react";
 import { workerVerifyPassword } from "@/worker/worker-client";
 import { ShieldAlert } from "lucide-react";

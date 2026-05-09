@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * HKDF-SHA256 context derivations via Web Crypto API.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package user owns the User aggregate: email, master-password rules, roles,
 // sessions, and identity-key metadata. All fields are value objects with
 // invariants enforced at construction time.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Message types shared between the main thread and the crypto Web Worker.
  * Keep this file free of DOM or Worker-specific imports.

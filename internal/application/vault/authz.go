@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package vault contains the vault use cases: item CRUD, folder management,
 // trash, and vault sharing. Every use case begins with an authorization
 // check via ensureActiveMember.

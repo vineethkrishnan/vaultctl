@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Crypto Web Worker — holds all decrypted key material in isolated scope.
  *

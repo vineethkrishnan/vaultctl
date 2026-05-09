@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Cast Uint8Array to BufferSource for Web Crypto API calls.
  * TS 5.7 made Uint8Array generic (Uint8Array<ArrayBufferLike>), which is

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package auth hosts the infrastructure adapters for authentication:
 // Argon2id hashing, JWT signing, HMAC hashing, and TOTP. Each adapter
 // implements a port defined in application/ports.

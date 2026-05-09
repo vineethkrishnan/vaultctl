@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package secure wraps memguard to give the rest of the server a single,
 // minimal API for "sensitive bytes that must not sit in pageable memory."
 //

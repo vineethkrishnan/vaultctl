@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Package domain is the innermost layer of the hexagonal architecture.
 //
 // It contains entities, value objects, and invariants with ZERO dependencies

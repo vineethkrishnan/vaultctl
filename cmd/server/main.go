@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Command vaultctl is the unified CLI + server entry point.
 //
 // Subcommands:

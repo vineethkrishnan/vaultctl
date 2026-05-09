@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * Algorithm identifiers and constants mirroring the Go domain/crypto package.
  * This is the single source of truth for the TS client — any change here

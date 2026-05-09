@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 /**
  * PKCS#7-style padding to next 32-byte boundary (M5).
  *

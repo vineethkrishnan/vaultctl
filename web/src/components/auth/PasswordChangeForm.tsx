@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { useState } from "react";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
