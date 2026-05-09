@@ -41,6 +41,10 @@ type Config struct {
 	DBUser     string `env:"VAULTCTL_DB_USER" envDefault:"vaultctl"`
 	DBPassword string `env:"VAULTCTL_DB_PASSWORD"`
 	DBSSLMode  string `env:"VAULTCTL_DB_SSL_MODE" envDefault:"require"` // [H12] default: require
+	// [H12] explicit opt-out for the bundled docker-compose where vaultctl
+	// reaches Postgres over a private bridge network and cannot negotiate TLS.
+	// Operators must set this in addition to VAULTCTL_DB_SSL_MODE=disable.
+	DBSSLInsecureOK bool `env:"VAULTCTL_DB_SSL_INSECURE_OK" envDefault:"false"`
 
 	// ===========================================================================
 	// JWT signing keys — dual-key rotation (H8)
@@ -127,8 +131,8 @@ func (c *Config) validate() error {
 	check("VAULTCTL_ENUMERATION_PEPPER", c.EnumerationPepper)
 	check("VAULTCTL_BASE_URL", c.BaseURL)
 
-	if c.DBSSLMode == "disable" {
-		return fmt.Errorf("%w: VAULTCTL_DB_SSL_MODE=disable is forbidden in production (H12)", ErrMissingProdSecrets)
+	if c.DBSSLMode == "disable" && !c.DBSSLInsecureOK {
+		return fmt.Errorf("%w: VAULTCTL_DB_SSL_MODE=disable requires VAULTCTL_DB_SSL_INSECURE_OK=true in production (H12)", ErrMissingProdSecrets)
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("%w: %s", ErrMissingProdSecrets, strings.Join(missing, ", "))

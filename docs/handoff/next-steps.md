@@ -83,9 +83,9 @@ find . -type f -name "*.go" | sort
 head -100 docs/initial/architecture.md
 head -100 docs/handoff/next-steps.md
 
-# 4. Boot Postgres + verify migration
+# 4. Boot Postgres + apply embedded migrations
 docker compose up -d vaultctl-db
-# (then run: migrate -path migrations -database "postgres://..." up)
+./bin/vaultctl migrate up
 
 # 5. Try starting the server
 cp .env.example .env  # fill in secrets
@@ -237,7 +237,10 @@ go run ./cmd/server server               # dev
 docker compose up -d                     # full stack with Caddy
 docker compose -f docker-compose.simple.yml up -d  # BYO proxy
 
-# DB migrations (needs golang-migrate CLI)
+# DB migrations (embedded — no external golang-migrate CLI needed)
+vaultctl migrate up
+vaultctl migrate down --steps 1
+# alternative wrappers (use the same external CLI if you prefer):
 make migrate-up
 make migrate-down
 ```

@@ -1,22 +1,6 @@
 import { useAuthStore } from "./auth-store";
 
-interface ApiError {
-  code: string;
-  message: string;
-  field?: string;
-}
-
-class ApiRequestError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly error: ApiError,
-  ) {
-    super(error.message);
-    this.name = "ApiRequestError";
-  }
-}
-
-const BASE_URL = "";
+const BASE_URL = "/api/v1";
 
 let refreshPromise: Promise<void> | null = null;
 
@@ -24,13 +8,10 @@ async function refreshTokens(): Promise<void> {
   const { refreshToken, setTokens, logout } = useAuthStore.getState();
   if (!refreshToken) {
     logout();
-    throw new ApiRequestError(401, {
-      code: "SESSION_EXPIRED",
-      message: "No refresh token",
-    });
+    throw new Error("SESSION_EXPIRED");
   }
 
-  const res = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+  const res = await fetch(`${BASE_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
@@ -38,84 +19,74 @@ async function refreshTokens(): Promise<void> {
 
   if (!res.ok) {
     logout();
-    throw new ApiRequestError(401, {
-      code: "SESSION_EXPIRED",
-      message: "Refresh failed",
-    });
+    throw new Error("SESSION_EXPIRED");
   }
 
-  const data = await res.json();
-  setTokens(data.accessToken, data.refreshToken);
+  const body = await res.json();
+  setTokens(body.accessToken, body.refreshToken);
 }
 
-/**
- * Custom fetcher for Orval-generated hooks.
- * Handles Bearer auth injection and automatic 401 token refresh.
- */
-export async function apiFetcher<T>(options: {
-  url: string;
-  method: string;
-  headers?: Record<string, string>;
-  params?: Record<string, string>;
-  data?: unknown;
-  signal?: AbortSignal;
-}): Promise<T> {
+function buildHeaders(init?: RequestInit): Headers {
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Content-Type") && init?.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
   const { accessToken } = useAuthStore.getState();
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
+  if (accessToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
   }
+  return headers;
+}
 
-  // Build URL with query params
-  let url = `${BASE_URL}${options.url}`;
-  if (options.params) {
-    const search = new URLSearchParams(options.params).toString();
-    if (search) url += `?${search}`;
+async function readBody(res: Response): Promise<unknown> {
+  if (res.status === 204) return undefined;
+  const ct = res.headers.get("Content-Type") ?? "";
+  if (ct.includes("application/json")) {
+    const text = await res.text();
+    if (!text) return undefined;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
   }
+  return res.text();
+}
 
-  const fetchOptions: RequestInit = {
-    method: options.method,
-    headers,
-    signal: options.signal,
-  };
-  if (options.data !== undefined) {
-    fetchOptions.body = JSON.stringify(options.data);
-  }
+export async function apiFetcher<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<T> {
+  const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
 
-  let res = await fetch(url, fetchOptions);
+  let res = await fetch(fullUrl, { ...init, headers: buildHeaders(init) });
 
-  // Auto-refresh on 401
-  if (res.status === 401 && accessToken) {
+  if (
+    res.status === 401 &&
+    useAuthStore.getState().accessToken &&
+    !url.includes("/auth/refresh") &&
+    !url.includes("/auth/login")
+  ) {
     if (!refreshPromise) {
       refreshPromise = refreshTokens().finally(() => {
         refreshPromise = null;
       });
     }
-    await refreshPromise;
-
-    const newToken = useAuthStore.getState().accessToken;
-    if (newToken) {
-      headers["Authorization"] = `Bearer ${newToken}`;
+    try {
+      await refreshPromise;
+      res = await fetch(fullUrl, { ...init, headers: buildHeaders(init) });
+    } catch {
+      // Fall through with original 401 response
     }
-    res = await fetch(url, { ...fetchOptions, headers });
   }
 
-  if (res.status === 204) {
-    return undefined as unknown as T;
-  }
+  const data = await readBody(res);
 
-  const body = await res.json();
-
-  if (!res.ok) {
-    const err = body?.error ?? { code: "UNKNOWN", message: res.statusText };
-    throw new ApiRequestError(res.status, err);
-  }
-
-  return body as T;
+  return {
+    data,
+    status: res.status,
+    headers: res.headers,
+  } as T;
 }
 
 export default apiFetcher;

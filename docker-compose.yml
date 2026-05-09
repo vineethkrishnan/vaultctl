@@ -40,8 +40,10 @@ services:
     env_file: .env
     environment:
       # Loopback-only inside compose network, so `disable` is the exception
-      # documented in H12.
+      # documented in H12. The explicit INSECURE_OK opt-in keeps the
+      # production fail-closed default strict for every other deployment.
       VAULTCTL_DB_SSL_MODE: disable
+      VAULTCTL_DB_SSL_INSECURE_OK: "true"
       VAULTCTL_DB_HOST: vaultctl-db
     networks:
       - vaultctl-net

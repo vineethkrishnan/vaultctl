@@ -5,7 +5,6 @@ import { Users, UserPlus, Trash2, Shield } from "lucide-react";
 import {
   postVaultsVaultIdMembers,
   deleteVaultsVaultIdMembersUserId,
-  putVaultsVaultIdRekey,
 } from "@/api/sharing/sharing";
 import { getOrgsIdMembers, getGetOrgsIdMembersQueryKey } from "@/api/organizations/organizations";
 import { useGetVaults } from "@/api/vaults/vaults";
@@ -38,10 +37,11 @@ export function SharingPanel() {
   const isShared = vault?.type === "shared";
   const orgId = (vault as any)?.orgId as string | undefined;
 
-  // Fetch org members (only for shared vaults with orgId)
+  // Fetch org members (only for shared vaults with orgId).
+  // The non-null assertion is safe: the query is disabled until orgId exists.
   const { data: membersRes, isLoading: membersLoading } = useQuery({
-    queryKey: orgId ? getGetOrgsIdMembersQueryKey(orgId) : ["no-org"],
-    queryFn: () => (orgId ? getOrgsIdMembers(orgId) : Promise.resolve({ status: 200, data: [] })),
+    queryKey: orgId ? getGetOrgsIdMembersQueryKey(orgId) : getGetOrgsIdMembersQueryKey(""),
+    queryFn: () => getOrgsIdMembers(orgId!),
     enabled: !!orgId,
   });
 

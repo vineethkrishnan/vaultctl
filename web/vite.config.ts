@@ -26,11 +26,14 @@ export default defineConfig({
     target: "es2022",
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom"],
-          router: ["@tanstack/react-router"],
-          query: ["@tanstack/react-query"],
-          crypto: ["hash-wasm"],
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("react-dom") || id.match(/[\\/]node_modules[\\/]react[\\/]/)) {
+            return "vendor";
+          }
+          if (id.includes("@tanstack/react-router")) return "router";
+          if (id.includes("@tanstack/react-query")) return "query";
+          if (id.includes("hash-wasm")) return "crypto";
         },
       },
     },

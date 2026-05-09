@@ -36,7 +36,7 @@ func NewRootCmd() *cobra.Command {
 	// Global --json flag — every client command honours it via isJSON().
 	root.PersistentFlags().Bool("json", false, "Emit JSON output instead of tables")
 
-	root.AddCommand(newServerCmd(), newHealthCheckCmd(), newAdminCmd(), newBackupCmd())
+	root.AddCommand(newServerCmd(), newHealthCheckCmd(), newAdminCmd(), newBackupCmd(), newMigrateCmd())
 	root.AddCommand(newClientCmds()...)
 
 	return root

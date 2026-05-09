@@ -21,8 +21,12 @@ LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(GIT_SHA)
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
+.PHONY: web-build
+web-build: ## Build the SPA bundle so it embeds into the Go binary
+	cd web && npm ci && npm run build
+
 .PHONY: build
-build: ## Build the vaultctl binary
+build: web-build ## Build the vaultctl binary (embeds web bundle)
 	@mkdir -p $(BIN_DIR)
 	$(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(BIN) $(CMD_SERVER)
 

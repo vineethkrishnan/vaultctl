@@ -1,23 +1,36 @@
 # syntax=docker/dockerfile:1.7
 #
 # Multi-stage build for vaultctl.
-#   Stage 1 (builder): compile the Go binary with CGO disabled.
-#   Stage 2 (runtime): distroless image carrying only the binary + ca-certs.
+#   Stage 1 (web):     Node toolchain compiles the SPA into web/dist.
+#   Stage 2 (builder): Go toolchain embeds web/dist and compiles the binary.
+#   Stage 3 (runtime): distroless image carrying only the binary + ca-certs.
 #
 # Target final image: < 50MB (see architecture §14 DoD).
 
 # ===========================================================================
-# Stage 1: Build
+# Stage 1: Web bundle
 # ===========================================================================
-FROM golang:1.26.2-alpine AS builder
+FROM node:22-alpine AS web
+
+WORKDIR /web
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci
+
+COPY web/ ./
+RUN npm run build
+
+# ===========================================================================
+# Stage 2: Build
+# ===========================================================================
+FROM golang:1.26.3-alpine AS builder
 
 WORKDIR /src
 
-# Cache module downloads separately from source
 COPY go.mod go.sum* ./
 RUN go mod download
 
 COPY . .
+COPY --from=web /web/dist ./web/dist
 
 ARG VERSION=dev
 ARG COMMIT=dev
@@ -30,7 +43,7 @@ RUN go build \
       ./cmd/server
 
 # ===========================================================================
-# Stage 2: Runtime (distroless)
+# Stage 3: Runtime (distroless)
 # ===========================================================================
 FROM gcr.io/distroless/static-debian12:nonroot
 
