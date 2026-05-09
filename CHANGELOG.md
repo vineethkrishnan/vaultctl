@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.2.1...v1.3.0) (2026-05-09)
+
+
+### Features
+
+* **ci:** add playwright e2e workflow and 404 reserved server prefixes ([#59](https://github.com/vineethkrishnan/vaultctl/issues/59)) ([fe6e16d](https://github.com/vineethkrishnan/vaultctl/commit/fe6e16d26995795c5dbbd72553f304bb25af61ce))
+
+
+### Bug Fixes
+
+* **web:** drain response body so chromium reports requestfinished ([#62](https://github.com/vineethkrishnan/vaultctl/issues/62)) ([b2cf8ec](https://github.com/vineethkrishnan/vaultctl/commit/b2cf8ec9ade121b1d0f9b31fe81b106b1997ebec))
+
 ## [1.2.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.2.0...v1.2.1) (2026-05-09)
 
 
