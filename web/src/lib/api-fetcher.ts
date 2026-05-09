@@ -41,18 +41,20 @@ function buildHeaders(init?: RequestInit): Headers {
 }
 
 async function readBody(res: Response): Promise<unknown> {
-  if (res.status === 204) return undefined;
+  // Always drain the body. Skipping res.text()/json() leaves the response
+  // stream live until GC, at which point Chromium aborts the request and
+  // network observers (Playwright requestfinished, perf hooks) miss it.
+  const text = await res.text();
+  if (res.status === 204 || !text) return undefined;
   const ct = res.headers.get("Content-Type") ?? "";
   if (ct.includes("application/json")) {
-    const text = await res.text();
-    if (!text) return undefined;
     try {
       return JSON.parse(text);
     } catch {
       return text;
     }
   }
-  return res.text();
+  return text;
 }
 
 export async function apiFetcher<T>(

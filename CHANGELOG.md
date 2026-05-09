@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.2.0...v1.2.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* make first-time production deploy actually work ([#58](https://github.com/vineethkrishnan/vaultctl/issues/58)) ([5b0e0c8](https://github.com/vineethkrishnan/vaultctl/commit/5b0e0c8074e6941a35166a84349c409a78f8fccf))
+
 ## [1.2.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.1.6...v1.2.0) (2026-04-12)
 
 
