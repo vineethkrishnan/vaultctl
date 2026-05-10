@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.3.0...v1.3.1) (2026-05-10)
+
+
+### Documentation
+
+* add docs site link to README ([68205ca](https://github.com/vineethkrishnan/vaultctl/commit/68205caa672b22b6a6feaaaf098ed2f2a7507222))
+
 ## [1.3.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.2.1...v1.3.0) (2026-05-09)
 
 
