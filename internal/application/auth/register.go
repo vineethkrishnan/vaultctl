@@ -81,32 +81,43 @@ type Register struct {
 
 // Execute runs the use case.
 func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutput, error) {
-	// Enforce registration mode
+	// First-user bootstrap: on a fresh install (zero users), the very first
+	// registration is always allowed and promoted to owner regardless of
+	// RegistrationMode. Without this, an invite-only default leaves the
+	// operator with no way to produce the first admin.
+	isFirstUser, err := uc.isFirstUser(ctx)
+	if err != nil {
+		return RegisterOutput{}, fmt.Errorf("count users: %w", err)
+	}
+
+	// Enforce registration mode (skipped for the first user).
 	var inviteIDToMark string
-	switch uc.RegistrationMode {
-	case RegistrationModeDisabled:
-		return RegisterOutput{}, ErrRegistrationDisabled
-	case RegistrationModeInvite:
-		if in.InviteToken == "" {
-			return RegisterOutput{}, ErrInviteRequired
+	if !isFirstUser {
+		switch uc.RegistrationMode {
+		case RegistrationModeDisabled:
+			return RegisterOutput{}, ErrRegistrationDisabled
+		case RegistrationModeInvite:
+			if in.InviteToken == "" {
+				return RegisterOutput{}, ErrInviteRequired
+			}
+			if uc.RedeemInvite == nil {
+				return RegisterOutput{}, fmt.Errorf("%w: RedeemInvite use case not wired", ErrInviteRequired)
+			}
+			// Validate the invite without consuming it — we mark it used
+			// only after user creation succeeds (avoids burning tokens on failure).
+			redeemed, err := uc.RedeemInvite.Execute(ctx, RedeemInviteInput{Token: in.InviteToken})
+			if err != nil {
+				return RegisterOutput{}, fmt.Errorf("validate invite: %w", err)
+			}
+			if in.Email != redeemed.Email {
+				return RegisterOutput{}, domain.NewInvalid("email", "email does not match invite")
+			}
+			inviteIDToMark = redeemed.InviteID
+		case RegistrationModeOpen, "":
+			// Anyone can register
+		default:
+			return RegisterOutput{}, fmt.Errorf("%w: unknown mode %q", ErrRegistrationDisabled, uc.RegistrationMode)
 		}
-		if uc.RedeemInvite == nil {
-			return RegisterOutput{}, fmt.Errorf("%w: RedeemInvite use case not wired", ErrInviteRequired)
-		}
-		// Validate the invite without consuming it — we mark it used
-		// only after user creation succeeds (avoids burning tokens on failure).
-		redeemed, err := uc.RedeemInvite.Execute(ctx, RedeemInviteInput{Token: in.InviteToken})
-		if err != nil {
-			return RegisterOutput{}, fmt.Errorf("validate invite: %w", err)
-		}
-		if in.Email != redeemed.Email {
-			return RegisterOutput{}, domain.NewInvalid("email", "email does not match invite")
-		}
-		inviteIDToMark = redeemed.InviteID
-	case RegistrationModeOpen, "":
-		// Anyone can register
-	default:
-		return RegisterOutput{}, fmt.Errorf("%w: unknown mode %q", ErrRegistrationDisabled, uc.RegistrationMode)
 	}
 
 	// Cheap guards first — reject trivially bad input before expensive work
@@ -128,6 +139,9 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	role := uc.DefaultRole
 	if role == "" {
 		role = user.RoleMember
+	}
+	if isFirstUser {
+		role = user.RoleOwner
 	}
 
 	now := uc.Clock.Now()
@@ -180,6 +194,19 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	return RegisterOutput{UserID: u.ID, Role: u.Role}, nil
+}
+
+// isFirstUser reports whether the users table is empty. A nil UserRepository
+// is treated as "not first" (defensive — should never happen in wiring).
+func (uc *Register) isFirstUser(ctx context.Context) (bool, error) {
+	if uc.Users == nil {
+		return false, nil
+	}
+	count, err := uc.Users.CountAll(ctx)
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
 }
 
 // encryptPasswordHint wraps the optional plaintext hint under H4's

@@ -90,6 +90,11 @@ type UserRepository interface {
 	// UpdatePasswordMaterialAndHint atomically updates auth hash + re-encrypted
 	// private keys + optional password hint on recovery/password reset.
 	UpdatePasswordMaterialAndHint(ctx context.Context, id user.ID, authHash string, encPrivKey, encIDPrivKey, encHint []byte) error
+
+	// CountAll returns the total number of users in the system. Used by the
+	// first-user bootstrap path in Register so a fresh install can produce
+	// its first owner without an invite token.
+	CountAll(ctx context.Context) (int, error)
 }
 
 // InviteRepository persists organisation invite tokens (M11).

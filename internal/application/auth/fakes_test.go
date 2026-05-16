@@ -248,6 +248,11 @@ func (r *fakeUserRepo) GetRecoveryMaterial(ctx context.Context, email user.Email
 func (r *fakeUserRepo) UpdatePasswordMaterialAndHint(_ context.Context, _ user.ID, _ string, _, _, _ []byte) error {
 	return nil
 }
+func (r *fakeUserRepo) CountAll(_ context.Context) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.byEmail), nil
+}
 
 // fakeSessionStore is an in-memory SessionStore.
 type fakeSessionStore struct {

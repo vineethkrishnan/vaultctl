@@ -35,6 +35,8 @@ The same Go binary serves the API and the embedded React SPA. Open `https://${VA
 
 Click **Create one**. Fill in email, name, master password, and confirm.
 
+The default `VAULTCTL_REGISTRATION_MODE` is `invite`, but on a fresh install the very first registration is always allowed and the resulting user is promoted to owner. The configured mode applies from the second registration onward, so an invite-only server stays locked down after this step without any extra action.
+
 ![Empty register form](screenshots/02-register-empty.png)
 
 The password is the only thing that ever derives your encryption keys — there is no way to recover items without it (or the recovery kit shown next). Pick something strong; the embedded denylist will reject the obvious offenders.

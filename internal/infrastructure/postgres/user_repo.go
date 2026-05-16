@@ -279,6 +279,15 @@ func (r *UserRepo) UpdatePasswordMaterialAndHint(ctx context.Context, id user.ID
 	return nil
 }
 
+// CountAll returns the total number of users.
+func (r *UserRepo) CountAll(ctx context.Context) (int, error) {
+	var n int
+	if err := r.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // ===========================================================================
 // helpers
 // ===========================================================================
