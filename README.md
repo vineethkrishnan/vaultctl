@@ -58,6 +58,8 @@ Load `extension/.output/chrome-mv3` via `chrome://extensions` -> Developer mode 
 
 ## Development
 
+Toolchain: Go 1.22+, Node 22+, Docker (with `docker compose`), and GNU `make`. The `make` targets below are thin wrappers around `go build` / `npm` / `golangci-lint` / `gosec` / `govulncheck` — install any tool the target needs that you don't already have.
+
 ```bash
 make web-build          # build the SPA (embedded into the Go binary)
 make build              # build the vaultctl binary
