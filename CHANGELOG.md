@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.3.1...v1.4.0) (2026-05-17)
+
+
+### Features
+
+* **auth:** bootstrap first user as owner on fresh install ([#74](https://github.com/vineethkrishnan/vaultctl/issues/74)) ([b02e1aa](https://github.com/vineethkrishnan/vaultctl/commit/b02e1aad1d3c3b7a97990516ae53b5893cd99efb))
+
 ## [1.3.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.3.0...v1.3.1) (2026-05-10)
 
 
