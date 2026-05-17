@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Eye, EyeOff, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
 
@@ -26,13 +26,20 @@ export function Field({
   const [revealed, setRevealed] = useState(false);
   const { copy } = useClipboard();
   const isSecret = type === "password";
+  const inputId = useId();
 
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label
+        htmlFor={inputId}
+        className="text-sm font-medium text-foreground"
+      >
+        {label}
+      </label>
       <div className="flex gap-1">
         {type === "textarea" ? (
           <textarea
+            id={inputId}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
@@ -42,6 +49,7 @@ export function Field({
           />
         ) : (
           <input
+            id={inputId}
             type={isSecret && !revealed ? "password" : "text"}
             value={value}
             onChange={(e) => onChange(e.target.value)}

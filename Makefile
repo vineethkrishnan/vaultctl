@@ -14,8 +14,17 @@ SQLC        ?= sqlc
 MIGRATE     ?= migrate
 
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(GIT_SHA)
+# Three-tier VERSION resolution so the binary reports a real version regardless
+# of how the source arrived: git checkout, source tarball, or release archive.
+# HASH wraps `#` in a variable because Make would otherwise read it as a
+# line comment even inside $(shell ...).
+HASH              := \#
+VERSION_GIT       := $(shell git describe --tags --always --dirty 2>/dev/null)
+VERSION_CHANGELOG := $(shell sed -n 's/^$(HASH)$(HASH) \[\([0-9][^]]*\)\].*/v\1/p' CHANGELOG.md 2>/dev/null | head -n1)
+VERSION ?= $(or $(VERSION_GIT),$(VERSION_CHANGELOG),dev)
+LDFLAGS := -s -w \
+	-X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Version=$(VERSION) \
+	-X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Commit=$(GIT_SHA)
 
 .PHONY: help
 help: ## Show this help

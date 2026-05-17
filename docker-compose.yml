@@ -33,7 +33,7 @@ services:
       context: .
       args:
         VERSION: ${VAULTCTL_VERSION:-latest}
-    image: vineethnkrishnan/vaultctl:${VAULTCTL_VERSION:-latest}
+    image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-latest}
     command: ["server"]
     container_name: vaultctl-api
     restart: unless-stopped

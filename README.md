@@ -7,7 +7,7 @@ Self-hosted, zero-knowledge password vault. Single Go binary serves the API and 
 - **Multi-user from day 1.** Organizations, invites, role-based vault sharing, RSA-OAEP wrap with Ed25519 signature pinning, member-removal triggers a vault rekey.
 - **Supply-chain hardened.** goreleaser builds for linux/darwin/windows × amd64/arm64; cosign keyless signing on every artifact; CycloneDX SBOM per archive; SLSA-L3 provenance attestation on public releases.
 
-Docs: [vaultctl.vinelabs.de](https://vaultctl.vinelabs.de)
+Docs: see [`docs/`](docs/) in this repo (setup walkthrough, release verification, architecture).
 
 Full product spec: [`docs/initial/prd.md`](docs/initial/prd.md). Architecture, milestones, and threat model: [`docs/initial/architecture.md`](docs/initial/architecture.md).
 
@@ -57,6 +57,8 @@ npm run build           # outputs .output/chrome-mv3
 Load `extension/.output/chrome-mv3` via `chrome://extensions` -> Developer mode -> Load unpacked. Firefox: `about:debugging`.
 
 ## Development
+
+Toolchain: Go 1.22+, Node 22+, Docker (with `docker compose`), and GNU `make`. The `make` targets below are thin wrappers around `go build` / `npm` / `golangci-lint` / `gosec` / `govulncheck` — install any tool the target needs that you don't already have.
 
 ```bash
 make web-build          # build the SPA (embedded into the Go binary)
