@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.0...v1.4.1) (2026-05-17)
+
+
+### Documentation
+
+* restore docs-site link and backfill v1.4.0 changelog ([#77](https://github.com/vineethkrishnan/vaultctl/issues/77)) ([69854f9](https://github.com/vineethkrishnan/vaultctl/commit/69854f965919c257285962db3af7e01adcf6afe1))
+
 ## [1.4.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.3.1...v1.4.0) (2026-05-17)
 
 
