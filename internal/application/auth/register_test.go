@@ -55,6 +55,15 @@ func validRegisterInput(t *testing.T) RegisterInput {
 }
 
 func newRegister() (*Register, *fakeUserRepo) {
+	uc, repo := newRegisterEmptyRepo()
+	// Pre-seed an owner so subsequent Execute calls exercise the normal
+	// (not-first-user) path. Tests that want to drive the first-user bypass
+	// should use newRegisterEmptyRepo directly.
+	seedOwner(repo)
+	return uc, repo
+}
+
+func newRegisterEmptyRepo() (*Register, *fakeUserRepo) {
 	repo := newFakeUserRepo()
 	uc := &Register{
 		Users:  repo,
@@ -64,6 +73,15 @@ func newRegister() (*Register, *fakeUserRepo) {
 		Policy: user.DefaultPolicy(),
 	}
 	return uc, repo
+}
+
+func seedOwner(repo *fakeUserRepo) {
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	id := user.ID("seed-owner")
+	repo.byID[id] = &user.User{ID: id, Role: user.RoleOwner}
+	repo.byEmail["seed-owner@example.com"] = id
+	repo.authHash[id] = "seed"
 }
 
 func TestRegister_HappyPath(t *testing.T) {
@@ -172,4 +190,64 @@ func TestRegister_RepoInfraError(t *testing.T) {
 		t.Fatalf("expected generic infra error, got %v", err)
 	}
 	_ = domain.ErrNotFound // silence unused import
+}
+
+// On a fresh install the first registration must succeed regardless of
+// RegistrationMode and the user must be promoted to owner. Without this,
+// an invite-only default leaves the operator with no way to bootstrap.
+func TestRegister_FirstUserBypass_InviteMode(t *testing.T) {
+	t.Parallel()
+	uc, _ := newRegisterEmptyRepo()
+	uc.RegistrationMode = RegistrationModeInvite
+	// No InviteToken supplied, no RedeemInvite wired — neither should matter.
+	in := validRegisterInput(t)
+	in.InviteToken = ""
+
+	out, err := uc.Execute(context.Background(), in)
+	if err != nil {
+		t.Fatalf("first-user bypass should succeed in invite mode, got %v", err)
+	}
+	if out.Role != user.RoleOwner {
+		t.Fatalf("first user must be promoted to owner, got %v", out.Role)
+	}
+}
+
+func TestRegister_FirstUserBypass_DisabledMode(t *testing.T) {
+	t.Parallel()
+	uc, _ := newRegisterEmptyRepo()
+	uc.RegistrationMode = RegistrationModeDisabled
+
+	out, err := uc.Execute(context.Background(), validRegisterInput(t))
+	if err != nil {
+		t.Fatalf("first-user bypass should succeed in disabled mode, got %v", err)
+	}
+	if out.Role != user.RoleOwner {
+		t.Fatalf("first user must be promoted to owner, got %v", out.Role)
+	}
+}
+
+// Once any user exists, the bypass is gone — invite mode without a token
+// must fail, and disabled mode must fail.
+func TestRegister_BypassExpiresAfterFirstUser_InviteMode(t *testing.T) {
+	t.Parallel()
+	uc, _ := newRegister() // seeds an owner
+	uc.RegistrationMode = RegistrationModeInvite
+	in := validRegisterInput(t)
+	in.InviteToken = ""
+
+	_, err := uc.Execute(context.Background(), in)
+	if !errors.Is(err, ErrInviteRequired) {
+		t.Fatalf("expected ErrInviteRequired after first user, got %v", err)
+	}
+}
+
+func TestRegister_BypassExpiresAfterFirstUser_DisabledMode(t *testing.T) {
+	t.Parallel()
+	uc, _ := newRegister() // seeds an owner
+	uc.RegistrationMode = RegistrationModeDisabled
+
+	_, err := uc.Execute(context.Background(), validRegisterInput(t))
+	if !errors.Is(err, ErrRegistrationDisabled) {
+		t.Fatalf("expected ErrRegistrationDisabled after first user, got %v", err)
+	}
 }
