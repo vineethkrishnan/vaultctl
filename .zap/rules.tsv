@@ -1,0 +1,30 @@
+# OWASP ZAP baseline scan rules for vaultctl.
+#
+# Format: <rule_id>\t<action>\t<notes>   (tab-separated; lines starting with # are comments)
+# Actions: IGNORE, INFO, WARN, FAIL
+# Wired into .github/workflows/zap.yml via the action's rules_file_name input.
+#
+# When adding a new suppression, link to the commit, PR, or external advisory
+# that justifies it. The next person to triage a ZAP issue will want to know
+# why a rule is silenced.
+
+# ----------------------------------------------------------------------------
+# 90005 — "Sec-Fetch-Dest / -Mode / -Site / -User header is missing"
+#
+# These are REQUEST headers a browser sends to the server, not RESPONSE
+# headers the server is supposed to emit. ZAP's baseline rule misclassifies
+# them as missing response headers because a curl/ZAP probe doesn't send
+# them. There is no server-side fix; flagging them is noise.
+# Reference: https://developer.mozilla.org/en-US/docs/Glossary/Fetch_metadata_request_header
+# ----------------------------------------------------------------------------
+90005	IGNORE	Sec-Fetch-* are request headers, not response headers
+
+# ----------------------------------------------------------------------------
+# 10049 — "Storable and Cacheable Content"
+#
+# Informational rule. Fires on /api/v1/health because that endpoint is a
+# public liveness probe with no sensitive content and no Cache-Control
+# header; downstream caching is intentional. Sensitive endpoints already
+# return Cache-Control: no-cache via the SecurityHeaders middleware.
+# ----------------------------------------------------------------------------
+10049	IGNORE	/api/v1/health is a public liveness probe; cacheability is intentional
