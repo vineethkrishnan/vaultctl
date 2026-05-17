@@ -5,11 +5,14 @@
 // Scope delivered in M10:
 //   - Root + version + help
 //   - `vaultctl server` — starts the API server
-//   - `vaultctl admin init` — bootstrap first admin user
 //   - `vaultctl backup` — trigger a backup (delegates to M12)
 //   - Stubs for login/logout/get/list/create — these need the TS crypto
 //     module (M6) for actual master-password-to-authHash derivation, so
 //     they're skeleton commands that document the expected UX.
+//
+// The first admin user is bootstrapped automatically: on a fresh install
+// (zero users), the first registration is promoted to owner regardless of
+// VAULTCTL_REGISTRATION_MODE. No CLI bootstrap command is needed.
 package cli
 
 import (
@@ -38,7 +41,7 @@ func NewRootCmd() *cobra.Command {
 	// Global --json flag — every client command honours it via isJSON().
 	root.PersistentFlags().Bool("json", false, "Emit JSON output instead of tables")
 
-	root.AddCommand(newServerCmd(), newHealthCheckCmd(), newAdminCmd(), newBackupCmd(), newMigrateCmd())
+	root.AddCommand(newServerCmd(), newHealthCheckCmd(), newBackupCmd(), newMigrateCmd())
 	root.AddCommand(newClientCmds()...)
 
 	return root

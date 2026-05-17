@@ -4,10 +4,13 @@
 //
 // Subcommands:
 //   - vaultctl server       Start the API server
+//   - vaultctl migrate up   Apply embedded database migrations
 //   - vaultctl backup       Create a PostgreSQL dump
 //   - vaultctl healthcheck  Probe /api/v1/health (used by container HEALTHCHECK)
-//   - vaultctl admin init   Bootstrap the first admin user
 //   - vaultctl <client>     Client commands (login, get, list, create, …) — M6 needed
+//
+// The first admin user is bootstrapped via the register flow: on a fresh
+// install (zero users), the first POST /auth/register is promoted to owner.
 
 // @title vaultctl API
 // @version 1.0

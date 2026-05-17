@@ -15,7 +15,9 @@ MIGRATE     ?= migrate
 
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(GIT_SHA)
+LDFLAGS := -s -w \
+	-X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Version=$(VERSION) \
+	-X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Commit=$(GIT_SHA)
 
 .PHONY: help
 help: ## Show this help

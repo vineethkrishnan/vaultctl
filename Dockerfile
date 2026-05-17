@@ -38,7 +38,9 @@ ARG COMMIT=dev
 ENV CGO_ENABLED=0 GOOS=linux
 RUN go build \
       -trimpath \
-      -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
+      -ldflags="-s -w \
+        -X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Version=${VERSION} \
+        -X github.com/vineethkrishnan/vaultctl/internal/presenters/cli.Commit=${COMMIT}" \
       -o /out/vaultctl \
       ./cmd/server
 
