@@ -6,6 +6,21 @@
 ### Features
 
 * **auth:** bootstrap first user as owner on fresh install ([#74](https://github.com/vineethkrishnan/vaultctl/issues/74)) ([b02e1aa](https://github.com/vineethkrishnan/vaultctl/commit/b02e1aad1d3c3b7a97990516ae53b5893cd99efb))
+* **web:** apply theme on first paint so pre-auth pages honor the user's preference ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
+* **web:** label every Field input via `htmlFor`/`id` for screen-reader access and automated tests ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
+
+
+### Bug Fixes
+
+* **build:** inject the binary version into the right symbol so `make build` and `docker build` no longer report `dev (dev)` ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
+* **build:** fall back to `CHANGELOG.md` for the version when building from a source tarball without `.git` ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
+* **compose:** point `docker-compose.yml` and `docker-compose.simple.yml` at the primary GHCR registry instead of the Docker Hub mirror ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
+* **cli:** remove the non-functional `vaultctl admin init` stub now that the first-user bypass supersedes it ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
+
+
+### Documentation
+
+* add `make` to the README development prerequisites and update the setup walkthrough screenshots ([#75](https://github.com/vineethkrishnan/vaultctl/issues/75)) ([b035baf](https://github.com/vineethkrishnan/vaultctl/commit/b035baf4f226d8c0116aa367d5b19f9eb8b622d1))
 
 ## [1.3.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.3.0...v1.3.1) (2026-05-10)
 
