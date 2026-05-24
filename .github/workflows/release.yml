@@ -86,7 +86,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: vineethnkrishnan/vaultctl
           short-description: "Zero-knowledge password vault. Self-hosted, E2E encrypted, open source."
-          readme-filepath: docs/initial/prd.md
+          readme-filepath: README.md
 
   deploy-docs:
     name: Deploy Docs (Cloudflare Pages)

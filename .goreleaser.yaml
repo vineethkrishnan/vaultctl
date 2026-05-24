@@ -37,7 +37,6 @@ archives:
     files:
       - LICENSE*
       - README*
-      - docs/initial/architecture.md
 
 checksum:
   name_template: 'checksums.txt'

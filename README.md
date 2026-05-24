@@ -9,8 +9,6 @@ Self-hosted, zero-knowledge password vault. Single Go binary serves the API and 
 
 Docs: [vaultctl.vinelabs.de](https://vaultctl.vinelabs.de)
 
-Full product spec: [`docs/initial/prd.md`](docs/initial/prd.md). Architecture, milestones, and threat model: [`docs/initial/architecture.md`](docs/initial/architecture.md).
-
 ## Quick start (self-host)
 
 ```bash
@@ -104,7 +102,6 @@ migrations/                   # *.sql, embedded into the binary
 web/                          # React + Vite SPA, embedded into the binary
 extension/                    # WXT + MV3 browser extension
 deploy/caddy/                 # Caddyfile for the bundled stack
-docs/initial/                 # PRD + architecture
 docs/security/                # release verification guide
 docs-site/                    # public docs site (deployed to Cloudflare Pages)
 ```

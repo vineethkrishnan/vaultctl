@@ -246,7 +246,6 @@ Fail-closed: if cosign errors, the deploy step fails, nothing ships.
 
 ## Related docs
 
-- `docs/initial/architecture.md` §M14 and §H13 — supply-chain rationale
 - `.goreleaser.yaml` — the build + sign configuration being verified
 - `.github/workflows/release.yml` — the workflow whose OIDC identity is
   baked into every certificate
