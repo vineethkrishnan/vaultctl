@@ -5,6 +5,7 @@ package api
 import (
 	"encoding/json"
 	"io/fs"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ type Dependencies struct {
 	Import             *ImportHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
+	TrustedProxies     []*net.IPNet
 	CORSAllowedOrigins []string
 	RegistrationMode   string
 	Env                string
@@ -47,7 +49,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(chimw.RequestID)
-	r.Use(chimw.RealIP)
+	r.Use(middleware.RealIP(deps.TrustedProxies))
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(60 * time.Second))
 	r.Use(middleware.SecurityHeaders())

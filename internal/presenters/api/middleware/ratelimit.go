@@ -90,16 +90,11 @@ func (l *RateLimiter) hit(m map[string]*bucket, key string, limit int, window ti
 	return true
 }
 
-// clientIP extracts the client IP, honouring X-Forwarded-For only when the
-// upstream middleware has validated the trusted-proxy list (chi's RealIP
-// does this when fronted by Caddy's trusted_proxies block — see
-// deploy/caddy/Caddyfile).
+// clientIP returns the validated client IP for rate-limit bucketing.
+// r.RemoteAddr is the single source of truth — the RealIP middleware
+// upstream has already resolved it against the trusted-proxy list, so
+// X-Forwarded-For cannot be spoofed past this point.
 func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// Take only the FIRST hop — subsequent hops can be spoofed.
-		parts := strings.SplitN(xff, ",", 2)
-		return strings.TrimSpace(parts[0])
-	}
 	host := r.RemoteAddr
 	if idx := strings.LastIndex(host, ":"); idx > 0 {
 		host = host[:idx]

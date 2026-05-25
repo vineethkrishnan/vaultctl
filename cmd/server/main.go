@@ -55,7 +55,10 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	if err != nil {
 		return nil, nil, err
 	}
-	deps := buildHandlers(cfg, adapters)
+	deps, err := buildHandlers(cfg, adapters)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
 	sched.Start()

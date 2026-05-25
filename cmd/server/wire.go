@@ -119,8 +119,13 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 }
 
 // buildHandlers constructs the use cases + API handler structs.
-func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
+func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	tokens := &jwtServiceAdapter{svc: a.jwt}
+
+	trustedProxies, err := middleware.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return api.Dependencies{}, fmt.Errorf("trusted proxies: %w", err)
+	}
 
 	// Audit writer (M13): cross-cutting side-effect sink. All handlers
 	// that mutate state share the same instance so a single INSERT path
@@ -273,10 +278,11 @@ func buildHandlers(cfg *config.Config, a *adapters) api.Dependencies {
 		},
 		APIKeyValidator:    apiKeyValidator,
 		RateLimiter:        a.rateLimiter,
+		TrustedProxies:     trustedProxies,
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 		RegistrationMode:   cfg.RegistrationMode,
 		Env:                string(cfg.Env),
-	}
+	}, nil
 }
 
 // jwtServiceAdapter bridges the infrastructure JWTService into the
