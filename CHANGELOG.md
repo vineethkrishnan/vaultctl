@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.2...v1.4.3) (2026-05-25)
+
+
+### Bug Fixes
+
+* **security:** tighten cross-origin-resource-policy to same-origin ([#95](https://github.com/vineethkrishnan/vaultctl/issues/95)) ([dc58625](https://github.com/vineethkrishnan/vaultctl/commit/dc5862588441a473cd3fed0bf62e37a56a7056c9))
+
 ## [1.4.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.1...v1.4.2) (2026-05-25)
 
 
