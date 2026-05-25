@@ -40,7 +40,10 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 			h.Set("Referrer-Policy", "no-referrer")
 			h.Set("Permissions-Policy", "interest-cohort=(), geolocation=(), camera=(), microphone=()")
 			h.Set("Cross-Origin-Opener-Policy", "same-origin")
-			h.Set("Cross-Origin-Resource-Policy", "same-site")
+			// same-origin (not same-site) because vault responses must not
+			// be embeddable by sibling subdomains. ZAP 90004 also requires
+			// the stricter value to clear cleanly.
+			h.Set("Cross-Origin-Resource-Policy", "same-origin")
 			h.Set("X-Frame-Options", "DENY")
 			next.ServeHTTP(w, r)
 		})
