@@ -11,6 +11,14 @@ updates:
       prefix: "chore(deps)"
     labels:
       - dependencies
+    ignore:
+      # chi 5.3.0 deprecates middleware.RealIP for IP spoofing
+      # (GHSA-3fxj-6jh8-hvhx et al). Our own ClientIP helper in
+      # internal/presenters/api/middleware/ip.go has the same flaw, so
+      # the chi upgrade needs to land together with a trusted-proxy
+      # resolver. Lift this pin once that ships.
+      - dependency-name: "github.com/go-chi/chi/v5"
+        versions: [">=5.3.0"]
     groups:
       production:
         dependency-type: production
