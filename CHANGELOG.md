@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.1...v1.4.2) (2026-05-25)
+
+
+### Bug Fixes
+
+* **security:** validate x-forwarded-for against trusted proxies ([#93](https://github.com/vineethkrishnan/vaultctl/issues/93)) ([1e533ab](https://github.com/vineethkrishnan/vaultctl/commit/1e533ab271277aba1e01795bbb655f560097d6b6))
+
 ## [1.4.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.0...v1.4.1) (2026-05-17)
 
 
