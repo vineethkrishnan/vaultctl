@@ -80,7 +80,11 @@ type Config struct {
 	AuthRateLimitPerEmail    int           `env:"VAULTCTL_AUTH_RATE_LIMIT_PER_EMAIL" envDefault:"5"`
 	AuthRateLimitWindow      time.Duration `env:"VAULTCTL_AUTH_RATE_LIMIT_WINDOW" envDefault:"15m"`
 	AuthGlobalAlertThreshold int           `env:"VAULTCTL_AUTH_GLOBAL_ALERT_THRESHOLD" envDefault:"1000"`
-	TrustedProxies           []string      `env:"VAULTCTL_TRUSTED_PROXIES" envDefault:"127.0.0.1/32" envSeparator:","`
+	// CIDRs trusted to set X-Forwarded-For. Defaults to loopback + RFC1918
+	// because both shipped compose stacks (Caddy + simple) put the proxy on
+	// a private network. Override to a stricter list when running with a
+	// public-IP proxy. An empty list disables XFF entirely.
+	TrustedProxies           []string      `env:"VAULTCTL_TRUSTED_PROXIES" envDefault:"127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1/128,fc00::/7" envSeparator:","`
 	StepUpMaxAge             time.Duration `env:"VAULTCTL_STEP_UP_MAX_AGE" envDefault:"5m"`
 	CORSAllowedOrigins       []string      `env:"VAULTCTL_CORS_ALLOWED_ORIGINS" envSeparator:","`
 
