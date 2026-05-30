@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { apiGet } from "@/lib/api-client";
@@ -16,6 +16,8 @@ import {
   Terminal,
   Fingerprint,
   Star,
+  Search,
+  ChevronRight,
 } from "lucide-react";
 
 const ITEM_TYPE_ICONS: Record<string, typeof KeyRound> = {
@@ -40,6 +42,16 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 
 interface DecryptedItem extends ItemResponse {
   decryptedName: string;
+}
+
+// Deterministic gradient per item name — gives each row a scannable identity.
+function avatarStyle(name: string): CSSProperties {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return {
+    background: `linear-gradient(135deg, hsl(${hue} 52% 46%), hsl(${(hue + 45) % 360} 58% 38%))`,
+  };
 }
 
 export function ItemList() {
@@ -68,6 +80,7 @@ export function ItemList() {
   });
 
   const [decryptedItems, setDecryptedItems] = useState<DecryptedItem[]>([]);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     if (!items) return;
@@ -92,9 +105,15 @@ export function ItemList() {
     };
   }, [items, vaultId]);
 
+  const visible = useMemo(() => {
+    const needle = filter.trim().toLowerCase();
+    if (!needle) return decryptedItems;
+    return decryptedItems.filter((i) => i.decryptedName.toLowerCase().includes(needle));
+  }, [decryptedItems, filter]);
+
   if (vaultId === "none") {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card/40 py-20 text-center">
         <p className="text-muted-foreground">No vaults found.</p>
       </div>
     );
@@ -102,12 +121,15 @@ export function ItemList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-14 animate-pulse rounded-md bg-muted"
-          />
+      <div className="overflow-hidden rounded-xl border border-border bg-card/40">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3.5 px-4 py-3">
+            <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-16 animate-pulse rounded bg-muted/70" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -115,7 +137,7 @@ export function ItemList() {
 
   if (error) {
     return (
-      <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
         Failed to load items
       </div>
     );
@@ -123,7 +145,10 @@ export function ItemList() {
 
   if (!decryptedItems.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="animate-scale-in flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 py-20 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
+          <KeyRound className="h-6 w-6" />
+        </div>
         <p className="text-lg font-medium">No items yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Create your first item to get started.
@@ -131,7 +156,7 @@ export function ItemList() {
         <Link
           to="/vault/$vaultId/items/new"
           params={{ vaultId }}
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
         >
           Create Item
         </Link>
@@ -140,31 +165,55 @@ export function ItemList() {
   }
 
   return (
-    <div className="space-y-1">
-      {decryptedItems.map((item) => {
-        const Icon = ITEM_TYPE_ICONS[item.itemType] ?? KeyRound;
-        return (
-          <Link
-            key={item.id}
-            to="/vault/$vaultId/items/$itemId"
-            params={{ vaultId, itemId: item.id }}
-            className="flex items-center gap-3 rounded-md px-3 py-2.5 hover:bg-accent/50 [&.active]:bg-accent"
-          >
-            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">
-                {item.decryptedName}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {ITEM_TYPE_LABELS[item.itemType] ?? item.itemType}
-              </div>
-            </div>
-            {item.favorite && (
-              <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-500 text-yellow-500" />
-            )}
-          </Link>
-        );
-      })}
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search items"
+          className="w-full rounded-lg border border-border bg-card/50 py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
+        />
+      </div>
+
+      {!visible.length ? (
+        <div className="rounded-xl border border-border bg-card/40 py-12 text-center text-sm text-muted-foreground">
+          No items match "{filter}".
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card/40 backdrop-blur-sm">
+          {visible.map((item, i) => {
+            const Icon = ITEM_TYPE_ICONS[item.itemType] ?? KeyRound;
+            return (
+              <Link
+                key={item.id}
+                to="/vault/$vaultId/items/$itemId"
+                params={{ vaultId, itemId: item.id }}
+                style={{ animationDelay: `${Math.min(i, 18) * 28}ms` }}
+                className="row-interactive animate-fade-up group flex items-center gap-3.5 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-accent/50 [&.active]:bg-accent"
+              >
+                <span
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
+                  style={avatarStyle(item.decryptedName)}
+                >
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{item.decryptedName}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {ITEM_TYPE_LABELS[item.itemType] ?? item.itemType}
+                  </div>
+                </div>
+                {item.favorite && (
+                  <Star className="h-4 w-4 shrink-0 fill-yellow-500 text-yellow-500" />
+                )}
+                <ChevronRight className="h-4 w-4 shrink-0 -translate-x-1 text-muted-foreground opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

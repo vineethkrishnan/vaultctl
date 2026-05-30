@@ -23,6 +23,9 @@ import {
   Settings,
 } from "lucide-react";
 
+const navLink =
+  "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
+
 export function VaultSidebar() {
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
   const logout = useAuthStore((s) => s.logout);
@@ -46,32 +49,30 @@ export function VaultSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-64 flex-col border-r border-border bg-card/60 backdrop-blur-md">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <Shield className="h-5 w-5 text-primary" />
-        <span className="text-lg font-semibold">vaultctl</span>
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand">
+          <Shield className="h-[18px] w-[18px]" />
+        </span>
+        <span className="text-lg font-semibold tracking-tight">vaultctl</span>
       </div>
 
       {/* Vault selector */}
-      <div className="border-b border-border px-3 py-2">
-        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="border-b border-border px-3 py-3">
+        <div className="px-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Vaults
         </div>
-        <div className="mt-1 space-y-0.5">
+        <div className="mt-1.5 space-y-0.5">
           {vaults?.map((v) => (
             <Link
               key={v.id}
               to="/vault/$vaultId"
               params={{ vaultId: v.id }}
-              className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                v.id === activeVault?.id
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              }`}
+              className={`${navLink} ${v.id === activeVault?.id ? "active" : ""}`}
             >
-              <KeyRound className="h-4 w-4" />
-              {v.name}
+              <KeyRound className="h-4 w-4 shrink-0" />
+              <span className="truncate">{v.name}</span>
             </Link>
           ))}
         </div>
@@ -79,11 +80,11 @@ export function VaultSidebar() {
 
       {/* Navigation */}
       {activeVault && (
-        <nav className="flex-1 space-y-1 px-3 py-2">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
           <Link
             to="/vault/$vaultId"
             params={{ vaultId: activeVault.id }}
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
+            className={navLink}
             activeOptions={{ exact: true }}
           >
             <FolderClosed className="h-4 w-4" />
@@ -93,7 +94,7 @@ export function VaultSidebar() {
             to="/vault/$vaultId"
             params={{ vaultId: activeVault.id }}
             search={{ favorites: true } as never}
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            className={navLink}
           >
             <Star className="h-4 w-4" />
             Favorites
@@ -101,7 +102,7 @@ export function VaultSidebar() {
           <Link
             to="/vault/$vaultId/trash"
             params={{ vaultId: activeVault.id }}
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
+            className={navLink}
           >
             <Trash2 className="h-4 w-4" />
             Trash
@@ -116,7 +117,7 @@ export function VaultSidebar() {
             <Link
               to="/vault/$vaultId/items/new"
               params={{ vaultId: activeVault.id }}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary hover:bg-accent/50"
+              className="row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-brand hover:bg-brand/10 hover:translate-x-0.5"
             >
               <Plus className="h-4 w-4" />
               New Item
@@ -126,31 +127,22 @@ export function VaultSidebar() {
       )}
 
       {/* Footer actions */}
-      <div className="border-t border-border px-3 py-2 space-y-0.5">
-        <Link
-          to="/settings"
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
-        >
+      <div className="space-y-0.5 border-t border-border px-3 py-3">
+        <Link to="/settings" className={navLink}>
           <Settings className="h-4 w-4" />
           Settings
         </Link>
-        <button
-          onClick={toggleTheme}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-        >
+        <button onClick={toggleTheme} className={`${navLink} w-full`}>
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
-        <button
-          onClick={handleLock}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-        >
+        <button onClick={handleLock} className={`${navLink} w-full`}>
           <Lock className="h-4 w-4" />
           Lock Vault
         </button>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          className="row-interactive flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:translate-x-0.5"
         >
           <LogOut className="h-4 w-4" />
           Log Out
