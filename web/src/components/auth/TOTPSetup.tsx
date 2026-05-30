@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { Shield, Check } from "lucide-react";
 import { QRCode } from "@/components/ui/QRCode";
+import { StepUpModal } from "./StepUpModal";
 
 interface SetupResponse {
   secret: string;
@@ -31,6 +32,7 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showStepUp, setShowStepUp] = useState(false);
 
   async function handleSetup() {
     setLoading(true);
@@ -41,7 +43,9 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
       setOtpauthUrl(res.otpauthUrl);
       setStep("verify");
     } catch (err) {
-      if (err instanceof ApiRequestError) {
+      if (err instanceof ApiRequestError && err.error.code === "STEP_UP_REQUIRED") {
+        setShowStepUp(true);
+      } else if (err instanceof ApiRequestError) {
         setError(err.error.message);
       } else {
         setError("Failed to setup TOTP");
@@ -102,6 +106,14 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
         {error && (
           <div className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</div>
         )}
+        <StepUpModal
+          open={showStepUp}
+          onSuccess={() => {
+            setShowStepUp(false);
+            void handleSetup();
+          }}
+          onCancel={() => setShowStepUp(false)}
+        />
       </div>
     );
   }
