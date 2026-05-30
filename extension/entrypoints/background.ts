@@ -37,6 +37,7 @@ interface VaultKeyMaterial {
   vaultId: string;
   encryptedVaultKey: string;
   vaultType?: "personal" | "shared";
+  vaultName?: string;
 }
 
 interface CapturedLogin {
@@ -67,6 +68,7 @@ let stretchedKey: Uint8Array | null = null;
 let rsaPrivateKey: CryptoKey | null = null;
 const identityKey: { value: CryptoKey | null } = { value: null };
 const vaultKeys = new Map<string, Uint8Array>();
+const vaultMeta = new Map<string, { name: string; type: string }>();
 
 const capturedLogins: CapturedLogin[] = [];
 
@@ -100,6 +102,7 @@ function doLock(): void {
     zero(vaultKey);
   }
   vaultKeys.clear();
+  vaultMeta.clear();
   if (autoLockTimer) {
     clearTimeout(autoLockTimer);
     autoLockTimer = undefined;
@@ -202,6 +205,10 @@ async function handleInit(payload: {
     }
 
     vaultKeys.set(vault.vaultId, vaultKeyBytes);
+    vaultMeta.set(vault.vaultId, {
+      name: vault.vaultName ?? "Vault",
+      type: vault.vaultType ?? "personal",
+    });
   }
 
   devLog("initialised", vaultKeys.size, "vault keys");
@@ -239,6 +246,21 @@ export default defineBackground(() => {
                 isAuthenticated: !!accessToken,
                 isUnlocked: stretchedKey !== null,
                 vaultCount: vaultKeys.size,
+              });
+              return;
+            }
+
+            case "getSession": {
+              // Lets the popup resume after it was closed while the worker
+              // stayed unlocked. The token never leaves the extension.
+              sendResponse({
+                isUnlocked: stretchedKey !== null,
+                accessToken,
+                vaults: [...vaultMeta.entries()].map(([id, meta]) => ({
+                  id,
+                  name: meta.name,
+                  type: meta.type,
+                })),
               });
               return;
             }
@@ -301,12 +323,9 @@ export default defineBackground(() => {
               const vaultKey = getVaultKey(vaultId);
               const parsedBlob = parseBlob(fromBase64(blobBase64));
               const plaintextBytes = await aesGcmDecrypt(vaultKey, parsedBlob);
-              // Transfer the underlying buffer slice rather than the raw Uint8Array
-              const plainBuffer = plaintextBytes.buffer.slice(
-                plaintextBytes.byteOffset,
-                plaintextBytes.byteOffset + plaintextBytes.byteLength,
-              );
-              sendResponse({ ok: true, plaintext: plainBuffer });
+              // runtime.sendMessage JSON-serializes, which drops ArrayBuffers —
+              // return base64 and let the caller decode.
+              sendResponse({ ok: true, plaintextB64: toBase64(plaintextBytes) });
               return;
             }
 
