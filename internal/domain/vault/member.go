@@ -24,14 +24,14 @@ import (
 //   - Personal vaults: EncryptedVaultKey.Alg == AlgAES256KW (M4)
 //   - Shared vaults:   EncryptedVaultKey.Alg == AlgRSAOAEPSHA256
 type Member struct {
-	VaultID            ID
-	UserID             user.ID
-	EncryptedVaultKey  crypto.EncryptedBlob
-	SenderID           user.ID
-	WrapSignature      crypto.Signature
-	Role               user.Role
-	RemovedAt          *time.Time
-	AddedAt            time.Time
+	VaultID           ID
+	UserID            user.ID
+	EncryptedVaultKey crypto.EncryptedBlob
+	SenderID          user.ID
+	WrapSignature     crypto.Signature
+	Role              user.Role
+	RemovedAt         *time.Time
+	AddedAt           time.Time
 }
 
 // Validate asserts the Member invariants. It does NOT verify the signature

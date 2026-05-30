@@ -14,7 +14,7 @@ import (
 
 const (
 	trashPurgeSchedule   = "0 3 * * *" // daily at 3 AM
-	sessionPurgeSchedule = "0 * * * *"  // every hour
+	sessionPurgeSchedule = "0 * * * *" // every hour
 	jobTimeout           = 30 * time.Second
 )
 

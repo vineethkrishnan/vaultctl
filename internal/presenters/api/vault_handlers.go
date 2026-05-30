@@ -17,24 +17,24 @@ import (
 
 // VaultHandlers ties HTTP to the vault use cases.
 type VaultHandlers struct {
-	ListVaults         *appvault.ListVaults
-	CreateVault        *appvault.CreateVault
-	CreateItem         *appvault.CreateItem
-	GetItem            *appvault.GetItem
-	UpdateItem         *appvault.UpdateItem
-	TrashItem          *appvault.TrashItem
-	RestoreItem        *appvault.RestoreItem
-	PurgeItem          *appvault.PurgeItem
-	PurgeExpiredTrash  *appvault.PurgeExpiredTrashInVault
-	ListActive         *appvault.ListActive
-	ListTrash          *appvault.ListTrash
-	CreateFolder       *appvault.CreateFolder
-	RenameFolder       *appvault.RenameFolder
-	DeleteFolder       *appvault.DeleteFolder
-	ListFolders        *appvault.ListFolders
-	ShareVault         *appvault.ShareVault
-	RemoveMember       *appvault.RemoveMember
-	RekeyVault         *appvault.RekeyVault
+	ListVaults        *appvault.ListVaults
+	CreateVault       *appvault.CreateVault
+	CreateItem        *appvault.CreateItem
+	GetItem           *appvault.GetItem
+	UpdateItem        *appvault.UpdateItem
+	TrashItem         *appvault.TrashItem
+	RestoreItem       *appvault.RestoreItem
+	PurgeItem         *appvault.PurgeItem
+	PurgeExpiredTrash *appvault.PurgeExpiredTrashInVault
+	ListActive        *appvault.ListActive
+	ListTrash         *appvault.ListTrash
+	CreateFolder      *appvault.CreateFolder
+	RenameFolder      *appvault.RenameFolder
+	DeleteFolder      *appvault.DeleteFolder
+	ListFolders       *appvault.ListFolders
+	ShareVault        *appvault.ShareVault
+	RemoveMember      *appvault.RemoveMember
+	RekeyVault        *appvault.RekeyVault
 
 	// Audit is the cross-cutting audit-log writer (M13).
 	Audit *audit.Writer
@@ -234,9 +234,9 @@ func (h *VaultHandlers) HandleUpdateItem(w http.ResponseWriter, r *http.Request)
 		folderID = &v
 	}
 	it, err := h.UpdateItem.Execute(r.Context(), appvault.UpdateItemInput{
-		Caller:  middleware.CallerID(r.Context()),
-		VaultID: vault.ID(chi.URLParam(r, "vaultId")),
-		ItemID:  vault.ItemID(chi.URLParam(r, "id")),
+		Caller:   middleware.CallerID(r.Context()),
+		VaultID:  vault.ID(chi.URLParam(r, "vaultId")),
+		ItemID:   vault.ItemID(chi.URLParam(r, "id")),
 		FolderID: folderID, EncryptedData: data, EncryptedName: name,
 		Favorite: req.Favorite, Reprompt: req.Reprompt,
 	})

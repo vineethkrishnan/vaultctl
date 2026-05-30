@@ -132,11 +132,11 @@ type ItemReblob struct {
 }
 
 // RekeyVaultInput is the full rekey submission (C2). The admin client:
-//   1. Decrypts every item with the OLD vault key (client-side).
-//   2. Generates a NEW vault key.
-//   3. Re-encrypts every item.
-//   4. Re-wraps the new vault key for every remaining member.
-//   5. Submits all new blobs in one transaction.
+//  1. Decrypts every item with the OLD vault key (client-side).
+//  2. Generates a NEW vault key.
+//  3. Re-encrypts every item.
+//  4. Re-wraps the new vault key for every remaining member.
+//  5. Submits all new blobs in one transaction.
 type RekeyVaultInput struct {
 	Caller  user.ID
 	VaultID domainvault.ID

@@ -75,7 +75,7 @@ type Register struct {
 	Encrypter        ports.DataEncrypter // optional — for password hint encryption (H4)
 	Policy           user.MasterPasswordPolicy
 	DefaultRole      user.Role
-	RegistrationMode string // "open", "invite", "disabled"
+	RegistrationMode string        // "open", "invite", "disabled"
 	RedeemInvite     *RedeemInvite // nil when mode is "open"
 }
 

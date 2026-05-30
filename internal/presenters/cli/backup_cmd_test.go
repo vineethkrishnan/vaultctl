@@ -14,19 +14,19 @@ func TestPruneOldBackups(t *testing.T) {
 	dir := t.TempDir()
 
 	now := time.Now()
-	old := now.Add(-100 * 24 * time.Hour) // 100 days old
+	old := now.Add(-100 * 24 * time.Hour)  // 100 days old
 	fresh := now.Add(-10 * 24 * time.Hour) // 10 days old
 
 	// Matrix of fixtures: name → mtime → should-be-pruned
 	fixtures := []struct {
-		name    string
-		mtime   time.Time
-		pruned  bool
+		name   string
+		mtime  time.Time
+		pruned bool
 	}{
 		{"vaultctl-20260101-000000.dump", old, true},
 		{"vaultctl-20260401-000000.dump", fresh, false},
-		{".env", old, false},            // unrelated — retention must NOT touch it
-		{"unrelated.txt", old, false},   // foreign file — leave alone
+		{".env", old, false},               // unrelated — retention must NOT touch it
+		{"unrelated.txt", old, false},      // foreign file — leave alone
 		{"vaultctl-stray.txt", old, false}, // wrong suffix — leave alone
 	}
 

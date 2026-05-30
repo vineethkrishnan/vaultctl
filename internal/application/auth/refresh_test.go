@@ -35,11 +35,11 @@ func seedSession(t *testing.T, repo *fakeUserRepo, sess *fakeSessionStore, rawTo
 		t.Fatalf("hash: %v", err)
 	}
 	s := user.Session{
-		ID:         user.SessionID("s-1"),
-		UserID:     user.ID("u1"),
-		TokenHash:  hash,
-		ExpiresAt:  expiresAt,
-		CreatedAt:  time.Unix(1_700_000_000, 0).UTC(),
+		ID:        user.SessionID("s-1"),
+		UserID:    user.ID("u1"),
+		TokenHash: hash,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Unix(1_700_000_000, 0).UTC(),
 	}
 	if err := sess.Create(context.Background(), s); err != nil {
 		t.Fatalf("seed session: %v", err)

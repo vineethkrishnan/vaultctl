@@ -41,14 +41,14 @@ type VaultMembership struct {
 // LoginOutput is returned on success. encrypted_private_key + vault key
 // material travels back so the client can hydrate its Web Worker scope (M9).
 type LoginOutput struct {
-	UserID              user.ID
-	Role                user.Role
-	AccessToken         string
-	RefreshToken        string
-	SessionID           user.SessionID
-	AccessExpiresAt     time.Time
-	RefreshExpiresAt    time.Time
-	UpgradeAuthHash     bool // tells caller to re-hash + persist (Argon2 param bump)
+	UserID           user.ID
+	Role             user.Role
+	AccessToken      string
+	RefreshToken     string
+	SessionID        user.SessionID
+	AccessExpiresAt  time.Time
+	RefreshExpiresAt time.Time
+	UpgradeAuthHash  bool // tells caller to re-hash + persist (Argon2 param bump)
 
 	// User crypto material for client-side key hydration
 	EncryptedPrivateKey         crypto.EncryptedBlob

@@ -30,10 +30,10 @@ func (s *SessionStore) FindByTokenHash(ctx context.Context, h user.RefreshTokenH
 		FROM sessions WHERE refresh_token_hash = $1
 	`, h.Bytes())
 	var (
-		id, uid, device, ip     string
-		hashBytes               []byte
-		lastRefresh             *time.Time
-		expiresAt, createdAt    time.Time
+		id, uid, device, ip  string
+		hashBytes            []byte
+		lastRefresh          *time.Time
+		expiresAt, createdAt time.Time
 	)
 	err := row.Scan(&id, &uid, &hashBytes, &device, &ip, &lastRefresh, &expiresAt, &createdAt)
 	if errors.Is(err, pgx.ErrNoRows) {
