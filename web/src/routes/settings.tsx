@@ -10,7 +10,17 @@ import { ExportDialog } from "@/components/vault/ExportDialog";
 import { RestoreDialog } from "@/components/vault/RestoreDialog";
 import { SessionsPanel } from "@/components/settings/SessionsPanel";
 import { AboutPanel } from "@/components/settings/AboutPanel";
-import { Settings, Shield, Clock, User, Key, Check } from "lucide-react";
+import {
+  Settings,
+  Shield,
+  Clock,
+  User,
+  Key,
+  Check,
+  Monitor,
+  Database,
+  Info,
+} from "lucide-react";
 
 const LOCK_OPTIONS = [
   { label: "1 minute", value: 60_000 },
@@ -21,9 +31,21 @@ const LOCK_OPTIONS = [
   { label: "Never", value: 0 },
 ];
 
+type TabId = "profile" | "security" | "sessions" | "data" | "about";
+
+const TABS: { id: TabId; label: string; icon: typeof User }[] = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "security", label: "Security", icon: Shield },
+  { id: "sessions", label: "Sessions", icon: Monitor },
+  { id: "data", label: "Data", icon: Database },
+  { id: "about", label: "About", icon: Info },
+];
+
 export function SettingsPage() {
   const userId = useAuthStore((s) => s.userId);
   const identityPubKey = sessionStorage.getItem("vaultctl_id_pubkey") ?? "";
+
+  const [tab, setTab] = useState<TabId>("profile");
 
   const [lockTimeout, setLockTimeout] = useState(() => {
     const stored = localStorage.getItem("vaultctl_lock_timeout");
@@ -41,140 +63,169 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-muted-foreground" />
         <h1 className="text-xl font-bold">Settings</h1>
       </div>
 
-      {/* Profile */}
-      <section className="space-y-3 rounded-lg border border-border p-4">
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Profile</h2>
-        </div>
-        <div className="space-y-1 text-sm">
-          <div>
-            <span className="text-muted-foreground">User ID: </span>
-            <span className="font-mono">{userId}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Email: </span>
-            <span>{sessionStorage.getItem("vaultctl_email") ?? "—"}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Security */}
-      <section className="space-y-4 rounded-lg border border-border p-4">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <h2 className="font-semibold">Security</h2>
-        </div>
-
-        {/* Auto-lock */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-            <label className="text-sm font-medium">Auto-lock timeout</label>
-          </div>
-          <select
-            value={lockTimeout}
-            onChange={(e) => handleLockTimeoutChange(Number(e.target.value))}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            {LOCK_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* TOTP */}
-        <div className="space-y-2 border-t border-border pt-4">
-          <div className="flex items-center gap-2">
-            <Key className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-sm font-medium">Two-Factor Authentication</span>
-            {totpEnabled && (
-              <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
-                <Check className="h-3 w-3" /> Enabled
-              </span>
-            )}
-          </div>
-          {showTOTPSetup ? (
-            <TOTPSetup
-              onComplete={() => {
-                setShowTOTPSetup(false);
-                setTotpEnabled(true);
-              }}
-              onCancel={() => setShowTOTPSetup(false)}
-            />
-          ) : (
+      {/* Tab bar */}
+      <div className="flex gap-1 overflow-x-auto border-b border-border">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.id;
+          return (
             <button
-              onClick={() => setShowTOTPSetup(true)}
-              disabled={totpEnabled}
-              className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "border-brand text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
             >
-              {totpEnabled ? "2FA is enabled" : "Enable 2FA"}
+              <Icon className="h-4 w-4" />
+              {t.label}
             </button>
-          )}
-        </div>
+          );
+        })}
+      </div>
 
-        {/* Password Change */}
-        <div className="space-y-2 border-t border-border pt-4">
-          {showPasswordChange ? (
-            <PasswordChangeForm
-              onComplete={() => {
-                setShowPasswordChange(false);
-                setPasswordChanged(true);
-              }}
-            />
-          ) : (
-            <div>
-              <button
-                onClick={() => setShowPasswordChange(true)}
-                className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+      <div key={tab} className="animate-fade-up space-y-6">
+        {tab === "profile" && (
+          <section className="space-y-3 rounded-lg border border-border p-4">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Profile</h2>
+            </div>
+            <div className="space-y-1 text-sm">
+              <div>
+                <span className="text-muted-foreground">User ID: </span>
+                <span className="font-mono">{userId}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Email: </span>
+                <span>{sessionStorage.getItem("vaultctl_email") ?? "—"}</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {tab === "security" && (
+          <section className="space-y-4 rounded-lg border border-border p-4">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">Security</h2>
+            </div>
+
+            {/* Auto-lock */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <label className="text-sm font-medium">Auto-lock timeout</label>
+              </div>
+              <select
+                value={lockTimeout}
+                onChange={(e) => handleLockTimeoutChange(Number(e.target.value))}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                Change Master Password
-              </button>
-              {passwordChanged && (
-                <span className="ml-2 text-sm text-green-500">Password changed</span>
+                {LOCK_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* TOTP */}
+            <div className="space-y-2 border-t border-border pt-4">
+              <div className="flex items-center gap-2">
+                <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  Two-Factor Authentication
+                </span>
+                {totpEnabled && (
+                  <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
+                    <Check className="h-3 w-3" /> Enabled
+                  </span>
+                )}
+              </div>
+              {showTOTPSetup ? (
+                <TOTPSetup
+                  onComplete={() => {
+                    setShowTOTPSetup(false);
+                    setTotpEnabled(true);
+                  }}
+                  onCancel={() => setShowTOTPSetup(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setShowTOTPSetup(true)}
+                  disabled={totpEnabled}
+                  className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  {totpEnabled ? "2FA is enabled" : "Enable 2FA"}
+                </button>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Safety Number */}
-        {identityPubKey && (
-          <div className="border-t border-border pt-4">
-            <SafetyNumber identityPublicKey={identityPubKey} />
-          </div>
+            {/* Password Change */}
+            <div className="space-y-2 border-t border-border pt-4">
+              {showPasswordChange ? (
+                <PasswordChangeForm
+                  onComplete={() => {
+                    setShowPasswordChange(false);
+                    setPasswordChanged(true);
+                  }}
+                />
+              ) : (
+                <div>
+                  <button
+                    onClick={() => setShowPasswordChange(true)}
+                    className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Change Master Password
+                  </button>
+                  {passwordChanged && (
+                    <span className="ml-2 text-sm text-green-500">
+                      Password changed
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Safety Number */}
+            {identityPubKey && (
+              <div className="border-t border-border pt-4">
+                <SafetyNumber identityPublicKey={identityPubKey} />
+              </div>
+            )}
+          </section>
         )}
-      </section>
 
-      {/* Sessions */}
-      <section className="rounded-lg border border-border p-4">
-        <SessionsPanel />
-      </section>
+        {tab === "sessions" && (
+          <section className="rounded-lg border border-border p-4">
+            <SessionsPanel />
+          </section>
+        )}
 
-      {/* Import */}
-      <section className="rounded-lg border border-border p-4">
-        <ImportDialog />
-      </section>
+        {tab === "data" && (
+          <>
+            <section className="rounded-lg border border-border p-4">
+              <ImportDialog />
+            </section>
+            <section className="rounded-lg border border-border p-4">
+              <ExportDialog />
+            </section>
+            <section className="rounded-lg border border-border p-4">
+              <RestoreDialog />
+            </section>
+          </>
+        )}
 
-      {/* Export */}
-      <section className="rounded-lg border border-border p-4">
-        <ExportDialog />
-      </section>
-
-      {/* Restore */}
-      <section className="rounded-lg border border-border p-4">
-        <RestoreDialog />
-      </section>
-
-      {/* About */}
-      <AboutPanel />
+        {tab === "about" && <AboutPanel />}
+      </div>
     </div>
   );
 }
