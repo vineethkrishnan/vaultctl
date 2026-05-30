@@ -1,8 +1,8 @@
 # Simple compose variant: NO Caddy. Use when fronting vaultctl with your own
 # reverse proxy (nginx, Traefik, Cloudflare Tunnel, etc.).
 #
-# The API server is exposed on 127.0.0.1:8080 only — never bind 0.0.0.0
-# without a TLS-terminating proxy in front.
+# The API server is exposed on 127.0.0.1 only (port from VAULTCTL_HOST_PORT,
+# default 8080) — never bind 0.0.0.0 without a TLS-terminating proxy in front.
 
 name: vaultctl-simple
 
@@ -18,7 +18,7 @@ services:
       VAULTCTL_DB_SSL_INSECURE_OK: "true"
       VAULTCTL_DB_HOST: vaultctl-db
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${VAULTCTL_HOST_PORT:-8080}:8080"
     networks:
       - vaultctl-net
     depends_on:

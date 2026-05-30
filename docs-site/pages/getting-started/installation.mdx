@@ -4,25 +4,34 @@ import { Tabs, Callout, Steps } from 'nextra/components'
 
 ## One-Line Installer (Recommended)
 
-The interactive installer detects your OS, installs Docker if needed, generates secrets, configures TLS, and starts everything.
+The interactive installer works on Linux and macOS. It installs Docker if missing, starts the daemon, generates every secret, writes `.env`, applies database migrations, and brings the stack up.
 
 ```bash
-curl -fsSL https://vaultctl.dev/install.sh | bash
+curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash
 ```
 
 **What it does:**
 
-1. Checks for Docker (installs if missing)
-2. Pulls the latest vaultctl + PostgreSQL images
-3. Generates cryptographic secrets (JWT, HMAC, encryption keys)
-4. Asks for your domain name
-5. Configures Caddy for automatic HTTPS via Let's Encrypt
-6. Starts all services
-7. Runs database migrations
-8. Prints your vault URL
+1. Checks for Docker and the Compose plugin (installs Docker if missing, starts the daemon)
+2. Downloads the vaultctl source into your chosen install directory
+3. Asks how to deploy:
+   - **Full stack** — Caddy auto-TLS + vaultctl + Postgres (prompts for a public domain)
+   - **Simple** — vaultctl + Postgres bound to `127.0.0.1:PORT` (prompts for the port; front it with your own reverse proxy)
+4. Generates cryptographic secrets (JWT, peppers, data-encryption key) and writes `.env`
+5. Pulls the vaultctl + PostgreSQL images and starts all services
+6. Applies database migrations automatically
+7. Waits for the health check and prints your vault URL
 
 <Callout type="info">
-  The installer is fully interactive — it prompts before every action. You can review each step before proceeding.
+  The installer is fully interactive — it reads every prompt from your terminal, so it works even when piped through `curl ... | bash`. Each prompt has a sensible default.
+</Callout>
+
+<Callout type="warning">
+  **macOS:** the installer uses [Homebrew](https://brew.sh) to install a headless Docker runtime ([colima](https://github.com/abiosoft/colima) + the `docker` CLI) when Docker is not already present, then runs `colima start` for you. Install Homebrew first if you don't have it. Docker Desktop also works if it's already installed.
+</Callout>
+
+<Callout type="info">
+  **Unattended installs:** export any of these before running to skip the matching prompt — `VAULTCTL_INSTALL_DIR`, `VAULTCTL_MODE` (`1` full / `2` simple), `VAULTCTL_DOMAIN`, `VAULTCTL_HOST_PORT`, `VAULTCTL_AUTO_INSTALL_DOCKER=y`, `VAULTCTL_AUTO_START=y`, `VAULTCTL_OVERWRITE_ENV=y`.
 </Callout>
 
 ---
@@ -130,6 +139,14 @@ done >> .env
 docker compose up -d
 ```
 
+### Apply database migrations
+
+The server does not migrate on its own. Run this once after the database is healthy (re-run safely after every upgrade):
+
+```bash
+docker compose exec -T vaultctl /usr/local/bin/vaultctl migrate up
+```
+
 ### Verify
 
 ```bash
@@ -142,8 +159,8 @@ curl https://vault.yourdomain.com/api/v1/health
   <Tabs.Tab>
 ### Simple — vaultctl + PostgreSQL (no Caddy)
 
-Use when you already have a reverse proxy (nginx, Traefik, Cloudflare Tunnel, etc.).
-The API is exposed on `127.0.0.1:8080` only.
+Use when you already have a reverse proxy (nginx, Traefik, Cloudflare Tunnel, Tailscale, etc.).
+The API is exposed on `127.0.0.1` only.
 
 <Steps>
 ### Clone the repository
@@ -160,21 +177,34 @@ cp .env.example .env
 # Edit .env with your secrets (see Full Stack tab for required values)
 ```
 
+To bind a port other than the default `8080`, set `VAULTCTL_HOST_PORT` in `.env`
+(the compose file maps `127.0.0.1:${VAULTCTL_HOST_PORT}:8080`):
+
+```env
+VAULTCTL_HOST_PORT=8200
+```
+
 ### Start services
 
 ```bash
 docker compose -f docker-compose.simple.yml up -d
 ```
 
+### Apply database migrations
+
+```bash
+docker compose -f docker-compose.simple.yml exec -T vaultctl /usr/local/bin/vaultctl migrate up
+```
+
 ### Verify
 
 ```bash
-curl http://127.0.0.1:8080/api/v1/health
+curl http://127.0.0.1:8080/api/v1/health   # use your VAULTCTL_HOST_PORT if changed
 # → {"status":"ok"}
 ```
 </Steps>
 
-Point your reverse proxy at `127.0.0.1:8080`. See [Reverse Proxy Setup](/help-center/reverse-proxy) for examples.
+Point your reverse proxy at `127.0.0.1:8080` (or your `VAULTCTL_HOST_PORT`). See [Reverse Proxy Setup](/help-center/reverse-proxy) for examples.
   </Tabs.Tab>
 </Tabs>
 
@@ -184,14 +214,23 @@ Point your reverse proxy at `127.0.0.1:8080`. See [Reverse Proxy Setup](/help-ce
 
 Pre-built binaries are available on [GitHub Releases](https://github.com/vineethkrishnan/vaultctl/releases/latest) for all major platforms. Each release includes SHA-256 checksums signed with cosign and per-archive SBOMs.
 
+<Callout type="info">
+  The quickest binary install is the installer's `--no-docker` mode — it picks the right asset, verifies the checksum, generates secrets, writes `config.env`, and offers to run migrations:
+  ```bash
+  curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash -s -- --no-docker
+  ```
+  You provide your own PostgreSQL and reverse proxy. The manual steps below do the same thing by hand.
+</Callout>
+
+Release asset names include the version (e.g. `vaultctl_1.4.3_linux_amd64.tar.gz`), so resolve the latest tag first:
+
 <Tabs items={['Linux', 'macOS', 'Windows']}>
   <Tabs.Tab>
 ```bash
-# amd64
-curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_linux_amd64.tar.gz | tar xz
+VERSION=$(curl -fsSL https://api.github.com/repos/vineethkrishnan/vaultctl/releases/latest | grep -m1 '"tag_name"' | cut -d'"' -f4)
 
-# arm64
-curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_linux_arm64.tar.gz | tar xz
+# amd64 (use _arm64 on ARM hosts)
+curl -L "https://github.com/vineethkrishnan/vaultctl/releases/download/${VERSION}/vaultctl_${VERSION#v}_linux_amd64.tar.gz" | tar xz
 
 sudo mv vaultctl /usr/local/bin/
 ```
@@ -199,11 +238,12 @@ sudo mv vaultctl /usr/local/bin/
 
   <Tabs.Tab>
 ```bash
-# Apple Silicon (M1/M2/M3/M4)
-curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_darwin_arm64.tar.gz | tar xz
+VERSION=$(curl -fsSL https://api.github.com/repos/vineethkrishnan/vaultctl/releases/latest | grep -m1 '"tag_name"' | cut -d'"' -f4)
 
-# Intel
-curl -L https://github.com/vineethkrishnan/vaultctl/releases/latest/download/vaultctl_darwin_amd64.tar.gz | tar xz
+# Apple Silicon (M1/M2/M3/M4)
+curl -L "https://github.com/vineethkrishnan/vaultctl/releases/download/${VERSION}/vaultctl_${VERSION#v}_darwin_arm64.tar.gz" | tar xz
+
+# Intel — swap darwin_arm64 for darwin_amd64
 
 sudo mv vaultctl /usr/local/bin/
 ```
@@ -245,11 +285,16 @@ sha256sum -c checksums.txt --ignore-missing
 
 ### Run
 
+Configuration is read from environment variables (see [Configuration](/help-center/configuration)); there is no `--config` flag. Put your settings in an env file and load it before running:
+
 ```bash
-# Run database migrations
+# Load config (VAULTCTL_DB_*, secrets, VAULTCTL_BASE_URL, ...) into the environment
+set -a; . /etc/vaultctl/config.env; set +a
+
+# Run database migrations (first run, and after every upgrade)
 vaultctl migrate up
 
-# Start the server (listens on :8080)
+# Start the server (listens on VAULTCTL_PORT, default :8080)
 vaultctl server
 ```
 

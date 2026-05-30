@@ -2,6 +2,41 @@
 
 import { Callout } from 'nextra/components'
 
+## Server Starts but Registration or Login Returns 500
+
+**Symptoms:** `/api/v1/health` returns `{"status":"ok"}`, but creating an account or any real request fails with an `INTERNAL` / 500 error. Logs mention a missing relation or table.
+
+**Cause:** the database migrations were never applied. The health endpoint does not touch the schema, so the server can start and report healthy against an empty database. The `server` command does **not** auto-migrate.
+
+**Fix:** apply the migrations, then retry:
+
+```bash
+# Full stack
+docker compose exec -T vaultctl /usr/local/bin/vaultctl migrate up
+
+# Simple compose
+docker compose -f docker-compose.simple.yml exec -T vaultctl /usr/local/bin/vaultctl migrate up
+```
+
+The one-line installer does this for you. `migrate up` is idempotent — safe to re-run after every upgrade.
+
+---
+
+## Installer Cannot Find or Start Docker (macOS)
+
+**Symptoms:** the installer reports "Docker daemon is not running", or `docker` is not found on a fresh macOS machine.
+
+- **Homebrew required:** on macOS the installer uses Homebrew to install a headless runtime (`colima` + the `docker` CLI). Install [Homebrew](https://brew.sh) first, then re-run.
+- **Daemon not running:** the installer runs `colima start` automatically. To do it manually:
+  ```bash
+  colima start
+  docker info        # should now succeed
+  ```
+- **PATH:** Homebrew installs to `/usr/local/bin` (Intel) or `/opt/homebrew/bin` (Apple Silicon). If `docker` is "not found" in a non-interactive shell, ensure that directory is on your `PATH`.
+- **Docker Desktop:** if you already run Docker Desktop, the installer uses it instead of colima — just make sure it is started.
+
+---
+
 ## Cannot Connect to Server
 
 **Symptoms:** Browser shows "connection refused", "ERR_CONNECTION_TIMED_OUT", or "unable to reach server".
