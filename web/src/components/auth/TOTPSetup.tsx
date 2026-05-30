@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { Shield, Check } from "lucide-react";
+import { QRCode } from "@/components/ui/QRCode";
 
 interface SetupResponse {
   secret: string;
@@ -112,13 +113,12 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
         Scan this QR code with your authenticator app, or enter the secret key manually.
       </p>
 
-      {/* QR code — render as a link for now; real QR needs a library */}
-      <div className="rounded-md border border-border bg-muted p-4 text-center">
-        <p className="mb-2 text-xs text-muted-foreground">
-          QR URL (paste into authenticator):
-        </p>
-        <code className="break-all text-xs select-all">{otpauthUrl}</code>
-      </div>
+      {/* Scannable QR of the otpauth:// URL */}
+      {otpauthUrl && (
+        <div className="flex justify-center rounded-md border border-border bg-white p-4">
+          <QRCode value={otpauthUrl} size={200} level="M" />
+        </div>
+      )}
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Manual entry key</label>
