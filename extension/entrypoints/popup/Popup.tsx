@@ -11,6 +11,11 @@ import {
   ExternalLink,
   Check,
   Loader2,
+  Wallet,
+  Wand2,
+  Send as SendIcon,
+  Settings as SettingsIcon,
+  RefreshCw,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 
@@ -67,6 +72,7 @@ interface CapturedLoginSummary {
 }
 
 type Phase = "loading" | "connect" | "email" | "password" | "list";
+type TabId = "vault" | "generator" | "send" | "settings";
 
 const decoder = new TextDecoder();
 
@@ -125,6 +131,7 @@ export function Popup() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [captures, setCaptures] = useState<CapturedLoginSummary[]>([]);
+  const [tab, setTab] = useState<TabId>("vault");
 
   const loadItems = useCallback(
     async (url: string, accessToken: string, vaultId: string) => {
@@ -476,23 +483,23 @@ export function Popup() {
   );
 
   return (
-    <div className="animate-fade-in flex flex-col h-full">
+    <div className="animate-fade-in flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
         <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand/15 text-brand">
           <Shield className="h-[14px] w-[14px]" />
         </span>
-        <span className="text-sm font-semibold tracking-tight flex-1 truncate">
-          {vaults.find((v) => v.id === activeVaultId)?.name ?? "vaultctl"}
+        <span className="flex-1 truncate text-sm font-semibold tracking-tight">
+          {tab === "vault"
+            ? vaults.find((v) => v.id === activeVaultId)?.name ?? "Vault"
+            : TAB_TITLE[tab]}
         </span>
-        <button
-          onClick={handleLock}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-          title="Lock"
-        >
-          <Lock className="h-4 w-4" />
-        </button>
       </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto">
+        {tab === "vault" && (
+          <div className="animate-fade-in">
 
       {/* Captured logins */}
       {captures.length > 0 && (
@@ -539,7 +546,7 @@ export function Popup() {
       </div>
 
       {/* Item list */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
+      <div className="px-2 pb-2">
         {filtered.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             {items.length === 0 ? "No items in this vault" : "No matches"}
@@ -593,6 +600,16 @@ export function Popup() {
         )}
       </div>
 
+          </div>
+        )}
+
+        {tab === "generator" && <GeneratorTab onCopied={flashCopied} />}
+        {tab === "send" && <SendTab />}
+        {tab === "settings" && (
+          <SettingsTab serverUrl={serverUrl} onLock={handleLock} />
+        )}
+      </div>
+
       {/* Status bar */}
       {copied && (
         <div className="flex items-center gap-1.5 border-t border-border px-3 py-1.5 text-xs text-brand">
@@ -600,6 +617,186 @@ export function Popup() {
           Copied {copied} — clipboard clears in 30s
         </div>
       )}
+
+      {/* Bottom navigation */}
+      <nav className="grid shrink-0 grid-cols-4 border-t border-border bg-card/60">
+        {NAV_TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex flex-col items-center gap-1 py-2 text-[10px] font-medium ${
+              tab === id ? "text-brand" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-[18px] w-[18px]" />
+            {label}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+const TAB_TITLE: Record<TabId, string> = {
+  vault: "Vault",
+  generator: "Generator",
+  send: "Send",
+  settings: "Settings",
+};
+
+const NAV_TABS: { id: TabId; label: string; Icon: typeof Wallet }[] = [
+  { id: "vault", label: "Vault", Icon: Wallet },
+  { id: "generator", label: "Generator", Icon: Wand2 },
+  { id: "send", label: "Send", Icon: SendIcon },
+  { id: "settings", label: "Settings", Icon: SettingsIcon },
+];
+
+// ── Generator tab ──────────────────────────────────────────────────────────
+const GEN_LOWER = "abcdefghijkmnopqrstuvwxyz";
+const GEN_UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const GEN_DIGITS = "23456789";
+const GEN_SYMBOLS = "!@#$%^&*()-_=+[]{}";
+
+function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
+  const [length, setLength] = useState(20);
+  const [lower, setLower] = useState(true);
+  const [upper, setUpper] = useState(true);
+  const [digits, setDigits] = useState(true);
+  const [symbols, setSymbols] = useState(true);
+
+  const generate = useCallback(() => {
+    let charset = "";
+    if (lower) charset += GEN_LOWER;
+    if (upper) charset += GEN_UPPER;
+    if (digits) charset += GEN_DIGITS;
+    if (symbols) charset += GEN_SYMBOLS;
+    if (!charset) charset = GEN_LOWER + GEN_UPPER + GEN_DIGITS;
+    const arr = new Uint32Array(length);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, (v) => charset[v % charset.length]).join("");
+  }, [length, lower, upper, digits, symbols]);
+
+  const [value, setValue] = useState(() => generate());
+  useEffect(() => {
+    setValue(generate());
+  }, [generate]);
+
+  function copy() {
+    navigator.clipboard.writeText(value).then(() => {
+      onCopied("password");
+      setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30_000);
+    });
+  }
+
+  const toggle = (
+    label: string,
+    on: boolean,
+    set: (v: boolean) => void,
+  ) => (
+    <button
+      onClick={() => set(!on)}
+      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+        on ? "border-brand/50 bg-brand/10 text-foreground" : "border-border text-muted-foreground"
+      }`}
+    >
+      {label}
+      <span className={`h-3.5 w-3.5 rounded-full border ${on ? "border-brand bg-brand" : "border-border"}`} />
+    </button>
+  );
+
+  return (
+    <div className="animate-fade-in space-y-4 p-3">
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 p-3">
+        <code className="flex-1 break-all font-mono text-sm">{value}</code>
+        <button
+          onClick={() => setValue(generate())}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          title="Regenerate"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+        <button
+          onClick={copy}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          title="Copy"
+        >
+          <Copy className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Length</span>
+          <span className="font-mono">{length}</span>
+        </div>
+        <input
+          type="range"
+          min={8}
+          max={64}
+          value={length}
+          onChange={(e) => setLength(Number(e.target.value))}
+          className="w-full accent-brand"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {toggle("a-z", lower, setLower)}
+        {toggle("A-Z", upper, setUpper)}
+        {toggle("0-9", digits, setDigits)}
+        {toggle("!@#", symbols, setSymbols)}
+      </div>
+
+      <button
+        onClick={copy}
+        className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
+      >
+        Copy password
+      </button>
+    </div>
+  );
+}
+
+// ── Send tab (not yet supported server-side) ────────────────────────────────
+function SendTab() {
+  return (
+    <div className="animate-fade-in flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+        <SendIcon className="h-6 w-6" />
+      </span>
+      <p className="text-sm font-medium">Send isn&apos;t available yet</p>
+      <p className="text-xs text-muted-foreground">
+        Ephemeral encrypted sharing needs server support that vaultctl doesn&apos;t have yet.
+        It&apos;ll show up here once the backend lands.
+      </p>
+    </div>
+  );
+}
+
+// ── Settings tab ─────────────────────────────────────────────────────────
+function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => void }) {
+  return (
+    <div className="animate-fade-in space-y-3 p-3">
+      <div className="rounded-lg border border-border bg-card/50 p-3">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Server</div>
+        <div className="mt-1 truncate text-sm">{safeHostname(serverUrl) || "not set"}</div>
+      </div>
+      <button
+        onClick={() => serverUrl && window.open(serverUrl, "_blank")}
+        className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
+      >
+        <ExternalLink className="h-4 w-4 text-muted-foreground" />
+        Open web vault
+      </button>
+      <button
+        onClick={onLock}
+        className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
+      >
+        <Lock className="h-4 w-4 text-muted-foreground" />
+        Lock vault
+      </button>
+      <p className="pt-2 text-center text-[11px] text-muted-foreground">
+        vaultctl extension — zero-knowledge. Keys never leave this device.
+      </p>
     </div>
   );
 }
