@@ -3,28 +3,37 @@
 @theme {
   --color-background: #09090b;
   --color-foreground: #fafafa;
-  --color-card: #09090b;
+  --color-card: #101013;
   --color-card-foreground: #fafafa;
-  --color-popover: #09090b;
+  --color-popover: #101013;
   --color-popover-foreground: #fafafa;
   --color-primary: #fafafa;
   --color-primary-foreground: #18181b;
   --color-secondary: #27272a;
   --color-secondary-foreground: #fafafa;
-  --color-muted: #27272a;
+  --color-muted: #1c1c20;
   --color-muted-foreground: #a1a1aa;
-  --color-accent: #27272a;
+  --color-accent: #1f1f23;
   --color-accent-foreground: #fafafa;
   --color-destructive: #7f1d1d;
   --color-destructive-foreground: #fafafa;
-  --color-border: #27272a;
-  --color-input: #27272a;
-  --color-ring: #d4d4d8;
-  --radius: 0.5rem;
+  --color-border: #26262b;
+  --color-input: #26262b;
+  --color-ring: #2dd4bf;
+
+  /* Restrained brand accent (teal) — used for active states, links, focus. */
+  --color-brand: #2dd4bf;
+  --color-brand-foreground: #042f2a;
+
+  --radius: 0.625rem;
+
+  /* Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .light {
-  --color-background: #ffffff;
+  --color-background: #fbfbfa;
   --color-foreground: #09090b;
   --color-card: #ffffff;
   --color-card-foreground: #09090b;
@@ -36,17 +45,113 @@
   --color-secondary-foreground: #18181b;
   --color-muted: #f4f4f5;
   --color-muted-foreground: #71717a;
-  --color-accent: #f4f4f5;
+  --color-accent: #f1f1f0;
   --color-accent-foreground: #18181b;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #fafafa;
-  --color-border: #e4e4e7;
-  --color-input: #e4e4e7;
-  --color-ring: #18181b;
+  --color-border: #e7e7e4;
+  --color-input: #e7e7e4;
+  --color-ring: #0d9488;
+  --color-brand: #0d9488;
+  --color-brand-foreground: #ffffff;
+}
+
+html {
+  /* Smooth theme switch */
+  transition: background-color 0.4s var(--ease), color 0.4s var(--ease);
 }
 
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle atmospheric backdrop — layered radial glows, very low intensity. */
+.app-backdrop {
+  position: relative;
+  background:
+    radial-gradient(60rem 40rem at 18% -10%, color-mix(in srgb, var(--color-brand) 9%, transparent), transparent 60%),
+    radial-gradient(50rem 40rem at 110% 10%, color-mix(in srgb, var(--color-brand) 6%, transparent), transparent 55%),
+    var(--color-background);
+}
+
+/* Interactive elements ease smoothly by default. */
+a,
+button,
+input,
+textarea,
+select,
+[role="button"] {
+  transition:
+    background-color 0.2s var(--ease),
+    color 0.2s var(--ease),
+    border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease),
+    transform 0.2s var(--ease),
+    opacity 0.2s var(--ease);
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* ── Motion keyframes ─────────────────────────────────────────────── */
+@keyframes vault-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes vault-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes vault-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-up {
+  animation: vault-fade-up 0.5s var(--ease-out) both;
+}
+.animate-fade-in {
+  animation: vault-fade-in 0.4s var(--ease) both;
+}
+.animate-scale-in {
+  animation: vault-scale-in 0.28s var(--ease-out) both;
+}
+
+/* Row that reveals a brand bar + lifts on hover. */
+.row-interactive {
+  position: relative;
+  transition:
+    background-color 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+.row-interactive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-brand);
+  transform: translateY(-50%);
+  transition: height 0.25s var(--ease-out);
+}
+.row-interactive:hover::before,
+.row-interactive.active::before {
+  height: 60%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
