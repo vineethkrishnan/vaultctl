@@ -51,27 +51,9 @@ jobs:
             perf
             hotfix
             sec
-          scopes: |
-            domain
-            crypto
-            auth
-            vault
-            api
-            middleware
-            cli
-            config
-            postgres
-            logging
-            web
-            extension
-            docs
-            docker
-            deps
-            ci
-            release
-            security
-            installer
-            main
+          # No scope allowlist: any scope (or none) is accepted. The scope is
+          # advisory context, not a gate. commitlint already allows arbitrary
+          # scopes on commit messages, so this keeps the PR-title rule in sync.
           requireScope: false
           subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: |
