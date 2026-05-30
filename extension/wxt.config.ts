@@ -33,6 +33,12 @@ export default defineConfig({
   manifest: {
     name: "vaultctl",
     description: "Zero-knowledge password vault",
+    // Argon2id (hash-wasm) runs in the popup; MV3 extension pages need an
+    // explicit opt-in for WebAssembly. 'wasm-unsafe-eval' permits WASM only,
+    // not general eval.
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    },
     permissions: [
       "activeTab",
       "storage",
