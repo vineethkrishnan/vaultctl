@@ -9,6 +9,7 @@ import { ImportDialog } from "@/components/vault/ImportDialog";
 import { ExportDialog } from "@/components/vault/ExportDialog";
 import { RestoreDialog } from "@/components/vault/RestoreDialog";
 import { SessionsPanel } from "@/components/settings/SessionsPanel";
+import { AboutPanel } from "@/components/settings/AboutPanel";
 import { Settings, Shield, Clock, User, Key, Check } from "lucide-react";
 
 const LOCK_OPTIONS = [
@@ -171,6 +172,9 @@ export function SettingsPage() {
       <section className="rounded-lg border border-border p-4">
         <RestoreDialog />
       </section>
+
+      {/* About */}
+      <AboutPanel />
     </div>
   );
 }
