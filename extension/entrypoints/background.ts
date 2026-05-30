@@ -323,12 +323,9 @@ export default defineBackground(() => {
               const vaultKey = getVaultKey(vaultId);
               const parsedBlob = parseBlob(fromBase64(blobBase64));
               const plaintextBytes = await aesGcmDecrypt(vaultKey, parsedBlob);
-              // Transfer the underlying buffer slice rather than the raw Uint8Array
-              const plainBuffer = plaintextBytes.buffer.slice(
-                plaintextBytes.byteOffset,
-                plaintextBytes.byteOffset + plaintextBytes.byteLength,
-              );
-              sendResponse({ ok: true, plaintext: plainBuffer });
+              // runtime.sendMessage JSON-serializes, which drops ArrayBuffers —
+              // return base64 and let the caller decode.
+              sendResponse({ ok: true, plaintextB64: toBase64(plaintextBytes) });
               return;
             }
 

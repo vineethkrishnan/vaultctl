@@ -101,13 +101,13 @@ async function api<T>(
 
 // Decrypt a wire blob using the background's in-memory vault key.
 async function decryptForVault(vaultId: string, blobB64: string): Promise<Uint8Array> {
-  const res = await bg<{ ok?: boolean; plaintext?: ArrayBuffer; error?: string }>({
+  const res = await bg<{ ok?: boolean; plaintextB64?: string; error?: string }>({
     type: "decryptForVault",
     vaultId,
     blobB64,
   });
-  if (!res?.ok || !res.plaintext) throw new Error(res?.error ?? "decrypt failed");
-  return new Uint8Array(res.plaintext);
+  if (!res?.ok || !res.plaintextB64) throw new Error(res?.error ?? "decrypt failed");
+  return fromBase64(res.plaintextB64);
 }
 
 export function Popup() {
@@ -264,7 +264,9 @@ export function Popup() {
       await bg({ type: "setToken", token: res.accessToken });
       await bg({
         type: "unlock",
-        stretchedKey,
+        // number[] survives runtime.sendMessage JSON serialization (a raw
+        // Uint8Array does not).
+        stretchedKey: Array.from(stretchedKey),
         encryptedPrivateKey: res.encryptedPrivateKey,
         encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
         vaults: res.vaults.map((v) => ({
