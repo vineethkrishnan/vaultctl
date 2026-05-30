@@ -25,10 +25,10 @@ function shortCommit(commit: string | undefined): string {
 
 export function AboutPanel() {
   const { theme } = useTheme();
-  const logo =
+  const emblem =
     theme === "light"
-      ? "/light/svg/vaultctl-logo.svg"
-      : "/dark/svg/vaultctl-logo.svg";
+      ? "/light/svg/vaultctl-emblem.svg"
+      : "/dark/svg/vaultctl-emblem.svg";
 
   const { data: config } = useQuery({
     queryKey: ["server-config"],
@@ -52,12 +52,18 @@ export function AboutPanel() {
         <h2 className="font-semibold">About</h2>
       </div>
 
-      <div className="flex flex-col items-center gap-1 py-2 text-center">
-        <img src={logo} alt="VaultCTL" className="h-24 w-auto" />
-        <p className="text-xs text-muted-foreground">
-          A zero-knowledge, self-hosted password vault. All cryptography runs in
-          your browser; the server only ever stores encrypted data.
-        </p>
+      <div className="flex flex-col items-center gap-3 py-3 text-center">
+        <img src={emblem} alt="" aria-hidden="true" className="h-16 w-auto" />
+        <div className="space-y-2">
+          <p className="text-xl font-semibold tracking-tight">VaultCTL</p>
+          <p className="text-sm text-muted-foreground">
+            A zero-knowledge, self-hosted password vault.
+          </p>
+          <p className="mx-auto max-w-xs text-sm leading-relaxed text-muted-foreground">
+            All cryptography runs in your browser. The server only ever stores
+            encrypted data.
+          </p>
+        </div>
       </div>
 
       <dl className="divide-y divide-border rounded-md border border-border text-sm">
