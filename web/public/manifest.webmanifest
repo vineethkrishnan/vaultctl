@@ -1,6 +1,6 @@
 {
-  "name": "vaultctl",
-  "short_name": "vaultctl",
+  "name": "VaultCTL",
+  "short_name": "VaultCTL",
   "description": "Zero-knowledge, self-hosted password vault",
   "start_url": "/",
   "scope": "/",

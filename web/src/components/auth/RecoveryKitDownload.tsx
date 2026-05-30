@@ -69,7 +69,7 @@ function buildRecoveryHTML(key: string, qrDataUrl: string): string {
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>vaultctl Recovery Kit</title>
+<title>VaultCTL Recovery Kit</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
   h1 { color: #111; font-size: 24px; }
@@ -82,7 +82,7 @@ function buildRecoveryHTML(key: string, qrDataUrl: string): string {
 </style>
 </head>
 <body>
-<h1>vaultctl Recovery Kit</h1>
+<h1>VaultCTL Recovery Kit</h1>
 <p>This recovery key is the <strong>only way</strong> to recover your vault if you forget your master password. Store this document in a safe, offline location.</p>
 
 <div class="key">${key}</div>

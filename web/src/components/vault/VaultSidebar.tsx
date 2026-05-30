@@ -61,7 +61,7 @@ export function VaultSidebar() {
           aria-hidden="true"
           className="h-8 w-8"
         />
-        <span className="text-lg font-semibold tracking-tight">vaultctl</span>
+        <span className="text-lg font-semibold tracking-tight">VaultCTL</span>
       </div>
 
       {/* Vault selector */}
