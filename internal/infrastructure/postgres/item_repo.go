@@ -197,12 +197,12 @@ type rowScanner interface {
 
 func scanItem(row rowScanner) (vault.Item, error) {
 	var (
-		id, vid, itemType        string
-		folderID                 *string
-		encData, encName         string
-		favorite, reprompt       bool
-		deletedAt                *time.Time
-		createdAt, updatedAt     time.Time
+		id, vid, itemType    string
+		folderID             *string
+		encData, encName     string
+		favorite, reprompt   bool
+		deletedAt            *time.Time
+		createdAt, updatedAt time.Time
 	)
 	err := row.Scan(&id, &vid, &folderID, &itemType, &encData, &encName,
 		&favorite, &reprompt, &deletedAt, &createdAt, &updatedAt)

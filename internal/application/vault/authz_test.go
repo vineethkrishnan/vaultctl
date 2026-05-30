@@ -38,10 +38,10 @@ func TestEnsureActiveMember_RejectsZeroInput(t *testing.T) {
 	t.Parallel()
 	repo := newFakeVaultRepo()
 	cases := []struct {
-		name   string
-		user   user.ID
-		vault  domainvault.ID
-		field  string
+		name  string
+		user  user.ID
+		vault domainvault.ID
+		field string
 	}{
 		{"empty user", "", "v1", "user_id"},
 		{"empty vault", "u1", "", "vault_id"},

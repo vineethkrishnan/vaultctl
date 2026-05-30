@@ -61,16 +61,16 @@ type InviteID string
 // domain entity carries the invariants needed to compute state (used_at,
 // revoked_at, expires_at).
 type Invite struct {
-	ID         InviteID
-	OrgID      ID
-	InvitedBy  user.ID
-	Email      user.Email
-	TokenHash  InviteTokenHash
-	Role       user.Role
-	ExpiresAt  time.Time
-	CreatedAt  time.Time
-	UsedAt     *time.Time
-	RevokedAt  *time.Time
+	ID        InviteID
+	OrgID     ID
+	InvitedBy user.ID
+	Email     user.Email
+	TokenHash InviteTokenHash
+	Role      user.Role
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	UsedAt    *time.Time
+	RevokedAt *time.Time
 }
 
 // Validate asserts the Invite invariants at creation time.

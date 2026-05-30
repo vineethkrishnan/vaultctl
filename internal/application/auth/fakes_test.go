@@ -55,9 +55,9 @@ func (fakeHMAC) sign(pepper, in []byte) []byte {
 	m.Write(in)
 	return m.Sum(nil)
 }
-func (h fakeHMAC) Hash(in []byte) []byte             { return h.sign([]byte("server-pepper"), in) }
-func (h fakeHMAC) HashString(in string) []byte       { return h.Hash([]byte(in)) }
-func (h fakeHMAC) Equal(a, b []byte) bool            { return hmac.Equal(a, b) }
+func (h fakeHMAC) Hash(in []byte) []byte       { return h.sign([]byte("server-pepper"), in) }
+func (h fakeHMAC) HashString(in string) []byte { return h.Hash([]byte(in)) }
+func (h fakeHMAC) Equal(a, b []byte) bool      { return hmac.Equal(a, b) }
 func (h fakeHMAC) EnumerationSalt(email string) []byte {
 	return h.sign([]byte("enum-pepper"), []byte(email))
 }
@@ -99,9 +99,9 @@ func (f *fakeTokenIssuer) Verify(token string) (ports.AccessClaims, error) {
 
 // fakeTokenGen returns pre-programmed tokens in order.
 type fakeTokenGen struct {
-	refresh []string
-	apiKey  []string
-	invite  []string
+	refresh                 []string
+	apiKey                  []string
+	invite                  []string
 	refreshI, apiI, inviteI int
 	fail                    bool
 }
@@ -122,11 +122,11 @@ func (f *fakeTokenGen) InviteToken() (string, error) { return "invite-xyz", nil 
 
 // fakeUserRepo is a minimal in-memory UserRepository for use-case tests.
 type fakeUserRepo struct {
-	mu        sync.Mutex
-	byID      map[user.ID]*user.User
-	byEmail   map[string]user.ID
-	authHash  map[user.ID]string
-	failOps   map[string]error // per-method injected failures
+	mu       sync.Mutex
+	byID     map[user.ID]*user.User
+	byEmail  map[string]user.ID
+	authHash map[user.ID]string
+	failOps  map[string]error // per-method injected failures
 }
 
 func newFakeUserRepo() *fakeUserRepo {
@@ -256,10 +256,10 @@ func (r *fakeUserRepo) CountAll(_ context.Context) (int, error) {
 
 // fakeSessionStore is an in-memory SessionStore.
 type fakeSessionStore struct {
-	mu       sync.Mutex
-	byID     map[user.SessionID]*user.Session
-	byHash   map[string]user.SessionID
-	failOps  map[string]error
+	mu      sync.Mutex
+	byID    map[user.SessionID]*user.Session
+	byHash  map[string]user.SessionID
+	failOps map[string]error
 }
 
 func newFakeSessionStore() *fakeSessionStore {
@@ -316,7 +316,7 @@ func (s *fakeSessionStore) Rotate(_ context.Context, id user.SessionID, newHash 
 	return nil
 }
 func (s *fakeSessionStore) RevokeAllForUser(_ context.Context, _ user.ID) error { return nil }
-func (s *fakeSessionStore) PurgeExpired(_ context.Context) (int, error) { return 0, nil }
+func (s *fakeSessionStore) PurgeExpired(_ context.Context) (int, error)         { return 0, nil }
 func (s *fakeSessionStore) ListForUser(_ context.Context, _ user.ID) ([]user.Session, error) {
 	return nil, nil
 }

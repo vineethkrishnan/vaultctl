@@ -21,13 +21,13 @@ func setEnv(t *testing.T, kv map[string]string) {
 // productionMinimum is the smallest viable env for production startup.
 func productionMinimum() map[string]string {
 	return map[string]string{
-		"VAULTCTL_ENV":                  "production",
-		"VAULTCTL_DB_PASSWORD":          "db-password",
-		"VAULTCTL_JWT_SECRET_CURRENT":   "jwt-secret-long-enough-to-matter-xxxxxxxxxxxxxxxxx",
-		"VAULTCTL_DATA_ENCRYPTION_KEY":  "data-key-base64",
-		"VAULTCTL_SERVER_PEPPER":        "server-pepper",
-		"VAULTCTL_ENUMERATION_PEPPER":   "enum-pepper",
-		"VAULTCTL_BASE_URL":             "https://vault.example.com",
+		"VAULTCTL_ENV":                 "production",
+		"VAULTCTL_DB_PASSWORD":         "db-password",
+		"VAULTCTL_JWT_SECRET_CURRENT":  "jwt-secret-long-enough-to-matter-xxxxxxxxxxxxxxxxx",
+		"VAULTCTL_DATA_ENCRYPTION_KEY": "data-key-base64",
+		"VAULTCTL_SERVER_PEPPER":       "server-pepper",
+		"VAULTCTL_ENUMERATION_PEPPER":  "enum-pepper",
+		"VAULTCTL_BASE_URL":            "https://vault.example.com",
 	}
 }
 

@@ -52,11 +52,11 @@ func (o Organization) Validate() error {
 // Membership is the org_members row (PRD §9.5). InvitedAt records when the
 // invite was issued; AcceptedAt is nil until the recipient redeems.
 type Membership struct {
-	OrgID       ID
-	UserID      user.ID
-	Role        user.Role
-	InvitedAt   time.Time
-	AcceptedAt  *time.Time
+	OrgID      ID
+	UserID     user.ID
+	Role       user.Role
+	InvitedAt  time.Time
+	AcceptedAt *time.Time
 }
 
 // Validate asserts the Membership invariants.

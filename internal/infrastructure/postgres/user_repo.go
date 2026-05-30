@@ -63,18 +63,18 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		FROM users WHERE `+where, arg)
 
 	var (
-		uid                                                 string
-		email, name                                         string
-		salt                                                []byte
-		iter, mem                                           uint32
-		par                                                 uint8
-		encPriv, pubKey, pubKeySig, idPub, encIDPriv        string
-		totpEnabled                                         bool
-		totpCounter                                         *int64
-		failedAttempts                                      int
-		lockedUntil                                         *time.Time
-		role                                                string
-		createdAt, updatedAt                                time.Time
+		uid                                          string
+		email, name                                  string
+		salt                                         []byte
+		iter, mem                                    uint32
+		par                                          uint8
+		encPriv, pubKey, pubKeySig, idPub, encIDPriv string
+		totpEnabled                                  bool
+		totpCounter                                  *int64
+		failedAttempts                               int
+		lockedUntil                                  *time.Time
+		role                                         string
+		createdAt, updatedAt                         time.Time
 	)
 	err := row.Scan(&uid, &email, &name, &salt, &iter, &mem, &par,
 		&encPriv, &pubKey, &pubKeySig, &idPub, &encIDPriv,

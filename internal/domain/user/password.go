@@ -17,10 +17,10 @@ import (
 // policy is passed into ValidateMasterPassword so that operators can tighten
 // rules via VAULTCTL_MIN_PASSWORD_LENGTH without changing domain code.
 type MasterPasswordPolicy struct {
-	MinLength       int
-	RequireDiverse  bool // requires at least 2 of: lower, upper, digit, symbol
-	BlockedCommon   map[string]struct{}
-	MaxLength       int // safety upper bound to defeat absurd Argon2 DoS inputs
+	MinLength      int
+	RequireDiverse bool // requires at least 2 of: lower, upper, digit, symbol
+	BlockedCommon  map[string]struct{}
+	MaxLength      int // safety upper bound to defeat absurd Argon2 DoS inputs
 }
 
 // DefaultPolicy returns the policy shape described in PRD §5.11. Operators

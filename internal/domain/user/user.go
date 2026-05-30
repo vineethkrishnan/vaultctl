@@ -69,17 +69,17 @@ type User struct {
 	EncryptedPrivateKey         crypto.EncryptedBlob // alg=AlgAES256GCM, key=stretchedKey
 	EncryptedIdentityPrivateKey crypto.EncryptedBlob // alg=AlgAES256GCM, key=stretchedKey (C1)
 
-	PublicKey            crypto.PublicKey // RSA-2048
-	PublicKeySignature   crypto.Signature // Ed25519(id_priv, public_key)  (C1)
-	IdentityPublicKey    crypto.PublicKey // Ed25519                       (C1)
+	PublicKey          crypto.PublicKey // RSA-2048
+	PublicKeySignature crypto.Signature // Ed25519(id_priv, public_key)  (C1)
+	IdentityPublicKey  crypto.PublicKey // Ed25519                       (C1)
 
 	// EncryptedPasswordHint is a server-encrypted (H4/AES-256-GCM) hint that
 	// helps the user remember their master password. Optional — nil means no
 	// hint was set during registration.
 	EncryptedPasswordHint []byte
 
-	Role         Role
-	TOTPEnabled  bool
+	Role        Role
+	TOTPEnabled bool
 
 	FailedLoginAttempts int
 	LockedUntil         *time.Time

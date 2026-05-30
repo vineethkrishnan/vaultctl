@@ -35,8 +35,8 @@ func (p *TOTPProvider) Generate(issuer, account string) (string, string, error) 
 func (p *TOTPProvider) Verify(secret, code string, now time.Time) (int64, bool) {
 	ok, err := totp.ValidateCustom(code, secret, now, totp.ValidateOpts{
 		Period:    30,
-		Skew:     1, // Allow 1 window of clock drift (±30s)
-		Digits:   otp.DigitsSix,
+		Skew:      1, // Allow 1 window of clock drift (±30s)
+		Digits:    otp.DigitsSix,
 		Algorithm: otp.AlgorithmSHA1,
 	})
 	if err != nil || !ok {
