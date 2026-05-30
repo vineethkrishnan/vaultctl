@@ -44,12 +44,17 @@ RUN go build \
       -o /out/vaultctl \
       ./cmd/server
 
+# Pre-create the attachments dir owned by the distroless nonroot uid (65532)
+# so a named volume mounted there inherits writable ownership on first init.
+RUN mkdir -p /seed/data/attachments && chown -R 65532:65532 /seed/data
+
 # ===========================================================================
 # Stage 3: Runtime (distroless)
 # ===========================================================================
 FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=builder /out/vaultctl /usr/local/bin/vaultctl
+COPY --from=builder --chown=65532:65532 /seed/data /data
 
 USER nonroot:nonroot
 EXPOSE 8080

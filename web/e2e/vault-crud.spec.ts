@@ -37,8 +37,9 @@ test.describe.serial("Vault CRUD lifecycle", () => {
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    // Navigate to new-item page via sidebar
-    await page.getByRole("link", { name: "New Item" }).click();
+    // Navigate to new-item page via sidebar. Both the sidebar and the items
+    // header expose a "New Item" link (added in #100); target the first.
+    await page.getByRole("link", { name: "New Item" }).first().click();
     await expect(page).toHaveURL(/\/vault\/vault-1\/items\/new/);
 
     // Type picker

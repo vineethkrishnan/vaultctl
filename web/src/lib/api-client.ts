@@ -65,16 +65,12 @@ async function refreshTokens(): Promise<void> {
   setTokens(data.accessToken, data.refreshToken);
 }
 
-export async function api<T>(
+async function requestWithAuth(
   path: string,
-  options: RequestInit = {},
-): Promise<T> {
+  options: RequestInit,
+  headers: Record<string, string>,
+): Promise<Response> {
   const { accessToken } = useAuthStore.getState();
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
@@ -97,7 +93,41 @@ export async function api<T>(
     res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
   }
 
+  return res;
+}
+
+export async function api<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const res = await requestWithAuth(path, options, {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  });
   return handleResponse<T>(res);
+}
+
+/** POST a multipart/form-data body (browser sets the boundary). */
+export async function apiUpload<T>(
+  path: string,
+  form: FormData,
+): Promise<T> {
+  const res = await requestWithAuth(path, { method: "POST", body: form }, {});
+  return handleResponse<T>(res);
+}
+
+/** GET a binary payload as raw bytes, returning the response headers too. */
+export async function apiDownloadBytes(
+  path: string,
+): Promise<{ bytes: Uint8Array; headers: Headers }> {
+  const res = await requestWithAuth(path, { method: "GET" }, {});
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const err = body?.error ?? { code: "UNKNOWN", message: res.statusText };
+    throw new ApiRequestError(res.status, err);
+  }
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  return { bytes, headers: res.headers };
 }
 
 // Convenience methods

@@ -84,15 +84,22 @@ type Config struct {
 	// because both shipped compose stacks (Caddy + simple) put the proxy on
 	// a private network. Override to a stricter list when running with a
 	// public-IP proxy. An empty list disables XFF entirely.
-	TrustedProxies           []string      `env:"VAULTCTL_TRUSTED_PROXIES" envDefault:"127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1/128,fc00::/7" envSeparator:","`
-	StepUpMaxAge             time.Duration `env:"VAULTCTL_STEP_UP_MAX_AGE" envDefault:"5m"`
-	CORSAllowedOrigins       []string      `env:"VAULTCTL_CORS_ALLOWED_ORIGINS" envSeparator:","`
+	TrustedProxies     []string      `env:"VAULTCTL_TRUSTED_PROXIES" envDefault:"127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1/128,fc00::/7" envSeparator:","`
+	StepUpMaxAge       time.Duration `env:"VAULTCTL_STEP_UP_MAX_AGE" envDefault:"5m"`
+	CORSAllowedOrigins []string      `env:"VAULTCTL_CORS_ALLOWED_ORIGINS" envSeparator:","`
 
 	// ===========================================================================
 	// Retention
 	// ===========================================================================
-	TrashRetentionDays   int `env:"VAULTCTL_TRASH_RETENTION_DAYS" envDefault:"30"`
-	BackupRetentionDays  int `env:"VAULTCTL_BACKUP_RETENTION_DAYS" envDefault:"90"`
+	TrashRetentionDays  int `env:"VAULTCTL_TRASH_RETENTION_DAYS" envDefault:"30"`
+	BackupRetentionDays int `env:"VAULTCTL_BACKUP_RETENTION_DAYS" envDefault:"90"`
+
+	// ===========================================================================
+	// Attachments (encrypted file storage on the filesystem blob store)
+	// ===========================================================================
+	AttachmentsDir       string `env:"VAULTCTL_ATTACHMENTS_DIR" envDefault:"/data/attachments"`
+	AttachmentMaxBytes   int64  `env:"VAULTCTL_ATTACHMENT_MAX_BYTES" envDefault:"26214400"`          // 25 MiB per file
+	AttachmentVaultQuota int64  `env:"VAULTCTL_ATTACHMENT_VAULT_QUOTA_BYTES" envDefault:"524288000"` // 500 MiB per vault
 
 	// ===========================================================================
 	// Logging (C4, M1)

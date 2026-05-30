@@ -45,6 +45,9 @@ services:
       VAULTCTL_DB_SSL_MODE: disable
       VAULTCTL_DB_SSL_INSECURE_OK: "true"
       VAULTCTL_DB_HOST: vaultctl-db
+      VAULTCTL_ATTACHMENTS_DIR: /data/attachments
+    volumes:
+      - attachments-data:/data/attachments
     networks:
       - vaultctl-net
     depends_on:
@@ -73,6 +76,7 @@ volumes:
   caddy-data:
   caddy-config:
   postgres-data:
+  attachments-data:
 
 networks:
   vaultctl-net:
