@@ -11,6 +11,10 @@ export const queryKeys = {
     detail: (vaultId: string, id: string) =>
       [...queryKeys.items.all(vaultId), id] as const,
   },
+  attachments: {
+    list: (vaultId: string, itemId: string) =>
+      ["attachments", vaultId, itemId] as const,
+  },
   folders: {
     list: (vaultId: string) => ["folders", vaultId] as const,
   },

@@ -15,6 +15,7 @@ import { IdentityFields } from "@/components/items/IdentityFields";
 import { ApiKeyFields } from "@/components/items/ApiKeyFields";
 import { SSHKeyFields } from "@/components/items/SSHKeyFields";
 import { PasskeyFields } from "@/components/items/PasskeyFields";
+import { AttachmentsSection } from "@/components/items/AttachmentsSection";
 import { itemDataSchemas } from "@/shared/types/item-data";
 import type { ItemResponse } from "@/shared/types/api";
 import { ArrowLeft, Star, Trash2 } from "lucide-react";
@@ -214,6 +215,8 @@ export function ItemEditor({ vaultId, itemId }: Props) {
           onChange={setItemData}
         />
       </div>
+
+      {decrypted && <AttachmentsSection vaultId={vaultId} itemId={itemId} />}
 
       {/* Save */}
       <div className="flex gap-2">
