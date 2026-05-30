@@ -2,23 +2,24 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Download, QrCode } from "lucide-react";
+import { drawQRToCanvas } from "@/components/ui/QRCode";
 
 interface RecoveryKitDownloadProps {
   recoveryKey: string;
 }
 
 /**
- * RecoveryKitDownload — offers a printable HTML download and a QR code
- * of the recovery key. Uses a canvas-based QR generator (no external deps).
+ * RecoveryKitDownload — offers a printable HTML download and a scannable QR
+ * code of the recovery key. Uses the in-house QR encoder (no external deps).
  */
 export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrReady, setQrReady] = useState(false);
 
   useEffect(() => {
-    renderQR(canvasRef.current, recoveryKey.replace(/-/g, "")).then(() =>
-      setQrReady(true),
-    );
+    if (canvasRef.current) {
+      setQrReady(drawQRToCanvas(canvasRef.current, recoveryKey, { size: 220, level: "M" }));
+    }
   }, [recoveryKey]);
 
   function handleDownloadPDF() {
@@ -61,51 +62,6 @@ export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
       </p>
     </div>
   );
-}
-
-/**
- * Render a QR code on a canvas using a minimal alphanumeric QR encoder.
- * For a 44-char base64 string we use a simple grid-based encoding that
- * produces a scannable data URL. Falls back to text if canvas unavailable.
- */
-async function renderQR(
-  canvas: HTMLCanvasElement | null,
-  data: string,
-): Promise<void> {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  // Simple visual representation: encode bytes as a grid of dark/light cells.
-  // This is a deterministic visual fingerprint, not a standards-compliant QR.
-  // For production, swap with a proper QR library. For v1, this provides a
-  // scannable visual reference when printed.
-  const bytes = new TextEncoder().encode(data);
-  const size = Math.ceil(Math.sqrt(bytes.length * 8));
-  const cellSize = Math.floor(200 / (size + 2));
-  const offset = Math.floor((200 - cellSize * size) / 2);
-
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, 200, 200);
-  ctx.fillStyle = "#000000";
-
-  let bitIndex = 0;
-  for (let row = 0; row < size; row++) {
-    for (let col = 0; col < size; col++) {
-      const byteIdx = Math.floor(bitIndex / 8);
-      const bitPos = 7 - (bitIndex % 8);
-      const byte = bytes[byteIdx];
-      if (byte !== undefined && (byte >> bitPos) & 1) {
-        ctx.fillRect(
-          offset + col * cellSize,
-          offset + row * cellSize,
-          cellSize,
-          cellSize,
-        );
-      }
-      bitIndex++;
-    }
-  }
 }
 
 function buildRecoveryHTML(key: string, qrDataUrl: string): string {
