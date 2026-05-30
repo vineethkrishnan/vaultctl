@@ -226,6 +226,10 @@ type PurgeItemInput struct {
 type PurgeItem struct {
 	Vaults ports.VaultRepository
 	Items  ports.ItemRepository
+	// Attachments + Blobs are optional; when set, the item's attachment
+	// blobs are deleted before HardDelete cascades the metadata rows.
+	Attachments ports.AttachmentRepository
+	Blobs       ports.BlobStore
 }
 
 // Execute runs the use case.
@@ -242,6 +246,14 @@ func (uc *PurgeItem) Execute(ctx context.Context, in PurgeItemInput) error {
 	}
 	if !current.IsTrashed() {
 		return domain.NewInvalid("item", "only trashed items may be purged")
+	}
+	// Delete attachment blobs first; the metadata rows cascade with the item.
+	if uc.Attachments != nil && uc.Blobs != nil {
+		if keys, kerr := uc.Attachments.StorageKeysForItem(ctx, in.VaultID, in.ItemID); kerr == nil {
+			for _, k := range keys {
+				_ = uc.Blobs.Delete(ctx, k)
+			}
+		}
 	}
 	return uc.Items.HardDelete(ctx, in.VaultID, in.ItemID)
 }

@@ -39,7 +39,7 @@ type RegisterRequest struct {
 	Email                       string `json:"email"`
 	Name                        string `json:"name"`
 	AuthHash                    string `json:"authHash"` // base64
-	Salt                        string `json:"salt"`      // base64
+	Salt                        string `json:"salt"`     // base64
 	MasterPasswordPreflight     string `json:"masterPasswordPreflight"`
 	KDFIterations               uint32 `json:"kdfIterations"`
 	KDFMemoryKB                 uint32 `json:"kdfMemoryKB"`
@@ -49,8 +49,8 @@ type RegisterRequest struct {
 	PublicKey                   string `json:"publicKey"`
 	PublicKeySignature          string `json:"publicKeySignature"`
 	IdentityPublicKey           string `json:"identityPublicKey"`
-	InviteToken                 string `json:"inviteToken,omitempty"`    // required when registration mode is "invite"
-	PasswordHint                string `json:"passwordHint,omitempty"`   // optional plaintext hint, server-encrypted (H4)
+	InviteToken                 string `json:"inviteToken,omitempty"`  // required when registration mode is "invite"
+	PasswordHint                string `json:"passwordHint,omitempty"` // optional plaintext hint, server-encrypted (H4)
 }
 
 type RegisterResponse struct {
@@ -507,6 +507,30 @@ func encodeB64Blob(b crypto.EncryptedBlob) string {
 }
 
 func encodeB64(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
+
+// AttachmentResponse is the metadata view of an encrypted attachment. The
+// ciphertext itself is fetched from the download endpoint.
+type AttachmentResponse struct {
+	ID                string `json:"id"`
+	ItemID            string `json:"itemId"`
+	EncryptedFilename string `json:"encryptedFilename"`
+	WrappedFileKey    string `json:"wrappedFileKey"`
+	Size              int64  `json:"size"`
+	SHA256            string `json:"sha256"`
+	CreatedAt         string `json:"createdAt"`
+}
+
+func attachmentToDTO(a vault.Attachment) AttachmentResponse {
+	return AttachmentResponse{
+		ID:                string(a.ID),
+		ItemID:            string(a.ItemID),
+		EncryptedFilename: a.EncryptedFilename,
+		WrappedFileKey:    a.WrappedFileKey,
+		Size:              a.CiphertextSize,
+		SHA256:            encodeB64(a.CiphertextSHA256),
+		CreatedAt:         a.CreatedAt.UTC().Format(timeFormat),
+	}
+}
 
 // decodeB64 decodes a base64 string to raw bytes.
 func decodeB64(s string) ([]byte, error) {

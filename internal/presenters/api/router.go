@@ -29,6 +29,7 @@ type Dependencies struct {
 	Auth               *AuthHandlers
 	User               *UserHandlers
 	Vault              *VaultHandlers
+	Attachment         *AttachmentHandlers
 	APIKey             *APIKeyHandlers
 	Invite             *InviteHandlers
 	Org                *OrgHandlers
@@ -161,6 +162,14 @@ func NewRouter(deps Dependencies) http.Handler {
 				r.Get("/items/{id}", deps.Vault.HandleGetItem)
 				r.Put("/items/{id}", deps.Vault.HandleUpdateItem)
 				r.Delete("/items/{id}", deps.Vault.HandleTrashItem)
+
+				// Encrypted attachments (only when the blob store is available)
+				if deps.Attachment != nil {
+					r.Get("/items/{id}/attachments", deps.Attachment.HandleList)
+					r.Post("/items/{id}/attachments", deps.Attachment.HandleCreate)
+					r.Get("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDownload)
+					r.Delete("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDelete)
+				}
 
 				// Trash
 				r.Get("/trash", deps.Vault.HandleListTrash)

@@ -16,6 +16,7 @@ import (
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	infraauth "github.com/vineethkrishnan/vaultctl/internal/infrastructure/auth"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/blobstore"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	infracrypto "github.com/vineethkrishnan/vaultctl/internal/infrastructure/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
@@ -36,6 +37,8 @@ type adapters struct {
 	invites *postgres.InviteRepo
 	orgs    *postgres.OrgRepo
 	audit   *postgres.AuditRepo
+	attach  *postgres.AttachmentRepo
+	blobs   ports.BlobStore // nil when the blob store is unavailable
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -102,6 +105,7 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		invites: &postgres.InviteRepo{Pool: pool},
 		orgs:    &postgres.OrgRepo{Pool: pool},
 		audit:   &postgres.AuditRepo{Pool: pool},
+		attach:  &postgres.AttachmentRepo{Pool: pool},
 		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
 		hmac:    hmac,
 		jwt:     jwt,
@@ -115,6 +119,16 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 			cfg.AuthRateLimitPerEmail, cfg.AuthRateLimitWindow,
 		),
 	}
+
+	// Attachments are optional: if the blob store can't be opened (e.g. the
+	// volume isn't writable), the server still runs and attachment endpoints
+	// are simply not registered.
+	if store, berr := blobstore.NewFSStore(cfg.AttachmentsDir); berr != nil {
+		slog.Warn("attachments disabled: blob store unavailable", "dir", cfg.AttachmentsDir, "err", berr)
+	} else {
+		a.blobs = store
+	}
+
 	return a, nil
 }
 
@@ -137,8 +151,8 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Audit: auditWriter,
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
-			Encrypter:        a.aead,
-			Policy:           user.DefaultPolicy(), DefaultRole: user.RoleMember,
+			Encrypter: a.aead,
+			Policy:    user.DefaultPolicy(), DefaultRole: user.RoleMember,
 			RegistrationMode: cfg.RegistrationMode,
 			RedeemInvite: &auth.RedeemInvite{
 				Invites: a.invites, HMAC: a.hmac, Clock: a.clock,
@@ -220,7 +234,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		UpdateItem:  &appvault.UpdateItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
 		TrashItem:   &appvault.TrashItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
 		RestoreItem: &appvault.RestoreItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},
-		PurgeItem:   &appvault.PurgeItem{Vaults: a.vaults, Items: a.items},
+		PurgeItem:   &appvault.PurgeItem{Vaults: a.vaults, Items: a.items, Attachments: a.attach, Blobs: a.blobs},
 		PurgeExpiredTrash: &appvault.PurgeExpiredTrashInVault{
 			Vaults: a.vaults, Items: a.items, Clock: a.clock,
 			RetentionDays: cfg.TrashRetentionDays,
@@ -258,15 +272,32 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Users: a.users,
 	}
 
+	// Attachment handlers are only wired when the blob store is available.
+	var attachmentHandlers *api.AttachmentHandlers
+	if a.blobs != nil {
+		attachmentHandlers = &api.AttachmentHandlers{
+			Create: &appvault.CreateAttachment{
+				Vaults: a.vaults, Items: a.items, Attachments: a.attach, Blobs: a.blobs,
+				Clock: a.clock, IDs: a.ids,
+				MaxBytes: cfg.AttachmentMaxBytes, VaultQuotaBytes: cfg.AttachmentVaultQuota,
+			},
+			List:     &appvault.ListAttachments{Vaults: a.vaults, Attachments: a.attach},
+			Get:      &appvault.GetAttachment{Vaults: a.vaults, Attachments: a.attach, Blobs: a.blobs},
+			Delete:   &appvault.DeleteAttachment{Vaults: a.vaults, Attachments: a.attach, Blobs: a.blobs},
+			MaxBytes: cfg.AttachmentMaxBytes,
+		}
+	}
+
 	return api.Dependencies{
-		Tokens: tokens,
-		Clock:  a.clock,
-		Auth:   authHandlers,
-		User:   userHandlers,
-		Vault:  vaultHandlers,
-		APIKey: apiKeyHandlers,
-		Invite: inviteHandlers,
-		Org:    orgHandlers,
+		Tokens:     tokens,
+		Clock:      a.clock,
+		Auth:       authHandlers,
+		User:       userHandlers,
+		Vault:      vaultHandlers,
+		Attachment: attachmentHandlers,
+		APIKey:     apiKeyHandlers,
+		Invite:     inviteHandlers,
+		Org:        orgHandlers,
 		Admin: &api.AdminHandlers{
 			ListBackups: &auth.ListBackups{BackupDir: "/backups"},
 		},

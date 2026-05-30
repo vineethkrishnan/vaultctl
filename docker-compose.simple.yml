@@ -17,8 +17,11 @@ services:
       VAULTCTL_DB_SSL_MODE: disable
       VAULTCTL_DB_SSL_INSECURE_OK: "true"
       VAULTCTL_DB_HOST: vaultctl-db
+      VAULTCTL_ATTACHMENTS_DIR: /data/attachments
     ports:
       - "127.0.0.1:${VAULTCTL_HOST_PORT:-8080}:8080"
+    volumes:
+      - attachments-data:/data/attachments
     networks:
       - vaultctl-net
     depends_on:
@@ -45,6 +48,7 @@ services:
 
 volumes:
   postgres-data:
+  attachments-data:
 
 networks:
   vaultctl-net:

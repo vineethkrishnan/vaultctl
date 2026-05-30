@@ -90,7 +90,7 @@ func (s *FSStore) Put(_ context.Context, key string, r io.Reader) (err error) {
 	committed = true
 
 	// Best-effort directory fsync so the rename survives a crash.
-	if d, derr := os.Open(dir); derr == nil {
+	if d, derr := os.Open(dir); derr == nil { //nolint:gosec // G304: dir derives from a key validated against keyPattern and joined under the fixed root
 		_ = d.Sync()
 		_ = d.Close()
 	}
@@ -103,7 +103,7 @@ func (s *FSStore) Get(_ context.Context, key string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.Open(dest)
+	f, err := os.Open(dest) //nolint:gosec // G304: dest derives from a key validated against keyPattern and joined under the fixed root
 	if err != nil {
 		return nil, err // wraps fs.ErrNotExist when absent
 	}
