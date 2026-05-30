@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.3...v1.5.0) (2026-05-30)
+
+
+### Features
+
+* **installer:** cross-platform deps, auto-migrate, and custom loopback port ([#97](https://github.com/vineethkrishnan/vaultctl/issues/97)) ([6c1c05b](https://github.com/vineethkrishnan/vaultctl/commit/6c1c05b4943c2c0a033595da0d153989eb978cf5))
+* **web:** scannable in-house qr encoder for recovery kit and totp ([#99](https://github.com/vineethkrishnan/vaultctl/issues/99)) ([c4a629b](https://github.com/vineethkrishnan/vaultctl/commit/c4a629b15c65aea3dc1dcc49fceefc57e48817c2))
+
 ## [1.4.3](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.2...v1.4.3) (2026-05-25)
 
 
