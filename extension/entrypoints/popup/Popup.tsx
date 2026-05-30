@@ -207,7 +207,7 @@ export function Popup() {
           try {
             await loadItems(url, session.accessToken, first.id);
           } catch {
-            // token may have expired across an SW restart — fall back to login
+            // token may have expired across an SW restart - fall back to login
             if (!cancelled) setPhase(url ? "email" : "connect");
           }
         } else {
@@ -298,13 +298,13 @@ export function Popup() {
         setPhase("list");
         await loadItems(serverUrl, res.accessToken, first.id);
       } else {
-        setError("No vaults on this account yet — create one in the web vault.");
+        setError("No vaults on this account yet - create one in the web vault.");
         setPhase("list");
       }
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === "INVALID_CREDENTIALS") setError("Invalid email or password");
-      else if (code === "ACCOUNT_LOCKED") setError("Account locked — too many attempts");
+      else if (code === "ACCOUNT_LOCKED") setError("Account locked - too many attempts");
       else setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
@@ -614,7 +614,7 @@ export function Popup() {
       {copied && (
         <div className="flex items-center gap-1.5 border-t border-border px-3 py-1.5 text-xs text-brand">
           <Check className="h-3.5 w-3.5" />
-          Copied {copied} — clipboard clears in 30s
+          Copied {copied} - clipboard clears in 30s
         </div>
       )}
 
@@ -795,7 +795,7 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
         Lock vault
       </button>
       <p className="pt-2 text-center text-[11px] text-muted-foreground">
-        vaultctl extension — zero-knowledge. Keys never leave this device.
+        vaultctl extension - zero-knowledge. Keys never leave this device.
       </p>
     </div>
   );
