@@ -13,10 +13,10 @@ export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const { theme } = useTheme();
-  const emblem =
+  const logo =
     theme === "light"
-      ? "/light/svg/vaultctl-emblem.svg"
-      : "/dark/svg/vaultctl-emblem.svg";
+      ? "/light/svg/vaultctl-logo.svg"
+      : "/dark/svg/vaultctl-logo.svg";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -125,13 +125,12 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-6">
         <div className="space-y-2 text-center">
+          <h1 className="sr-only">VaultCTL</h1>
           <img
-            src={emblem}
-            alt=""
-            aria-hidden="true"
-            className="mx-auto h-16 w-auto"
+            src={logo}
+            alt="VaultCTL"
+            className="mx-auto h-28 w-auto"
           />
-          <h1 className="text-2xl font-bold">vaultctl</h1>
           <p className="text-sm text-muted-foreground">
             {step === "email"
               ? "Enter your email to continue"

@@ -31,7 +31,7 @@ export default defineConfig({
     },
   }),
   manifest: {
-    name: "vaultctl",
+    name: "VaultCTL",
     description: "Zero-knowledge password vault",
     icons: {
       16: "/icon/icon-16.png",

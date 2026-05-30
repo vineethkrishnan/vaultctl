@@ -17,6 +17,8 @@
     "api:update": "npm run api:fetch && npm run api:generate"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8",
     "@hookform/resolvers": "^4.1.0",
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-router": "^1.170.8",

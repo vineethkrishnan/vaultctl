@@ -368,7 +368,7 @@ export function Popup() {
     return (
       <div className="animate-fade-up flex flex-col items-center justify-center p-6 space-y-4">
         <img src="/emblem.svg" alt="" aria-hidden="true" className="h-12 w-auto" />
-        <h1 className="text-lg font-semibold tracking-tight">vaultctl</h1>
+        <h1 className="text-lg font-semibold tracking-tight">VaultCTL</h1>
 
         {error && (
           <div className="w-full rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive">
