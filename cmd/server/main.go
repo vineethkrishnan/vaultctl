@@ -27,6 +27,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"runtime"
 
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/logging"
@@ -59,6 +60,9 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	if err != nil {
 		return nil, nil, err
 	}
+	deps.Version = cli.Version
+	deps.Commit = cli.Commit
+	deps.GoVersion = runtime.Version()
 
 	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
 	sched.Start()
