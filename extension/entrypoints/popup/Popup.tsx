@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, type CSSProperties, type FormEvent } from "react";
 import {
-  Shield,
   Search,
   Copy,
   Lock,
@@ -368,9 +367,7 @@ export function Popup() {
   if (phase === "connect" || phase === "email" || phase === "password") {
     return (
       <div className="animate-fade-up flex flex-col items-center justify-center p-6 space-y-4">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/15 text-brand">
-          <Shield className="h-6 w-6" />
-        </span>
+        <img src="/emblem.svg" alt="" aria-hidden="true" className="h-12 w-auto" />
         <h1 className="text-lg font-semibold tracking-tight">vaultctl</h1>
 
         {error && (
@@ -487,9 +484,7 @@ export function Popup() {
     <div className="animate-fade-in flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand/15 text-brand">
-          <Shield className="h-[14px] w-[14px]" />
-        </span>
+        <img src="/emblem.svg" alt="" aria-hidden="true" className="h-6 w-6" />
         <span className="flex-1 truncate text-sm font-semibold tracking-tight">
           {tab === "vault"
             ? vaults.find((v) => v.id === activeVaultId)?.name ?? "Vault"

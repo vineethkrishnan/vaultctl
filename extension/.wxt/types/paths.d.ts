@@ -8,6 +8,12 @@ declare module "wxt/browser" {
     | "/background.js"
     | "/content-scripts/content.js"
     | "/content-scripts/webauthn-relay.js"
+    | "/emblem.svg"
+    | "/icon/icon-128.png"
+    | "/icon/icon-16.png"
+    | "/icon/icon-32.png"
+    | "/icon/icon-48.png"
+    | "/logo.svg"
     | "/popup.html"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>
   export interface WxtRuntime {

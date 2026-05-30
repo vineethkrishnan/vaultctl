@@ -7,10 +7,16 @@ import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
 import { initKeys } from "@/lib/key-holder";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
 import type { PreloginResponse, LoginResponse } from "@/shared/types/api";
+import { useTheme } from "@/hooks/use-theme";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { theme } = useTheme();
+  const emblem =
+    theme === "light"
+      ? "/light/svg/vaultctl-emblem.svg"
+      : "/dark/svg/vaultctl-emblem.svg";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -119,6 +125,12 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-6">
         <div className="space-y-2 text-center">
+          <img
+            src={emblem}
+            alt=""
+            aria-hidden="true"
+            className="mx-auto h-16 w-auto"
+          />
           <h1 className="text-2xl font-bold">vaultctl</h1>
           <p className="text-sm text-muted-foreground">
             {step === "email"

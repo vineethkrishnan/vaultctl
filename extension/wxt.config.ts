@@ -33,6 +33,20 @@ export default defineConfig({
   manifest: {
     name: "vaultctl",
     description: "Zero-knowledge password vault",
+    icons: {
+      16: "/icon/icon-16.png",
+      32: "/icon/icon-32.png",
+      48: "/icon/icon-48.png",
+      128: "/icon/icon-128.png",
+    },
+    action: {
+      default_icon: {
+        16: "/icon/icon-16.png",
+        32: "/icon/icon-32.png",
+        48: "/icon/icon-48.png",
+        128: "/icon/icon-128.png",
+      },
+    },
     // Argon2id (hash-wasm) runs in the popup; MV3 extension pages need an
     // explicit opt-in for WebAssembly. 'wasm-unsafe-eval' permits WASM only,
     // not general eval.
