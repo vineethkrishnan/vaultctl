@@ -54,6 +54,7 @@ interface DecryptedItem {
   favorite: boolean;
   name: string;
   username: string;
+  password: string;
   uri: string;
   encryptedData: string;
 }
@@ -143,6 +144,7 @@ export function Popup() {
         if (item.trashed) continue;
         let name = "[encrypted]";
         let username = "";
+        let password = "";
         let uri = "";
         try {
           name = decoder.decode(unpad(await decryptForVault(vaultId, item.encryptedName)));
@@ -153,8 +155,9 @@ export function Popup() {
           try {
             const data = JSON.parse(
               decoder.decode(await decryptForVault(vaultId, item.encryptedData)),
-            ) as { username?: string; uri?: string };
+            ) as { username?: string; password?: string; uri?: string };
             username = data.username ?? "";
+            password = data.password ?? "";
             uri = data.uri ?? "";
           } catch {
             // leave blank if data can't be read
@@ -166,6 +169,7 @@ export function Popup() {
           favorite: item.favorite,
           name,
           username,
+          password,
           uri,
           encryptedData: item.encryptedData,
         });
@@ -334,15 +338,12 @@ export function Popup() {
     navigator.clipboard.writeText(text).then(() => flashCopied(label));
   }
 
-  async function copyPassword(item: DecryptedItem) {
-    try {
-      const data = JSON.parse(
-        decoder.decode(await decryptForVault(activeVaultId, item.encryptedData)),
-      ) as { password?: string };
-      if (data.password) copyText(data.password, "password");
-    } catch {
+  function copyPassword(item: DecryptedItem) {
+    if (!item.password) {
       setError("Could not decrypt password");
+      return;
     }
+    copyText(item.password, "password");
   }
 
   async function handleSaveCapture(captureId: string) {
