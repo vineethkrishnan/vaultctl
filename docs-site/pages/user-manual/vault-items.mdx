@@ -138,3 +138,12 @@ These features apply to all item types.
 **Clipboard Auto-Clear** -- When you copy a field value, vaultctl automatically clears your clipboard after 30 seconds.
 
 **Custom Fields** -- Login items support custom fields. Each custom field has a name and a value, and can be one of three types: text (visible), hidden (masked until revealed), or boolean (true/false toggle).
+
+## Attachments
+
+Any item can hold encrypted file attachments. Open an item and use the **Attachments** section to add files.
+
+- **Encrypted in your browser** -- each file is sealed with its own AES-256-GCM key before it leaves your device. That key and the filename are wrapped under your vault key, so the server only ever stores ciphertext. It never sees the file contents or the original name.
+- **Download** -- click an attachment to fetch and decrypt it back to the original file in your browser.
+- **Limits** -- there is a per-file size cap (25 MiB by default) and a per-vault storage quota (500 MiB by default). A self-hosted operator can change both; see [Server Configuration](/help-center/configuration#attachments).
+- **Deletion** -- removing an attachment, or sending the item to trash and purging it, deletes the encrypted blob from the server.

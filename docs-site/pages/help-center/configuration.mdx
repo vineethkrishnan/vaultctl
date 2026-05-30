@@ -44,6 +44,34 @@ These must be set for the server to start.
 | `LOG_REDACT_FIELDS` | `authHash,refreshToken` | Comma-separated list of JSON fields to redact in logs |
 | `DB_SSL_MODE` | `require` | PostgreSQL SSL mode: `disable`, `require`, `verify-ca`, `verify-full` |
 
+## Attachments
+
+Items can carry encrypted file attachments. Each file is sealed in the browser with its own AES-256-GCM key, which is then wrapped under the vault key, so the server only ever stores ciphertext and wrapped key material. Blobs are written to a filesystem store (no S3/MinIO dependency).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_ATTACHMENTS_DIR` | `/data/attachments` | Directory for the encrypted blob store. Back it up alongside Postgres. |
+| `VAULTCTL_ATTACHMENT_MAX_BYTES` | `26214400` (25 MiB) | Maximum size of a single uploaded file (ciphertext). |
+| `VAULTCTL_ATTACHMENT_VAULT_QUOTA_BYTES` | `524288000` (500 MiB) | Total attachment storage allowed per vault. |
+
+<Callout type="warning">
+  The attachments directory holds encrypted blobs whose keys live only in the Postgres `attachments` table. Losing one without the other orphans your files - back up the attachments volume and the database **together**. The bundled compose files mount a named `attachments-data` volume at `/data/attachments`.
+</Callout>
+
+## Upgrades & Migrations
+
+Database migrations are embedded in the binary but are **not** applied automatically on server start. After pulling a new image or binary that adds a migration (for example, the attachments table), run the migration when you recreate the container:
+
+```bash
+# One-off against the live database
+docker exec vaultctl-api /usr/local/bin/vaultctl migrate up
+
+# or a fresh one-shot container with the same environment
+docker compose run --rm vaultctl migrate up
+```
+
+Migrations are idempotent - running `migrate up` with nothing pending is a no-op.
+
 ## Key Rotation
 
 vaultctl supports zero-downtime rotation for JWT secrets and data encryption keys using a "current + next" pattern.
