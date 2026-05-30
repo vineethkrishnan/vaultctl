@@ -17,7 +17,6 @@ import {
   Lock,
   LogOut,
   Plus,
-  Shield,
   Sun,
   Moon,
   Settings,
@@ -52,9 +51,16 @@ export function VaultSidebar() {
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card/60 backdrop-blur-md">
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand">
-          <Shield className="h-[18px] w-[18px]" />
-        </span>
+        <img
+          src={
+            theme === "light"
+              ? "/light/svg/vaultctl-emblem.svg"
+              : "/dark/svg/vaultctl-emblem.svg"
+          }
+          alt=""
+          aria-hidden="true"
+          className="h-8 w-8"
+        />
         <span className="text-lg font-semibold tracking-tight">vaultctl</span>
       </div>
 
