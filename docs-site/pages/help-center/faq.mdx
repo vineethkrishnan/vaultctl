@@ -36,17 +36,22 @@ vaultctl and Bitwarden share similar zero-knowledge principles, but differ in ke
 
 ## Can I use it without Docker?
 
-**Yes.** vaultctl ships as a single static Go binary. You can download it from the [releases page](https://github.com/vineethkrishnan/vaultctl/releases) and run it directly:
+**Yes.** vaultctl ships as a single static Go binary. The installer has a `--no-docker` mode that downloads the binary, verifies its checksum, generates your secrets, writes a `config.env`, and (optionally) runs the migrations:
 
 ```bash
-# Download and run
-./vaultctl serve --config /etc/vaultctl/config.env
-
-# Or use the install script
 curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash -s -- --no-docker
 ```
 
-You will need to provide your own PostgreSQL instance and TLS termination (reverse proxy).
+Or do it by hand. Configuration is read entirely from environment variables (there is no `--config` flag), so load your env file before starting the server:
+
+```bash
+# Download from the releases page, then:
+set -a; . /etc/vaultctl/config.env; set +a
+vaultctl migrate up    # first run, and after each upgrade
+vaultctl server
+```
+
+You will need to provide your own PostgreSQL instance and TLS termination (reverse proxy). The `--no-docker` installer prompts for the database connection.
 
 ## What happens if the server goes down?
 
