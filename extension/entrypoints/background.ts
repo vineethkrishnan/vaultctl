@@ -824,6 +824,52 @@ export default defineBackground(() => {
               return;
             }
 
+            case "saveCapturedLogin": {
+              pruneStaleCaptures();
+              const targetId = message.id as string;
+              const capture = capturedLogins.find((c) => c.id === targetId);
+              if (!capture) {
+                sendResponse({ ok: false, error: "capture not found" });
+                return;
+              }
+              if (!unlocked) {
+                sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
+              try {
+                const decision = await decideSave(
+                  capture.url,
+                  capture.username,
+                  capture.password,
+                );
+                if (decision.action === "add") {
+                  await createLogin(
+                    safeHostname(capture.url),
+                    capture.username,
+                    capture.password,
+                    capture.url,
+                  );
+                } else if (decision.action === "update") {
+                  await updateLogin(
+                    decision.vaultId!,
+                    decision.itemId!,
+                    capture.username,
+                    capture.password,
+                  );
+                }
+                const idx = capturedLogins.findIndex((c) => c.id === targetId);
+                if (idx !== -1) capturedLogins.splice(idx, 1);
+                await syncBadge();
+                sendResponse({ ok: true, action: decision.action });
+              } catch (err) {
+                sendResponse({
+                  ok: false,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              }
+              return;
+            }
+
             case "markCaptureRead": {
               const targetId = message.id as string;
               const target = capturedLogins.find((c) => c.id === targetId);
