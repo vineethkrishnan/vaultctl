@@ -15,6 +15,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { decryptData, decryptName } from "@/lib/key-holder";
 import { relativeAge } from "@/lib/time";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { ItemResponse } from "@/shared/types/api";
 import {
   KeyRound,
@@ -111,6 +112,7 @@ export function ItemList() {
   const [filter, setFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [copied, setCopied] = useState<string | null>(null);
+  const [pendingTrash, setPendingTrash] = useState<DecryptedItem | null>(null);
 
   useEffect(() => {
     if (!items) return;
@@ -201,12 +203,7 @@ export function ItemList() {
   }
 
   function handleDelete(item: DecryptedItem) {
-    if (
-      !window.confirm(`Move "${item.decryptedName}" to trash?`)
-    ) {
-      return;
-    }
-    trashMutation.mutate(item);
+    setPendingTrash(item);
   }
 
   if (vaultId === "none") {
@@ -361,6 +358,25 @@ export function ItemList() {
           Copied {copied} - clipboard clears in 30s
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingTrash}
+        title="Move to trash"
+        message={
+          pendingTrash
+            ? `Move "${pendingTrash.decryptedName}" to trash? You can restore it later from Trash.`
+            : ""
+        }
+        confirmLabel="Move to trash"
+        destructive
+        busy={trashMutation.isPending}
+        onConfirm={() => {
+          const target = pendingTrash;
+          setPendingTrash(null);
+          if (target) trashMutation.mutate(target);
+        }}
+        onCancel={() => setPendingTrash(null)}
+      />
     </div>
   );
 }

@@ -73,20 +73,20 @@ test.describe.serial("Trash lifecycle", () => {
   });
 
   test("permanently deletes an item via the purge button", async ({ page }) => {
-    // Auto-accept the browser confirm dialog.
-    page.on("dialog", (dialog) => dialog.accept());
-
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
     await page.getByRole("link", { name: "Trash" }).first().click();
     await expect(page.getByText("First Trashed")).toBeVisible({ timeout: 10_000 });
 
+    await page.getByRole("button", { name: "Delete permanently" }).first().click();
+
+    // Themed confirm dialog replaces the native window.confirm.
     const purgeResponse = page.waitForResponse(
       (response) =>
         /\/trash\/trashed-1$/.test(new URL(response.url()).pathname) &&
         response.request().method() === "DELETE",
     );
-    await page.getByRole("button", { name: "Delete permanently" }).first().click();
+    await page.getByRole("button", { name: "Delete forever" }).click();
     await purgeResponse;
 
     await expect(page.getByText("First Trashed")).toBeHidden({ timeout: 10_000 });
