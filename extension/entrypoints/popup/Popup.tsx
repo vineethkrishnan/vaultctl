@@ -388,11 +388,22 @@ export function Popup() {
   }
 
   async function handleSaveCapture(captureId: string) {
-    try {
-      await bg({ type: "consumeCapturedLogin", id: captureId });
-      setCaptures((existing) => existing.filter((c) => c.id !== captureId));
-    } catch {
-      // leave in place to retry
+    const res = await bg<{ ok?: boolean; error?: string }>({
+      type: "saveCapturedLogin",
+      id: captureId,
+    });
+    if (!res?.ok) {
+      setError(res?.error || "Could not save this login to the vault");
+      return;
+    }
+    setCaptures((existing) => existing.filter((c) => c.id !== captureId));
+    // Reflect the new/updated item in the vault list immediately.
+    if (token && activeVaultId) {
+      try {
+        await loadItems(serverUrl, token, activeVaultId);
+      } catch {
+        // list will refresh on next open
+      }
     }
   }
 
