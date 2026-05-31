@@ -3,16 +3,35 @@
 /**
  * Content script for autofill and save-on-submit capture.
  *
- * Runs in the page context (isolated world). Detects login forms, fills them
- * on demand, and intercepts submits to offer "save to vaultctl" via the
- * background service worker.
+ * Runs in the page context (isolated world). It:
+ * - detects login forms and their username/password inputs,
+ * - shows an inline vaultctl icon in those fields when a stored credential
+ *   matches the page (Bitwarden-style), click-to-fill,
+ * - optionally autofills on load (configurable),
+ * - on submit, asks the background whether to offer save/update and shows a
+ *   non-blocking toast that auto-dismisses.
+ *
+ * All UI is rendered inside a shadow root so page CSS cannot interfere, and
+ * no secrets are held here longer than a fill takes.
  */
 
-function devLog(...args: unknown[]): void {
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.log("[vaultctl:cs]", ...args);
-  }
+interface CredMatch {
+  vaultId: string;
+  itemId: string;
+  name: string;
+  username: string;
+}
+interface ExtSettings {
+  autofill: boolean;
+  fieldIcon: boolean;
+  savePrompt: boolean;
+  toastMs: number;
+}
+
+const BRAND = "#2dd4bf";
+
+function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
+  return browser.runtime.sendMessage(message).catch(() => ({})) as Promise<T>;
 }
 
 export default defineContentScript({
@@ -21,32 +40,28 @@ export default defineContentScript({
 
   main() {
     const observedForms = new WeakSet<HTMLFormElement>();
+    let matches: CredMatch[] = [];
+    let settings: ExtSettings = {
+      autofill: false,
+      fieldIcon: true,
+      savePrompt: true,
+      toastMs: 8000,
+    };
 
-    // Detect login forms on the page
+    // ── Field detection ──────────────────────────────────────────────────
     function findLoginForms(): HTMLFormElement[] {
-      const forms = document.querySelectorAll("form");
-      const loginForms: HTMLFormElement[] = [];
-
-      for (const form of forms) {
-        const passwordInput = form.querySelector('input[type="password"]');
-        if (passwordInput) {
-          loginForms.push(form);
-        }
-      }
-      return loginForms;
+      return [...document.querySelectorAll("form")].filter((f) =>
+        f.querySelector('input[type="password"]'),
+      ) as HTMLFormElement[];
     }
 
-    // Locate username + password inputs within a form using the same heuristics
-    // used by fillForm, so capture and fill stay in sync.
     function extractCredentialInputs(form: HTMLFormElement): {
       usernameInput: HTMLInputElement | null;
       passwordInput: HTMLInputElement | null;
     } {
-      const inputs = form.querySelectorAll("input");
       let usernameInput: HTMLInputElement | null = null;
       let passwordInput: HTMLInputElement | null = null;
-
-      for (const input of inputs) {
+      for (const input of form.querySelectorAll("input")) {
         if (
           input.type === "text" ||
           input.type === "email" ||
@@ -58,67 +73,259 @@ export default defineContentScript({
         ) {
           usernameInput = input;
         }
-        if (input.type === "password") {
-          passwordInput = input;
-        }
+        if (input.type === "password") passwordInput = input;
       }
       return { usernameInput, passwordInput };
     }
 
-    // Fill a form with credentials
-    function fillForm(
-      form: HTMLFormElement,
-      username: string,
-      password: string,
-    ) {
-      const { usernameInput, passwordInput } = extractCredentialInputs(form);
-      if (usernameInput && username) {
-        setInputValue(usernameInput, username);
-      }
-      if (passwordInput && password) {
-        setInputValue(passwordInput, password);
-      }
-    }
-
-    // Set input value and dispatch events for React/Angular/Vue compatibility
     function setInputValue(input: HTMLInputElement, value: string) {
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      const setter = Object.getOwnPropertyDescriptor(
         HTMLInputElement.prototype,
         "value",
       )?.set;
-
-      if (nativeInputValueSetter) {
-        nativeInputValueSetter.call(input, value);
-      } else {
-        input.value = value;
-      }
-
+      if (setter) setter.call(input, value);
+      else input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    // Capture on submit — read credentials out of the form BEFORE the
-    // browser navigates away. v1 treats this as a fire-and-forget ping: the
-    // background queues the capture in module memory and the popup offers
-    // a "Save captured login" entry.
+    async function fillWithMatch(form: HTMLFormElement, match: CredMatch) {
+      const res = await bg<{ ok?: boolean; username?: string; password?: string }>(
+        { type: "fillCredential", vaultId: match.vaultId, itemId: match.itemId },
+      );
+      if (!res?.ok) return;
+      const { usernameInput, passwordInput } = extractCredentialInputs(form);
+      if (usernameInput && res.username) setInputValue(usernameInput, res.username);
+      if (passwordInput && res.password) setInputValue(passwordInput, res.password);
+    }
+
+    // ── Floating field icon ──────────────────────────────────────────────
+    const iconHost = document.createElement("div");
+    iconHost.style.cssText =
+      "position:absolute;z-index:2147483646;display:none;width:0;height:0;";
+    const iconRoot = iconHost.attachShadow({ mode: "open" });
+    const iconBtn = document.createElement("button");
+    iconBtn.type = "button";
+    iconBtn.setAttribute("aria-label", "Fill from vaultctl");
+    iconBtn.innerHTML = shieldSVG();
+    iconBtn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
+    iconRoot.appendChild(iconBtn);
+    document.body.appendChild(iconHost);
+
+    let activeForm: HTMLFormElement | null = null;
+    let activeInput: HTMLInputElement | null = null;
+
+    function positionIcon(input: HTMLInputElement) {
+      const r = input.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) {
+        iconHost.style.display = "none";
+        return;
+      }
+      iconBtn.style.left = `${r.right - 28}px`;
+      iconBtn.style.top = `${r.top + (r.height - 22) / 2}px`;
+      iconHost.style.display = "block";
+    }
+
+    function hideIcon() {
+      iconHost.style.display = "none";
+      activeInput = null;
+    }
+
+    iconBtn.addEventListener("mousedown", (e) => e.preventDefault());
+    iconBtn.addEventListener("click", () => {
+      if (!activeForm) return;
+      if (matches.length === 1) {
+        void fillWithMatch(activeForm, matches[0]!);
+        hideIcon();
+      } else if (matches.length > 1) {
+        showPicker();
+      }
+    });
+
+    document.addEventListener(
+      "focusin",
+      (e) => {
+        const target = e.target as HTMLElement;
+        if (!settings.fieldIcon || matches.length === 0) return;
+        if (!(target instanceof HTMLInputElement)) return;
+        const form = target.closest("form") as HTMLFormElement | null;
+        if (!form) return;
+        const { usernameInput, passwordInput } = extractCredentialInputs(form);
+        if (target !== usernameInput && target !== passwordInput) return;
+        activeForm = form;
+        activeInput = target;
+        positionIcon(target);
+      },
+      true,
+    );
+    document.addEventListener(
+      "focusout",
+      () =>
+        setTimeout(() => {
+          if (document.activeElement !== activeInput) hideIcon();
+        }, 150),
+      true,
+    );
+    window.addEventListener(
+      "scroll",
+      () => activeInput && positionIcon(activeInput),
+      true,
+    );
+    window.addEventListener("resize", () => activeInput && positionIcon(activeInput));
+
+    // ── Multi-match picker ───────────────────────────────────────────────
+    function showPicker() {
+      if (!activeInput || !activeForm) return;
+      const form = activeForm;
+      const anchor = activeInput;
+      removePicker();
+      const host = document.createElement("div");
+      host.id = "vaultctl-picker-host";
+      const root = host.attachShadow({ mode: "open" });
+      const r = anchor.getBoundingClientRect();
+      const menu = document.createElement("div");
+      menu.style.cssText = `position:fixed;left:${r.left}px;top:${r.bottom + 4}px;min-width:${Math.max(200, r.width)}px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;overflow:hidden;z-index:2147483647;`;
+      for (const m of matches) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.style.cssText =
+          "all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;";
+        row.textContent = m.username || m.name || "(no username)";
+        row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
+        row.addEventListener(
+          "mouseleave",
+          () => (row.style.background = "transparent"),
+        );
+        row.addEventListener("click", () => {
+          void fillWithMatch(form, m);
+          removePicker();
+          hideIcon();
+        });
+        menu.appendChild(row);
+      }
+      root.appendChild(menu);
+      document.body.appendChild(host);
+      setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+    }
+    function onDocClick(e: Event) {
+      if ((e.target as HTMLElement)?.id !== "vaultctl-picker-host") removePicker();
+    }
+    function removePicker() {
+      document.getElementById("vaultctl-picker-host")?.remove();
+      document.removeEventListener("click", onDocClick, true);
+    }
+
+    // ── Save / update toast ──────────────────────────────────────────────
+    function showToast(opts: {
+      message: string;
+      actionLabel: string;
+      onAction: () => void;
+    }) {
+      document.getElementById("vaultctl-toast-host")?.remove();
+      const host = document.createElement("div");
+      host.id = "vaultctl-toast-host";
+      const root = host.attachShadow({ mode: "open" });
+      const card = document.createElement("div");
+      card.style.cssText =
+        "position:fixed;right:16px;bottom:16px;max-width:320px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px system-ui,sans-serif;padding:12px 14px;z-index:2147483647;opacity:0;transform:translateY(8px);transition:opacity .25s ease,transform .25s ease;";
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;align-items:center;gap:10px;";
+      const icon = document.createElement("span");
+      icon.innerHTML = shieldSVG(BRAND);
+      icon.style.cssText = `flex:none;width:22px;height:22px;border-radius:6px;background:${BRAND}1a;display:flex;align-items:center;justify-content:center;`;
+      const msg = document.createElement("div");
+      msg.style.cssText = "flex:1;line-height:1.35;";
+      msg.textContent = opts.message;
+      row.append(icon, msg);
+      const actions = document.createElement("div");
+      actions.style.cssText =
+        "display:flex;gap:8px;justify-content:flex-end;margin-top:10px;";
+      const dismiss = document.createElement("button");
+      dismiss.type = "button";
+      dismiss.textContent = "Not now";
+      dismiss.style.cssText =
+        "all:unset;cursor:pointer;padding:5px 10px;border-radius:6px;color:#a1a1aa;font-size:12px;";
+      const action = document.createElement("button");
+      action.type = "button";
+      action.textContent = opts.actionLabel;
+      action.style.cssText = `all:unset;cursor:pointer;padding:5px 12px;border-radius:6px;background:${BRAND};color:#042f2a;font-weight:600;font-size:12px;`;
+      actions.append(dismiss, action);
+      card.append(row, actions);
+      root.appendChild(card);
+      document.body.appendChild(host);
+      requestAnimationFrame(() => {
+        card.style.opacity = "1";
+        card.style.transform = "translateY(0)";
+      });
+      let done = false;
+      const close = () => {
+        if (done) return;
+        done = true;
+        card.style.opacity = "0";
+        card.style.transform = "translateY(8px)";
+        setTimeout(() => host.remove(), 300);
+      };
+      dismiss.addEventListener("click", close);
+      action.addEventListener("click", () => {
+        opts.onAction();
+        close();
+      });
+      setTimeout(close, Math.max(2000, settings.toastMs));
+    }
+
+    // ── Submit capture → save/update decision ─────────────────────────────
     function handleSubmit(event: Event) {
       const form = event.target as HTMLFormElement | null;
       if (!form || form.tagName !== "FORM") return;
-
       const { usernameInput, passwordInput } = extractCredentialInputs(form);
       if (!passwordInput || !passwordInput.value) return;
-
       const username = usernameInput?.value ?? "";
       const password = passwordInput.value;
+      const origin = window.location.href;
+      const host = window.location.hostname;
 
-      browser.runtime
-        .sendMessage({
-          type: "loginSubmitted",
-          url: window.location.href,
-          username,
-          password,
-        })
-        .catch(() => {});
+      // Keep the legacy capture queue alive for the popup.
+      void bg({ type: "loginSubmitted", url: origin, username, password });
+
+      if (!settings.savePrompt) return;
+      void bg<{
+        ok?: boolean;
+        action?: string;
+        vaultId?: string;
+        itemId?: string;
+        name?: string;
+      }>({ type: "saveDecision", origin, username, password }).then((d) => {
+        if (!d?.ok || !d.action || d.action === "none") return;
+        if (d.action === "add") {
+          showToast({
+            message: `Save this login for ${host} to vaultctl?`,
+            actionLabel: "Save",
+            onAction: () =>
+              void bg({
+                type: "commitSave",
+                action: "add",
+                host,
+                username,
+                password,
+                uri: origin,
+              }),
+          });
+        } else if (d.action === "update") {
+          showToast({
+            message: `Update the saved password for ${username || host}?`,
+            actionLabel: "Update",
+            onAction: () =>
+              void bg({
+                type: "commitSave",
+                action: "update",
+                vaultId: d.vaultId,
+                itemId: d.itemId,
+                username,
+                password,
+              }),
+          });
+        }
+      });
     }
 
     function attachSubmitListeners() {
@@ -129,39 +336,52 @@ export default defineContentScript({
       }
     }
 
-    // Listen for fill requests from the popup/background
+    // ── Boot: fetch matches + settings, wire forms, optional autofill ──────
+    async function refreshMatches() {
+      const res = await bg<{
+        ok?: boolean;
+        settings?: ExtSettings;
+        matches?: CredMatch[];
+      }>({ type: "matchCredentials", origin: window.location.href });
+      if (res?.settings) settings = res.settings;
+      matches = res?.matches ?? [];
+      if (settings.autofill && matches.length >= 1) {
+        const forms = findLoginForms();
+        if (forms[0]) void fillWithMatch(forms[0], matches[0]!);
+      }
+    }
+
+    // Popup-initiated explicit fill (existing behaviour).
     browser.runtime.onMessage.addListener(
       (message: { type: string; username?: string; password?: string }) => {
         if (message.type === "fill") {
           const forms = findLoginForms();
-          if (forms.length > 0 && message.username && message.password) {
-            fillForm(forms[0]!, message.username, message.password);
+          if (forms[0] && message.username && message.password) {
+            const { usernameInput, passwordInput } = extractCredentialInputs(
+              forms[0],
+            );
+            if (usernameInput) setInputValue(usernameInput, message.username);
+            if (passwordInput) setInputValue(passwordInput, message.password);
           }
         }
       },
     );
 
-    // Initial pass: wire up existing forms
     attachSubmitListeners();
+    void refreshMatches();
 
-    // SPA navigations and late-rendered forms: re-scan on DOM mutations
     const mutationObserver = new MutationObserver(() => attachSubmitListeners());
     mutationObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
 
-    // Notify the background that this page has a login form
-    const forms = findLoginForms();
-    if (forms.length > 0) {
-      devLog("found", forms.length, "login form(s)");
-      browser.runtime
-        .sendMessage({
-          type: "loginFormDetected",
-          url: window.location.href,
-          formCount: forms.length,
-        })
-        .catch(() => {});
+    if (findLoginForms().length > 0) {
+      void bg({ type: "loginFormDetected", url: window.location.href });
     }
   },
 });
+
+function shieldSVG(fill = "#ffffff"): string {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V5l8-3z"/></svg>`;
+}

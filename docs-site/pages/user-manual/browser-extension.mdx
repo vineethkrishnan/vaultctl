@@ -56,24 +56,48 @@ The extension is connected. Your vault syncs automatically.
 
 ## Autofill
 
-The extension detects login forms on web pages and offers to fill your credentials.
+When you open a page with a login form, the extension matches the page's host against the URIs of your login items (exact host or a parent/sub-domain).
 
-### How It Works
+### Inline field icon
 
-1. When you visit a page with a login form, the extension matches the page URL against the URI fields in your login items.
-2. A small vaultctl icon appears inside the username or password field, or a notification banner appears at the top of the page.
-3. Click the icon or banner to see matching logins.
-4. Click a login to fill the form.
+If a stored login matches, a small teal vaultctl icon appears inside the username and password fields. Click it to fill the form. When more than one login matches the page, the icon opens a short list so you can pick the right account; choosing one fills it.
 
-If multiple logins match the current URL, the extension shows all matches and lets you choose.
+### Autofill on load
 
-### Click to Fill
+With **Autofill on page load** enabled (Settings, off by default), the first matching login is filled automatically as soon as the page loads, with no click. Leave it off if you prefer to fill explicitly via the field icon.
 
-For forms that are not auto-detected, you can manually fill credentials:
+### Click to Fill from the popup
 
-1. Click the vaultctl icon in the toolbar.
-2. Search or browse for the login you need.
-3. Click **Fill** next to the item.
+For forms that are not detected, open the extension popup, find the login, and use its copy/fill actions.
+
+<Callout type="info">
+  Matching and decryption happen inside the extension's background worker. A credential's password is only sent into the page at the moment you fill it, never preemptively.
+</Callout>
+
+---
+
+## Saving and updating logins
+
+After you submit a login or signup form, the extension compares what you entered against your vault and offers a **non-blocking toast** in the corner. It never blocks the page, and it slides away on its own after a configurable timeout if you ignore it.
+
+- **New login** -- if nothing in your vault matches the site, the toast offers to **Save** it as a new item.
+- **Changed password** -- if an item matches the site and username but the password differs, the toast offers to **Update** the stored password.
+- **Already saved** -- if the exact username and password are already stored, nothing is shown.
+
+Saving and updating encrypt the item in the extension (the same client-side encryption as the web app) before sending it to your server.
+
+---
+
+## Autofill & saving settings
+
+Open the extension popup and go to the **Settings** tab to configure behavior:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Show field icon** | On | Show the inline vaultctl icon inside matching login fields. |
+| **Autofill on page load** | Off | Fill the first matching login automatically, without a click. |
+| **Offer to save / update** | On | Show the save/update toast after a login submit. |
+| **Prompt timeout** | 8s | How long the save/update toast stays before it fades out. |
 
 ---
 
