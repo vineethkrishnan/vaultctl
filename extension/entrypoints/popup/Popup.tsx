@@ -132,6 +132,7 @@ export function Popup() {
   const [loading, setLoading] = useState(false);
   const [captures, setCaptures] = useState<CapturedLoginSummary[]>([]);
   const [tab, setTab] = useState<TabId>("vault");
+  const [remember, setRemember] = useState(false);
 
   const loadItems = useCallback(
     async (url: string, accessToken: string, vaultId: string) => {
@@ -213,8 +214,33 @@ export function Popup() {
             // token may have expired across an SW restart - fall back to login
             if (!cancelled) setPhase(url ? "email" : "connect");
           }
+        } else if (url) {
+          const remembered = await browser.storage.local.get(
+            "vaultctl_remember_email",
+          );
+          const savedEmail = remembered.vaultctl_remember_email as
+            | string
+            | undefined;
+          if (savedEmail) {
+            setEmail(savedEmail);
+            setRemember(true);
+            try {
+              const params = await api<PreloginResponse>(
+                url,
+                `/api/v1/auth/prelogin?email=${encodeURIComponent(savedEmail)}`,
+              );
+              if (!cancelled) {
+                setKdf(params);
+                setPhase("password");
+              }
+            } catch {
+              if (!cancelled) setPhase("email");
+            }
+          } else if (!cancelled) {
+            setPhase("email");
+          }
         } else {
-          setPhase(url ? "email" : "connect");
+          setPhase("connect");
         }
       } catch {
         if (!cancelled) setPhase("connect");
@@ -241,6 +267,11 @@ export function Popup() {
         `/api/v1/auth/prelogin?email=${encodeURIComponent(email)}`,
       );
       setKdf(params);
+      if (remember) {
+        await browser.storage.local.set({ vaultctl_remember_email: email });
+      } else {
+        await browser.storage.local.remove("vaultctl_remember_email");
+      }
       setPhase("password");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
@@ -413,6 +444,15 @@ export function Popup() {
               autoComplete="email"
               className="w-full rounded-lg border border-border bg-card/50 px-3 py-2 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
             />
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="accent-brand"
+              />
+              Remember me on this device
+            </label>
             <button
               type="submit"
               disabled={loading || !email}
@@ -460,7 +500,11 @@ export function Popup() {
             </button>
             <button
               type="button"
-              onClick={() => setPhase("email")}
+              onClick={() => {
+                setRemember(false);
+                void browser.storage.local.remove("vaultctl_remember_email");
+                setPhase("email");
+              }}
               className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
             >
               Use a different account

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
@@ -27,6 +27,30 @@ export function LoginPage() {
 
   // Prelogin state
   const [kdfParams, setKdfParams] = useState<PreloginResponse | null>(null);
+  const [remember, setRemember] = useState(false);
+
+  // If an email was remembered on this device, prefill it and skip straight
+  // to the master-password step so unlocking only needs the password.
+  useEffect(() => {
+    const saved = localStorage.getItem("vaultctl_remember_email");
+    if (!saved) return;
+    setEmail(saved);
+    setRemember(true);
+    void (async () => {
+      setLoading(true);
+      try {
+        const params = await apiGet<PreloginResponse>(
+          `/api/v1/auth/prelogin?email=${encodeURIComponent(saved)}`,
+        );
+        setKdfParams(params);
+        setStep("password");
+      } catch {
+        // Prelogin failed (offline or unknown email) - stay on the email step.
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   async function handlePrelogin(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +62,8 @@ export function LoginPage() {
         `/api/v1/auth/prelogin?email=${encodeURIComponent(email)}`,
       );
       setKdfParams(params);
+      if (remember) localStorage.setItem("vaultctl_remember_email", email);
+      else localStorage.removeItem("vaultctl_remember_email");
       setStep("password");
     } catch (err) {
       if (err instanceof ApiRequestError) {
@@ -163,6 +189,15 @@ export function LoginPage() {
                 placeholder="you@example.com"
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="accent-brand"
+              />
+              Remember me on this device
+            </label>
             <button
               type="submit"
               disabled={loading || !email}
@@ -177,7 +212,11 @@ export function LoginPage() {
               Logging in as <strong>{email}</strong>{" "}
               <button
                 type="button"
-                onClick={() => setStep("email")}
+                onClick={() => {
+                  setStep("email");
+                  setRemember(false);
+                  localStorage.removeItem("vaultctl_remember_email");
+                }}
                 className="text-primary underline"
               >
                 change
