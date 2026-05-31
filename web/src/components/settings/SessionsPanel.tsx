@@ -9,6 +9,7 @@ import {
   deleteUsersMeSessionsId,
 } from "@/api/users/users";
 import { useAuthStore } from "@/lib/auth-store";
+import { humanizeDeviceName } from "@/lib/device";
 
 interface RawSession {
   id: string;
@@ -82,10 +83,16 @@ export function SessionsPanel() {
         existing.lastActiveAt = session.lastActiveAt;
       }
     }
-    return [...byDevice.values()].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
-    );
+    return [...byDevice.values()].sort((a, b) => {
+      if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
   }, [res, currentSessionId]);
+
+  const otherIds = useMemo(
+    () => groups.filter((g) => !g.isCurrent).flatMap((g) => g.ids),
+    [groups],
+  );
 
   const revokeMutation = useMutation({
     mutationFn: (ids: string[]) =>
@@ -141,6 +148,17 @@ export function SessionsPanel() {
         immediately.
       </p>
 
+      {otherIds.length > 0 && (
+        <button
+          type="button"
+          onClick={() => revokeMutation.mutate(otherIds)}
+          disabled={revokeMutation.isPending}
+          className="rounded-md border border-input px-3 py-1.5 text-xs text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
+        >
+          Sign out of all other devices
+        </button>
+      )}
+
       {groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No active sessions found.
@@ -155,7 +173,7 @@ export function SessionsPanel() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="break-words font-medium">
-                    {group.deviceName || "Unknown device"}
+                    {humanizeDeviceName(group.deviceName)}
                   </span>
                   {group.isCurrent && (
                     <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">

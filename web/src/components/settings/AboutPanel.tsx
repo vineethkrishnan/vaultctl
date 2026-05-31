@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api-client";
 import { useTheme } from "@/hooks/use-theme";
-import { Info, BookOpen, Github, Scale, Mail } from "lucide-react";
+import { BookOpen, Github, Scale, Mail } from "lucide-react";
 
 interface ServerConfig {
   version: string;
@@ -47,11 +47,6 @@ export function AboutPanel() {
 
   return (
     <section className="space-y-4 rounded-lg border border-border p-4">
-      <div className="flex items-center gap-2">
-        <Info className="h-4 w-4 text-muted-foreground" />
-        <h2 className="font-semibold">About</h2>
-      </div>
-
       <div className="flex flex-col items-center gap-3 py-3 text-center">
         <img src={emblem} alt="" aria-hidden="true" className="h-16 w-auto" />
         <div className="space-y-2">

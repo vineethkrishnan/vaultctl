@@ -8,6 +8,7 @@ import { initKeys } from "@/lib/key-holder";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
 import type { PreloginResponse, LoginResponse } from "@/shared/types/api";
 import { useTheme } from "@/hooks/use-theme";
+import { deviceLabel } from "@/lib/device";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ export function LoginPage() {
       const res = await apiPost<LoginResponse>("/api/v1/auth/login", {
         email,
         authHash: toBase64(authHash),
-        deviceName: navigator.userAgent.slice(0, 128),
+        deviceName: await deviceLabel(),
       });
 
       // Store auth tokens
