@@ -6,6 +6,7 @@ import { apiGet } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuthStore } from "@/lib/auth-store";
 import { lock as lockKeys, terminate as terminateWorker } from "@/lib/key-holder";
+import { postAuthLogout } from "@/api/auth/auth";
 import type { VaultResponse } from "@/shared/types/api";
 import { FolderList } from "@/components/vault/FolderList";
 import { BrandMark } from "@/components/BrandMark";
@@ -49,9 +50,19 @@ export function VaultSidebar({ open = false, onClose }: Props) {
     useAuthStore.getState().lock();
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    const { refreshToken } = useAuthStore.getState();
+    try {
+      if (refreshToken) await postAuthLogout({ refreshToken });
+    } catch {
+      // Best effort: revoke server-side, but always tear down locally.
+    }
     terminateWorker();
     logout();
+    // Full document navigation wipes the in-memory query cache (which holds
+    // decrypted item data) and guarantees the redirect, which an in-app
+    // navigate would not since route guards only run on navigation.
+    window.location.assign("/login");
   }
 
   return (
