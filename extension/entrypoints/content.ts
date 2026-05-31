@@ -109,7 +109,7 @@ export default defineContentScript({
     const iconBtn = document.createElement("button");
     iconBtn.type = "button";
     iconBtn.setAttribute("aria-label", "Fill from vaultctl");
-    iconBtn.innerHTML = shieldSVG();
+    iconBtn.innerHTML = emblemSVG();
     iconBtn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
     iconRoot.appendChild(iconBtn);
     document.body.appendChild(iconHost);
@@ -334,7 +334,7 @@ export default defineContentScript({
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:10px;";
       const icon = document.createElement("span");
-      icon.innerHTML = shieldSVG(BRAND);
+      icon.innerHTML = emblemSVG(BRAND);
       icon.style.cssText = `flex:none;width:22px;height:22px;border-radius:6px;background:${BRAND}1a;display:flex;align-items:center;justify-content:center;`;
       const msg = document.createElement("div");
       msg.style.cssText = "flex:1;line-height:1.35;";
@@ -377,27 +377,55 @@ export default defineContentScript({
     }
 
     // ── Submit capture → save/update decision ─────────────────────────────
+    // Remember a username/email value so a later password-only step can
+    // reuse it (multi-step / split login forms).
+    function rememberUsername(value: string) {
+      if (value) {
+        void bg({
+          type: "rememberUsername",
+          host: window.location.hostname,
+          username: value,
+        });
+      }
+    }
+
     function handleSubmit(event: Event) {
       const form = event.target as HTMLFormElement | null;
       if (!form || form.tagName !== "FORM") return;
       const { usernameInput, passwordInput } = extractCredentialInputs(form);
-      if (!passwordInput || !passwordInput.value) return;
-      const username = usernameInput?.value ?? "";
-      const password = passwordInput.value;
       const origin = window.location.href;
       const host = window.location.hostname;
 
-      // Keep the legacy capture queue alive for the popup.
-      void bg({ type: "loginSubmitted", url: origin, username, password });
+      // Step one of a multi-step form: an email/username with no password yet.
+      // Stash it so the password step can pick it up.
+      if (!passwordInput || !passwordInput.value) {
+        rememberUsername(usernameInput?.value ?? "");
+        return;
+      }
+      const password = passwordInput.value;
 
-      if (!settings.savePrompt) return;
-      void bg<{
-        ok?: boolean;
-        action?: string;
-        vaultId?: string;
-        itemId?: string;
-        name?: string;
-      }>({ type: "saveDecision", origin, username, password }).then((d) => {
+      void (async () => {
+        let username = usernameInput?.value ?? "";
+        if (!username) {
+          // Password-only step: fall back to the email captured earlier.
+          const r = await bg<{ username?: string }>({
+            type: "getRememberedUsername",
+            host,
+          });
+          username = r?.username ?? "";
+        }
+
+        // Keep the legacy capture queue alive for the popup.
+        void bg({ type: "loginSubmitted", url: origin, username, password });
+
+        if (!settings.savePrompt) return;
+        const d = await bg<{
+          ok?: boolean;
+          action?: string;
+          vaultId?: string;
+          itemId?: string;
+          name?: string;
+        }>({ type: "saveDecision", origin, username, password });
         if (!d?.ok || !d.action || d.action === "none") return;
         if (d.action === "add") {
           showToast({
@@ -428,7 +456,7 @@ export default defineContentScript({
               }),
           });
         }
-      });
+      })();
     }
 
     function attachSubmitListeners() {
@@ -438,6 +466,23 @@ export default defineContentScript({
         form.addEventListener("submit", handleSubmit, { capture: true });
       }
     }
+
+    // Remember an email/username as soon as the user leaves the field, so a
+    // later password-only step (incl. SPA step changes with no form submit)
+    // can still be saved with its email.
+    document.addEventListener(
+      "focusout",
+      (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement) || t.type === "password") return;
+        const isUser =
+          t.type === "email" ||
+          (t.autocomplete || "").includes("username") ||
+          /user|email/i.test(`${t.name} ${t.id}`);
+        if (isUser && t.value) rememberUsername(t.value);
+      },
+      true,
+    );
 
     // ── Boot: fetch matches + settings, wire forms, optional autofill ──────
     async function refreshMatches() {
@@ -485,6 +530,12 @@ export default defineContentScript({
   },
 });
 
-function shieldSVG(fill = "#ffffff"): string {
-  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V5l8-3z"/></svg>`;
+// The actual VaultCTL emblem (shield + keyhole + V), vectorized from the
+// brand mark, so the inline icon shows the real logo rather than a generic
+// shield. viewBox 0 0 1024 1024; fill carries the V/keyhole as negative space.
+const EMBLEM_PATH =
+  "M483 200c-16.8 5.4-49.2 15.8-72 23-65.1 20.6-119.3 38-121.7 39-2.3 1-2.3 1-2.3 26l0 25 22 0 22 0 0-11.5c0-6.3 0.2-11.5 0.5-11.5 0.3 0 24.9-7.9 54.7-17.6 29.9-9.7 70.9-22.9 91.2-29.5l36.9-11.9 24.1 7.6c13.3 4.2 36 11.4 50.6 16.1 14.6 4.7 34.4 11 44 14.1 9.6 3.1 27.9 9 40.5 13.2l23 7.6 0.3 11.7 0.3 11.7 21.9 0 22 0 0-25.3 0-25.3-49.7-16.1c-27.4-8.9-61.5-19.8-75.8-24.3-14.3-4.5-42.8-13.6-63.3-20.1-20.5-6.6-37.6-11.9-38-11.9-0.4 0.1-14.4 4.5-31.2 10z M499.5 262.5c-7.1 2.4-41.7 13.7-76.7 25.1l-63.8 20.8 0 15.3 0 15.3-23.7 0c-45.4 0-85.8 0.3-86.5 0.7-0.4 0.2 4.7 9.2 11.2 20.1l12 19.7 0 63.5c0 63.1 0.7 83.4 3.6 102.5 6.3 42.2 22.9 84.7 49.3 126.1 35.4 55.3 95.9 113.6 170.5 164.3 12.5 8.4 15.6 10.1 18.8 10.1 3.2 0 6.3-1.7 20-11.2 56-38.4 103-79.8 137.2-120.6 47.3-56.6 76.2-120.1 82.6-181.4 0.5-5.4 1-41 1-81l0.1-71.3 11.9-19.5c11.1-18.1 13.2-22.2 11.3-21.9-0.5 0.1-25.2 0.1-55 0l-54.3-0.1 0-15.4 0-15.3-9.2-3c-110.6-36.2-144.9-47.3-146.2-47.2-0.6 0-6.9 2-14.1 4.4z m-118.5 135.2c6.3 12.5 19.5 37.9 29.2 56.6l17.8 34-2.7 8.1c-2.4 7.4-2.7 9.6-2.7 24.1-0.1 13.8 0.2 17.1 2.2 23.8 3.7 12.9 10.7 25.6 19.7 35.7l4.2 4.8-1.2 7.3c-0.7 4.1-3.7 24.1-6.6 44.6-3 20.5-5.7 36.9-6 36.5-0.8-0.9-19.3-35.8-49.4-93.2-12.5-23.9-29.8-57-38.5-73.5-8.6-16.5-19.4-37.2-24-46-7.2-13.9-20.9-39.9-39.7-75.3l-5.4-10.2 45.8 0 45.8 0 11.5 22.7z m368-22.2c0 0.3-11.2 21.8-24.9 47.8-33.2 63.2-67.6 129-94.3 180.7-12.1 23.4-23 44.3-24.3 46.5-1.2 2.2-4.6 8.7-7.6 14.5l-5.3 10.5-1.8-12.5c-0.9-6.9-3.9-27.3-6.6-45.5l-4.9-33 5.6-6.1c10-10.9 17.5-26.6 20.2-42.1 1.9-10.8 0.7-30.2-2.5-40l-2.7-8.2 4.2-8.2c6.3-12.6 48.7-93.7 52.1-99.7l2.9-5.2 45 0c24.7 0 44.9 0.2 44.9 0.5z m-214.8 84.7c18.7 6.1 33.5 21.3 39.5 40.5 2.3 7.5 2.5 9.5 2.1 20.1-0.4 9.9-0.9 12.8-3.3 18.7-3.8 9.5-9.1 17-16.9 24.2l-6.5 5.9 4.9 34c6.8 47 11.5 79.5 14 95.6l2.1 13.7-27.4 48.8c-15.1 26.8-27.9 48.9-28.4 49-1 0.4-0.8 0.8-31.9-54.8l-24.4-43.6 3.5-23.9c2-13.1 6.7-44.3 10.5-69.2 3.9-24.9 7-46.5 7-48-0.1-2-1.2-3.6-4.6-6.1-9.1-6.9-17.1-19.7-20.5-32.9-3.5-13.7-1.8-26.8 5.2-41.1 7.9-16 24.1-28.6 41.9-32.6 9.4-2.1 23.5-1.4 33.2 1.7z";
+
+function emblemSVG(fill = "#ffffff"): string {
+  return `<svg width="16" height="16" viewBox="0 0 1024 1024" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="${EMBLEM_PATH}"/></svg>`;
 }

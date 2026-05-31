@@ -75,6 +75,14 @@ const vaultMeta = new Map<string, { name: string; type: string }>();
 const capturedLogins: CapturedLogin[] = [];
 
 let autoLockTimer: ReturnType<typeof setTimeout> | undefined;
+let autoLockMs = AUTO_LOCK_MS; // configurable; loaded from settings
+let unlocked = false; // true once keys are loaded (incl. rehydrated)
+
+// Memory-only session storage (cleared on browser close, never on disk) lets
+// the unlocked state survive MV3 service-worker restarts, so the vault does
+// not lock at random when Chrome recycles the worker.
+const SESSION_KEY = "vaultctl_unlocked";
+const EXPIRY_KEY = "vaultctl_unlock_expiry";
 
 // ===========================================================================
 // Helpers
@@ -87,9 +95,68 @@ function devLog(...args: unknown[]): void {
   }
 }
 
+async function persistSession(): Promise<void> {
+  if (!unlocked) return;
+  const vk: Record<string, number[]> = {};
+  for (const [id, key] of vaultKeys) vk[id] = Array.from(key);
+  await browser.storage.session.set({
+    [SESSION_KEY]: {
+      accessToken,
+      vaultKeys: vk,
+      vaultMeta: [...vaultMeta.entries()],
+    },
+    [EXPIRY_KEY]: autoLockMs > 0 ? Date.now() + autoLockMs : 0, // 0 = never
+  });
+}
+
+async function rehydrateSession(): Promise<void> {
+  try {
+    const settings = await getSettings();
+    autoLockMs = Math.max(0, settings.autoLockMin) * 60 * 1000;
+    const stored = await browser.storage.session.get([SESSION_KEY, EXPIRY_KEY]);
+    const expiry = stored[EXPIRY_KEY] as number | undefined;
+    const blob = stored[SESSION_KEY] as
+      | {
+          accessToken: string | null;
+          vaultKeys: Record<string, number[]>;
+          vaultMeta: [string, { name: string; type: string }][];
+        }
+      | undefined;
+    if (!blob) return;
+    if (expiry && expiry !== 0 && Date.now() > expiry) {
+      await doLockAsync();
+      return;
+    }
+    accessToken = blob.accessToken;
+    vaultKeys.clear();
+    for (const [id, arr] of Object.entries(blob.vaultKeys)) {
+      vaultKeys.set(id, Uint8Array.from(arr));
+    }
+    vaultMeta.clear();
+    for (const [id, meta] of blob.vaultMeta) vaultMeta.set(id, meta);
+    unlocked = true;
+    resetAutoLock();
+  } catch {
+    // No session to restore; stay locked.
+  }
+}
+
 function resetAutoLock(): void {
   if (autoLockTimer) clearTimeout(autoLockTimer);
-  autoLockTimer = setTimeout(() => doLock(), AUTO_LOCK_MS);
+  if (autoLockMs <= 0) {
+    void persistSession(); // never auto-lock, but keep the session warm
+    return;
+  }
+  autoLockTimer = setTimeout(() => doLock(), autoLockMs);
+  void persistSession();
+}
+
+async function doLockAsync(): Promise<void> {
+  try {
+    await browser.storage.session.remove([SESSION_KEY, EXPIRY_KEY]);
+  } catch {
+    // ignore
+  }
 }
 
 function doLock(): void {
@@ -106,6 +173,9 @@ function doLock(): void {
   vaultKeys.clear();
   vaultMeta.clear();
   genHistory = [];
+  pendingUsernames.clear();
+  unlocked = false;
+  void doLockAsync();
   if (autoLockTimer) {
     clearTimeout(autoLockTimer);
     autoLockTimer = undefined;
@@ -180,6 +250,7 @@ interface ExtSettings {
   genSymbols: boolean;
   historyMax: number; // how many generated passwords to keep
   historyTtlMin: number; // how long a generated password stays in history (minutes)
+  autoLockMin: number; // minutes of inactivity before locking (0 = never)
 }
 
 const DEFAULT_SETTINGS: ExtSettings = {
@@ -195,6 +266,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   genSymbols: true,
   historyMax: 5,
   historyTtlMin: 60,
+  autoLockMin: 15,
 };
 
 // ===========================================================================
@@ -228,6 +300,11 @@ interface GenEntry {
 // Generated-password history lives only in memory (never written to disk) and
 // is wiped on lock, so plaintext generated passwords never persist.
 let genHistory: GenEntry[] = [];
+
+// Usernames/emails entered in an earlier step of a multi-step login, keyed by
+// host, so the password step can be saved with its email. Short-lived.
+const PENDING_USERNAME_TTL_MS = 10 * 60 * 1000;
+const pendingUsernames = new Map<string, { username: string; at: number }>();
 
 async function pruneGenHistory(): Promise<void> {
   const { historyMax, historyTtlMin } = await getSettings();
@@ -509,6 +586,8 @@ async function handleInit(payload: {
     });
   }
 
+  unlocked = true;
+  await persistSession();
   devLog("initialised", vaultKeys.size, "vault keys");
 }
 
@@ -517,6 +596,9 @@ async function handleInit(payload: {
 // ===========================================================================
 
 export default defineBackground(() => {
+  // Restore the unlocked state if the worker was recycled mid-session.
+  const rehydrated = rehydrateSession();
+
   browser.runtime.onMessage.addListener(
     (
       rawMessage: unknown,
@@ -529,12 +611,16 @@ export default defineBackground(() => {
         return false;
       }
 
-      if (message.type !== "getCapturedLogins" && message.type !== "getAuthState") {
-        resetAutoLock();
-      }
-
       void (async () => {
         try {
+          await rehydrated;
+          if (
+            message.type !== "getCapturedLogins" &&
+            message.type !== "getAuthState" &&
+            unlocked
+          ) {
+            resetAutoLock();
+          }
           switch (message.type) {
             // -----------------------------------------------------------
             // Auth / lifecycle
@@ -542,7 +628,7 @@ export default defineBackground(() => {
             case "getAuthState": {
               sendResponse({
                 isAuthenticated: !!accessToken,
-                isUnlocked: stretchedKey !== null,
+                isUnlocked: unlocked,
                 vaultCount: vaultKeys.size,
               });
               return;
@@ -552,7 +638,7 @@ export default defineBackground(() => {
               // Lets the popup resume after it was closed while the worker
               // stayed unlocked. The token never leaves the extension.
               sendResponse({
-                isUnlocked: stretchedKey !== null,
+                isUnlocked: unlocked,
                 accessToken,
                 vaults: [...vaultMeta.entries()].map(([id, meta]) => ({
                   id,
@@ -722,6 +808,9 @@ export default defineBackground(() => {
               const incoming = (message.settings as Partial<ExtSettings>) ?? {};
               const merged = { ...(await getSettings()), ...incoming };
               await browser.storage.local.set({ vaultctl_settings: merged });
+              // Apply a changed auto-lock period immediately.
+              autoLockMs = Math.max(0, merged.autoLockMin) * 60 * 1000;
+              if (unlocked) resetAutoLock();
               sendResponse({ ok: true, settings: merged });
               return;
             }
@@ -731,7 +820,7 @@ export default defineBackground(() => {
             // -----------------------------------------------------------
             case "matchCredentials": {
               const settings = await getSettings();
-              if (!stretchedKey) {
+              if (!unlocked) {
                 sendResponse({ ok: true, settings, matches: [] });
                 return;
               }
@@ -769,7 +858,7 @@ export default defineBackground(() => {
             }
 
             case "saveDecision": {
-              if (!stretchedKey) {
+              if (!unlocked) {
                 sendResponse({ ok: true, action: "none" });
                 return;
               }
@@ -822,11 +911,18 @@ export default defineBackground(() => {
             case "logGeneratedPassword": {
               const password = String(message.password ?? "");
               if (password) {
-                genHistory.push({
-                  id: makeCaptureId(),
-                  password,
-                  createdAt: Date.now(),
-                });
+                const existing = genHistory.find((e) => e.password === password);
+                if (existing) {
+                  // Re-copying the same password refreshes its recency rather
+                  // than adding a duplicate row.
+                  existing.createdAt = Date.now();
+                } else {
+                  genHistory.push({
+                    id: makeCaptureId(),
+                    password,
+                    createdAt: Date.now(),
+                  });
+                }
                 await pruneGenHistory();
               }
               sendResponse({ ok: true });
@@ -842,6 +938,31 @@ export default defineBackground(() => {
             case "clearGenHistory": {
               genHistory = [];
               sendResponse({ ok: true });
+              return;
+            }
+
+            // -----------------------------------------------------------
+            // Multi-step login: remember the email/username across steps
+            // -----------------------------------------------------------
+            case "rememberUsername": {
+              const host = String(message.host ?? "");
+              const username = String(message.username ?? "");
+              if (host && username) {
+                pendingUsernames.set(host, { username, at: Date.now() });
+              }
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "getRememberedUsername": {
+              const host = String(message.host ?? "");
+              const entry = pendingUsernames.get(host);
+              if (entry && Date.now() - entry.at <= PENDING_USERNAME_TTL_MS) {
+                sendResponse({ ok: true, username: entry.username });
+              } else {
+                pendingUsernames.delete(host);
+                sendResponse({ ok: true, username: "" });
+              }
               return;
             }
 

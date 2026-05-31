@@ -50,11 +50,11 @@ export function AboutPanel() {
       <div className="flex flex-col items-center gap-3 py-3 text-center">
         <img src={emblem} alt="" aria-hidden="true" className="h-16 w-auto" />
         <div className="space-y-2">
-          <p className="text-xl font-semibold tracking-tight">VaultCTL</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-lg font-semibold tracking-tight">VaultCTL</p>
+          <p className="text-xs text-muted-foreground">
             A zero-knowledge, self-hosted password vault.
           </p>
-          <p className="mx-auto max-w-xs text-sm leading-relaxed text-muted-foreground">
+          <p className="mx-auto max-w-xs text-[11px] leading-relaxed text-muted-foreground">
             All cryptography runs in your browser. The server only ever stores
             encrypted data.
           </p>

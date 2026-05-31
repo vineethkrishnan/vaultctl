@@ -62,8 +62,8 @@ export function VaultSidebar({ open = false, onClose }: Props) {
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-        <BrandMark className="text-[28px] text-brand" />
-        <span className="text-lg font-semibold tracking-tight">VaultCTL</span>
+        <BrandMark className="text-[26px] text-brand" />
+        <BrandMark variant="wordmark" className="text-[19px]" />
         <button
           type="button"
           onClick={onClose}

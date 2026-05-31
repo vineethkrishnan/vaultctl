@@ -570,8 +570,8 @@ export function Popup() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="px-3 py-2.5">
+      {/* Search (sticky so it stays visible while the list scrolls) */}
+      <div className="sticky top-0 z-10 bg-background/95 px-3 py-2.5 backdrop-blur-sm">
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-2.5 py-2 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/20">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
@@ -943,6 +943,7 @@ interface ExtSettings {
   genSymbols: boolean;
   historyMax: number;
   historyTtlMin: number;
+  autoLockMin: number;
 }
 
 function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => void }) {
@@ -1018,6 +1019,26 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
               <option value={8000}>8s</option>
               <option value={15000}>15s</option>
               <option value={30000}>30s</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-3 pt-1">
+            <span className="min-w-0">
+              <span className="block text-sm">Auto-lock</span>
+              <span className="block text-[11px] text-muted-foreground">
+                Lock after this much inactivity
+              </span>
+            </span>
+            <select
+              value={settings.autoLockMin}
+              onChange={(e) => update({ autoLockMin: Number(e.target.value) })}
+              className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
+            >
+              <option value={1}>1 min</option>
+              <option value={5}>5 min</option>
+              <option value={15}>15 min</option>
+              <option value={30}>30 min</option>
+              <option value={60}>1 hour</option>
+              <option value={0}>Never</option>
             </select>
           </label>
         </div>

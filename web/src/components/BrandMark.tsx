@@ -1,20 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * The VaultCTL emblem rendered from the brand font (glyph U+E000). Because it
- * is a font glyph it inherits the current text color, so it adapts to light
- * and dark themes without swapping image assets. Size it with text classes.
+ * VaultCTL brand glyphs rendered from the brand font:
+ *   - "emblem"   (U+E000): the shield + keyhole + V mark
+ *   - "wordmark" (U+E001): the "VaultCTL" logotype, matching the logo
+ * Being font glyphs they inherit the current text color, so they adapt to
+ * light/dark with no image swap. Size them with text classes.
  */
-const LOGO_GLYPH = String.fromCharCode(0xe000);
+const GLYPHS = { emblem: 0xe000, wordmark: 0xe001 } as const;
 
-export function BrandMark({ className = "" }: { className?: string }) {
+export function BrandMark({
+  variant = "emblem",
+  className = "",
+}: {
+  variant?: keyof typeof GLYPHS;
+  className?: string;
+}) {
   return (
     <span
       role="img"
       aria-label="VaultCTL"
       className={`font-brand leading-none ${className}`}
     >
-      {LOGO_GLYPH}
+      {String.fromCharCode(GLYPHS[variant])}
     </span>
   );
 }
