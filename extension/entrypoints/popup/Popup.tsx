@@ -19,6 +19,8 @@ import {
   Trash2,
   CheckCheck,
   X,
+  BookOpen,
+  Mail,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 
@@ -80,6 +82,10 @@ type Phase = "loading" | "connect" | "email" | "password" | "list";
 type TabId = "vault" | "generator" | "send" | "notifications" | "settings";
 
 const decoder = new TextDecoder();
+
+const DOCS_URL = "https://vaultctl.vinelabs.de";
+const VINELABS_URL = "https://vinelabs.de";
+const SUPPORT_EMAIL = "support@vinelabs.de";
 
 function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
   return browser.runtime.sendMessage(message) as Promise<T>;
@@ -1205,9 +1211,65 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
         <Lock className="h-4 w-4 text-muted-foreground" />
         Lock vault
       </button>
-      <p className="pt-2 text-center text-[11px] text-muted-foreground">
-        vaultctl extension - zero-knowledge. Keys never leave this device.
+      <AboutCard />
+    </div>
+  );
+}
+
+function AboutCard() {
+  const version = browser.runtime.getManifest().version;
+  return (
+    <div className="space-y-2.5 rounded-lg border border-border bg-card/50 p-3">
+      <div className="flex items-center justify-center gap-2">
+        <BrandMark className="text-xl text-brand" />
+        <BrandMark variant="wordmark" className="text-base" />
+      </div>
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        Zero-knowledge password vault. Encryption keys never leave this device.
       </p>
+
+      <dl className="space-y-1 border-t border-border pt-2 text-[11px]">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Version</dt>
+          <dd className="font-mono">{version}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Maintained by</dt>
+          <dd>Vineeth N K</dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Crafted from</dt>
+          <dd>
+            <a
+              href={VINELABS_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="hover:text-brand"
+            >
+              VineLabs
+            </a>
+          </dd>
+        </div>
+      </dl>
+
+      <div className="flex items-center justify-center gap-4 border-t border-border pt-2 text-[11px]">
+        <a
+          href={DOCS_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand"
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          Documentation
+        </a>
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Support
+        </a>
+      </div>
     </div>
   );
 }
