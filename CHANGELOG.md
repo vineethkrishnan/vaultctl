@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.6.2...v1.7.0) (2026-05-31)
+
+
+### Features
+
+* morph the save toast into a success or error state ([#145](https://github.com/vineethkrishnan/vaultctl/issues/145)) ([b80b1eb](https://github.com/vineethkrishnan/vaultctl/commit/b80b1eb179aa7a1acf7a760289f6274dc33ec15b))
+* vault list filtering, per-row metadata, and a quick-actions menu ([#144](https://github.com/vineethkrishnan/vaultctl/issues/144)) ([4084239](https://github.com/vineethkrishnan/vaultctl/commit/40842396e9d58fd5a8fe43f70d193d2678b0fe5c))
+
+
+### Bug Fixes
+
+* keep the extension signed in by refreshing the access token ([#143](https://github.com/vineethkrishnan/vaultctl/issues/143)) ([199f659](https://github.com/vineethkrishnan/vaultctl/commit/199f659326f8994468e3659a9ca7c8ebcc99525b))
+* permanent delete from trash works, with a themed confirm dialog ([#146](https://github.com/vineethkrishnan/vaultctl/issues/146)) ([02da572](https://github.com/vineethkrishnan/vaultctl/commit/02da57229da7e723534f0cb8749bbfee8a68b462))
+* saving a captured login from the alerts tab writes it to the vault ([#141](https://github.com/vineethkrishnan/vaultctl/issues/141)) ([47d5484](https://github.com/vineethkrishnan/vaultctl/commit/47d548478521d0c30fdd46fa95153418f579822d))
+
 ## [1.6.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.6.1...v1.6.2) (2026-05-31)
 
 
