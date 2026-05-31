@@ -769,13 +769,79 @@ function SendTab() {
 }
 
 // ── Settings tab ─────────────────────────────────────────────────────────
+interface ExtSettings {
+  autofill: boolean;
+  fieldIcon: boolean;
+  savePrompt: boolean;
+  toastMs: number;
+}
+
 function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => void }) {
+  const [settings, setSettings] = useState<ExtSettings | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    bg<{ settings?: ExtSettings }>({ type: "getSettings" }).then((res) => {
+      if (!cancelled && res?.settings) setSettings(res.settings);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function update(patch: Partial<ExtSettings>) {
+    setSettings((prev) => {
+      const next = { ...(prev as ExtSettings), ...patch };
+      void bg({ type: "setSettings", settings: next });
+      return next;
+    });
+  }
+
   return (
     <div className="animate-fade-in space-y-3 p-3">
       <div className="rounded-lg border border-border bg-card/50 p-3">
         <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Server</div>
         <div className="mt-1 truncate text-sm">{safeHostname(serverUrl) || "not set"}</div>
       </div>
+
+      {settings && (
+        <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Autofill &amp; saving
+          </div>
+          <Toggle
+            label="Show field icon"
+            hint="Inline icon inside login fields to fill"
+            checked={settings.fieldIcon}
+            onChange={(v) => update({ fieldIcon: v })}
+          />
+          <Toggle
+            label="Autofill on page load"
+            hint="Fill matching logins automatically, no click"
+            checked={settings.autofill}
+            onChange={(v) => update({ autofill: v })}
+          />
+          <Toggle
+            label="Offer to save / update"
+            hint="Prompt after a login submit"
+            checked={settings.savePrompt}
+            onChange={(v) => update({ savePrompt: v })}
+          />
+          <label className="flex items-center justify-between gap-2 pt-1">
+            <span className="text-sm">Prompt timeout</span>
+            <select
+              value={settings.toastMs}
+              onChange={(e) => update({ toastMs: Number(e.target.value) })}
+              className="rounded-md border border-border bg-card px-2 py-1 text-xs"
+            >
+              <option value={4000}>4s</option>
+              <option value={8000}>8s</option>
+              <option value={15000}>15s</option>
+              <option value={30000}>30s</option>
+            </select>
+          </label>
+        </div>
+      )}
       <button
         onClick={() => serverUrl && window.open(serverUrl, "_blank")}
         className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
@@ -794,6 +860,44 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
         vaultctl extension - zero-knowledge. Keys never leave this device.
       </p>
     </div>
+  );
+}
+
+function Toggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex w-full items-center justify-between gap-3 text-left"
+    >
+      <span className="min-w-0">
+        <span className="block text-sm">{label}</span>
+        {hint && (
+          <span className="block text-[11px] text-muted-foreground">{hint}</span>
+        )}
+      </span>
+      <span
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+          checked ? "bg-brand" : "bg-border"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0.5"
+          }`}
+        />
+      </span>
+    </button>
   );
 }
 
