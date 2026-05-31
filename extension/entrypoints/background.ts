@@ -67,6 +67,8 @@ const CAPTURE_TTL_MS = 10 * 60 * 1000;
 const CAPTURE_MAX = 10;
 
 let accessToken: string | null = null;
+let refreshToken: string | null = null;
+let refreshInFlight: Promise<boolean> | null = null;
 let stretchedKey: Uint8Array | null = null;
 let rsaPrivateKey: CryptoKey | null = null;
 const identityKey: { value: CryptoKey | null } = { value: null };
@@ -108,6 +110,7 @@ async function persistSession(): Promise<void> {
   await browser.storage.session.set({
     [SESSION_KEY]: {
       accessToken,
+      refreshToken,
       vaultKeys: vk,
       vaultMeta: [...vaultMeta.entries()],
     },
@@ -124,6 +127,7 @@ async function rehydrateSession(): Promise<void> {
     const blob = stored[SESSION_KEY] as
       | {
           accessToken: string | null;
+          refreshToken?: string | null;
           vaultKeys: Record<string, number[]>;
           vaultMeta: [string, { name: string; type: string }][];
         }
@@ -134,6 +138,7 @@ async function rehydrateSession(): Promise<void> {
       return;
     }
     accessToken = blob.accessToken;
+    refreshToken = blob.refreshToken ?? null;
     vaultKeys.clear();
     for (const [id, arr] of Object.entries(blob.vaultKeys)) {
       vaultKeys.set(id, Uint8Array.from(arr));
@@ -167,6 +172,7 @@ async function doLockAsync(): Promise<void> {
 
 function doLock(): void {
   accessToken = null;
+  refreshToken = null;
   if (stretchedKey) {
     zero(stretchedKey);
     stretchedKey = null;
@@ -375,16 +381,56 @@ async function getServerUrl(): Promise<string> {
   return ((stored.vaultctl_server_url as string) ?? "").replace(/\/$/, "");
 }
 
+// Exchange the (rotating) refresh token for a fresh access token. The access
+// token has a short TTL (~15m); without this the extension would 401 and force
+// a full re-login long before the auto-lock period. Single-flighted so parallel
+// requests share one refresh.
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshToken) return false;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const base = await getServerUrl();
+      const res = await fetch(`${base}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as {
+        accessToken?: string;
+        refreshToken?: string;
+      };
+      if (!data.accessToken) return false;
+      accessToken = data.accessToken;
+      if (data.refreshToken) refreshToken = data.refreshToken;
+      await persistSession();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
 async function apiFetch(path: string, init: RequestInit): Promise<Response> {
   const base = await getServerUrl();
-  return fetch(`${base}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(init.headers ?? {}),
-    },
-  });
+  const send = () =>
+    fetch(`${base}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(init.headers ?? {}),
+      },
+    });
+  let res = await send();
+  if (res.status === 401 && refreshToken && (await refreshAccessToken())) {
+    res = await send();
+  }
+  return res;
 }
 
 async function encName(vaultId: string, name: string): Promise<string> {
@@ -693,6 +739,10 @@ export default defineBackground(() => {
 
             case "setToken": {
               accessToken = (message.token as string) ?? null;
+              if (typeof message.refreshToken === "string") {
+                refreshToken = message.refreshToken;
+              }
+              if (unlocked) void persistSession();
               sendResponse({ ok: true });
               return;
             }
@@ -1018,6 +1068,31 @@ export default defineBackground(() => {
                   );
                 }
                 sendResponse({ ok: true });
+              } catch (err) {
+                sendResponse({
+                  ok: false,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              }
+              return;
+            }
+
+            case "listItems": {
+              if (!unlocked) {
+                sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
+              const vaultId = String(message.vaultId ?? "");
+              try {
+                const res = await apiFetch(
+                  `/api/v1/vaults/${vaultId}/items`,
+                  { method: "GET" },
+                );
+                if (!res.ok) {
+                  sendResponse({ ok: false, error: `HTTP ${res.status}` });
+                  return;
+                }
+                sendResponse({ ok: true, items: await res.json() });
               } catch (err) {
                 sendResponse({
                   ok: false,
