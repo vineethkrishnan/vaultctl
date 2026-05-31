@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
+/* Brand font: carries the VaultCTL emblem (U+E000) and wordmark (U+E001) as
+   glyphs so the logo renders as text and inherits currentColor. */
+@font-face {
+  font-family: "VaultCTL Brand";
+  src: url("/fonts/vaultctl-brand.woff2") format("woff2");
+  font-display: swap;
+}
+
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+  --font-brand: "VaultCTL Brand";
 
   --color-background: #09090b;
   --color-foreground: #fafafa;

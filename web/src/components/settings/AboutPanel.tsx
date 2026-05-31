@@ -42,9 +42,11 @@ export function AboutPanel() {
   return (
     <section className="space-y-4 rounded-lg border border-border p-4">
       <div className="flex flex-col items-center gap-3 py-3 text-center">
-        <BrandMark className="text-[56px] text-brand" />
+        <div className="flex flex-col items-center gap-0.5">
+          <BrandMark className="text-7xl text-brand" />
+          <BrandMark variant="wordmark" className="block text-2xl" />
+        </div>
         <div className="space-y-2">
-          <BrandMark variant="wordmark" className="block text-3xl" />
           <p className="text-xs text-muted-foreground">
             A zero-knowledge, self-hosted password vault.
           </p>

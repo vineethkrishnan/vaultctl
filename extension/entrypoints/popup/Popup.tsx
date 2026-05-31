@@ -15,6 +15,12 @@ import {
   Send as SendIcon,
   Settings as SettingsIcon,
   RefreshCw,
+  Bell,
+  Trash2,
+  CheckCheck,
+  X,
+  BookOpen,
+  Mail,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 
@@ -69,12 +75,17 @@ interface CapturedLoginSummary {
   url: string;
   username: string;
   capturedAt: number;
+  read: boolean;
 }
 
 type Phase = "loading" | "connect" | "email" | "password" | "list";
-type TabId = "vault" | "generator" | "send" | "settings";
+type TabId = "vault" | "generator" | "send" | "notifications" | "settings";
 
 const decoder = new TextDecoder();
+
+const DOCS_URL = "https://vaultctl.vinelabs.de";
+const VINELABS_URL = "https://vinelabs.de";
+const SUPPORT_EMAIL = "support@vinelabs.de";
 
 function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
   return browser.runtime.sendMessage(message) as Promise<T>;
@@ -385,6 +396,46 @@ export function Popup() {
     }
   }
 
+  async function handleDismissCapture(captureId: string) {
+    try {
+      await bg({ type: "dismissCapturedLogin", id: captureId });
+      setCaptures((existing) => existing.filter((c) => c.id !== captureId));
+    } catch {
+      // leave in place to retry
+    }
+  }
+
+  async function handleMarkCaptureRead(captureId: string) {
+    setCaptures((existing) =>
+      existing.map((c) => (c.id === captureId ? { ...c, read: true } : c)),
+    );
+    try {
+      await bg({ type: "markCaptureRead", id: captureId });
+    } catch {
+      // best effort — the badge reconciles on next popup open
+    }
+  }
+
+  async function handleMarkAllCapturesRead() {
+    setCaptures((existing) => existing.map((c) => ({ ...c, read: true })));
+    try {
+      await bg({ type: "markAllCapturesRead" });
+    } catch {
+      // best effort
+    }
+  }
+
+  async function handleClearCaptures() {
+    setCaptures([]);
+    try {
+      await bg({ type: "clearCapturedLogins" });
+    } catch {
+      // best effort
+    }
+  }
+
+  const unreadCaptures = captures.reduce((n, c) => (c.read ? n : n + 1), 0);
+
   // ── Loading ──────────────────────────────────────────────────────────────
   if (phase === "loading") {
     return (
@@ -398,8 +449,11 @@ export function Popup() {
   if (phase === "connect" || phase === "email" || phase === "password") {
     return (
       <div className="animate-fade-up flex flex-col items-center justify-center p-6 space-y-4">
-        <img src="/emblem.svg" alt="" aria-hidden="true" className="h-12 w-auto" />
-        <h1 className="text-lg font-semibold tracking-tight">VaultCTL</h1>
+        <h1 className="sr-only">VaultCTL</h1>
+        <div className="flex flex-col items-center gap-0.5">
+          <BrandMark className="text-7xl text-brand" />
+          <BrandMark variant="wordmark" className="block text-xl" />
+        </div>
 
         {error && (
           <div className="w-full rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive">
@@ -528,7 +582,7 @@ export function Popup() {
     <div className="animate-fade-in flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-        <img src="/emblem.svg" alt="" aria-hidden="true" className="h-6 w-6" />
+        <BrandMark className="text-2xl text-brand" />
         <span className="flex-1 truncate text-sm font-semibold tracking-tight">
           {tab === "vault"
             ? vaults.find((v) => v.id === activeVaultId)?.name ?? "Vault"
@@ -540,35 +594,6 @@ export function Popup() {
       <div className="flex-1 overflow-y-auto">
         {tab === "vault" && (
           <div className="animate-fade-in">
-
-      {/* Captured logins */}
-      {captures.length > 0 && (
-        <div className="border-b border-border px-3 py-2 space-y-1">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Captured logins
-          </div>
-          {captures.map((capture) => (
-            <div
-              key={capture.id}
-              className="animate-fade-up flex items-center gap-2 rounded-lg border border-border bg-card/50 px-2.5 py-2"
-            >
-              <Save className="h-3.5 w-3.5 text-brand shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate">{safeHostname(capture.url)}</div>
-                <div className="text-[11px] text-muted-foreground truncate">
-                  {capture.username || "(no username)"}
-                </div>
-              </div>
-              <button
-                onClick={() => handleSaveCapture(capture.id)}
-                className="shrink-0 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
-              >
-                Save
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Search (sticky so it stays visible while the list scrolls) */}
       <div className="sticky top-0 z-10 bg-background/95 px-3 py-2.5 backdrop-blur-sm">
@@ -645,6 +670,16 @@ export function Popup() {
 
         {tab === "generator" && <GeneratorTab onCopied={flashCopied} />}
         {tab === "send" && <SendTab />}
+        {tab === "notifications" && (
+          <NotificationsTab
+            captures={captures}
+            onSave={handleSaveCapture}
+            onDismiss={handleDismissCapture}
+            onMarkRead={handleMarkCaptureRead}
+            onMarkAllRead={handleMarkAllCapturesRead}
+            onClearAll={handleClearCaptures}
+          />
+        )}
         {tab === "settings" && (
           <SettingsTab serverUrl={serverUrl} onLock={handleLock} />
         )}
@@ -659,16 +694,23 @@ export function Popup() {
       )}
 
       {/* Bottom navigation */}
-      <nav className="grid shrink-0 grid-cols-4 border-t border-border bg-card/60">
+      <nav className="grid shrink-0 grid-cols-5 border-t border-border bg-card/60">
         {NAV_TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex flex-col items-center gap-1 py-2 text-[10px] font-medium ${
+            className={`relative flex flex-col items-center gap-1 py-2 text-[10px] font-medium ${
               tab === id ? "text-brand" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="h-[18px] w-[18px]" />
+            <span className="relative">
+              <Icon className="h-[18px] w-[18px]" />
+              {id === "notifications" && unreadCaptures > 0 && (
+                <span className="absolute -right-2 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold leading-none text-primary-foreground">
+                  {unreadCaptures > 9 ? "9+" : unreadCaptures}
+                </span>
+              )}
+            </span>
             {label}
           </button>
         ))}
@@ -681,6 +723,7 @@ const TAB_TITLE: Record<TabId, string> = {
   vault: "Vault",
   generator: "Generator",
   send: "Send",
+  notifications: "Notifications",
   settings: "Settings",
 };
 
@@ -688,6 +731,7 @@ const NAV_TABS: { id: TabId; label: string; Icon: typeof Wallet }[] = [
   { id: "vault", label: "Vault", Icon: Wallet },
   { id: "generator", label: "Generator", Icon: Wand2 },
   { id: "send", label: "Send", Icon: SendIcon },
+  { id: "notifications", label: "Alerts", Icon: Bell },
   { id: "settings", label: "Settings", Icon: SettingsIcon },
 ];
 
@@ -929,6 +973,118 @@ function SendTab() {
   );
 }
 
+// ── Notifications tab ────────────────────────────────────────────────────
+function NotificationsTab({
+  captures,
+  onSave,
+  onDismiss,
+  onMarkRead,
+  onMarkAllRead,
+  onClearAll,
+}: {
+  captures: CapturedLoginSummary[];
+  onSave: (id: string) => void;
+  onDismiss: (id: string) => void;
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
+  onClearAll: () => void;
+}) {
+  const unread = captures.reduce((n, c) => (c.read ? n : n + 1), 0);
+
+  if (captures.length === 0) {
+    return (
+      <div className="animate-fade-in flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+          <Bell className="h-6 w-6" />
+        </span>
+        <p className="text-sm font-medium">No notifications</p>
+        <p className="text-xs text-muted-foreground">
+          When the extension catches a login you haven&apos;t saved yet, it
+          shows up here. Nothing to review right now.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in space-y-2 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {unread > 0 ? `${unread} unread` : "All caught up"}
+        </span>
+        <div className="flex items-center gap-3 text-xs">
+          {unread > 0 && (
+            <button
+              onClick={onMarkAllRead}
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Mark all read
+            </button>
+          )}
+          <button
+            onClick={onClearAll}
+            className="flex items-center gap-1 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Clear all
+          </button>
+        </div>
+      </div>
+
+      <ul className="space-y-1.5">
+        {[...captures].reverse().map((capture) => (
+          <li
+            key={capture.id}
+            onClick={() => !capture.read && onMarkRead(capture.id)}
+            className={`animate-fade-up flex items-center gap-2 rounded-lg border px-2.5 py-2 ${
+              capture.read
+                ? "border-border bg-card/40"
+                : "cursor-pointer border-brand/40 bg-brand/5"
+            }`}
+          >
+            <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand/10 text-brand">
+              <Save className="h-3.5 w-3.5" />
+              {!capture.read && (
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-brand" />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-medium">
+                Save login for {safeHostname(capture.url)}?
+              </div>
+              <div className="truncate text-[11px] text-muted-foreground">
+                {capture.username || "(no username)"} ({relativeAge(capture.capturedAt)})
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSave(capture.id);
+                }}
+                className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
+              >
+                Save
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismiss(capture.id);
+                }}
+                title="Dismiss"
+                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // ── Settings tab ─────────────────────────────────────────────────────────
 interface ExtSettings {
   autofill: boolean;
@@ -1057,9 +1213,65 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
         <Lock className="h-4 w-4 text-muted-foreground" />
         Lock vault
       </button>
-      <p className="pt-2 text-center text-[11px] text-muted-foreground">
-        vaultctl extension - zero-knowledge. Keys never leave this device.
+      <AboutCard />
+    </div>
+  );
+}
+
+function AboutCard() {
+  const version = browser.runtime.getManifest().version;
+  return (
+    <div className="space-y-2.5 rounded-lg border border-border bg-card/50 p-3">
+      <div className="flex flex-col items-center gap-0.5">
+        <BrandMark className="text-5xl text-brand" />
+        <BrandMark variant="wordmark" className="block text-lg" />
+      </div>
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        Zero-knowledge password vault. Encryption keys never leave this device.
       </p>
+
+      <dl className="space-y-1 border-t border-border pt-2 text-[11px]">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Version</dt>
+          <dd className="font-mono">{version}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Maintained by</dt>
+          <dd>Vineeth N K</dd>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">Crafted from</dt>
+          <dd>
+            <a
+              href={VINELABS_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="hover:text-brand"
+            >
+              VineLabs
+            </a>
+          </dd>
+        </div>
+      </dl>
+
+      <div className="flex items-center justify-center gap-4 border-t border-border pt-2 text-[11px]">
+        <a
+          href={DOCS_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand"
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          Documentation
+        </a>
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Support
+        </a>
+      </div>
     </div>
   );
 }
@@ -1117,4 +1329,24 @@ function safeHostname(url: string): string {
   } catch {
     return url;
   }
+}
+
+const BRAND_GLYPHS = { emblem: 0xe000, wordmark: 0xe001 } as const;
+
+function BrandMark({
+  variant = "emblem",
+  className = "",
+}: {
+  variant?: keyof typeof BRAND_GLYPHS;
+  className?: string;
+}) {
+  return (
+    <span
+      role="img"
+      aria-label="VaultCTL"
+      className={`font-brand leading-none ${className}`}
+    >
+      {String.fromCharCode(BRAND_GLYPHS[variant])}
+    </span>
+  );
 }

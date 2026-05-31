@@ -148,8 +148,10 @@ export function LoginPage() {
       <div className="w-full max-w-sm space-y-6 p-6">
         <div className="flex flex-col items-center space-y-3 text-center">
           <h1 className="sr-only">VaultCTL</h1>
-          <BrandMark className="text-7xl text-brand" />
-          <BrandMark variant="wordmark" className="block text-4xl" />
+          <div className="flex flex-col items-center gap-0.5">
+            <BrandMark className="text-8xl text-brand" />
+            <BrandMark variant="wordmark" className="block text-3xl" />
+          </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             A zero-knowledge, self-hosted password vault.
           </p>
