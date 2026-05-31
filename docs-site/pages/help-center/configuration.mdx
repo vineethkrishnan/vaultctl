@@ -1,48 +1,108 @@
 # Server Configuration
 
-import { Callout, Tabs, Steps } from 'nextra/components'
+import { Callout, Steps } from 'nextra/components'
 
-vaultctl is configured entirely through environment variables. This page covers every variable, key rotation procedures, and a production readiness checklist.
+vaultctl is configured entirely through environment variables, all prefixed with `VAULTCTL_`. This page documents every variable the server reads, key rotation procedures, and a production readiness checklist.
 
-## Required Variables
-
-These must be set for the server to start.
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VAULTCTL_ENV` | Environment mode: `development`, `staging`, or `production` | `production` |
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://vaultctl:secret@db:5432/vaultctl?sslmode=require` |
-| `JWT_SECRET_CURRENT` | HMAC-SHA256 secret for signing JWT access tokens (min 32 bytes, base64) | `base64-encoded-random-32-bytes` |
-| `SERVER_PEPPER` | Secret used for server-side Argon2id re-hashing of auth hashes (min 32 bytes, base64) | `base64-encoded-random-32-bytes` |
-| `ENUMERATION_PEPPER` | Secret used to generate fake KDF params for unknown emails (min 32 bytes, base64) | `base64-encoded-random-32-bytes` |
-| `DATA_ENCRYPTION_KEY` | AES-256 key for server-side encryption of TOTP secrets (32 bytes, base64) | `base64-encoded-random-32-bytes` |
-
-<Callout type="warning">
-  Generate all secrets with a cryptographically secure random source:
-  ```bash
-  openssl rand -base64 32
-  ```
-  Never reuse secrets across environments. Never commit secrets to source control.
+<Callout type="info">
+  A complete, commented template ships in the repository as [`.env.example`](https://github.com/vineethkrishnan/vaultctl/blob/main/.env.example). Copy it to `.env` and fill in the secrets.
 </Callout>
 
-## Optional Variables
+## Required in production
+
+When `VAULTCTL_ENV=production`, the server **refuses to start** unless every one of these is set (fail-closed). In `development` they fall back to insecure defaults so you can boot quickly.
+
+| Variable | Description |
+|----------|-------------|
+| `VAULTCTL_BASE_URL` | Public base URL of the deployment, e.g. `https://vault.example.com`. Used for links and cookie scoping. |
+| `VAULTCTL_DB_PASSWORD` | PostgreSQL password. |
+| `VAULTCTL_JWT_SECRET_CURRENT` | Secret for signing JWT access/refresh tokens. Use a 64-byte random value. |
+| `VAULTCTL_DATA_ENCRYPTION_KEY` | AES-256 key (32 bytes) for server-side encryption of TOTP secrets and password hints. |
+| `VAULTCTL_SERVER_PEPPER` | Secret for server-side Argon2id re-hashing of auth hashes (32 bytes). |
+| `VAULTCTL_ENUMERATION_PEPPER` | Secret used to derive deterministic fake KDF params for unknown emails (32 bytes), defeating account enumeration. |
+
+<Callout type="warning">
+  Generate every secret from a cryptographically secure source. Never reuse a secret across environments, and never commit one to source control.
+  ```bash
+  openssl rand -base64 32   # 32-byte values (data key, peppers)
+  openssl rand -base64 64   # JWT secret (recommended)
+  ```
+</Callout>
+
+## Server
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LISTEN_ADDR` | `:8080` | Address and port the server listens on |
-| `JWT_SECRET_NEXT` | *(none)* | Next JWT secret for zero-downtime key rotation |
-| `JWT_KID_CURRENT` | `1` | Key ID included in JWT headers for rotation tracking |
-| `JWT_ACCESS_TTL` | `15m` | Access token lifetime (e.g., `15m`, `1h`) |
-| `JWT_REFRESH_TTL` | `7d` | Refresh token lifetime (e.g., `7d`, `30d`) |
-| `DATA_ENCRYPTION_KEY_NEXT` | *(none)* | Next data encryption key for zero-downtime rotation |
-| `MAX_LOGIN_ATTEMPTS` | `5` | Failed login attempts before account lockout |
-| `LOCKOUT_DURATION` | `15m` | Duration of account lockout after max failed attempts |
-| `RATE_LIMIT_RPM` | `60` | Global per-IP rate limit (requests per minute) |
-| `AUTH_RATE_LIMIT_PER_EMAIL` | `5` | Max auth attempts per email within the rate limit window |
-| `AUTH_RATE_LIMIT_WINDOW` | `15m` | Time window for per-email auth rate limiting |
-| `TRUSTED_PROXIES` | *(none)* | Comma-separated list of trusted proxy CIDRs for `X-Forwarded-For` |
-| `LOG_REDACT_FIELDS` | `authHash,refreshToken` | Comma-separated list of JSON fields to redact in logs |
-| `DB_SSL_MODE` | `require` | PostgreSQL SSL mode: `disable`, `require`, `verify-ca`, `verify-full` |
+| `VAULTCTL_PORT` | `8080` | TCP port the server listens on. |
+| `VAULTCTL_HOST` | `0.0.0.0` | Bind address. |
+| `VAULTCTL_BASE_URL` | *(required in prod)* | Public base URL. |
+| `VAULTCTL_ENV` | `development` | `development` or `production`. Production enables fail-closed secret checks and strict cookie/security defaults. |
+
+## Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_DB_HOST` | `localhost` | PostgreSQL host. |
+| `VAULTCTL_DB_PORT` | `5432` | PostgreSQL port. |
+| `VAULTCTL_DB_NAME` | `vaultctl` | Database name. |
+| `VAULTCTL_DB_USER` | `vaultctl` | Database user. |
+| `VAULTCTL_DB_PASSWORD` | *(required in prod)* | Database password. |
+| `VAULTCTL_DB_SSL_MODE` | `require` | One of `disable`, `require`, `verify-ca`, `verify-full`. |
+| `VAULTCTL_DB_SSL_INSECURE_OK` | `false` | Must be `true` to allow `VAULTCTL_DB_SSL_MODE=disable` in production. Set automatically by the bundled compose where Postgres lives on a private bridge network; leave `false` for any cross-host deploy. |
+
+<Callout type="info">
+  vaultctl connects with discrete `VAULTCTL_DB_*` variables, not a single `DATABASE_URL` connection string.
+</Callout>
+
+## JWT signing keys
+
+Durations use Go's format (`15m`, `1h`, `24h`, `168h`), not `7d`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_JWT_SECRET_CURRENT` | *(required in prod)* | Active signing secret. |
+| `VAULTCTL_JWT_SECRET_NEXT` | *(none)* | Next secret for zero-downtime rotation. |
+| `VAULTCTL_JWT_KID_CURRENT` | `k1` | Key ID written into JWT headers for rotation tracking. |
+| `VAULTCTL_JWT_ACCESS_TTL` | `15m` | Access-token lifetime. |
+| `VAULTCTL_JWT_REFRESH_TTL` | `168h` | Refresh-token lifetime (168h = 7 days). |
+
+## Data encryption key
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_DATA_ENCRYPTION_KEY` | *(required in prod)* | Active AES-256 key for server-side field encryption. |
+| `VAULTCTL_DATA_ENCRYPTION_KEY_NEXT` | *(none)* | Next key for zero-downtime rotation. |
+
+## Server peppers
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_SERVER_PEPPER` | *(required in prod)* | Pepper for server-side auth-hash re-hashing. Rotating it invalidates all stored auth hashes, so treat it as permanent. |
+| `VAULTCTL_ENUMERATION_PEPPER` | *(required in prod)* | Pepper for fake KDF params on unknown emails. |
+
+## Security
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_REGISTRATION_MODE` | `invite` | `open` (anyone can register), `invite` (invite only), or `disabled`. The very first registration is always allowed and becomes the owner, regardless of this setting. |
+| `VAULTCTL_REQUIRE_2FA` | `false` | Require every user to enrol a second factor. |
+| `VAULTCTL_MAX_LOGIN_ATTEMPTS` | `5` | Failed logins before an account is locked. |
+| `VAULTCTL_LOCKOUT_DURATION` | `15m` | How long an account stays locked. |
+| `VAULTCTL_RATE_LIMIT_RPM` | `60` | Global per-IP request rate limit (per minute). |
+| `VAULTCTL_AUTH_RATE_LIMIT_PER_EMAIL` | `5` | Max auth attempts per email within the window. |
+| `VAULTCTL_AUTH_RATE_LIMIT_WINDOW` | `15m` | Window for per-email auth rate limiting. |
+| `VAULTCTL_AUTH_GLOBAL_ALERT_THRESHOLD` | `1000` | Failed-auth count across the server that triggers an alert log line (credential-stuffing signal). |
+| `VAULTCTL_TRUSTED_PROXIES` | loopback + RFC1918 | Comma-separated CIDRs trusted to set `X-Forwarded-For`. An empty value disables XFF entirely. Set to your proxy's IP/CIDR behind a public-IP load balancer. |
+| `VAULTCTL_STEP_UP_MAX_AGE` | `5m` | How long a step-up (re-auth) confirmation is honoured for sensitive operations. |
+| `VAULTCTL_CORS_ALLOWED_ORIGINS` | *(none)* | Comma-separated extra origins allowed for CORS (for example, a separately hosted browser-extension origin). |
+| `VAULTCTL_MIN_PASSWORD_LENGTH` | `10` | Minimum master-password length enforced at registration and password change. |
+
+## Retention
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_TRASH_RETENTION_DAYS` | `30` | Days a trashed item is kept before permanent deletion. |
+| `VAULTCTL_BACKUP_RETENTION_DAYS` | `90` | Days a backup record is retained. |
 
 ## Attachments
 
@@ -58,9 +118,29 @@ Items can carry encrypted file attachments. Each file is sealed in the browser w
   The attachments directory holds encrypted blobs whose keys live only in the Postgres `attachments` table. Losing one without the other orphans your files - back up the attachments volume and the database **together**. The bundled compose files mount a named `attachments-data` volume at `/data/attachments`.
 </Callout>
 
-## Upgrades & Migrations
+## Logging
 
-Database migrations are embedded in the binary but are **not** applied automatically on server start. After pulling a new image or binary that adds a migration (for example, the attachments table), run the migration when you recreate the container:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAULTCTL_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error`. |
+| `VAULTCTL_LOG_FORMAT` | `json` | `json` or `text`. |
+| `VAULTCTL_LOG_IP_PRECISION` | `coarse` | `coarse` (network-truncated), `full`, or `none`. |
+| `VAULTCTL_LOG_REDACT_FIELDS` | see below | Comma-separated JSON fields scrubbed from logs. Default: `authHash,password,refresh_token,api_key,totp,masterKey,stretchedKey`. |
+
+## CLI environment
+
+The `vaultctl` CLI reads its own variables, separate from the server:
+
+| Variable | Description |
+|----------|-------------|
+| `VAULTCTL_SERVER` | Base URL of the server to talk to. |
+| `VAULTCTL_API_KEY` | API key for non-interactive auth (CI, scripts). |
+| `VAULTCTL_ACTIVE_VAULT` | Default vault ID for commands that take one. |
+| `VAULTCTL_INSECURE_SKIP_VERIFY` | Set truthy to skip TLS verification (development only). |
+
+## Upgrades & migrations
+
+Database migrations are embedded in the binary but are **not** applied automatically on server start. After pulling a new image or binary that adds a migration, run the migration when you recreate the container:
 
 ```bash
 # One-off against the live database
@@ -72,89 +152,80 @@ docker compose run --rm vaultctl migrate up
 
 Migrations are idempotent - running `migrate up` with nothing pending is a no-op.
 
-## Key Rotation
+## Key rotation
 
-vaultctl supports zero-downtime rotation for JWT secrets and data encryption keys using a "current + next" pattern.
+vaultctl supports zero-downtime rotation for JWT secrets and the data encryption key using a "current + next" pattern.
 
-### JWT Secret Rotation
+### JWT secret rotation
 
 <Steps>
 ### Set the next secret
 
-Add `JWT_SECRET_NEXT` with a newly generated secret. Increment `JWT_KID_CURRENT`.
+Add `VAULTCTL_JWT_SECRET_NEXT` with a newly generated secret and bump `VAULTCTL_JWT_KID_CURRENT`.
 
 ```bash
-JWT_SECRET_CURRENT=<old-secret>
-JWT_SECRET_NEXT=<new-secret>
-JWT_KID_CURRENT=2
+VAULTCTL_JWT_SECRET_CURRENT=<old-secret>
+VAULTCTL_JWT_SECRET_NEXT=<new-secret>
+VAULTCTL_JWT_KID_CURRENT=k2
 ```
 
 ### Restart the server
 
-The server now signs new tokens with `JWT_SECRET_NEXT` but still validates tokens signed with `JWT_SECRET_CURRENT`.
+New tokens are signed with the next secret while tokens signed with the current secret still validate.
 
 ### Wait for old tokens to expire
 
-Wait at least `JWT_ACCESS_TTL` + `JWT_REFRESH_TTL` (e.g., 7 days + 15 minutes).
+Wait at least `VAULTCTL_JWT_ACCESS_TTL` + `VAULTCTL_JWT_REFRESH_TTL` (default 7 days, 15 minutes).
 
 ### Promote the new secret
 
-Move the new secret to `JWT_SECRET_CURRENT` and remove `JWT_SECRET_NEXT`.
+Move the new secret to `VAULTCTL_JWT_SECRET_CURRENT` and remove `VAULTCTL_JWT_SECRET_NEXT`.
 
 ```bash
-JWT_SECRET_CURRENT=<new-secret>
-# JWT_SECRET_NEXT removed
-JWT_KID_CURRENT=2
+VAULTCTL_JWT_SECRET_CURRENT=<new-secret>
+# VAULTCTL_JWT_SECRET_NEXT removed
+VAULTCTL_JWT_KID_CURRENT=k2
 ```
 
 ### Restart the server
 
-The rotation is complete.
+Rotation complete.
 </Steps>
 
-### Data Encryption Key Rotation
+### Data encryption key rotation
 
-The same pattern applies to `DATA_ENCRYPTION_KEY` and `DATA_ENCRYPTION_KEY_NEXT`. The server re-encrypts data lazily on read (decrypts with old key, re-encrypts with new key on next write).
+The same pattern applies to `VAULTCTL_DATA_ENCRYPTION_KEY` and `VAULTCTL_DATA_ENCRYPTION_KEY_NEXT`. The server can decrypt with either key and re-encrypts with the new key on the next write.
 
 <Steps>
 ### Set the next key
 
 ```bash
-DATA_ENCRYPTION_KEY=<old-key>
-DATA_ENCRYPTION_KEY_NEXT=<new-key>
+VAULTCTL_DATA_ENCRYPTION_KEY=<old-key>
+VAULTCTL_DATA_ENCRYPTION_KEY_NEXT=<new-key>
 ```
 
-### Restart and wait
+### Restart and let writes re-encrypt
 
-The server uses the new key for all new encryptions and can decrypt with either key.
+The server uses the new key for all new encryptions and decrypts with either key.
 
 ### Promote the new key
 
-Once all data has been re-encrypted (or after a sufficient period), promote:
-
 ```bash
-DATA_ENCRYPTION_KEY=<new-key>
-# DATA_ENCRYPTION_KEY_NEXT removed
+VAULTCTL_DATA_ENCRYPTION_KEY=<new-key>
+# VAULTCTL_DATA_ENCRYPTION_KEY_NEXT removed
 ```
 </Steps>
 
-## Production Checklist
-
-Before deploying to production, verify each item:
+## Production checklist
 
 | Check | Details |
 |-------|---------|
-| `VAULTCTL_ENV=production` | Enables strict security defaults |
-| All secrets are unique | No reuse across environments; all generated with `openssl rand -base64 32` |
-| `DATABASE_URL` uses SSL | Set `sslmode=require` or `verify-full` in the connection string |
-| TLS termination configured | Use a reverse proxy (Caddy, nginx) with a valid certificate |
-| `TRUSTED_PROXIES` set correctly | Must match your reverse proxy's IP/CIDR to correctly resolve client IPs |
-| Rate limits reviewed | Adjust `RATE_LIMIT_RPM` and `AUTH_RATE_LIMIT_PER_EMAIL` for your expected traffic |
-| Backup schedule configured | See [Backup & Restore](/help-center/backup-restore) |
-| Log redaction enabled | `LOG_REDACT_FIELDS` includes sensitive field names |
-| Firewall rules in place | Only expose port 443 (HTTPS). Block direct access to port 8080. |
-| Database credentials are not default | Change the default PostgreSQL password |
-
-<Callout type="info">
-  In `production` mode, the server enforces HTTPS-only cookies, requires `TRUSTED_PROXIES` if behind a proxy, and enables stricter request validation.
-</Callout>
+| `VAULTCTL_ENV=production` | Enables fail-closed secret checks and strict security defaults. |
+| All secrets set and unique | The six required variables above, each generated with `openssl rand`, never reused across environments. |
+| Database uses SSL | Keep `VAULTCTL_DB_SSL_MODE=require` (or stricter). Only use `disable` on a trusted private network, and then also set `VAULTCTL_DB_SSL_INSECURE_OK=true`. |
+| TLS termination configured | Put a reverse proxy (Caddy, nginx) with a valid certificate in front. |
+| `VAULTCTL_TRUSTED_PROXIES` matches your proxy | So client IPs resolve correctly for rate limiting and logs. |
+| Rate limits reviewed | Tune `VAULTCTL_RATE_LIMIT_RPM` and `VAULTCTL_AUTH_RATE_LIMIT_PER_EMAIL` for expected traffic. |
+| Registration locked down | `VAULTCTL_REGISTRATION_MODE=invite` (or `disabled`) once the owner account exists. |
+| Backups scheduled | See [Backup & Restore](/help-center/backup-restore). Back up the database and the attachments directory together. |
+| Firewall in place | Expose only the HTTPS port; block direct access to `VAULTCTL_PORT`. |

@@ -105,6 +105,34 @@ The **Generator** tab keeps a short list of passwords you recently copied or fil
 - **Keep** - how many recent passwords to retain (default 5).
 - **Expire** - how long each entry stays before it drops off (15m / 1h / 4h / 24h).
 
+## Alerts (captured logins)
+
+When you submit a login the extension didn't manage to save inline, it queues the credential as an **alert** so you can deal with it later. Alerts live in the **Alerts** tab in the popup's bottom navigation, and the toolbar icon shows a small badge with the number of **unread** alerts.
+
+Each alert is a login pending review. For each one you can:
+
+- **Save** - store it in your vault (encrypted in the extension first).
+- **Dismiss** (the x) - drop just that alert.
+
+At the top of the tab:
+
+- **Mark all read** - clears the unread badge while keeping the alerts in the list.
+- **Clear all** - removes every alert.
+
+Tapping an unread alert marks it read. Once everything is read or cleared, the toolbar badge disappears.
+
+<Callout type="info">
+  The alert queue is held in memory-only session storage - never written to disk, and cleared when you close the browser. It survives the browser recycling the extension's background worker, so the badge count and the list always agree and your clear / mark-read actions stick.
+</Callout>
+
+---
+
+## Auto-lock
+
+The extension locks itself after a period of inactivity, clearing the decrypted keys from memory so the popup asks for your master password again. The period is configurable in the **Settings** tab (see below). The unlocked state is kept in memory-only session storage, so the extension does **not** lock at random when the browser recycles its background worker - it locks only when your chosen period actually elapses.
+
+---
+
 ## Autofill & saving settings
 
 Open the extension popup and go to the **Settings** tab to configure behavior:
@@ -116,6 +144,9 @@ Open the extension popup and go to the **Settings** tab to configure behavior:
 | **Offer to save / update** | On | Show the save/update toast after a login submit. |
 | **Suggest strong passwords** | On | Offer a generated password on new-password fields. |
 | **Prompt timeout** | 8s | How long the save/update toast stays before it fades out. |
+| **Auto-lock** | 15 min | Lock the extension after this much inactivity (1 / 5 / 15 / 30 / 60 minutes, or Never). |
+
+The Settings tab also shows an **About** card with the running version, the maintainer, and links to the documentation and support.
 
 ---
 
@@ -163,9 +194,9 @@ npm run build
 
 ### Load in your browser
 
-**Chrome / Chromium**: Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the `extension/dist` folder.
+**Chrome / Chromium**: Go to `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the `extension/.output/chrome-mv3` folder.
 
-**Firefox**: Go to `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select any file in the `extension/dist` folder.
+**Firefox**: Run `npm run build:firefox`, then go to `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select any file in the `extension/.output/firefox-mv3` folder.
 </Steps>
 
 <Callout type="info">
