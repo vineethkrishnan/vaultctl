@@ -31,15 +31,25 @@ interface ExtSettings {
 
 const BRAND = "#2dd4bf";
 
+// After the extension is reloaded/updated, content scripts injected by the old
+// instance keep running in already-open tabs with a dead runtime handle. Reading
+// `browser.runtime` or calling `sendMessage` then throws "Extension context
+// invalidated" synchronously, which `.catch()` cannot swallow. Guard on the
+// runtime id and wrap the call so an orphaned script fails quietly instead.
 function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
-  return browser.runtime.sendMessage(message).catch(() => ({})) as Promise<T>;
+  try {
+    if (!browser.runtime?.id) return Promise.resolve({} as T);
+    return browser.runtime.sendMessage(message).catch(() => ({})) as Promise<T>;
+  } catch {
+    return Promise.resolve({} as T);
+  }
 }
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   runAt: "document_idle",
 
-  main() {
+  main(ctx) {
     const observedForms = new WeakSet<HTMLFormElement>();
     let matches: CredMatch[] = [];
     let settings: ExtSettings = {
@@ -523,6 +533,7 @@ export default defineContentScript({
       childList: true,
       subtree: true,
     });
+    ctx.onInvalidated(() => mutationObserver.disconnect());
 
     if (findLoginForms().length > 0) {
       void bg({ type: "loginFormDetected", url: window.location.href });
