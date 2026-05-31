@@ -450,8 +450,10 @@ export function Popup() {
     return (
       <div className="animate-fade-up flex flex-col items-center justify-center p-6 space-y-4">
         <h1 className="sr-only">VaultCTL</h1>
-        <BrandMark className="text-6xl text-brand" />
-        <BrandMark variant="wordmark" className="text-2xl" />
+        <div className="flex flex-col items-center gap-0.5">
+          <BrandMark className="text-7xl text-brand" />
+          <BrandMark variant="wordmark" className="block text-xl" />
+        </div>
 
         {error && (
           <div className="w-full rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive">
@@ -1220,9 +1222,9 @@ function AboutCard() {
   const version = browser.runtime.getManifest().version;
   return (
     <div className="space-y-2.5 rounded-lg border border-border bg-card/50 p-3">
-      <div className="flex items-center justify-center gap-2">
-        <BrandMark className="text-xl text-brand" />
-        <BrandMark variant="wordmark" className="text-base" />
+      <div className="flex flex-col items-center gap-0.5">
+        <BrandMark className="text-5xl text-brand" />
+        <BrandMark variant="wordmark" className="block text-lg" />
       </div>
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
         Zero-knowledge password vault. Encryption keys never leave this device.
