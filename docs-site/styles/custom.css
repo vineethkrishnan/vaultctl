@@ -1,3 +1,16 @@
+/* ─── Brand font (emblem U+E000 + wordmark U+E001) ─── */
+@font-face {
+  font-family: "VaultCTL Brand";
+  src: url("/fonts/vaultctl-brand.woff2") format("woff2");
+  font-display: swap;
+}
+
+.brand-mark {
+  font-family: "VaultCTL Brand";
+  line-height: 1;
+  display: inline-block;
+}
+
 /* ─── Landing page hero ─── */
 .hero {
   padding: 4rem 0 3rem;
