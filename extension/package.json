@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
+    "@fontsource-variable/inter": "^5.2.8",
     "@wxt-dev/module-react": "^1.2.2",
     "clsx": "^2.1.1",
     "hash-wasm": "^4.11.0",

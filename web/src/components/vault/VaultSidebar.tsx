@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { lock as lockKeys, terminate as terminateWorker } from "@/lib/key-holder";
 import type { VaultResponse } from "@/shared/types/api";
 import { FolderList } from "@/components/vault/FolderList";
+import { BrandMark } from "@/components/BrandMark";
 import { useTheme } from "@/hooks/use-theme";
 import {
   KeyRound,
@@ -61,16 +62,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-        <img
-          src={
-            theme === "light"
-              ? "/light/svg/vaultctl-emblem.svg"
-              : "/dark/svg/vaultctl-emblem.svg"
-          }
-          alt=""
-          aria-hidden="true"
-          className="h-8 w-8"
-        />
+        <BrandMark className="text-[28px] text-brand" />
         <span className="text-lg font-semibold tracking-tight">VaultCTL</span>
         <button
           type="button"
