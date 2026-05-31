@@ -17,8 +17,8 @@
     "api:update": "npm run api:fetch && npm run api:generate"
   },
   "dependencies": {
-    "@fontsource-variable/geist": "^5.2.9",
     "@fontsource-variable/geist-mono": "^5.2.8",
+    "@fontsource-variable/inter": "^5.2.8",
     "@hookform/resolvers": "^4.1.0",
     "@tanstack/react-query": "^5.100.14",
     "@tanstack/react-router": "^1.170.8",
@@ -41,7 +41,11 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
     "orval": "^8.12.3",
+    "svg2ttf": "^6.1.0",
+    "svgicons2svgfont": "^15.0.1",
+    "svgpath": "^2.6.0",
     "tailwindcss": "^4.0.0",
+    "ttf2woff2": "^8.0.1",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
     "vitest": "^4.1.7"
