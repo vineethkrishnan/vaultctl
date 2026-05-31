@@ -156,7 +156,7 @@ func (uc *Login) Execute(ctx context.Context, in LoginInput) (LoginOutput, error
 	if err := session.Validate(now); err != nil {
 		return LoginOutput{}, fmt.Errorf("session invariants: %w", err)
 	}
-	if err := uc.Sessions.Create(ctx, session); err != nil {
+	if err := uc.persistSession(ctx, session, in.DeviceName); err != nil {
 		return LoginOutput{}, fmt.Errorf("persist session: %w", err)
 	}
 
@@ -198,6 +198,19 @@ func (uc *Login) Execute(ctx context.Context, in LoginInput) (LoginOutput, error
 		IdentityPublicKey:           u.IdentityPublicKey,
 		Vaults:                      memberships,
 	}, nil
+}
+
+// persistSession collapses any prior session for the same device before
+// storing the new one, so repeated logins (auto-lock unlock, extension
+// re-auth) replace rather than accumulate. A blank device name is not
+// collapsed, since it cannot be attributed to a specific device.
+func (uc *Login) persistSession(ctx context.Context, session user.Session, deviceName string) error {
+	if deviceName != "" {
+		if err := uc.Sessions.RevokeByDevice(ctx, session.UserID, deviceName); err != nil {
+			return fmt.Errorf("collapse device sessions: %w", err)
+		}
+	}
+	return uc.Sessions.Create(ctx, session)
 }
 
 // ErrLoginInternal is a helper the handler layer uses to collapse non-auth

@@ -81,6 +81,13 @@ func (s *SessionStore) RevokeAllForUser(ctx context.Context, userID user.ID) err
 	return err
 }
 
+func (s *SessionStore) RevokeByDevice(ctx context.Context, userID user.ID, deviceName string) error {
+	_, err := s.Pool.Exec(ctx,
+		`DELETE FROM sessions WHERE user_id = $1 AND device_name = $2`,
+		string(userID), deviceName)
+	return err
+}
+
 func (s *SessionStore) PurgeExpired(ctx context.Context) (int, error) {
 	tag, err := s.Pool.Exec(ctx, `DELETE FROM sessions WHERE expires_at < NOW()`)
 	if err != nil {
