@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api-client";
-import { useTheme } from "@/hooks/use-theme";
+import { BrandMark } from "@/components/BrandMark";
 import { BookOpen, Github, Scale, Mail } from "lucide-react";
 
 interface ServerConfig {
@@ -24,12 +24,6 @@ function shortCommit(commit: string | undefined): string {
 }
 
 export function AboutPanel() {
-  const { theme } = useTheme();
-  const emblem =
-    theme === "light"
-      ? "/light/svg/vaultctl-emblem.svg"
-      : "/dark/svg/vaultctl-emblem.svg";
-
   const { data: config } = useQuery({
     queryKey: ["server-config"],
     queryFn: () => apiGet<ServerConfig>("/api/v1/config"),
@@ -48,9 +42,9 @@ export function AboutPanel() {
   return (
     <section className="space-y-4 rounded-lg border border-border p-4">
       <div className="flex flex-col items-center gap-3 py-3 text-center">
-        <img src={emblem} alt="" aria-hidden="true" className="h-16 w-auto" />
+        <BrandMark className="text-[56px] text-brand" />
         <div className="space-y-2">
-          <p className="text-lg font-semibold tracking-tight">VaultCTL</p>
+          <BrandMark variant="wordmark" className="block text-3xl" />
           <p className="text-xs text-muted-foreground">
             A zero-knowledge, self-hosted password vault.
           </p>
