@@ -77,6 +77,6 @@ Paste each justification next to its permission in the Chrome Web Store "Privacy
 
 1. Register a Chrome Web Store developer account (one-time 5 USD fee). Firefox AMO is free.
 2. Upload the zip(s) above.
-3. Add at least one screenshot (1280x800 or 640x400). A 440x280 small promo tile is optional.
+3. Upload the screenshots in `store-screenshots/` (1-login, 2-vault, 3-generator, 4-alerts, 5-settings; each 1280x800). Regenerate them with `node gen-screenshots.mjs` after a `npm run build`. A 440x280 small promo tile is optional.
 4. Paste the copy and permission justifications above; complete the data-use form.
 5. Submit for review. Broad host access (`<all_urls>`) may extend review time.
