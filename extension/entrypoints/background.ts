@@ -718,11 +718,23 @@ export default defineBackground(() => {
             // -----------------------------------------------------------
             case "loginSubmitted": {
               pruneStaleCaptures();
+              const url = String(message.url ?? "");
+              const username = String(message.username ?? "");
+              const password = String(message.password ?? "");
+              // Don't queue a capture for a credential already stored exactly
+              // as-is; only new or changed logins are worth offering to save.
+              if (unlocked) {
+                const decision = await decideSave(url, username, password);
+                if (decision.action === "none") {
+                  sendResponse({ ok: true, skipped: true });
+                  return;
+                }
+              }
               const capture: CapturedLogin = {
                 id: makeCaptureId(),
-                url: String(message.url ?? ""),
-                username: String(message.username ?? ""),
-                password: String(message.password ?? ""),
+                url,
+                username,
+                password,
                 capturedAt: Date.now(),
               };
               capturedLogins.push(capture);
