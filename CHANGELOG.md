@@ -1,5 +1,56 @@
 # Changelog
 
+## [1.6.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.5.0...v1.6.0) (2026-05-31)
+
+
+### Features
+
+* about panel with build and license transparency ([#109](https://github.com/vineethkrishnan/vaultctl/issues/109)) ([75201f7](https://github.com/vineethkrishnan/vaultctl/commit/75201f7633cc9ae94a19edcdca4f0841206dd342))
+* add a notifications tab to the extension and fix the phantom badge ([#128](https://github.com/vineethkrishnan/vaultctl/issues/128)) ([d27a04f](https://github.com/vineethkrishnan/vaultctl/commit/d27a04fe9d15290b2feffb4dfa0ca2f967bae6c7))
+* brand wordmark, geist typography, and full login logo ([#108](https://github.com/vineethkrishnan/vaultctl/issues/108)) ([7878bec](https://github.com/vineethkrishnan/vaultctl/commit/7878bec198a4759bcb76b17f33350fb11d84bf8f))
+* **brand:** wire vaultctl logo and icons across web and extension ([#106](https://github.com/vineethkrishnan/vaultctl/issues/106)) ([79a43a6](https://github.com/vineethkrishnan/vaultctl/commit/79a43a628a285571997315936c853a39d0ea9cac))
+* collapse sessions per device and add mobile drawer layout ([#113](https://github.com/vineethkrishnan/vaultctl/issues/113)) ([27fa520](https://github.com/vineethkrishnan/vaultctl/commit/27fa520dd24bc750d13a9f82b329cd1363d6182d))
+* encrypted item attachments (filesystem blob store) ([#104](https://github.com/vineethkrishnan/vaultctl/issues/104)) ([680b8de](https://github.com/vineethkrishnan/vaultctl/commit/680b8ded92f50c77510111c2f343a246bdeaea0c))
+* extension inline autofill and save/update prompts ([#116](https://github.com/vineethkrishnan/vaultctl/issues/116)) ([bb58ecc](https://github.com/vineethkrishnan/vaultctl/commit/bb58ecc8d8e2dccb8bbe7b7c5bd62f85f2ddc86e))
+* **extension:** polish popup with brand accent and motion ([#101](https://github.com/vineethkrishnan/vaultctl/issues/101)) ([58e8cc6](https://github.com/vineethkrishnan/vaultctl/commit/58e8cc6d6d0384dbd434a144c1b2051f7542f410))
+* **extension:** wire popup to fetch and decrypt vault items ([#103](https://github.com/vineethkrishnan/vaultctl/issues/103)) ([3ba16cd](https://github.com/vineethkrishnan/vaultctl/commit/3ba16cdf18aa6af0b787f24f3421da8fa607b741))
+* inter ui font and a brand emblem font glyph ([#124](https://github.com/vineethkrishnan/vaultctl/issues/124)) ([28ca8a6](https://github.com/vineethkrishnan/vaultctl/commit/28ca8a6e35863c947953f131b2d19c9dbce28be2))
+* preset folder suggestions for quick organization ([#118](https://github.com/vineethkrishnan/vaultctl/issues/118)) ([3c054d2](https://github.com/vineethkrishnan/vaultctl/commit/3c054d218a4f208fb600c10ca0c8942d71768446))
+* readable session device labels, current-first, dedupe about title ([#114](https://github.com/vineethkrishnan/vaultctl/issues/114)) ([676053b](https://github.com/vineethkrishnan/vaultctl/commit/676053b7db08df176dc5033b71f8458b93e06413))
+* readable tagline on the login screen ([#123](https://github.com/vineethkrishnan/vaultctl/issues/123)) ([bee2b85](https://github.com/vineethkrishnan/vaultctl/commit/bee2b85355690b64944d457519bb92bce8b19f8f))
+* remember email for faster unlock on web and extension ([#120](https://github.com/vineethkrishnan/vaultctl/issues/120)) ([234264e](https://github.com/vineethkrishnan/vaultctl/commit/234264e0b45a67c59e8dbdaa02078cce12451638))
+* render the brand wordmark and emblem from the font on the about and login screens ([#127](https://github.com/vineethkrishnan/vaultctl/issues/127)) ([07eb004](https://github.com/vineethkrishnan/vaultctl/commit/07eb00418ba9baecce77b827c0dae44278170032))
+* strong-password suggestions and generated-password history ([#121](https://github.com/vineethkrishnan/vaultctl/issues/121)) ([da76b51](https://github.com/vineethkrishnan/vaultctl/commit/da76b51b048c1d9b97bb6da9929b8b07be329525))
+* tabbed settings layout and clearer about panel ([#111](https://github.com/vineethkrishnan/vaultctl/issues/111)) ([f77b9f3](https://github.com/vineethkrishnan/vaultctl/commit/f77b9f32e7a2587b202f10e0af9d0c5de1a2ba44))
+* **web:** smoother motion and card-based vault layout ([#100](https://github.com/vineethkrishnan/vaultctl/issues/100)) ([89e18ca](https://github.com/vineethkrishnan/vaultctl/commit/89e18ca470fce91d0f3a3e046da13725de553fc8))
+
+
+### Bug Fixes
+
+* add hint to the prompt-timeout setting in the extension ([#119](https://github.com/vineethkrishnan/vaultctl/issues/119)) ([2762606](https://github.com/vineethkrishnan/vaultctl/commit/276260601bcb6bace349a695a5d42abd83b6d2ea))
+* do not capture logins already saved in the vault ([#126](https://github.com/vineethkrishnan/vaultctl/issues/126)) ([75b9735](https://github.com/vineethkrishnan/vaultctl/commit/75b9735e34a56016e7ff8eb7bbc622b0c1cd1ce4))
+* extension capture/search and session list polish ([#125](https://github.com/vineethkrishnan/vaultctl/issues/125)) ([0cd1e9e](https://github.com/vineethkrishnan/vaultctl/commit/0cd1e9e1d4d868a4132226e595c5d0e462525eed))
+* log out from the vault sidebar revokes the session and redirects to login ([#134](https://github.com/vineethkrishnan/vaultctl/issues/134)) ([29489fb](https://github.com/vineethkrishnan/vaultctl/commit/29489fbcb52142d3eeaa8ee9e7a98bac0e875927))
+* mobile form grids, modal padding, and a bolder extension icon ([#115](https://github.com/vineethkrishnan/vaultctl/issues/115)) ([caaa46d](https://github.com/vineethkrishnan/vaultctl/commit/caaa46d1268777932fa38b7c94c23e89a56ac426))
+* move extension save toast to top-right with a slide-in ([#117](https://github.com/vineethkrishnan/vaultctl/issues/117)) ([3c9960d](https://github.com/vineethkrishnan/vaultctl/commit/3c9960dbf27c0e67118b871dc00c457cf1ecddd4))
+* persist the captured-login queue so clear and mark-read stick ([#129](https://github.com/vineethkrishnan/vaultctl/issues/129)) ([98a481d](https://github.com/vineethkrishnan/vaultctl/commit/98a481dceadede1b21b0fa273313cd7c5b291b01))
+* stop the content script throwing when its extension context is invalidated ([#132](https://github.com/vineethkrishnan/vaultctl/issues/132)) ([e1c1007](https://github.com/vineethkrishnan/vaultctl/commit/e1c10075a8a4d661aa23c52ceebce31ce8f2e95e))
+
+
+### Documentation
+
+* add a privacy policy and store-listing copy for the extension ([#133](https://github.com/vineethkrishnan/vaultctl/issues/133)) ([086c4ca](https://github.com/vineethkrishnan/vaultctl/commit/086c4cadcbd289586ec4786cd2797dbcca20dba9))
+* add chrome web store screenshots and the generator for the extension ([#135](https://github.com/vineethkrishnan/vaultctl/issues/135)) ([19ae48d](https://github.com/vineethkrishnan/vaultctl/commit/19ae48d9e78ddc8fed44ed31f026c4218fb5ea21))
+* brand the docs site and fix the release and container badges ([#136](https://github.com/vineethkrishnan/vaultctl/issues/136)) ([6b4cb11](https://github.com/vineethkrishnan/vaultctl/commit/6b4cb11df0d51efcd17ac7d91a308715dffcae54))
+* correct the server config reference and document the new extension features ([#130](https://github.com/vineethkrishnan/vaultctl/issues/130)) ([4255552](https://github.com/vineethkrishnan/vaultctl/commit/4255552a11e0e73c49ac32d303430a506d026b2d))
+* document attachments and the migrate-on-upgrade step ([#110](https://github.com/vineethkrishnan/vaultctl/issues/110)) ([0fc4d84](https://github.com/vineethkrishnan/vaultctl/commit/0fc4d841a1dfa0e164ec91fb673a5ab2c4e456df))
+* document the remember-me login option ([#122](https://github.com/vineethkrishnan/vaultctl/issues/122)) ([e65b8c4](https://github.com/vineethkrishnan/vaultctl/commit/e65b8c4100ae2a0c859114e9f3da813b346c1958))
+
+
+### CI/CD
+
+* drop the pr-title scope allowlist ([#107](https://github.com/vineethkrishnan/vaultctl/issues/107)) ([0d80bd3](https://github.com/vineethkrishnan/vaultctl/commit/0d80bd3bfd01b037b3fe2716caed24bf7da4dfef))
+
 ## [1.5.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.4.3...v1.5.0) (2026-05-30)
 
 
