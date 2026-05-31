@@ -63,14 +63,15 @@ test.describe("Item list actions", () => {
     await page.getByRole("menuitem", { name: "Add to favorites" }).click();
     await putResp;
 
-    page.on("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Item actions" }).first().click();
+    await page.getByRole("menuitem", { name: "Move to trash" }).click();
+    // Themed confirm dialog (no native window.confirm).
     const delResp = page.waitForResponse(
       (r) =>
         /\/items\/item-/.test(new URL(r.url()).pathname) &&
         r.request().method() === "DELETE",
     );
-    await page.getByRole("button", { name: "Item actions" }).first().click();
-    await page.getByRole("menuitem", { name: "Move to trash" }).click();
+    await page.getByRole("button", { name: "Move to trash" }).click();
     await delResp;
   });
 });

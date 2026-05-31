@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import { apiGet, apiPost, apiDelete, ApiRequestError } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { decryptName } from "@/lib/key-holder";
 import { ITEM_TYPE_ICONS, ITEM_TYPE_LABELS } from "@/components/vault/ItemList";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { StepUpModal } from "@/components/auth/StepUpModal";
 import type { ItemResponse } from "@/shared/types/api";
-import { RotateCcw, Trash2, KeyRound } from "lucide-react";
+import { RotateCcw, Trash2, KeyRound, AlertTriangle } from "lucide-react";
 
 interface DecryptedItem extends ItemResponse {
   decryptedName: string;
@@ -57,13 +59,41 @@ export function VaultTrashPage() {
     },
   });
 
+  const [pendingPurge, setPendingPurge] = useState<DecryptedItem | null>(null);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
+  const purgeTargetId = useRef<string | null>(null);
+
   const purgeMutation = useMutation({
     mutationFn: (itemId: string) =>
       apiDelete(`/api/v1/vaults/${vaultId}/trash/${itemId}`),
     onSuccess: () => {
+      // Permanent delete removes it from trash; the active list is unaffected.
       queryClient.invalidateQueries({ queryKey: queryKeys.trash.list(vaultId) });
     },
   });
+
+  // Permanent delete requires a step-up (master password). On the 403 the server
+  // returns, prompt for it and retry once the elevated token is in the store.
+  async function runPurge(itemId: string) {
+    setPurgeError(null);
+    try {
+      await purgeMutation.mutateAsync(itemId);
+      purgeTargetId.current = null;
+    } catch (err) {
+      if (
+        err instanceof ApiRequestError &&
+        err.error.code === "STEP_UP_REQUIRED"
+      ) {
+        purgeTargetId.current = itemId;
+        setStepUpOpen(true);
+        return;
+      }
+      setPurgeError(
+        err instanceof Error ? err.message : "Could not delete the item",
+      );
+    }
+  }
 
   if (isLoading) {
     return (
@@ -79,6 +109,13 @@ export function VaultTrashPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-4 text-xl font-bold">Trash</h1>
+
+      {purgeError && (
+        <div className="mb-3 flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {purgeError}
+        </div>
+      )}
 
       {!decryptedItems.length ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
@@ -110,11 +147,7 @@ export function VaultTrashPage() {
                   <RotateCcw className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm("Permanently delete this item?")) {
-                      purgeMutation.mutate(item.id);
-                    }
-                  }}
+                  onClick={() => setPendingPurge(item)}
                   className="rounded-md p-1.5 text-muted-foreground hover:text-destructive"
                   title="Delete permanently"
                 >
@@ -125,6 +158,38 @@ export function VaultTrashPage() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingPurge}
+        title="Delete permanently"
+        message={
+          pendingPurge
+            ? `Permanently delete "${pendingPurge.decryptedName}"? This cannot be undone, and you will be asked for your master password.`
+            : ""
+        }
+        confirmLabel="Delete forever"
+        destructive
+        busy={purgeMutation.isPending}
+        onConfirm={() => {
+          const target = pendingPurge;
+          setPendingPurge(null);
+          if (target) void runPurge(target.id);
+        }}
+        onCancel={() => setPendingPurge(null)}
+      />
+
+      <StepUpModal
+        open={stepUpOpen}
+        onSuccess={() => {
+          setStepUpOpen(false);
+          const id = purgeTargetId.current;
+          if (id) void runPurge(id);
+        }}
+        onCancel={() => {
+          setStepUpOpen(false);
+          purgeTargetId.current = null;
+        }}
+      />
     </div>
   );
 }
