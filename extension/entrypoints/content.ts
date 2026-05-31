@@ -329,30 +329,42 @@ export default defineContentScript({
     );
 
     // ── Save / update toast ──────────────────────────────────────────────
+    const CROSS_SVG =
+      '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
     function showToast(opts: {
       message: string;
       actionLabel: string;
-      onAction: () => void;
+      successMessage: string;
+      onAction: () => Promise<{ ok?: boolean; error?: string }>;
     }) {
       document.getElementById("vaultctl-toast-host")?.remove();
       const host = document.createElement("div");
       host.id = "vaultctl-toast-host";
       const root = host.attachShadow({ mode: "open" });
+      const style = document.createElement("style");
+      style.textContent =
+        "@keyframes vc-pop{0%{transform:scale(.5)}60%{transform:scale(1.15)}100%{transform:scale(1)}}" +
+        // The emblem drops and latches like a lock clicking shut.
+        "@keyframes vc-lock{0%{transform:translateY(-7px) scale(1.25);opacity:.3}55%{transform:translateY(2px) scale(.9)}100%{transform:translateY(0) scale(1);opacity:1}}" +
+        "@keyframes vc-glow{0%{transform:scale(.5);opacity:.7}100%{transform:scale(2.2);opacity:0}}";
+      root.appendChild(style);
       const card = document.createElement("div");
       card.style.cssText =
-        "position:fixed;right:16px;top:16px;max-width:320px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px system-ui,sans-serif;padding:12px 14px;z-index:2147483647;opacity:0;transform:translateX(120%) scale(.98);transition:opacity .35s cubic-bezier(.16,1,.3,1),transform .45s cubic-bezier(.16,1,.3,1);";
+        "position:fixed;right:16px;top:16px;width:300px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px system-ui,sans-serif;padding:12px 14px;z-index:2147483647;opacity:0;transform:translateX(120%) scale(.98);transition:opacity .35s cubic-bezier(.16,1,.3,1),transform .45s cubic-bezier(.16,1,.3,1),border-color .3s ease;";
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:10px;";
       const icon = document.createElement("span");
       icon.innerHTML = emblemSVG(BRAND);
-      icon.style.cssText = `flex:none;width:22px;height:22px;border-radius:6px;background:${BRAND}1a;display:flex;align-items:center;justify-content:center;`;
+      icon.style.cssText = `position:relative;flex:none;width:24px;height:24px;border-radius:7px;background:${BRAND}1a;display:flex;align-items:center;justify-content:center;transition:background .3s ease;`;
       const msg = document.createElement("div");
-      msg.style.cssText = "flex:1;line-height:1.35;";
+      msg.style.cssText =
+        "flex:1;line-height:1.35;transition:opacity .2s ease;";
       msg.textContent = opts.message;
       row.append(icon, msg);
       const actions = document.createElement("div");
       actions.style.cssText =
-        "display:flex;gap:8px;justify-content:flex-end;margin-top:10px;";
+        "display:flex;gap:8px;justify-content:flex-end;margin-top:10px;max-height:40px;overflow:hidden;transition:max-height .3s ease,opacity .2s ease,margin-top .3s ease;";
       const dismiss = document.createElement("button");
       dismiss.type = "button";
       dismiss.textContent = "Not now";
@@ -370,6 +382,7 @@ export default defineContentScript({
         card.style.opacity = "1";
         card.style.transform = "translateX(0) scale(1)";
       });
+
       let done = false;
       const close = () => {
         if (done) return;
@@ -378,11 +391,73 @@ export default defineContentScript({
         card.style.transform = "translateX(120%) scale(.98)";
         setTimeout(() => host.remove(), 300);
       };
+
+      const collapseActions = () => {
+        actions.style.maxHeight = "0";
+        actions.style.opacity = "0";
+        actions.style.marginTop = "0";
+      };
+
+      // Smoothly morph the same toast into a success / error state instead of
+      // vanishing, so the outcome of the save is unmistakable.
+      const lockSuccess = () => {
+        card.style.borderColor = `${BRAND}66`;
+        icon.style.background = `${BRAND}29`;
+        icon.innerHTML = "";
+        const glow = document.createElement("span");
+        glow.style.cssText = `position:absolute;inset:0;border-radius:50%;background:${BRAND};animation:vc-glow .6s ease-out forwards;`;
+        const mark = document.createElement("span");
+        mark.style.cssText =
+          "position:relative;display:flex;animation:vc-lock .55s cubic-bezier(.16,1,.3,1) forwards;";
+        mark.innerHTML = emblemSVG(BRAND);
+        icon.append(glow, mark);
+      };
+      const showError = (text: string) => {
+        card.style.borderColor = "#ef444466";
+        icon.style.background = "#ef44441f";
+        icon.style.animation = "vc-pop .42s cubic-bezier(.16,1,.3,1) forwards";
+        icon.innerHTML = CROSS_SVG;
+        swapMessage(text);
+      };
+      const swapMessage = (text: string) => {
+        msg.style.opacity = "0";
+        setTimeout(() => {
+          msg.textContent = text;
+          msg.style.opacity = "1";
+        }, 180);
+      };
+
+      let settled = false;
+      const submit = async () => {
+        if (settled) return;
+        settled = true;
+        action.textContent = "Saving...";
+        dismiss.style.pointerEvents = action.style.pointerEvents = "none";
+        action.style.opacity = "0.7";
+        let res: { ok?: boolean; error?: string };
+        try {
+          res = await opts.onAction();
+        } catch {
+          res = { ok: false, error: "connection problem" };
+        }
+        if (res?.ok) {
+          lockSuccess();
+          swapMessage(opts.successMessage);
+          collapseActions();
+          setTimeout(close, 1900);
+        } else {
+          showError(`Couldn't save - ${res?.error || "connection problem"}`);
+          // Keep the toast around so the user can read the error and dismiss.
+          dismiss.style.pointerEvents = "auto";
+          action.remove();
+          dismiss.textContent = "Dismiss";
+          dismiss.style.opacity = "1";
+          setTimeout(close, 5000);
+        }
+      };
+
       dismiss.addEventListener("click", close);
-      action.addEventListener("click", () => {
-        opts.onAction();
-        close();
-      });
+      action.addEventListener("click", () => void submit());
       setTimeout(close, Math.max(2000, settings.toastMs));
     }
 
@@ -441,8 +516,9 @@ export default defineContentScript({
           showToast({
             message: `Save this login for ${host} to vaultctl?`,
             actionLabel: "Save",
+            successMessage: `Locked ${host} in your vault`,
             onAction: () =>
-              void bg({
+              bg<{ ok?: boolean; error?: string }>({
                 type: "commitSave",
                 action: "add",
                 host,
@@ -455,8 +531,9 @@ export default defineContentScript({
           showToast({
             message: `Update the saved password for ${username || host}?`,
             actionLabel: "Update",
+            successMessage: `Updated and locked ${username || host}`,
             onAction: () =>
-              void bg({
+              bg<{ ok?: boolean; error?: string }>({
                 type: "commitSave",
                 action: "update",
                 vaultId: d.vaultId,
