@@ -48,6 +48,7 @@ interface CapturedLogin {
   username: string;
   password: string;
   capturedAt: number;
+  read: boolean;
 }
 
 interface IncomingMessage {
@@ -190,6 +191,22 @@ function pruneStaleCaptures(): void {
   }
 }
 
+// The action badge always reflects the number of UNREAD captured logins, so it
+// can never show a phantom count once items are read, cleared, or aged out.
+// Prune first so an expired capture never keeps the badge lit.
+async function syncBadge(): Promise<void> {
+  pruneStaleCaptures();
+  const unread = capturedLogins.reduce((n, c) => (c.read ? n : n + 1), 0);
+  try {
+    await browser.action.setBadgeText({ text: unread ? String(unread) : "" });
+    if (unread) {
+      await browser.action.setBadgeBackgroundColor({ color: "#2563eb" });
+    }
+  } catch {
+    // swallow — badge API optional across browsers
+  }
+}
+
 function makeCaptureId(): string {
   return `cap_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -209,12 +226,7 @@ async function showCaptureNotification(url: string, username: string): Promise<v
     // Notifications may fail if the icon path is absent or permission
     // was denied; fall back to the action badge.
   }
-  try {
-    await browser.action.setBadgeText({ text: String(capturedLogins.length) });
-    await browser.action.setBadgeBackgroundColor({ color: "#2563eb" });
-  } catch {
-    // swallow — badge API optional across browsers
-  }
+  await syncBadge();
 }
 
 function safeHostname(url: string): string {
@@ -736,6 +748,7 @@ export default defineBackground(() => {
                 username,
                 password,
                 capturedAt: Date.now(),
+                read: false,
               };
               capturedLogins.push(capture);
               while (capturedLogins.length > CAPTURE_MAX) {
@@ -747,7 +760,9 @@ export default defineBackground(() => {
             }
 
             case "getCapturedLogins": {
-              pruneStaleCaptures();
+              // Opening the popup reconciles the badge: a capture that aged out
+              // is pruned here, so the badge can never outlive its captures.
+              await syncBadge();
               // Return shallow copies without the password field unless the
               // popup explicitly requests a specific capture.
               sendResponse({
@@ -757,6 +772,7 @@ export default defineBackground(() => {
                   url: capture.url,
                   username: capture.username,
                   capturedAt: capture.capturedAt,
+                  read: capture.read,
                 })),
               });
               return;
@@ -773,16 +789,40 @@ export default defineBackground(() => {
                 return;
               }
               const [captured] = capturedLogins.splice(index, 1);
-              try {
-                await browser.action.setBadgeText({
-                  text: capturedLogins.length
-                    ? String(capturedLogins.length)
-                    : "",
-                });
-              } catch {
-                // swallow — badge API optional
-              }
+              await syncBadge();
               sendResponse({ ok: true, capture: captured });
+              return;
+            }
+
+            case "markCaptureRead": {
+              const targetId = message.id as string;
+              const target = capturedLogins.find((c) => c.id === targetId);
+              if (target) target.read = true;
+              await syncBadge();
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "markAllCapturesRead": {
+              for (const capture of capturedLogins) capture.read = true;
+              await syncBadge();
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "dismissCapturedLogin": {
+              const targetId = message.id as string;
+              const index = capturedLogins.findIndex((c) => c.id === targetId);
+              if (index !== -1) capturedLogins.splice(index, 1);
+              await syncBadge();
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "clearCapturedLogins": {
+              capturedLogins.length = 0;
+              await syncBadge();
+              sendResponse({ ok: true });
               return;
             }
 

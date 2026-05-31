@@ -9,6 +9,7 @@ declare module "wxt/browser" {
     | "/content-scripts/content.js"
     | "/content-scripts/webauthn-relay.js"
     | "/emblem.svg"
+    | "/fonts/vaultctl-brand.woff2"
     | "/icon/icon-128.png"
     | "/icon/icon-16.png"
     | "/icon/icon-32.png"
