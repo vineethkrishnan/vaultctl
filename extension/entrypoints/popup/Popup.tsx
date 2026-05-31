@@ -146,10 +146,18 @@ export function Popup() {
   const [remember, setRemember] = useState(false);
 
   const loadItems = useCallback(
-    async (url: string, accessToken: string, vaultId: string) => {
-      const raw = await api<ItemResponse[]>(url, `/api/v1/vaults/${vaultId}/items`, {
-        token: accessToken,
-      });
+    async (vaultId: string) => {
+      // Fetch through the background so an expired access token is refreshed
+      // transparently instead of bouncing the user back to the login screen.
+      const res = await bg<{
+        ok?: boolean;
+        items?: ItemResponse[];
+        error?: string;
+      }>({ type: "listItems", vaultId });
+      if (!res?.ok || !res.items) {
+        throw new Error(res?.error ?? "failed to load items");
+      }
+      const raw = res.items;
       const decrypted: DecryptedItem[] = [];
       for (const item of raw) {
         if (item.trashed) continue;
@@ -213,6 +221,38 @@ export function Popup() {
         if (!cancelled && caps?.captures) setCaptures(caps.captures);
 
         if (cancelled) return;
+        const fallbackToLogin = async () => {
+          if (cancelled) return;
+          if (!url) {
+            setPhase("connect");
+            return;
+          }
+          const remembered = await browser.storage.local.get(
+            "vaultctl_remember_email",
+          );
+          const savedEmail = remembered.vaultctl_remember_email as
+            | string
+            | undefined;
+          if (!savedEmail) {
+            if (!cancelled) setPhase("email");
+            return;
+          }
+          setEmail(savedEmail);
+          setRemember(true);
+          try {
+            const params = await api<PreloginResponse>(
+              url,
+              `/api/v1/auth/prelogin?email=${encodeURIComponent(savedEmail)}`,
+            );
+            if (!cancelled) {
+              setKdf(params);
+              setPhase("password");
+            }
+          } catch {
+            if (!cancelled) setPhase("email");
+          }
+        };
+
         if (session?.isUnlocked && session.accessToken && session.vaults?.length) {
           const first = session.vaults[0]!;
           setToken(session.accessToken);
@@ -220,38 +260,15 @@ export function Popup() {
           setActiveVaultId(first.id);
           setPhase("list");
           try {
-            await loadItems(url, session.accessToken, first.id);
+            await loadItems(first.id);
           } catch {
-            // token may have expired across an SW restart - fall back to login
-            if (!cancelled) setPhase(url ? "email" : "connect");
-          }
-        } else if (url) {
-          const remembered = await browser.storage.local.get(
-            "vaultctl_remember_email",
-          );
-          const savedEmail = remembered.vaultctl_remember_email as
-            | string
-            | undefined;
-          if (savedEmail) {
-            setEmail(savedEmail);
-            setRemember(true);
-            try {
-              const params = await api<PreloginResponse>(
-                url,
-                `/api/v1/auth/prelogin?email=${encodeURIComponent(savedEmail)}`,
-              );
-              if (!cancelled) {
-                setKdf(params);
-                setPhase("password");
-              }
-            } catch {
-              if (!cancelled) setPhase("email");
-            }
-          } else if (!cancelled) {
-            setPhase("email");
+            // Session truly gone (token refresh also failed) - fall back to
+            // login, honoring the remembered email so only the master password
+            // is needed.
+            await fallbackToLogin();
           }
         } else {
-          setPhase("connect");
+          await fallbackToLogin();
         }
       } catch {
         if (!cancelled) setPhase("connect");
@@ -313,7 +330,11 @@ export function Popup() {
         },
       });
 
-      await bg({ type: "setToken", token: res.accessToken });
+      await bg({
+        type: "setToken",
+        token: res.accessToken,
+        refreshToken: res.refreshToken,
+      });
       await bg({
         type: "unlock",
         // number[] survives runtime.sendMessage JSON serialization (a raw
@@ -341,7 +362,7 @@ export function Popup() {
       if (first) {
         setActiveVaultId(first.id);
         setPhase("list");
-        await loadItems(serverUrl, res.accessToken, first.id);
+        await loadItems(first.id);
       } else {
         setError("No vaults on this account yet - create one in the web vault.");
         setPhase("list");
@@ -398,9 +419,9 @@ export function Popup() {
     }
     setCaptures((existing) => existing.filter((c) => c.id !== captureId));
     // Reflect the new/updated item in the vault list immediately.
-    if (token && activeVaultId) {
+    if (activeVaultId) {
       try {
-        await loadItems(serverUrl, token, activeVaultId);
+        await loadItems(activeVaultId);
       } catch {
         // list will refresh on next open
       }
