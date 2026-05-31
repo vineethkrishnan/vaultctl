@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.7.0...v1.7.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* anchor the confirm dialog near the top of the viewport ([#147](https://github.com/vineethkrishnan/vaultctl/issues/147)) ([91234f7](https://github.com/vineethkrishnan/vaultctl/commit/91234f70928fcf859d22a1a4b2ca87c245e4a564))
+
 ## [1.7.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.6.2...v1.7.0) (2026-05-31)
 
 
