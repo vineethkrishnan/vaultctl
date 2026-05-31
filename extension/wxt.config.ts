@@ -31,7 +31,7 @@ export default defineConfig({
     },
   }),
   manifest: {
-    name: "VaultCTL: Zero-knowledge password vault",
+    name: "VaultCTL: Password Vault",
     description:
       "Self-hosted, zero-knowledge password manager: autofill, capture and generate logins, all encrypted in your browser.",
     homepage_url: "https://vaultctl.vinelabs.de",
