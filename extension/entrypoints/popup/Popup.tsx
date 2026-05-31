@@ -827,12 +827,17 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
             checked={settings.savePrompt}
             onChange={(v) => update({ savePrompt: v })}
           />
-          <label className="flex items-center justify-between gap-2 pt-1">
-            <span className="text-sm">Prompt timeout</span>
+          <label className="flex items-center justify-between gap-3 pt-1">
+            <span className="min-w-0">
+              <span className="block text-sm">Prompt timeout</span>
+              <span className="block text-[11px] text-muted-foreground">
+                How long the save/update prompt stays before it fades
+              </span>
+            </span>
             <select
               value={settings.toastMs}
               onChange={(e) => update({ toastMs: Number(e.target.value) })}
-              className="rounded-md border border-border bg-card px-2 py-1 text-xs"
+              className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
             >
               <option value={4000}>4s</option>
               <option value={8000}>8s</option>
