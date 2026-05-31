@@ -84,6 +84,11 @@ let unlocked = false; // true once keys are loaded (incl. rehydrated)
 // not lock at random when Chrome recycles the worker.
 const SESSION_KEY = "vaultctl_unlocked";
 const EXPIRY_KEY = "vaultctl_unlock_expiry";
+// The captured-login queue lives in memory-only session storage (never on
+// disk, cleared on browser close) so it survives MV3 service-worker restarts.
+// Without this the queue and the persistent toolbar badge drift apart whenever
+// Chrome recycles the worker, and clear/mark-read state is silently lost.
+const CAPTURES_KEY = "vaultctl_captures";
 
 // ===========================================================================
 // Helpers
@@ -191,11 +196,35 @@ function pruneStaleCaptures(): void {
   }
 }
 
-// The action badge always reflects the number of UNREAD captured logins, so it
-// can never show a phantom count once items are read, cleared, or aged out.
-// Prune first so an expired capture never keeps the badge lit.
+async function persistCaptures(): Promise<void> {
+  try {
+    await browser.storage.session.set({ [CAPTURES_KEY]: capturedLogins });
+  } catch {
+    // session storage optional across browsers
+  }
+}
+
+async function rehydrateCaptures(): Promise<void> {
+  try {
+    const stored = await browser.storage.session.get(CAPTURES_KEY);
+    const saved = stored[CAPTURES_KEY] as CapturedLogin[] | undefined;
+    if (Array.isArray(saved)) {
+      capturedLogins.length = 0;
+      capturedLogins.push(...saved);
+      pruneStaleCaptures();
+    }
+  } catch {
+    // nothing to restore
+  }
+}
+
+// Single write-through point for every capture mutation: prune expired entries,
+// persist the queue so it survives a worker restart, then point the action
+// badge at the number of UNREAD captures. Because the queue is now durable, the
+// badge can never show a phantom count and clear/mark-read state always sticks.
 async function syncBadge(): Promise<void> {
   pruneStaleCaptures();
+  await persistCaptures();
   const unread = capturedLogins.reduce((n, c) => (c.read ? n : n + 1), 0);
   try {
     await browser.action.setBadgeText({ text: unread ? String(unread) : "" });
@@ -608,8 +637,9 @@ async function handleInit(payload: {
 // ===========================================================================
 
 export default defineBackground(() => {
-  // Restore the unlocked state if the worker was recycled mid-session.
-  const rehydrated = rehydrateSession();
+  // Restore the unlocked state and the captured-login queue if the worker was
+  // recycled mid-session, so neither the vault nor the alerts reset at random.
+  const rehydrated = Promise.all([rehydrateSession(), rehydrateCaptures()]);
 
   browser.runtime.onMessage.addListener(
     (
