@@ -15,14 +15,14 @@ export function IdentityFields({ data, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="First Name" value={data.firstName} onChange={(v) => set("firstName", v)} />
         <Field label="Last Name" value={data.lastName} onChange={(v) => set("lastName", v)} />
       </div>
       <Field label="Email" value={data.email} onChange={(v) => set("email", v)} type="email" copyable />
       <Field label="Phone" value={data.phone} onChange={(v) => set("phone", v)} copyable />
       <Field label="Address" value={data.address} onChange={(v) => set("address", v)} />
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="City" value={data.city} onChange={(v) => set("city", v)} />
         <Field label="State" value={data.state} onChange={(v) => set("state", v)} />
         <Field label="Postal Code" value={data.postalCode} onChange={(v) => set("postalCode", v)} />

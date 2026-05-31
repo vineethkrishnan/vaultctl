@@ -73,7 +73,7 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />
