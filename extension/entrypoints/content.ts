@@ -227,7 +227,7 @@ export default defineContentScript({
       const root = host.attachShadow({ mode: "open" });
       const card = document.createElement("div");
       card.style.cssText =
-        "position:fixed;right:16px;bottom:16px;max-width:320px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px system-ui,sans-serif;padding:12px 14px;z-index:2147483647;opacity:0;transform:translateY(8px);transition:opacity .25s ease,transform .25s ease;";
+        "position:fixed;right:16px;top:16px;max-width:320px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.45);font:13px system-ui,sans-serif;padding:12px 14px;z-index:2147483647;opacity:0;transform:translateX(120%) scale(.98);transition:opacity .35s cubic-bezier(.16,1,.3,1),transform .45s cubic-bezier(.16,1,.3,1);";
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:10px;";
       const icon = document.createElement("span");
@@ -255,14 +255,14 @@ export default defineContentScript({
       document.body.appendChild(host);
       requestAnimationFrame(() => {
         card.style.opacity = "1";
-        card.style.transform = "translateY(0)";
+        card.style.transform = "translateX(0) scale(1)";
       });
       let done = false;
       const close = () => {
         if (done) return;
         done = true;
         card.style.opacity = "0";
-        card.style.transform = "translateY(8px)";
+        card.style.transform = "translateX(120%) scale(.98)";
         setTimeout(() => host.remove(), 300);
       };
       dismiss.addEventListener("click", close);
