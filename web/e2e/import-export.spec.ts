@@ -73,6 +73,7 @@ test.describe.serial("Import / Export / Restore", () => {
     // Go to settings via the sidebar
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings/);
+    await page.getByRole("button", { name: "Data" }).click();
 
     // Select target vault from the picker (shown on /settings since
     // there is no vaultId in the URL params).
