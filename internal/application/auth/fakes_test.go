@@ -316,6 +316,9 @@ func (s *fakeSessionStore) Rotate(_ context.Context, id user.SessionID, newHash 
 	return nil
 }
 func (s *fakeSessionStore) RevokeAllForUser(_ context.Context, _ user.ID) error { return nil }
+func (s *fakeSessionStore) RevokeByDevice(_ context.Context, _ user.ID, _ string) error {
+	return nil
+}
 func (s *fakeSessionStore) PurgeExpired(_ context.Context) (int, error)         { return 0, nil }
 func (s *fakeSessionStore) ListForUser(_ context.Context, _ user.ID) ([]user.Session, error) {
 	return nil, nil

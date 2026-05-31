@@ -117,6 +117,7 @@ test.describe.serial("Sessions — UI", () => {
 
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings/);
+    await page.getByRole("button", { name: "Sessions" }).click();
 
     // SessionsPanel should render all three sessions
     await expect(page.getByText("Active sessions")).toBeVisible();

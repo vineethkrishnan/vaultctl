@@ -153,6 +153,10 @@ type SessionStore interface {
 	Rotate(ctx context.Context, id user.SessionID, newHash user.RefreshTokenHash, at time.Time, expiresAt time.Time) error
 	// RevokeAllForUser invalidates all sessions for a user (password change).
 	RevokeAllForUser(ctx context.Context, userID user.ID) error
+	// RevokeByDevice deletes a user's existing sessions for a given device
+	// name. Called on login so re-authenticating from the same device
+	// replaces its session instead of accumulating a new row each time.
+	RevokeByDevice(ctx context.Context, userID user.ID, deviceName string) error
 	// PurgeExpired deletes sessions past their expires_at.
 	PurgeExpired(ctx context.Context) (int, error)
 	// ListForUser returns all un-expired sessions for a user (for the

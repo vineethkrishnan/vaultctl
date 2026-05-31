@@ -28,6 +28,7 @@ test.describe.serial("TOTP setup", () => {
 
     await page.getByRole("link", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings/);
+    await page.getByRole("button", { name: "Security" }).click();
 
     await page.getByRole("button", { name: "Enable 2FA" }).click();
 
@@ -51,6 +52,7 @@ test.describe.serial("TOTP setup", () => {
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
     await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Security" }).click();
     await page.getByRole("button", { name: "Enable 2FA" }).click();
     await page.getByRole("button", { name: "Begin Setup" }).click();
     await expect(page.getByRole("heading", { name: "Scan QR Code" })).toBeVisible();

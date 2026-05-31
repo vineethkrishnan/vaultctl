@@ -10,19 +10,32 @@ import {
 } from "@/api/users/users";
 import { useAuthStore } from "@/lib/auth-store";
 
+interface RawSession {
+  id: string;
+  deviceName: string;
+  ipAddress: string;
+  lastActiveAt?: string;
+  createdAt: string;
+}
+
 /**
- * Active sessions viewer — M7 polish.
+ * Active sessions viewer.
  *
- * Lists every un-expired refresh-token session for the current user and
- * offers a one-click revoke. The current session is marked so the user
- * can't accidentally log themselves out (the UI still allows it, with a
- * confirmation, because selectively revoking "this device" is a valid
- * security action).
- *
- * Acceptance criteria come from architecture §M7 deliverables: "Settings:
- * profile, sessions, auto-lock config, clipboard clear config" and from
- * PRD §10.4: GET /users/me/sessions + DELETE /users/me/sessions/{id}.
+ * Sessions are grouped by device so that repeated logins from the same
+ * browser (auto-lock unlock, extension re-auth) collapse into one entry
+ * instead of cluttering the list. Revoking a device ends every session
+ * tied to it.
  */
+interface DeviceGroup {
+  key: string;
+  deviceName: string;
+  ipAddress: string;
+  createdAt: string;
+  lastActiveAt?: string;
+  ids: string[];
+  isCurrent: boolean;
+}
+
 export function SessionsPanel() {
   const queryClient = useQueryClient();
   const currentSessionId = useAuthStore((s) => s.sessionId);
@@ -36,21 +49,47 @@ export function SessionsPanel() {
     queryFn: () => getUsersMeSessions(),
   });
 
-  const sessions = useMemo(() => {
+  const groups = useMemo<DeviceGroup[]>(() => {
     if (!res || res.status !== 200) return [];
-    // The generated response type is loose; the actual shape is
-    // SessionResponse[]. Cast once here so the render loop is clean.
-    return (res.data ?? []) as Array<{
-      id: string;
-      deviceName: string;
-      ipAddress: string;
-      lastActiveAt?: string;
-      createdAt: string;
-    }>;
-  }, [res]);
+    const raw = (res.data ?? []) as RawSession[];
+    const byDevice = new Map<string, DeviceGroup>();
+    for (const session of raw) {
+      const key = session.deviceName || session.id;
+      const existing = byDevice.get(key);
+      if (!existing) {
+        byDevice.set(key, {
+          key,
+          deviceName: session.deviceName,
+          ipAddress: session.ipAddress,
+          createdAt: session.createdAt,
+          lastActiveAt: session.lastActiveAt,
+          ids: [session.id],
+          isCurrent: session.id === currentSessionId,
+        });
+        continue;
+      }
+      existing.ids.push(session.id);
+      existing.isCurrent ||= session.id === currentSessionId;
+      // Keep the most recent timestamps for the device.
+      if (session.createdAt > existing.createdAt) {
+        existing.createdAt = session.createdAt;
+        existing.ipAddress = session.ipAddress;
+      }
+      if (
+        session.lastActiveAt &&
+        (!existing.lastActiveAt || session.lastActiveAt > existing.lastActiveAt)
+      ) {
+        existing.lastActiveAt = session.lastActiveAt;
+      }
+    }
+    return [...byDevice.values()].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt),
+    );
+  }, [res, currentSessionId]);
 
   const revokeMutation = useMutation({
-    mutationFn: (id: string) => deleteUsersMeSessionsId(id),
+    mutationFn: (ids: string[]) =>
+      Promise.all(ids.map((id) => deleteUsersMeSessionsId(id))),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getGetUsersMeSessionsQueryKey(),
@@ -58,16 +97,15 @@ export function SessionsPanel() {
     },
   });
 
-  async function handleRevoke(id: string, isCurrent: boolean) {
-    if (isCurrent) {
+  async function handleRevoke(group: DeviceGroup) {
+    if (group.isCurrent) {
       const confirmed = window.confirm(
-        "Revoking this session will log you out on this device. Continue?",
+        "Revoking this device will log you out here. Continue?",
       );
       if (!confirmed) return;
     }
-    await revokeMutation.mutateAsync(id);
-    if (isCurrent) {
-      // Server will reject subsequent requests; clear local state.
+    await revokeMutation.mutateAsync(group.ids);
+    if (group.isCurrent) {
       useAuthStore.getState().logout();
       window.location.reload();
     }
@@ -96,65 +134,68 @@ export function SessionsPanel() {
       <div className="flex items-center gap-2">
         <Monitor className="h-4 w-4 text-muted-foreground" />
         <h2 className="font-semibold">Active sessions</h2>
-        <span className="text-xs text-muted-foreground">
-          ({sessions.length})
-        </span>
+        <span className="text-xs text-muted-foreground">({groups.length})</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Every device with a valid refresh token. Revoking a session ends
-        access immediately on that device.
+        Each device you are signed in on. Revoking a device ends its access
+        immediately.
       </p>
 
-      {sessions.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No active sessions found.
         </p>
       ) : (
         <ul className="space-y-2">
-          {sessions.map((s) => {
-            const isCurrent = s.id === currentSessionId;
-            return (
-              <li
-                key={s.id}
-                className="flex items-start justify-between gap-3 rounded-md border border-border p-3 text-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium">
-                      {s.deviceName || "Unknown device"}
+          {groups.map((group) => (
+            <li
+              key={group.key}
+              className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm sm:flex-row sm:items-start sm:justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="break-words font-medium">
+                    {group.deviceName || "Unknown device"}
+                  </span>
+                  {group.isCurrent && (
+                    <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
+                      <Check className="h-3 w-3" />
+                      This device
                     </span>
-                    {isCurrent && (
-                      <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
-                        <Check className="h-3 w-3" />
-                        This device
-                      </span>
-                    )}
-                  </div>
-                  <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                    <dt>IP</dt>
-                    <dd className="font-mono">{s.ipAddress || "—"}</dd>
-                    <dt>Signed in</dt>
-                    <dd>{formatDate(s.createdAt)}</dd>
-                    {s.lastActiveAt && (
-                      <>
-                        <dt>Last active</dt>
-                        <dd>{formatDate(s.lastActiveAt)}</dd>
-                      </>
-                    )}
-                  </dl>
+                  )}
+                  {group.ids.length > 1 && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {group.ids.length} sessions
+                    </span>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRevoke(s.id, isCurrent)}
-                  disabled={revokeMutation.isPending}
-                  className="shrink-0 rounded-md border border-input px-2 py-1 text-xs text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
-                  title={isCurrent ? "Log out of this device" : "Revoke session"}
-                >
-                  <LogOut className="h-3 w-3" />
-                </button>
-              </li>
-            );
-          })}
+                <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  <dt>IP</dt>
+                  <dd className="break-all font-mono">{group.ipAddress || "—"}</dd>
+                  <dt>Signed in</dt>
+                  <dd>{formatDate(group.createdAt)}</dd>
+                  {group.lastActiveAt && (
+                    <>
+                      <dt>Last active</dt>
+                      <dd>{formatDate(group.lastActiveAt)}</dd>
+                    </>
+                  )}
+                </dl>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRevoke(group)}
+                disabled={revokeMutation.isPending}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
+                title={group.isCurrent ? "Log out of this device" : "Revoke device"}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="sm:hidden">
+                  {group.isCurrent ? "Log out" : "Revoke"}
+                </span>
+              </button>
+            </li>
+          ))}
         </ul>
       )}
     </div>

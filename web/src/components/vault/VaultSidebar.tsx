@@ -20,12 +20,18 @@ import {
   Sun,
   Moon,
   Settings,
+  X,
 } from "lucide-react";
 
 const navLink =
   "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
 
-export function VaultSidebar() {
+interface Props {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function VaultSidebar({ open = false, onClose }: Props) {
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
   const logout = useAuthStore((s) => s.logout);
   const { theme, toggleTheme } = useTheme();
@@ -48,7 +54,11 @@ export function VaultSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-border bg-card/60 backdrop-blur-md">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex h-full w-64 transform flex-col border-r border-border bg-card/95 backdrop-blur-md transition-transform duration-300 md:static md:z-auto md:translate-x-0 md:bg-card/60 ${
+        open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}
+    >
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
         <img
@@ -62,6 +72,14 @@ export function VaultSidebar() {
           className="h-8 w-8"
         />
         <span className="text-lg font-semibold tracking-tight">VaultCTL</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-accent/60 hover:text-foreground md:hidden"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Vault selector */}
