@@ -13,6 +13,19 @@ interface DecryptedFolder extends FolderResponse {
   decryptedName: string;
 }
 
+// Common starting folders offered as one-click suggestions. They are only
+// hints - nothing is created until the user picks one.
+const PRESET_FOLDERS = [
+  "Personal",
+  "Work",
+  "Finance",
+  "Social",
+  "Email",
+  "Shopping",
+  "Developer",
+  "Servers",
+];
+
 export function FolderList() {
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const queryClient = useQueryClient();
@@ -116,33 +129,60 @@ export function FolderList() {
       </div>
 
       {creating && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (newName.trim()) createMutation.mutate(newName.trim());
-          }}
-          className="flex items-center gap-1 px-2 py-1"
-        >
-          <FolderClosed className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            autoFocus
-            placeholder="Folder name"
-            className="w-full bg-transparent text-sm outline-none"
-          />
-          <button type="submit" className="text-primary">
-            <Check className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => { setCreating(false); setNewName(""); }}
-            className="text-muted-foreground"
+        <div className="px-2 py-1">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newName.trim()) createMutation.mutate(newName.trim());
+            }}
+            className="flex items-center gap-1"
           >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </form>
+            <FolderClosed className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              autoFocus
+              placeholder="Folder name"
+              className="w-full bg-transparent text-sm outline-none"
+            />
+            <button type="submit" className="text-primary">
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreating(false); setNewName(""); }}
+              className="text-muted-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </form>
+
+          {(() => {
+            const existing = new Set(
+              decryptedFolders.map((f) => f.decryptedName.toLowerCase()),
+            );
+            const suggestions = PRESET_FOLDERS.filter(
+              (p) => !existing.has(p.toLowerCase()),
+            );
+            if (suggestions.length === 0) return null;
+            return (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {suggestions.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    disabled={createMutation.isPending}
+                    onClick={() => createMutation.mutate(preset)}
+                    className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-brand/50 hover:text-foreground disabled:opacity-50"
+                  >
+                    + {preset}
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
       )}
 
       {decryptedFolders.map((f) => (
