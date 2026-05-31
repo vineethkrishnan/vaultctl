@@ -7,17 +7,12 @@ import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
 import { initKeys } from "@/lib/key-holder";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
 import type { PreloginResponse, LoginResponse } from "@/shared/types/api";
-import { useTheme } from "@/hooks/use-theme";
+import { BrandMark } from "@/components/BrandMark";
 import { deviceLabel } from "@/lib/device";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const { theme } = useTheme();
-  const logo =
-    theme === "light"
-      ? "/light/logo/vaultctl-logo-notagline.png"
-      : "/dark/logo/vaultctl-logo-notagline.png";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -151,13 +146,10 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-6">
-        <div className="space-y-2 text-center">
+        <div className="flex flex-col items-center space-y-3 text-center">
           <h1 className="sr-only">VaultCTL</h1>
-          <img
-            src={logo}
-            alt="VaultCTL"
-            className="mx-auto h-24 w-auto"
-          />
+          <BrandMark className="text-7xl text-brand" />
+          <BrandMark variant="wordmark" className="block text-4xl" />
           <p className="text-sm leading-relaxed text-muted-foreground">
             A zero-knowledge, self-hosted password vault.
           </p>
