@@ -697,50 +697,97 @@ const GEN_UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 const GEN_DIGITS = "23456789";
 const GEN_SYMBOLS = "!@#$%^&*()-_=+[]{}";
 
+interface GenEntry {
+  id: string;
+  password: string;
+  createdAt: number;
+}
+
+function genWith(cfg: ExtSettings): string {
+  let charset = "";
+  if (cfg.genLower) charset += GEN_LOWER;
+  if (cfg.genUpper) charset += GEN_UPPER;
+  if (cfg.genDigits) charset += GEN_DIGITS;
+  if (cfg.genSymbols) charset += GEN_SYMBOLS;
+  if (!charset) charset = GEN_LOWER + GEN_UPPER + GEN_DIGITS;
+  const len = Math.min(128, Math.max(8, cfg.genLength || 20));
+  const arr = new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (v) => charset[v % charset.length]).join("");
+}
+
+function relativeAge(ts: number): string {
+  const mins = Math.max(0, Math.round((Date.now() - ts) / 60_000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.round(mins / 60)}h ago`;
+}
+
 function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
-  const [length, setLength] = useState(20);
-  const [lower, setLower] = useState(true);
-  const [upper, setUpper] = useState(true);
-  const [digits, setDigits] = useState(true);
-  const [symbols, setSymbols] = useState(true);
+  const [cfg, setCfg] = useState<ExtSettings | null>(null);
+  const [value, setValue] = useState("");
+  const [history, setHistory] = useState<GenEntry[]>([]);
 
-  const generate = useCallback(() => {
-    let charset = "";
-    if (lower) charset += GEN_LOWER;
-    if (upper) charset += GEN_UPPER;
-    if (digits) charset += GEN_DIGITS;
-    if (symbols) charset += GEN_SYMBOLS;
-    if (!charset) charset = GEN_LOWER + GEN_UPPER + GEN_DIGITS;
-    const arr = new Uint32Array(length);
-    crypto.getRandomValues(arr);
-    return Array.from(arr, (v) => charset[v % charset.length]).join("");
-  }, [length, lower, upper, digits, symbols]);
+  const refreshHistory = useCallback(
+    () =>
+      bg<{ entries?: GenEntry[] }>({ type: "getGenHistory" }).then((r) =>
+        setHistory(r?.entries ?? []),
+      ),
+    [],
+  );
 
-  const [value, setValue] = useState(() => generate());
   useEffect(() => {
-    setValue(generate());
-  }, [generate]);
+    let cancelled = false;
+    bg<{ settings?: ExtSettings }>({ type: "getSettings" }).then((r) => {
+      if (!cancelled && r?.settings) setCfg(r.settings);
+    });
+    void refreshHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshHistory]);
 
-  function copy() {
-    navigator.clipboard.writeText(value).then(() => {
+  useEffect(() => {
+    if (cfg) setValue(genWith(cfg));
+  }, [cfg]);
+
+  function update(patch: Partial<ExtSettings>) {
+    setCfg((prev) => {
+      const next = { ...(prev as ExtSettings), ...patch };
+      void bg({ type: "setSettings", settings: next });
+      return next;
+    });
+  }
+
+  function copyOnly(pw: string) {
+    navigator.clipboard.writeText(pw).then(() => {
       onCopied("password");
       setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30_000);
     });
   }
 
-  const toggle = (
-    label: string,
-    on: boolean,
-    set: (v: boolean) => void,
-  ) => (
+  function copyCurrent() {
+    copyOnly(value);
+    void bg({ type: "logGeneratedPassword", password: value }).then(refreshHistory);
+  }
+
+  if (!cfg) {
+    return <div className="p-3 text-sm text-muted-foreground">Loading...</div>;
+  }
+
+  const toggle = (label: string, on: boolean, key: keyof ExtSettings) => (
     <button
-      onClick={() => set(!on)}
+      onClick={() => update({ [key]: !on } as Partial<ExtSettings>)}
       className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-        on ? "border-brand/50 bg-brand/10 text-foreground" : "border-border text-muted-foreground"
+        on
+          ? "border-brand/50 bg-brand/10 text-foreground"
+          : "border-border text-muted-foreground"
       }`}
     >
       {label}
-      <span className={`h-3.5 w-3.5 rounded-full border ${on ? "border-brand bg-brand" : "border-border"}`} />
+      <span
+        className={`h-3.5 w-3.5 rounded-full border ${on ? "border-brand bg-brand" : "border-border"}`}
+      />
     </button>
   );
 
@@ -749,14 +796,14 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
       <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 p-3">
         <code className="flex-1 break-all font-mono text-sm">{value}</code>
         <button
-          onClick={() => setValue(generate())}
+          onClick={() => setValue(genWith(cfg))}
           className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           title="Regenerate"
         >
           <RefreshCw className="h-4 w-4" />
         </button>
         <button
-          onClick={copy}
+          onClick={copyCurrent}
           className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           title="Copy"
         >
@@ -767,31 +814,101 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Length</span>
-          <span className="font-mono">{length}</span>
+          <span className="font-mono">{cfg.genLength}</span>
         </div>
         <input
           type="range"
           min={8}
           max={64}
-          value={length}
-          onChange={(e) => setLength(Number(e.target.value))}
+          value={cfg.genLength}
+          onChange={(e) => update({ genLength: Number(e.target.value) })}
           className="w-full accent-brand"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        {toggle("a-z", lower, setLower)}
-        {toggle("A-Z", upper, setUpper)}
-        {toggle("0-9", digits, setDigits)}
-        {toggle("!@#", symbols, setSymbols)}
+        {toggle("a-z", cfg.genLower, "genLower")}
+        {toggle("A-Z", cfg.genUpper, "genUpper")}
+        {toggle("0-9", cfg.genDigits, "genDigits")}
+        {toggle("!@#", cfg.genSymbols, "genSymbols")}
       </div>
 
       <button
-        onClick={copy}
+        onClick={copyCurrent}
         className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
       >
         Copy password
       </button>
+
+      {/* Recent generated passwords (kept in memory, cleared on lock) */}
+      <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Recent ({history.length})
+          </span>
+          {history.length > 0 && (
+            <button
+              onClick={() =>
+                void bg({ type: "clearGenHistory" }).then(refreshHistory)
+              }
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {history.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Generated passwords you copy or fill appear here.
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {[...history].reverse().map((h) => (
+              <li key={h.id} className="flex items-center gap-2">
+                <code className="flex-1 truncate font-mono text-xs">
+                  {h.password}
+                </code>
+                <span className="shrink-0 text-[10px] text-muted-foreground">
+                  {relativeAge(h.createdAt)}
+                </span>
+                <button
+                  onClick={() => copyOnly(h.password)}
+                  className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
+                  title="Copy"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+          <label className="flex items-center gap-1.5 text-muted-foreground">
+            Keep
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={cfg.historyMax}
+              onChange={(e) => update({ historyMax: Number(e.target.value) })}
+              className="w-12 rounded-md border border-border bg-card px-1.5 py-0.5 text-center"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-muted-foreground">
+            Expire
+            <select
+              value={cfg.historyTtlMin}
+              onChange={(e) => update({ historyTtlMin: Number(e.target.value) })}
+              className="rounded-md border border-border bg-card px-1.5 py-0.5"
+            >
+              <option value={15}>15m</option>
+              <option value={60}>1h</option>
+              <option value={240}>4h</option>
+              <option value={1440}>24h</option>
+            </select>
+          </label>
+        </div>
+      </div>
     </div>
   );
 }
@@ -818,6 +935,14 @@ interface ExtSettings {
   fieldIcon: boolean;
   savePrompt: boolean;
   toastMs: number;
+  suggestPassword: boolean;
+  genLength: number;
+  genLower: boolean;
+  genUpper: boolean;
+  genDigits: boolean;
+  genSymbols: boolean;
+  historyMax: number;
+  historyTtlMin: number;
 }
 
 function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => void }) {
@@ -870,6 +995,12 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
             hint="Prompt after a login submit"
             checked={settings.savePrompt}
             onChange={(v) => update({ savePrompt: v })}
+          />
+          <Toggle
+            label="Suggest strong passwords"
+            hint="Offer a generated password on signup fields"
+            checked={settings.suggestPassword}
+            onChange={(v) => update({ suggestPassword: v })}
           />
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">

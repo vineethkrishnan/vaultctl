@@ -26,6 +26,7 @@ interface ExtSettings {
   fieldIcon: boolean;
   savePrompt: boolean;
   toastMs: number;
+  suggestPassword: boolean;
 }
 
 const BRAND = "#2dd4bf";
@@ -46,6 +47,7 @@ export default defineContentScript({
       fieldIcon: true,
       savePrompt: true,
       toastMs: 8000,
+      suggestPassword: true,
     };
 
     // ── Field detection ──────────────────────────────────────────────────
@@ -214,6 +216,107 @@ export default defineContentScript({
       document.getElementById("vaultctl-picker-host")?.remove();
       document.removeEventListener("click", onDocClick, true);
     }
+
+    // ── Strong-password suggestion (new-password fields) ──────────────────
+    function isNewPasswordField(
+      input: HTMLInputElement,
+      form: HTMLFormElement,
+    ): boolean {
+      if (input.type !== "password") return false;
+      const ac = (input.autocomplete || "").toLowerCase();
+      if (ac === "current-password") return false;
+      if (ac === "new-password") return true;
+      const hint = `${input.name} ${input.id} ${
+        input.getAttribute("aria-label") ?? ""
+      }`.toLowerCase();
+      if (/new|confirm|sign[\s-]?up|register|create/.test(hint)) return true;
+      return form.querySelectorAll('input[type="password"]').length >= 2;
+    }
+
+    function removeSuggestion() {
+      document.getElementById("vaultctl-suggest-host")?.remove();
+    }
+
+    async function showSuggestion(
+      input: HTMLInputElement,
+      form: HTMLFormElement,
+    ) {
+      removeSuggestion();
+      const res = await bg<{ ok?: boolean; password?: string }>({
+        type: "generatePassword",
+      });
+      if (!res?.ok || !res.password) return;
+      if (document.activeElement !== input) return; // focus moved during async hop
+      let pw = res.password;
+
+      const host = document.createElement("div");
+      host.id = "vaultctl-suggest-host";
+      const root = host.attachShadow({ mode: "open" });
+      const r = input.getBoundingClientRect();
+      const box = document.createElement("div");
+      box.style.cssText = `position:fixed;left:${r.left}px;top:${r.bottom + 4}px;min-width:${Math.max(240, r.width)}px;max-width:340px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;padding:10px 12px;z-index:2147483647;`;
+      const title = document.createElement("div");
+      title.textContent = "Use a strong password";
+      title.style.cssText = "font-weight:600;margin-bottom:6px;";
+      const pwEl = document.createElement("code");
+      pwEl.textContent = pw;
+      pwEl.style.cssText = `display:block;font:12px ui-monospace,monospace;color:${BRAND};word-break:break-all;background:#0c0c0e;border:1px solid #26262b;border-radius:6px;padding:6px 8px;`;
+      const actions = document.createElement("div");
+      actions.style.cssText =
+        "display:flex;gap:8px;justify-content:flex-end;margin-top:8px;";
+      const regen = document.createElement("button");
+      regen.type = "button";
+      regen.textContent = "Regenerate";
+      regen.style.cssText =
+        "all:unset;cursor:pointer;padding:5px 10px;border-radius:6px;color:#a1a1aa;font-size:12px;";
+      const use = document.createElement("button");
+      use.type = "button";
+      use.textContent = "Use password";
+      use.style.cssText = `all:unset;cursor:pointer;padding:5px 12px;border-radius:6px;background:${BRAND};color:#042f2a;font-weight:600;font-size:12px;`;
+      regen.addEventListener("mousedown", (e) => e.preventDefault());
+      use.addEventListener("mousedown", (e) => e.preventDefault());
+      regen.addEventListener("click", async () => {
+        const next = await bg<{ ok?: boolean; password?: string }>({
+          type: "generatePassword",
+        });
+        if (next?.ok && next.password) {
+          pw = next.password;
+          pwEl.textContent = pw;
+        }
+      });
+      use.addEventListener("click", () => {
+        // Fill every password field in the form (covers confirm fields).
+        for (const p of form.querySelectorAll('input[type="password"]')) {
+          setInputValue(p as HTMLInputElement, pw);
+        }
+        void bg({ type: "logGeneratedPassword", password: pw });
+        removeSuggestion();
+      });
+      actions.append(regen, use);
+      box.append(title, pwEl, actions);
+      root.appendChild(box);
+      document.body.appendChild(host);
+    }
+
+    document.addEventListener(
+      "focusin",
+      (e) => {
+        const target = e.target as HTMLElement;
+        if (!settings.suggestPassword) return;
+        if (!(target instanceof HTMLInputElement)) return;
+        const form = target.closest("form") as HTMLFormElement | null;
+        if (!form || !isNewPasswordField(target, form)) return;
+        // A stored match means this is a sign-in field, not a fresh signup.
+        if (matches.length > 0) return;
+        void showSuggestion(target, form);
+      },
+      true,
+    );
+    document.addEventListener(
+      "focusout",
+      () => setTimeout(removeSuggestion, 200),
+      true,
+    );
 
     // ── Save / update toast ──────────────────────────────────────────────
     function showToast(opts: {
