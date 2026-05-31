@@ -23,5 +23,10 @@
   "help-center": {
     "title": "Help Center",
     "type": "page"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "type": "page",
+    "display": "hidden"
   }
 }

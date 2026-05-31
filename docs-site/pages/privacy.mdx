@@ -1,0 +1,83 @@
+# Privacy Policy
+
+import { Callout } from 'nextra/components'
+
+**Last updated: 31 May 2026**
+
+This policy explains how the **VaultCTL browser extension** and the VaultCTL application handle your data. VaultCTL is a self-hosted, zero-knowledge password manager: you run your own server and you choose which server the extension connects to. There is no VaultCTL-operated backend.
+
+<Callout type="info">
+  Short version: VaultCTL does not collect, transmit, sell, or share your data with us or any third party. Your passwords are encrypted on your device and only ever sent, as ciphertext, to the server you configure.
+</Callout>
+
+## Who this covers
+
+VaultCTL is open-source software (AGPL-3.0) maintained by Vineeth N K / VineLabs. When you install the browser extension you connect it to a VaultCTL server that **you or your organization operate**. This policy describes the behaviour of the published software. The operator of the server you connect to is the data controller for the contents of your vault.
+
+## What the extension stores on your device
+
+The extension keeps a small amount of data in your browser's extension storage, on your device:
+
+- **Server URL** - the address of the VaultCTL server you chose to connect to.
+- **Preferences** - your extension settings (autofill, field icon, save prompts, password-generator options, auto-lock period).
+- **Remembered email** (optional) - only if you tick "Remember me on this device", to pre-fill the login screen.
+
+The following are held in **memory-only session storage**, which the browser clears when you close it and which is never written to disk:
+
+- **Unlocked session** - your decrypted keys and access token while the vault is unlocked, so the extension survives the browser recycling its background worker. Cleared on auto-lock or browser close.
+- **Captured logins** - logins you submitted that are pending review in the Alerts tab.
+- **Generated-password history** - recent generated passwords, also wiped when the vault locks.
+
+## What is transmitted, and to whom
+
+The extension communicates **only with the VaultCTL server you configure**. Over that connection it sends:
+
+- Your authentication material (a derived authentication hash, never your master password) to sign in.
+- Encrypted vault data (ciphertext) to read and write items.
+
+<Callout type="warning">
+  All encryption and decryption happen locally in the extension. Your master password and the keys derived from it **never leave your device**. The server only ever receives and stores encrypted blobs - it cannot read your vault contents.
+</Callout>
+
+Nothing is sent to the developer, to VineLabs, or to any third-party service.
+
+## What we do not do
+
+- **No analytics or telemetry.** The extension contains no tracking, no usage reporting, and no crash reporting back to us.
+- **No advertising.** No ad networks, no ad identifiers.
+- **No selling or sharing of data.** We never receive your data, so we cannot and do not sell or share it.
+- **No remote code.** All code, including the Argon2 key-derivation routine, is bundled in the extension package. Nothing is downloaded and executed at runtime.
+
+## Permissions and why they are needed
+
+| Permission | Why |
+|------------|-----|
+| `storage` | Save your server URL, preferences, and the memory-only session described above. |
+| `activeTab` / `scripting` | Read login fields on the current page so the extension can fill them and offer to save new logins, only when you act. |
+| Host access (`<all_urls>`) | A password manager must be able to fill credentials on any site where you have a saved login. The extension only reads form fields to match and fill; it does not monitor your browsing. |
+| `clipboardWrite` | Copy a username or password to your clipboard when you ask. The clipboard is automatically cleared after 30 seconds. |
+| `notifications` | Show an optional prompt offering to save a login you just submitted. |
+
+## Clipboard
+
+When you copy a credential from the extension, it is placed on your system clipboard and then **automatically cleared after 30 seconds**. While on the clipboard it is, like any clipboard content, readable by other applications.
+
+## Data retention and deletion
+
+- Local extension data is removed when you **uninstall** the extension.
+- Memory-only session data is cleared when you **lock the vault or close the browser**.
+- Your vault contents live on the **server you operate**; deleting an item there, or decommissioning the server, removes that data. Consult your server operator for their retention and backup practices.
+
+## Children
+
+VaultCTL is a general-purpose security tool and is not directed at children under 13.
+
+## Changes to this policy
+
+We may update this policy as the software evolves. Material changes will be reflected here with a new "Last updated" date.
+
+## Contact
+
+Questions about this policy or the extension: **support@vinelabs.de**
+
+Source code: [github.com/vineethkrishnan/vaultctl](https://github.com/vineethkrishnan/vaultctl)
