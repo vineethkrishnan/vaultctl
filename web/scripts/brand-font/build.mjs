@@ -28,29 +28,39 @@ mkdirSync(outDir, { recursive: true });
 const UPM = 1024; // units per em
 const LOGO_CODEPOINT = 0xe000; // PUA: the emblem glyph
 
-// ── Extract + bake the traced emblem path ─────────────────────────────────
-const traced = readFileSync(resolve(here, "emblem-traced.svg"), "utf8");
-const transform = (traced.match(/<g transform="([^"]+)"/) ?? [])[1] ?? "";
-const paths = [...traced.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
-if (paths.length === 0) throw new Error("no paths in emblem-traced.svg");
+const WORDMARK_CODEPOINT = 0xe001; // PUA: the "VaultCTL" wordmark glyph
 
-// potrace emits a Y-flipped coordinate system; bake the group transform into
-// each subpath, then concatenate so holes (keyhole, V) cut out via nonzero.
-const baked = paths
-  .map((d) => svgpath(d).transform(transform).round(1).toString())
-  .join(" ");
+// Bake a potrace-traced SVG (Y-flipped group transform) into a clean glyph
+// SVG in the given viewBox, so svgicons2svgfont reads it correctly.
+function bakeGlyph(file, vbW, vbH) {
+  const traced = readFileSync(resolve(here, file), "utf8");
+  const transform = (traced.match(/<g transform="([^"]+)"/) ?? [])[1] ?? "";
+  const paths = [...traced.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+  if (paths.length === 0) throw new Error(`no paths in ${file}`);
+  const baked = paths
+    .map((d) => svgpath(d).transform(transform).round(1).toString())
+    .join(" ");
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vbW} ${vbH}">` +
+    `<path d="${baked}"/></svg>`
+  );
+}
 
-const glyphSvg =
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${UPM} ${UPM}">` +
-  `<path d="${baked}"/></svg>`;
+const emblemSvg = bakeGlyph("emblem-traced.svg", UPM, UPM);
+const wordmarkSvg = bakeGlyph("letters/wordmark-traced.svg", 954, 144);
+writeFileSync(resolve(here, "glyph-logo.svg"), emblemSvg);
+writeFileSync(resolve(here, "glyph-wordmark.svg"), wordmarkSvg);
 
-writeFileSync(resolve(here, "glyph-logo.svg"), glyphSvg);
+const GLYPHS = [
+  { svg: emblemSvg, unicode: LOGO_CODEPOINT, name: "logo" },
+  { svg: wordmarkSvg, unicode: WORDMARK_CODEPOINT, name: "wordmark" },
+];
 
 // ── Compose the SVG font, then TTF, then WOFF2 ────────────────────────────
 const fontStream = new SVGIcons2SVGFontStream({
   fontName: "VaultCTL Brand",
   fontHeight: UPM,
-  descent: 205, // drop the icon so it centers on the text baseline
+  descent: 205, // drop glyphs so they center on the text baseline
   normalize: true,
   centerHorizontally: true,
   log: () => {},
@@ -64,9 +74,11 @@ const done = new Promise((res, rej) => {
   fontStream.on("error", rej);
 });
 
-const glyph = Readable.from([glyphSvg]);
-glyph.metadata = { unicode: [String.fromCodePoint(LOGO_CODEPOINT)], name: "logo" };
-fontStream.write(glyph);
+for (const g of GLYPHS) {
+  const glyph = Readable.from([g.svg]);
+  glyph.metadata = { unicode: [String.fromCodePoint(g.unicode)], name: g.name };
+  fontStream.write(glyph);
+}
 fontStream.end();
 
 await done;
@@ -76,5 +88,5 @@ const woff2 = ttf2woff2(Buffer.from(ttf.buffer));
 writeFileSync(resolve(outDir, "vaultctl-brand.woff2"), woff2);
 
 console.log(
-  `built vaultctl-brand.woff2 (${woff2.length} bytes), logo at U+${LOGO_CODEPOINT.toString(16).toUpperCase()}`,
+  `built vaultctl-brand.woff2 (${woff2.length} bytes): logo U+${LOGO_CODEPOINT.toString(16)}, wordmark U+${WORDMARK_CODEPOINT.toString(16)}`,
 );

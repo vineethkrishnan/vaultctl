@@ -943,6 +943,7 @@ interface ExtSettings {
   genSymbols: boolean;
   historyMax: number;
   historyTtlMin: number;
+  autoLockMin: number;
 }
 
 function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => void }) {
@@ -1018,6 +1019,26 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
               <option value={8000}>8s</option>
               <option value={15000}>15s</option>
               <option value={30000}>30s</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-3 pt-1">
+            <span className="min-w-0">
+              <span className="block text-sm">Auto-lock</span>
+              <span className="block text-[11px] text-muted-foreground">
+                Lock after this much inactivity
+              </span>
+            </span>
+            <select
+              value={settings.autoLockMin}
+              onChange={(e) => update({ autoLockMin: Number(e.target.value) })}
+              className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
+            >
+              <option value={1}>1 min</option>
+              <option value={5}>5 min</option>
+              <option value={15}>15 min</option>
+              <option value={30}>30 min</option>
+              <option value={60}>1 hour</option>
+              <option value={0}>Never</option>
             </select>
           </label>
         </div>
