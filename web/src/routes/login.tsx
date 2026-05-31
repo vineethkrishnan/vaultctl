@@ -16,8 +16,8 @@ export function LoginPage() {
   const { theme } = useTheme();
   const logo =
     theme === "light"
-      ? "/light/svg/vaultctl-logo.svg"
-      : "/dark/svg/vaultctl-logo.svg";
+      ? "/light/logo/vaultctl-logo-notagline.png"
+      : "/dark/logo/vaultctl-logo-notagline.png";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -156,12 +156,10 @@ export function LoginPage() {
           <img
             src={logo}
             alt="VaultCTL"
-            className="mx-auto h-28 w-auto"
+            className="mx-auto h-24 w-auto"
           />
-          <p className="text-sm text-muted-foreground">
-            {step === "email"
-              ? "Enter your email to continue"
-              : "Enter your master password"}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            A zero-knowledge, self-hosted password vault.
           </p>
         </div>
 
