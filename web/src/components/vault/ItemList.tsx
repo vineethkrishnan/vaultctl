@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import { createPortal } from "react-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { apiGet } from "@/lib/api-client";
+import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { decryptName } from "@/lib/key-holder";
+import { decryptData, decryptName } from "@/lib/key-holder";
+import { relativeAge } from "@/lib/time";
+import { useClipboard } from "@/hooks/use-clipboard";
 import type { ItemResponse } from "@/shared/types/api";
 import {
   KeyRound,
@@ -17,7 +26,11 @@ import {
   Fingerprint,
   Star,
   Search,
-  ChevronRight,
+  MoreVertical,
+  Copy,
+  ClipboardCopy,
+  Trash2,
+  Check,
 } from "lucide-react";
 
 const ITEM_TYPE_ICONS: Record<string, typeof KeyRound> = {
@@ -40,8 +53,13 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   passkey: "Passkey",
 };
 
+const decoder = new TextDecoder();
+
 interface DecryptedItem extends ItemResponse {
   decryptedName: string;
+  username?: string;
+  password?: string;
+  uri?: string;
 }
 
 // Deterministic gradient per item name — gives each row a scannable identity.
@@ -54,12 +72,22 @@ function avatarStyle(name: string): CSSProperties {
   };
 }
 
+function itemToText(item: DecryptedItem): string {
+  const lines = [item.decryptedName];
+  if (item.username) lines.push(`Username: ${item.username}`);
+  if (item.password) lines.push(`Password: ${item.password}`);
+  if (item.uri) lines.push(`URI: ${item.uri}`);
+  return lines.join("\n");
+}
+
 export function ItemList() {
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const search = useSearch({ strict: false }) as {
     favorites?: boolean;
     folderId?: string;
   };
+  const queryClient = useQueryClient();
+  const { copy } = useClipboard();
 
   const queryParams = new URLSearchParams();
   if (search.favorites) queryParams.set("favorites", "true");
@@ -81,6 +109,8 @@ export function ItemList() {
 
   const [decryptedItems, setDecryptedItems] = useState<DecryptedItem[]>([]);
   const [filter, setFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     if (!items) return;
@@ -89,12 +119,30 @@ export function ItemList() {
     async function decrypt() {
       const results: DecryptedItem[] = [];
       for (const item of items!) {
+        let decryptedName = "[decryption failed]";
+        let username: string | undefined;
+        let password: string | undefined;
+        let uri: string | undefined;
         try {
-          const name = await decryptName(vaultId, item.encryptedName);
-          results.push({ ...item, decryptedName: name });
+          decryptedName = await decryptName(vaultId, item.encryptedName);
         } catch {
-          results.push({ ...item, decryptedName: "[decryption failed]" });
+          // keep the failure placeholder
         }
+        // Reprompt items require a step-up before their data can be read, so we
+        // never decrypt their secrets in the list.
+        if (!item.reprompt) {
+          try {
+            const raw = JSON.parse(
+              decoder.decode(await decryptData(vaultId, item.encryptedData)),
+            ) as { username?: string; password?: string; uri?: string };
+            username = raw.username || undefined;
+            password = raw.password || undefined;
+            uri = raw.uri || undefined;
+          } catch {
+            // data unavailable — row still shows name + type
+          }
+        }
+        results.push({ ...item, decryptedName, username, password, uri });
       }
       if (!cancelled) setDecryptedItems(results);
     }
@@ -105,11 +153,61 @@ export function ItemList() {
     };
   }, [items, vaultId]);
 
+  const presentTypes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const item of decryptedItems) seen.add(item.itemType);
+    return [...seen];
+  }, [decryptedItems]);
+
   const visible = useMemo(() => {
     const needle = filter.trim().toLowerCase();
-    if (!needle) return decryptedItems;
-    return decryptedItems.filter((i) => i.decryptedName.toLowerCase().includes(needle));
-  }, [decryptedItems, filter]);
+    return decryptedItems.filter((i) => {
+      if (typeFilter !== "all" && i.itemType !== typeFilter) return false;
+      if (!needle) return true;
+      return (
+        i.decryptedName.toLowerCase().includes(needle) ||
+        (i.username?.toLowerCase().includes(needle) ?? false) ||
+        (i.uri?.toLowerCase().includes(needle) ?? false)
+      );
+    });
+  }, [decryptedItems, filter, typeFilter]);
+
+  const favoriteMutation = useMutation({
+    mutationFn: (item: DecryptedItem) =>
+      apiPut(`/api/v1/vaults/${vaultId}/items/${item.id}`, {
+        encryptedName: item.encryptedName,
+        encryptedData: item.encryptedData,
+        favorite: !item.favorite,
+        reprompt: item.reprompt,
+      }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) }),
+  });
+
+  const trashMutation = useMutation({
+    mutationFn: (item: DecryptedItem) =>
+      apiDelete(`/api/v1/vaults/${vaultId}/items/${item.id}`),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) }),
+  });
+
+  function flashCopied(label: string) {
+    setCopied(label);
+    window.setTimeout(() => setCopied((c) => (c === label ? null : c)), 1800);
+  }
+
+  function handleCopy(text: string, label: string) {
+    void copy(text).then(() => flashCopied(label));
+  }
+
+  function handleDelete(item: DecryptedItem) {
+    if (
+      !window.confirm(`Move "${item.decryptedName}" to trash?`)
+    ) {
+      return;
+    }
+    trashMutation.mutate(item);
+  }
 
   if (vaultId === "none") {
     return (
@@ -166,55 +264,242 @@ export function ItemList() {
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search items"
-          className="w-full rounded-lg border border-border bg-card/50 py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
-        />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search name, username or URL"
+            className="w-full rounded-lg border border-border bg-card/50 py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
+          />
+        </div>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          aria-label="Filter by type"
+          className="rounded-lg border border-border bg-card/50 px-3 py-2.5 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20 sm:w-44"
+        >
+          <option value="all">All types</option>
+          {presentTypes.map((t) => (
+            <option key={t} value={t}>
+              {ITEM_TYPE_LABELS[t] ?? t}
+            </option>
+          ))}
+        </select>
       </div>
 
       {!visible.length ? (
         <div className="rounded-xl border border-border bg-card/40 py-12 text-center text-sm text-muted-foreground">
-          No items match "{filter}".
+          No items match {filter ? `"${filter}"` : "this filter"}.
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card/40 backdrop-blur-sm">
           {visible.map((item, i) => {
             const Icon = ITEM_TYPE_ICONS[item.itemType] ?? KeyRound;
+            const typeLabel = ITEM_TYPE_LABELS[item.itemType] ?? item.itemType;
             return (
-              <Link
+              <div
                 key={item.id}
-                to="/vault/$vaultId/items/$itemId"
-                params={{ vaultId, itemId: item.id }}
                 style={{ animationDelay: `${Math.min(i, 18) * 28}ms` }}
-                className="row-interactive animate-fade-up group flex items-center gap-3.5 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-accent/50 [&.active]:bg-accent"
+                className="row-interactive animate-fade-up group flex items-center gap-3.5 border-b border-border/60 px-4 py-3 last:border-b-0 hover:bg-accent/50"
               >
-                <span
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
-                  style={avatarStyle(item.decryptedName)}
+                <Link
+                  to="/vault/$vaultId/items/$itemId"
+                  params={{ vaultId, itemId: item.id }}
+                  className="flex min-w-0 flex-1 items-center gap-3.5"
                 >
-                  <Icon className="h-[18px] w-[18px]" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{item.decryptedName}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {ITEM_TYPE_LABELS[item.itemType] ?? item.itemType}
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
+                    style={avatarStyle(item.decryptedName)}
+                  >
+                    <Icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">
+                      {item.decryptedName}
+                    </div>
+                    <div className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                      <span className="shrink-0">{typeLabel}</span>
+                      {item.username && (
+                        <>
+                          <span className="inline-block h-1 w-1 shrink-0 rounded-full bg-current opacity-40" />
+                          <span className="truncate">{item.username}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Link>
+                <span className="hidden shrink-0 text-[11px] text-muted-foreground sm:block">
+                  {relativeAge(item.updatedAt)}
+                </span>
                 {item.favorite && (
                   <Star className="h-4 w-4 shrink-0 fill-yellow-500 text-yellow-500" />
                 )}
-                <ChevronRight className="h-4 w-4 shrink-0 -translate-x-1 text-muted-foreground opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
-              </Link>
+                <RowMenu
+                  item={item}
+                  onCopyUsername={() =>
+                    item.username && handleCopy(item.username, "username")
+                  }
+                  onCopyPassword={() =>
+                    item.password && handleCopy(item.password, "password")
+                  }
+                  onCopyItem={() => handleCopy(itemToText(item), "item")}
+                  onToggleFavorite={() => favoriteMutation.mutate(item)}
+                  onDelete={() => handleDelete(item)}
+                />
+              </div>
             );
           })}
         </div>
       )}
+
+      {copied && (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-foreground shadow-lg">
+          <Check className="h-3.5 w-3.5 text-brand" />
+          Copied {copied} - clipboard clears in 30s
+        </div>
+      )}
     </div>
+  );
+}
+
+function RowMenu({
+  item,
+  onCopyUsername,
+  onCopyPassword,
+  onCopyItem,
+  onToggleFavorite,
+  onDelete,
+}: {
+  item: DecryptedItem;
+  onCopyUsername: () => void;
+  onCopyPassword: () => void;
+  onCopyItem: () => void;
+  onToggleFavorite: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setCoords({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    }
+    setOpen((o) => !o);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(t) &&
+        btnRef.current &&
+        !btnRef.current.contains(t)
+      ) {
+        setOpen(false);
+      }
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    // A fixed-positioned menu would detach from the button on scroll.
+    function close() {
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  function run(action: () => void) {
+    action();
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={toggle}
+        aria-label="Item actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            style={{ position: "fixed", top: coords.top, right: coords.right }}
+            className="animate-scale-in z-50 w-48 overflow-hidden rounded-lg border border-border bg-popover py-1 text-sm shadow-xl"
+          >
+            {item.username && (
+              <MenuItem icon={Copy} label="Copy username" onClick={() => run(onCopyUsername)} />
+            )}
+            {item.password && (
+              <MenuItem icon={Copy} label="Copy password" onClick={() => run(onCopyPassword)} />
+            )}
+            <MenuItem icon={ClipboardCopy} label="Copy item" onClick={() => run(onCopyItem)} />
+            <MenuItem
+              icon={Star}
+              label={item.favorite ? "Remove favorite" : "Add to favorites"}
+              onClick={() => run(onToggleFavorite)}
+            />
+            <div className="my-1 border-t border-border" />
+            <MenuItem
+              icon={Trash2}
+              label="Move to trash"
+              destructive
+              onClick={() => run(onDelete)}
+            />
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function MenuItem({
+  icon: Icon,
+  label,
+  onClick,
+  destructive = false,
+}: {
+  icon: typeof Copy;
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className={`flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-accent ${
+        destructive ? "text-destructive hover:bg-destructive/10" : "text-foreground"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {label}
+    </button>
   );
 }
 
