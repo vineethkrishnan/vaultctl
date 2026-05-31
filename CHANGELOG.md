@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.6.0...v1.6.1) (2026-05-31)
+
+
+### Documentation
+
+* restore the docker pulls badge now that the hub repo is public ([#137](https://github.com/vineethkrishnan/vaultctl/issues/137)) ([9c54990](https://github.com/vineethkrishnan/vaultctl/commit/9c54990a403dce57fcc44d6a5899e49b0fa300da))
+
 ## [1.6.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.5.0...v1.6.0) (2026-05-31)
 
 
