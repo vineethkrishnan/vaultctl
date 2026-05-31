@@ -17,7 +17,7 @@ export function CreditCardFields({ data, onChange }: Props) {
     <div className="space-y-4">
       <Field label="Cardholder Name" value={data.cardholderName} onChange={(v) => set("cardholderName", v)} />
       <Field label="Card Number" value={data.number} onChange={(v) => set("number", v)} type="password" copyable />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Expiry (MM/YY)" value={data.expiry} onChange={(v) => set("expiry", v)} placeholder="MM/YY" />
         <Field label="CVV" value={data.cvv} onChange={(v) => set("cvv", v)} type="password" copyable />
       </div>
