@@ -106,6 +106,7 @@ function doLock(): void {
   vaultKeys.clear();
   vaultMeta.clear();
   genHistory = [];
+  pendingUsernames.clear();
   if (autoLockTimer) {
     clearTimeout(autoLockTimer);
     autoLockTimer = undefined;
@@ -228,6 +229,11 @@ interface GenEntry {
 // Generated-password history lives only in memory (never written to disk) and
 // is wiped on lock, so plaintext generated passwords never persist.
 let genHistory: GenEntry[] = [];
+
+// Usernames/emails entered in an earlier step of a multi-step login, keyed by
+// host, so the password step can be saved with its email. Short-lived.
+const PENDING_USERNAME_TTL_MS = 10 * 60 * 1000;
+const pendingUsernames = new Map<string, { username: string; at: number }>();
 
 async function pruneGenHistory(): Promise<void> {
   const { historyMax, historyTtlMin } = await getSettings();
@@ -822,11 +828,18 @@ export default defineBackground(() => {
             case "logGeneratedPassword": {
               const password = String(message.password ?? "");
               if (password) {
-                genHistory.push({
-                  id: makeCaptureId(),
-                  password,
-                  createdAt: Date.now(),
-                });
+                const existing = genHistory.find((e) => e.password === password);
+                if (existing) {
+                  // Re-copying the same password refreshes its recency rather
+                  // than adding a duplicate row.
+                  existing.createdAt = Date.now();
+                } else {
+                  genHistory.push({
+                    id: makeCaptureId(),
+                    password,
+                    createdAt: Date.now(),
+                  });
+                }
                 await pruneGenHistory();
               }
               sendResponse({ ok: true });
@@ -842,6 +855,31 @@ export default defineBackground(() => {
             case "clearGenHistory": {
               genHistory = [];
               sendResponse({ ok: true });
+              return;
+            }
+
+            // -----------------------------------------------------------
+            // Multi-step login: remember the email/username across steps
+            // -----------------------------------------------------------
+            case "rememberUsername": {
+              const host = String(message.host ?? "");
+              const username = String(message.username ?? "");
+              if (host && username) {
+                pendingUsernames.set(host, { username, at: Date.now() });
+              }
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "getRememberedUsername": {
+              const host = String(message.host ?? "");
+              const entry = pendingUsernames.get(host);
+              if (entry && Date.now() - entry.at <= PENDING_USERNAME_TTL_MS) {
+                sendResponse({ ok: true, username: entry.username });
+              } else {
+                pendingUsernames.delete(host);
+                sendResponse({ ok: true, username: "" });
+              }
               return;
             }
 

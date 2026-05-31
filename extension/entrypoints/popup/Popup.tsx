@@ -570,8 +570,8 @@ export function Popup() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="px-3 py-2.5">
+      {/* Search (sticky so it stays visible while the list scrolls) */}
+      <div className="sticky top-0 z-10 bg-background/95 px-3 py-2.5 backdrop-blur-sm">
         <div className="flex items-center gap-2 rounded-lg border border-border bg-card/50 px-2.5 py-2 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/20">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input

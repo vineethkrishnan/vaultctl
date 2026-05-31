@@ -377,27 +377,55 @@ export default defineContentScript({
     }
 
     // ── Submit capture → save/update decision ─────────────────────────────
+    // Remember a username/email value so a later password-only step can
+    // reuse it (multi-step / split login forms).
+    function rememberUsername(value: string) {
+      if (value) {
+        void bg({
+          type: "rememberUsername",
+          host: window.location.hostname,
+          username: value,
+        });
+      }
+    }
+
     function handleSubmit(event: Event) {
       const form = event.target as HTMLFormElement | null;
       if (!form || form.tagName !== "FORM") return;
       const { usernameInput, passwordInput } = extractCredentialInputs(form);
-      if (!passwordInput || !passwordInput.value) return;
-      const username = usernameInput?.value ?? "";
-      const password = passwordInput.value;
       const origin = window.location.href;
       const host = window.location.hostname;
 
-      // Keep the legacy capture queue alive for the popup.
-      void bg({ type: "loginSubmitted", url: origin, username, password });
+      // Step one of a multi-step form: an email/username with no password yet.
+      // Stash it so the password step can pick it up.
+      if (!passwordInput || !passwordInput.value) {
+        rememberUsername(usernameInput?.value ?? "");
+        return;
+      }
+      const password = passwordInput.value;
 
-      if (!settings.savePrompt) return;
-      void bg<{
-        ok?: boolean;
-        action?: string;
-        vaultId?: string;
-        itemId?: string;
-        name?: string;
-      }>({ type: "saveDecision", origin, username, password }).then((d) => {
+      void (async () => {
+        let username = usernameInput?.value ?? "";
+        if (!username) {
+          // Password-only step: fall back to the email captured earlier.
+          const r = await bg<{ username?: string }>({
+            type: "getRememberedUsername",
+            host,
+          });
+          username = r?.username ?? "";
+        }
+
+        // Keep the legacy capture queue alive for the popup.
+        void bg({ type: "loginSubmitted", url: origin, username, password });
+
+        if (!settings.savePrompt) return;
+        const d = await bg<{
+          ok?: boolean;
+          action?: string;
+          vaultId?: string;
+          itemId?: string;
+          name?: string;
+        }>({ type: "saveDecision", origin, username, password });
         if (!d?.ok || !d.action || d.action === "none") return;
         if (d.action === "add") {
           showToast({
@@ -428,7 +456,7 @@ export default defineContentScript({
               }),
           });
         }
-      });
+      })();
     }
 
     function attachSubmitListeners() {
@@ -438,6 +466,23 @@ export default defineContentScript({
         form.addEventListener("submit", handleSubmit, { capture: true });
       }
     }
+
+    // Remember an email/username as soon as the user leaves the field, so a
+    // later password-only step (incl. SPA step changes with no form submit)
+    // can still be saved with its email.
+    document.addEventListener(
+      "focusout",
+      (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLInputElement) || t.type === "password") return;
+        const isUser =
+          t.type === "email" ||
+          (t.autocomplete || "").includes("username") ||
+          /user|email/i.test(`${t.name} ${t.id}`);
+        if (isUser && t.value) rememberUsername(t.value);
+      },
+      true,
+    );
 
     // ── Boot: fetch matches + settings, wire forms, optional autofill ──────
     async function refreshMatches() {
