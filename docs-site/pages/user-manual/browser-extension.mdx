@@ -88,6 +88,23 @@ Saving and updating encrypt the item in the extension (the same client-side encr
 
 ---
 
+## Strong password suggestions
+
+On signup and change-password forms, the extension can suggest a strong, generated password. When you focus a **new-password field** (detected via `autocomplete="new-password"`, field names like "new"/"confirm"/"register", or a form with two password fields), a small suggestion appears with a generated password.
+
+- **Use password** fills it, and any confirm-password field in the same form, in one click.
+- **Regenerate** produces a different one.
+- The password is generated with the settings from the **Generator** tab (length and character classes).
+
+This is skipped on plain sign-in fields (where a stored login already matches), so it only appears when you actually need a new password.
+
+### Generated-password history
+
+The **Generator** tab keeps a short list of passwords you recently copied or filled, so you can grab one again if a form didn't save. This history lives only in memory and is **wiped when the vault locks** - it is never written to disk. Two controls in the Generator tab tune it:
+
+- **Keep** - how many recent passwords to retain (default 5).
+- **Expire** - how long each entry stays before it drops off (15m / 1h / 4h / 24h).
+
 ## Autofill & saving settings
 
 Open the extension popup and go to the **Settings** tab to configure behavior:
@@ -97,6 +114,7 @@ Open the extension popup and go to the **Settings** tab to configure behavior:
 | **Show field icon** | On | Show the inline vaultctl icon inside matching login fields. |
 | **Autofill on page load** | Off | Fill the first matching login automatically, without a click. |
 | **Offer to save / update** | On | Show the save/update toast after a login submit. |
+| **Suggest strong passwords** | On | Offer a generated password on new-password fields. |
 | **Prompt timeout** | 8s | How long the save/update toast stays before it fades out. |
 
 ---

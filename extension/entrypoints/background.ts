@@ -105,6 +105,7 @@ function doLock(): void {
   }
   vaultKeys.clear();
   vaultMeta.clear();
+  genHistory = [];
   if (autoLockTimer) {
     clearTimeout(autoLockTimer);
     autoLockTimer = undefined;
@@ -171,6 +172,14 @@ interface ExtSettings {
   fieldIcon: boolean; // show the inline vaultctl icon inside login fields
   savePrompt: boolean; // offer to save/update after a login submit
   toastMs: number; // auto-dismiss timeout for toasts (ms)
+  suggestPassword: boolean; // suggest a strong password on new-password fields
+  genLength: number;
+  genLower: boolean;
+  genUpper: boolean;
+  genDigits: boolean;
+  genSymbols: boolean;
+  historyMax: number; // how many generated passwords to keep
+  historyTtlMin: number; // how long a generated password stays in history (minutes)
 }
 
 const DEFAULT_SETTINGS: ExtSettings = {
@@ -178,7 +187,55 @@ const DEFAULT_SETTINGS: ExtSettings = {
   fieldIcon: true,
   savePrompt: true,
   toastMs: 8000,
+  suggestPassword: true,
+  genLength: 20,
+  genLower: true,
+  genUpper: true,
+  genDigits: true,
+  genSymbols: true,
+  historyMax: 5,
+  historyTtlMin: 60,
 };
+
+// ===========================================================================
+// Strong-password generation + ephemeral generated-password history
+// ===========================================================================
+
+const GEN_LOWER = "abcdefghijkmnopqrstuvwxyz";
+const GEN_UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const GEN_DIGITS = "23456789";
+const GEN_SYMBOLS = "!@#$%^&*()-_=+[]{}";
+
+function generatePassword(cfg: ExtSettings): string {
+  let charset = "";
+  if (cfg.genLower) charset += GEN_LOWER;
+  if (cfg.genUpper) charset += GEN_UPPER;
+  if (cfg.genDigits) charset += GEN_DIGITS;
+  if (cfg.genSymbols) charset += GEN_SYMBOLS;
+  if (!charset) charset = GEN_LOWER + GEN_UPPER + GEN_DIGITS;
+  const length = Math.min(128, Math.max(8, cfg.genLength || 20));
+  const arr = new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, (v) => charset[v % charset.length]).join("");
+}
+
+interface GenEntry {
+  id: string;
+  password: string;
+  createdAt: number;
+}
+
+// Generated-password history lives only in memory (never written to disk) and
+// is wiped on lock, so plaintext generated passwords never persist.
+let genHistory: GenEntry[] = [];
+
+async function pruneGenHistory(): Promise<void> {
+  const { historyMax, historyTtlMin } = await getSettings();
+  const cutoff = Date.now() - historyTtlMin * 60_000;
+  genHistory = genHistory
+    .filter((e) => e.createdAt >= cutoff)
+    .slice(-Math.max(0, historyMax));
+}
 
 async function getSettings(): Promise<ExtSettings> {
   const stored = await browser.storage.local.get("vaultctl_settings");
@@ -750,6 +807,41 @@ export default defineBackground(() => {
                   error: err instanceof Error ? err.message : String(err),
                 });
               }
+              return;
+            }
+
+            // -----------------------------------------------------------
+            // Strong-password suggestions + history
+            // -----------------------------------------------------------
+            case "generatePassword": {
+              const cfg = await getSettings();
+              sendResponse({ ok: true, password: generatePassword(cfg) });
+              return;
+            }
+
+            case "logGeneratedPassword": {
+              const password = String(message.password ?? "");
+              if (password) {
+                genHistory.push({
+                  id: makeCaptureId(),
+                  password,
+                  createdAt: Date.now(),
+                });
+                await pruneGenHistory();
+              }
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "getGenHistory": {
+              await pruneGenHistory();
+              sendResponse({ ok: true, entries: genHistory });
+              return;
+            }
+
+            case "clearGenHistory": {
+              genHistory = [];
+              sendResponse({ ok: true });
               return;
             }
 
