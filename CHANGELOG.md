@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.6.1...v1.6.2) (2026-05-31)
+
+
+### CI/CD
+
+* deploy docs to the project the custom domain serves, on every docs change ([#139](https://github.com/vineethkrishnan/vaultctl/issues/139)) ([e932f73](https://github.com/vineethkrishnan/vaultctl/commit/e932f73df422e4ca5e02c6a0bf01c9c38f66bba1))
+
 ## [1.6.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.6.0...v1.6.1) (2026-05-31)
 
 
