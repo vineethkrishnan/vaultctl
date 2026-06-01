@@ -488,9 +488,24 @@ export default defineContentScript({
         return;
       }
       const password = passwordInput.value;
+      const immediateUsername = usernameInput?.value ?? "";
+
+      // Queue the durable capture FIRST and synchronously, before any await.
+      // A submit usually navigates the page (redirect to a dashboard), which
+      // tears down this content script; anything dispatched after an await can
+      // be lost. The background persists this capture and raises a notification
+      // + toolbar badge, so the credential is never silently dropped — the user
+      // can still confirm and save it from the popup even after the redirect.
+      // The background fills in a remembered email when this step carried none.
+      void bg({
+        type: "loginSubmitted",
+        url: origin,
+        username: immediateUsername,
+        password,
+      });
 
       void (async () => {
-        let username = usernameInput?.value ?? "";
+        let username = immediateUsername;
         if (!username) {
           // Password-only step: fall back to the email captured earlier.
           const r = await bg<{ username?: string }>({
@@ -499,9 +514,6 @@ export default defineContentScript({
           });
           username = r?.username ?? "";
         }
-
-        // Keep the legacy capture queue alive for the popup.
-        void bg({ type: "loginSubmitted", url: origin, username, password });
 
         if (!settings.savePrompt) return;
         const d = await bg<{

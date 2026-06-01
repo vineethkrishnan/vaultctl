@@ -686,6 +686,38 @@ export function Popup() {
             </button>
           </form>
         )}
+
+        <div className="w-full space-y-2 pt-2">
+          <div className="flex items-center justify-center gap-4 text-xs">
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Documentation
+            </a>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Support
+            </a>
+          </div>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Crafted by{" "}
+            <a
+              href={VINELABS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-brand hover:underline"
+            >
+              Vinelabs
+            </a>
+          </p>
+        </div>
       </div>
     );
   }
