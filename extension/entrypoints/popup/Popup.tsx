@@ -22,6 +22,7 @@ import {
   BookOpen,
   Mail,
   Fingerprint,
+  Heart,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import {
@@ -706,8 +707,8 @@ export function Popup() {
               Support
             </a>
           </div>
-          <p className="text-center text-[11px] text-muted-foreground">
-            Crafted by{" "}
+          <p className="flex items-center justify-center gap-1 text-center text-[11px] text-muted-foreground">
+            Crafted by team
             <a
               href={VINELABS_URL}
               target="_blank"
@@ -716,6 +717,8 @@ export function Popup() {
             >
               Vinelabs
             </a>
+            with
+            <Heart className="h-3 w-3 fill-red-500 text-red-500" />
           </p>
         </div>
       </div>
