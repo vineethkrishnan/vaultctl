@@ -9,6 +9,7 @@ import { ImportDialog } from "@/components/vault/ImportDialog";
 import { ExportDialog } from "@/components/vault/ExportDialog";
 import { RestoreDialog } from "@/components/vault/RestoreDialog";
 import { SessionsPanel } from "@/components/settings/SessionsPanel";
+import { BackupSyncPanel } from "@/components/settings/BackupSyncPanel";
 import { AboutPanel } from "@/components/settings/AboutPanel";
 import {
   Settings,
@@ -220,6 +221,9 @@ export function SettingsPage() {
             </section>
             <section className="rounded-lg border border-border p-4">
               <RestoreDialog />
+            </section>
+            <section className="rounded-lg border border-border p-4">
+              <BackupSyncPanel />
             </section>
           </>
         )}

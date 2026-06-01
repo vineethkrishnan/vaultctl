@@ -21,4 +21,13 @@ export const queryKeys = {
   trash: {
     list: (vaultId: string) => ["trash", vaultId] as const,
   },
+  backup: {
+    all: ["backup"] as const,
+    providers: () => [...queryKeys.backup.all, "providers"] as const,
+    destinations: () => [...queryKeys.backup.all, "destinations"] as const,
+    runs: (destinationId: string) =>
+      [...queryKeys.backup.all, "runs", destinationId] as const,
+    artifacts: (destinationId: string) =>
+      [...queryKeys.backup.all, "artifacts", destinationId] as const,
+  },
 };
