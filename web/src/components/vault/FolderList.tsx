@@ -18,6 +18,7 @@ interface DecryptedFolder extends FolderResponse {
 const PRESET_FOLDERS = [
   "Personal",
   "Work",
+  "Temporary",
   "Finance",
   "Social",
   "Email",

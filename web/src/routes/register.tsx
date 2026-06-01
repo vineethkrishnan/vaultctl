@@ -15,6 +15,7 @@ import {
   serializeBlob,
   generateRecoveryKit,
   formatRecoveryKey,
+  pad,
   toBase64,
   zero,
 } from "@/shared/crypto";
@@ -23,6 +24,10 @@ import { useAuthStore } from "@/lib/auth-store";
 import { RecoveryKitDownload } from "@/components/auth/RecoveryKitDownload";
 
 type Step = "form" | "processing" | "recovery" | "done";
+
+// Default folders created in the new personal vault so the account isn't empty.
+// Names are encrypted client-side with the vault key, like any folder.
+const DEFAULT_FOLDERS = ["Personal", "Work", "Temporary"];
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -136,12 +141,27 @@ export function RegisterPage() {
       });
 
       // Create personal vault
-      await apiPost("/api/v1/vaults", {
+      const vault = await apiPost<{ vaultId: string }>("/api/v1/vaults", {
         name: "Personal Vault",
         type: "personal",
         encryptedVaultKey: toBase64(encVaultKeyBytes),
         wrapSignature: toBase64(wrapSig),
       });
+
+      // Seed default folders so the vault isn't empty on first open. Encrypt
+      // each name with the vault key here (the crypto worker isn't initialized
+      // during registration). A failure here must not fail registration.
+      try {
+        const encoder = new TextEncoder();
+        for (const folderName of DEFAULT_FOLDERS) {
+          const encryptedName = toBase64(
+            serializeBlob(await aesGcmEncrypt(vaultKey, pad(encoder.encode(folderName)))),
+          );
+          await apiPost(`/api/v1/vaults/${vault.vaultId}/folders`, { encryptedName });
+        }
+      } catch {
+        // Non-fatal: the user can create folders manually later.
+      }
 
       // Clean up sensitive material
       zero(stretchedKey);
