@@ -313,7 +313,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   genSymbols: true,
   historyMax: 5,
   historyTtlMin: 60,
-  autoLockMin: 15,
+  autoLockMin: 0,
 };
 
 // ===========================================================================
@@ -811,8 +811,16 @@ export default defineBackground(() => {
             case "loginSubmitted": {
               pruneStaleCaptures();
               const url = String(message.url ?? "");
-              const username = String(message.username ?? "");
+              let username = String(message.username ?? "");
               const password = String(message.password ?? "");
+              // A password-only step (multi-step login) carries no username;
+              // recover the email stashed when the user left the email field.
+              if (!username) {
+                const pending = pendingUsernames.get(safeHostname(url));
+                if (pending && Date.now() - pending.at <= PENDING_USERNAME_TTL_MS) {
+                  username = pending.username;
+                }
+              }
               // Don't queue a capture for a credential already stored exactly
               // as-is; only new or changed logins are worth offering to save.
               if (unlocked) {

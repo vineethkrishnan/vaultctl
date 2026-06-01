@@ -21,8 +21,18 @@ import {
   X,
   BookOpen,
   Mail,
+  Fingerprint,
+  Heart,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
+import {
+  isBiometricAvailable,
+  isBiometricEnrolled,
+  getBiometricRecord,
+  enrollBiometric,
+  clearBiometric,
+  unlockWithBiometric,
+} from "./biometric";
 
 // ── Minimal API shapes (mirror web/src/shared/types/api.ts) ────────────────
 interface PreloginResponse {
@@ -144,6 +154,9 @@ export function Popup() {
   const [captures, setCaptures] = useState<CapturedLoginSummary[]>([]);
   const [tab, setTab] = useState<TabId>("vault");
   const [remember, setRemember] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnrolled, setBiometricEnrolled] = useState(false);
+  const [biometricBusy, setBiometricBusy] = useState(false);
 
   const loadItems = useCallback(
     async (vaultId: string) => {
@@ -208,6 +221,16 @@ export function Popup() {
         const url = stored?.url ?? "";
         if (cancelled) return;
         setServerUrl(url);
+
+        const [available, record] = await Promise.all([
+          isBiometricAvailable(),
+          getBiometricRecord(),
+        ]);
+        if (!cancelled) {
+          setBiometricAvailable(available);
+          setBiometricEnrolled(record !== null);
+          if (record && !email) setEmail(record.email);
+        }
 
         const session = await bg<{
           isUnlocked?: boolean;
@@ -285,6 +308,84 @@ export function Popup() {
     setPhase("email");
   }
 
+  // Shared tail for every unlock path (password or biometric): hand the keys to
+  // the background, then drop the user into their vault.
+  async function completeLogin(
+    res: LoginResponse,
+    stretchedKey: Uint8Array,
+    accountEmail: string,
+  ) {
+    await bg({
+      type: "setToken",
+      token: res.accessToken,
+      refreshToken: res.refreshToken,
+    });
+    await bg({
+      type: "unlock",
+      stretchedKey: Array.from(stretchedKey),
+      encryptedPrivateKey: res.encryptedPrivateKey,
+      encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
+      vaults: res.vaults.map((v) => ({
+        vaultId: v.vaultId,
+        encryptedVaultKey: v.encryptedVaultKey,
+        vaultType: v.vaultType,
+        vaultName: v.vaultName,
+      })),
+    });
+
+    const meta: VaultMeta[] = res.vaults.map((v) => ({
+      id: v.vaultId,
+      name: v.vaultName,
+      type: v.vaultType,
+    }));
+    const first = meta[0];
+    setEmail(accountEmail);
+    setToken(res.accessToken);
+    setVaults(meta);
+    setPassword("");
+    if (first) {
+      setActiveVaultId(first.id);
+      setPhase("list");
+      await loadItems(first.id);
+    } else {
+      setError("No vaults on this account yet - create one in the web vault.");
+      setPhase("list");
+    }
+  }
+
+  async function handleBiometricUnlock() {
+    setError(null);
+    setBiometricBusy(true);
+    try {
+      const secret = await unlockWithBiometric();
+      const res = await api<LoginResponse>(serverUrl, "/api/v1/auth/login", {
+        method: "POST",
+        body: {
+          email: secret.email,
+          authHash: secret.authHash,
+          deviceName: `${navigator.userAgent.slice(0, 96)} (extension)`,
+        },
+      });
+      await completeLogin(res, fromBase64(secret.stretchedKey), secret.email);
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === "INVALID_CREDENTIALS") {
+        // The stored authHash no longer matches (e.g. the master password was
+        // changed elsewhere). Drop the stale enrollment and fall back to the
+        // password form.
+        await clearBiometric();
+        setBiometricEnrolled(false);
+        setError("Master password changed - sign in once to re-enable Touch ID");
+      } else if (code === "RATE_LIMITED") {
+        setError("Too many attempts - wait a few minutes and try again");
+      } else {
+        setError(err instanceof Error ? err.message : "Touch ID unlock failed");
+      }
+    } finally {
+      setBiometricBusy(false);
+    }
+  }
+
   async function handlePrelogin(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -330,43 +431,9 @@ export function Popup() {
         },
       });
 
-      await bg({
-        type: "setToken",
-        token: res.accessToken,
-        refreshToken: res.refreshToken,
-      });
-      await bg({
-        type: "unlock",
-        // number[] survives runtime.sendMessage JSON serialization (a raw
-        // Uint8Array does not).
-        stretchedKey: Array.from(stretchedKey),
-        encryptedPrivateKey: res.encryptedPrivateKey,
-        encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
-        vaults: res.vaults.map((v) => ({
-          vaultId: v.vaultId,
-          encryptedVaultKey: v.encryptedVaultKey,
-          vaultType: v.vaultType,
-          vaultName: v.vaultName,
-        })),
-      });
-
-      const meta: VaultMeta[] = res.vaults.map((v) => ({
-        id: v.vaultId,
-        name: v.vaultName,
-        type: v.vaultType,
-      }));
-      const first = meta[0];
-      setToken(res.accessToken);
-      setVaults(meta);
-      setPassword("");
-      if (first) {
-        setActiveVaultId(first.id);
-        setPhase("list");
-        await loadItems(first.id);
-      } else {
-        setError("No vaults on this account yet - create one in the web vault.");
-        setPhase("list");
-      }
+      // number[] survives runtime.sendMessage JSON serialization inside
+      // completeLogin (a raw Uint8Array does not).
+      await completeLogin(res, stretchedKey, email);
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === "INVALID_CREDENTIALS") setError("Invalid email or password");
@@ -493,6 +560,29 @@ export function Popup() {
           </div>
         )}
 
+        {biometricEnrolled && serverUrl && phase !== "connect" && (
+          <div className="w-full space-y-2">
+            <button
+              type="button"
+              onClick={handleBiometricUnlock}
+              disabled={biometricBusy}
+              className="w-full flex items-center justify-center gap-2 rounded-lg border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/15 disabled:opacity-50"
+            >
+              {biometricBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Fingerprint className="h-4 w-4" />
+              )}
+              Unlock with Touch ID
+            </button>
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              or use your master password
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          </div>
+        )}
+
         {phase === "connect" && (
           <form onSubmit={handleConnect} className="w-full space-y-3">
             <p className="text-sm text-muted-foreground text-center">
@@ -597,6 +687,40 @@ export function Popup() {
             </button>
           </form>
         )}
+
+        <div className="w-full space-y-2 pt-2">
+          <div className="flex items-center justify-center gap-4 text-xs">
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              Documentation
+            </a>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Support
+            </a>
+          </div>
+          <p className="flex items-center justify-center gap-1 text-center text-[11px] text-muted-foreground">
+            Crafted by team
+            <a
+              href={VINELABS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-brand hover:underline"
+            >
+              Vinelabs
+            </a>
+            with
+            <Heart className="h-3 w-3 fill-red-500 text-red-500" />
+          </p>
+        </div>
       </div>
     );
   }
@@ -713,7 +837,14 @@ export function Popup() {
           />
         )}
         {tab === "settings" && (
-          <SettingsTab serverUrl={serverUrl} onLock={handleLock} />
+          <SettingsTab
+            serverUrl={serverUrl}
+            onLock={handleLock}
+            accountEmail={email}
+            biometricAvailable={biometricAvailable}
+            biometricEnrolled={biometricEnrolled}
+            onBiometricChange={(enrolled) => setBiometricEnrolled(enrolled)}
+          />
         )}
       </div>
 
@@ -1134,7 +1265,173 @@ interface ExtSettings {
   autoLockMin: number;
 }
 
-function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => void }) {
+function BiometricSetting({
+  serverUrl,
+  accountEmail,
+  available,
+  enrolled,
+  onChange,
+}: {
+  serverUrl: string;
+  accountEmail: string;
+  available: boolean;
+  enrolled: boolean;
+  onChange: (enrolled: boolean) => void;
+}) {
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollEmail, setEnrollEmail] = useState(accountEmail);
+  const [enrollPassword, setEnrollPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (accountEmail) setEnrollEmail(accountEmail);
+  }, [accountEmail]);
+
+  async function beginEnroll() {
+    setLocalError(null);
+    if (!enrollEmail || !enrollPassword) {
+      setLocalError("Enter your email and master password");
+      return;
+    }
+    setBusy(true);
+    try {
+      const params = await api<PreloginResponse>(
+        serverUrl,
+        `/api/v1/auth/prelogin?email=${encodeURIComponent(enrollEmail)}`,
+      );
+      const { authHash, stretchedKey } = await deriveKeys(
+        enrollPassword,
+        fromBase64(params.salt),
+        {
+          iterations: params.iterations,
+          memoryKB: params.memoryKB,
+          parallelism: params.parallelism,
+        },
+      );
+      // Confirm the password is correct before storing it behind biometrics, so
+      // we never enroll an authHash that can't actually log in.
+      await api<LoginResponse>(serverUrl, "/api/v1/auth/login", {
+        method: "POST",
+        body: {
+          email: enrollEmail,
+          authHash: toBase64(authHash),
+          deviceName: `${navigator.userAgent.slice(0, 96)} (extension)`,
+        },
+      });
+      await enrollBiometric(serverUrl, {
+        email: enrollEmail,
+        authHash: toBase64(authHash),
+        stretchedKey: toBase64(stretchedKey),
+      });
+      setEnrollPassword("");
+      setEnrolling(false);
+      onChange(true);
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code === "INVALID_CREDENTIALS") setLocalError("Invalid email or password");
+      else if (code === "RATE_LIMITED") setLocalError("Too many attempts - try again later");
+      else setLocalError(err instanceof Error ? err.message : "Could not enable Touch ID");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disable() {
+    await clearBiometric();
+    onChange(false);
+  }
+
+  if (!available) return null;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Security
+      </div>
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
+          <span className="flex items-center gap-1.5 text-sm">
+            <Fingerprint className="h-3.5 w-3.5 text-brand" />
+            Unlock with Touch ID
+          </span>
+          <span className="block text-[11px] text-muted-foreground">
+            {enrolled
+              ? "Stored behind your device biometric on this browser."
+              : "Skip the master password on this device after one sign-in."}
+          </span>
+        </span>
+        {enrolled ? (
+          <button
+            type="button"
+            onClick={disable}
+            className="shrink-0 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/60"
+          >
+            Disable
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEnrolling((v) => !v)}
+            className="shrink-0 rounded-md border border-brand/40 bg-brand/10 px-2 py-1 text-xs text-brand hover:bg-brand/15"
+          >
+            {enrolling ? "Cancel" : "Enable"}
+          </button>
+        )}
+      </div>
+
+      {enrolling && !enrolled && (
+        <div className="space-y-2 pt-1">
+          {localError && (
+            <div className="rounded-md bg-destructive/10 p-2 text-[11px] text-destructive">
+              {localError}
+            </div>
+          )}
+          <input
+            type="email"
+            value={enrollEmail}
+            onChange={(e) => setEnrollEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+            className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs outline-none focus:border-brand/60"
+          />
+          <input
+            type="password"
+            value={enrollPassword}
+            onChange={(e) => setEnrollPassword(e.target.value)}
+            placeholder="Master password"
+            autoComplete="current-password"
+            className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs outline-none focus:border-brand/60"
+          />
+          <button
+            type="button"
+            onClick={beginEnroll}
+            disabled={busy}
+            className="w-full flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm and register Touch ID"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsTab({
+  serverUrl,
+  onLock,
+  accountEmail,
+  biometricAvailable,
+  biometricEnrolled,
+  onBiometricChange,
+}: {
+  serverUrl: string;
+  onLock: () => void;
+  accountEmail: string;
+  biometricAvailable: boolean;
+  biometricEnrolled: boolean;
+  onBiometricChange: (enrolled: boolean) => void;
+}) {
   const [settings, setSettings] = useState<ExtSettings | null>(null);
 
   useEffect(() => {
@@ -1213,7 +1510,7 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
             <span className="min-w-0">
               <span className="block text-sm">Auto-lock</span>
               <span className="block text-[11px] text-muted-foreground">
-                Lock after this much inactivity
+                Lock after this much inactivity. Closing the browser always locks.
               </span>
             </span>
             <select
@@ -1226,11 +1523,20 @@ function SettingsTab({ serverUrl, onLock }: { serverUrl: string; onLock: () => v
               <option value={15}>15 min</option>
               <option value={30}>30 min</option>
               <option value={60}>1 hour</option>
-              <option value={0}>Never</option>
+              <option value={0}>Until I close the browser</option>
             </select>
           </label>
         </div>
       )}
+
+      <BiometricSetting
+        serverUrl={serverUrl}
+        accountEmail={accountEmail}
+        available={biometricAvailable}
+        enrolled={biometricEnrolled}
+        onChange={onBiometricChange}
+      />
+
       <button
         onClick={() => serverUrl && window.open(serverUrl, "_blank")}
         className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
