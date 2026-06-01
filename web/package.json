@@ -42,7 +42,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "orval": "^8.14.0",
     "svg2ttf": "^6.1.0",
-    "svgicons2svgfont": "^15.0.1",
+    "svgicons2svgfont": "^16.0.0",
     "svgpath": "^2.6.0",
     "tailwindcss": "^4.0.0",
     "ttf2woff2": "^8.0.1",
