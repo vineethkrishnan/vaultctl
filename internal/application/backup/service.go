@@ -188,7 +188,7 @@ func (uc *RunBackup) Execute(ctx context.Context, in RunBackupInput) (dombackup.
 }
 
 func (uc *RunBackup) execute(ctx context.Context, dest dombackup.Destination) (string, int64, error) {
-	store, err := uc.Stores.For(dest)
+	store, err := uc.Stores.For(ctx, dest)
 	if err != nil {
 		return "", 0, err
 	}
@@ -269,7 +269,7 @@ func (uc *ListArtifacts) Execute(ctx context.Context, caller, destinationID stri
 	if dest.UserID != caller {
 		return nil, domain.ErrNotFound
 	}
-	store, err := uc.Stores.For(dest)
+	store, err := uc.Stores.For(ctx, dest)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,7 @@ func (uc *Restore) Execute(ctx context.Context, in RestoreInput) ([]byte, error)
 	if dest.UserID != in.Caller {
 		return nil, domain.ErrNotFound
 	}
-	store, err := uc.Stores.For(dest)
+	store, err := uc.Stores.For(ctx, dest)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CloudUpload,
@@ -79,9 +79,35 @@ function ProviderIcon({ provider }: { provider: string }) {
   return <Cloud className="h-4 w-4 text-muted-foreground" />;
 }
 
+const OAUTH_PROVIDERS = ["gdrive", "dropbox", "onedrive"];
+const isOAuthProvider = (p: string) => OAUTH_PROVIDERS.includes(p);
+
 export function BackupSyncPanel() {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
+  const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(
+    () => {
+      const params = new URLSearchParams(window.location.search);
+      const status = params.get("backup");
+      if (status === "connected") return { kind: "ok", text: "Cloud account connected" };
+      if (status === "error")
+        return {
+          kind: "error",
+          text: `Could not connect (${params.get("reason") || "unknown"})`,
+        };
+      return null;
+    },
+  );
+
+  // Strip the ?backup= param the OAuth callback added so a refresh doesn't
+  // re-show the banner.
+  useEffect(() => {
+    if (!banner) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("backup");
+    url.searchParams.delete("reason");
+    window.history.replaceState({}, "", url.toString());
+  }, [banner]);
 
   const { data: providers } = useQuery({
     queryKey: queryKeys.backup.providers(),
@@ -110,6 +136,29 @@ export function BackupSyncPanel() {
         your master password — and run on the server even when this app is
         closed.
       </p>
+
+      {banner && (
+        <div
+          className={`flex items-center gap-2 rounded-md p-2 text-sm ${
+            banner.kind === "ok"
+              ? "bg-green-500/10 text-green-500"
+              : "bg-destructive/10 text-destructive"
+          }`}
+        >
+          {banner.kind === "ok" ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <AlertTriangle className="h-4 w-4" />
+          )}
+          {banner.text}
+          <button
+            onClick={() => setBanner(null)}
+            className="ml-auto text-xs underline opacity-70 hover:opacity-100"
+          >
+            dismiss
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -490,14 +539,19 @@ function DestinationForm({
   const [frequency, setFrequency] = useState(existing?.frequency ?? "daily");
   const [retentionKeep, setRetentionKeep] = useState(existing?.retentionKeep ?? 7);
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
-  const [dir, setDir] = useState("");
+  const [settings, setSettings] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  const set = (k: string, v: string) => setSettings((s) => ({ ...s, [k]: v }));
 
   const save = useMutation({
     mutationFn: () => {
-      const settings: Record<string, string> = {};
-      if (provider === "local" && dir.trim()) settings.dir = dir.trim();
-      const body = { provider, label, frequency, retentionKeep, enabled, settings };
+      // Only send provided settings; on edit, omitted secrets keep their
+      // stored values server-side.
+      const clean: Record<string, string> = {};
+      for (const [k, v] of Object.entries(settings)) if (v.trim()) clean[k] = v.trim();
+      const body = { provider, label, frequency, retentionKeep, enabled, settings: clean };
       return existing
         ? apiPut(`/api/v1/backup/destinations/${existing.id}`, body)
         : apiPost("/api/v1/backup/destinations", body);
@@ -506,6 +560,69 @@ function DestinationForm({
     onError: (err) =>
       setError(err instanceof Error ? err.message : "Could not save destination"),
   });
+
+  async function connect() {
+    setError(null);
+    setConnecting(true);
+    try {
+      const res = await apiPost<{ authUrl: string }>(
+        `/api/v1/backup/oauth/${provider}/start`,
+      );
+      window.location.href = res.authUrl;
+    } catch (err) {
+      setConnecting(false);
+      setError(err instanceof Error ? err.message : "Could not start the connection");
+    }
+  }
+
+  // OAuth providers are connected via a consent redirect, not the credential
+  // form; the callback creates the destination server-side.
+  if (!existing && isOAuthProvider(provider)) {
+    return (
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <div className="text-sm font-medium">Connect a cloud account</div>
+        {error && (
+          <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+            {error}
+          </div>
+        )}
+        <label className="block space-y-1 text-xs">
+          <span className="text-muted-foreground">Provider</span>
+          <select
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+          >
+            {providers.map((p) => (
+              <option key={p} value={p}>
+                {PROVIDER_LABELS[p] ?? p}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          You'll be sent to {PROVIDER_LABELS[provider]} to authorize access to an
+          app-private folder. After connecting, set the schedule here.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={connect}
+            disabled={connecting}
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
+            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
+            Connect {PROVIDER_LABELS[provider]}
+          </button>
+          <button
+            onClick={onCancel}
+            className="rounded-md border border-input px-4 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-md border border-border p-3">
@@ -574,12 +691,106 @@ function DestinationForm({
               Directory (optional — server-side path)
             </span>
             <input
-              value={dir}
-              onChange={(e) => setDir(e.target.value)}
+              value={settings.dir ?? ""}
+              onChange={(e) => set("dir", e.target.value)}
               placeholder="Defaults to the server backup directory"
               className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
             />
           </label>
+        )}
+        {provider === "webdav" && (
+          <>
+            <label className="col-span-2 space-y-1 text-xs">
+              <span className="text-muted-foreground">WebDAV collection URL</span>
+              <input
+                value={settings.url ?? ""}
+                onChange={(e) => set("url", e.target.value)}
+                placeholder="https://cloud.example.com/remote.php/dav/files/me/vaultctl"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Username</span>
+              <input
+                value={settings.username ?? ""}
+                onChange={(e) => set("username", e.target.value)}
+                autoComplete="off"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">
+                Password {existing && "(leave blank to keep)"}
+              </span>
+              <input
+                type="password"
+                value={settings.password ?? ""}
+                onChange={(e) => set("password", e.target.value)}
+                autoComplete="new-password"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+          </>
+        )}
+        {provider === "s3" && (
+          <>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Endpoint</span>
+              <input
+                value={settings.endpoint ?? ""}
+                onChange={(e) => set("endpoint", e.target.value)}
+                placeholder="https://s3.us-east-1.amazonaws.com"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Region</span>
+              <input
+                value={settings.region ?? ""}
+                onChange={(e) => set("region", e.target.value)}
+                placeholder="us-east-1"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Bucket</span>
+              <input
+                value={settings.bucket ?? ""}
+                onChange={(e) => set("bucket", e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Prefix (optional)</span>
+              <input
+                value={settings.prefix ?? ""}
+                onChange={(e) => set("prefix", e.target.value)}
+                placeholder="vaultctl/"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Access key</span>
+              <input
+                value={settings.accessKey ?? ""}
+                onChange={(e) => set("accessKey", e.target.value)}
+                autoComplete="off"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">
+                Secret key {existing && "(leave blank to keep)"}
+              </span>
+              <input
+                type="password"
+                value={settings.secretKey ?? ""}
+                onChange={(e) => set("secretKey", e.target.value)}
+                autoComplete="new-password"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+              />
+            </label>
+          </>
         )}
         <label className="col-span-2 flex items-center gap-2 text-xs">
           <input

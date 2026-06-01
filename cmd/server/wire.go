@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ import (
 	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
+	dombackup "github.com/vineethkrishnan/vaultctl/internal/domain/backup"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	infraauth "github.com/vineethkrishnan/vaultctl/internal/infrastructure/auth"
 	infrabackup "github.com/vineethkrishnan/vaultctl/internal/infrastructure/backup"
@@ -43,10 +45,11 @@ type adapters struct {
 	attach  *postgres.AttachmentRepo
 	blobs   ports.BlobStore // nil when the blob store is unavailable
 
-	backupDests  *postgres.BackupDestinationRepo // nil when backup sync is off
-	backupRuns   *postgres.BackupRunRepo
-	backupStores *infrabackup.StoreFactory
-	backupRun    *appbackup.RunBackup // set in buildHandlers, read by main for the scheduler
+	backupDests     *postgres.BackupDestinationRepo // nil when backup sync is off
+	backupRuns      *postgres.BackupRunRepo
+	backupStores    *infrabackup.StoreFactory
+	backupConnector *infrabackup.Connector
+	backupRun       *appbackup.RunBackup // set in buildHandlers, read by main for the scheduler
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -143,7 +146,22 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 	if cfg.BackupSyncEnabled && aead != nil {
 		a.backupDests = &postgres.BackupDestinationRepo{Pool: pool, Sealer: aead}
 		a.backupRuns = &postgres.BackupRunRepo{Pool: pool}
-		a.backupStores = &infrabackup.StoreFactory{LocalBaseDir: cfg.BackupLocalDir}
+		oauthClients := backupOAuthClients(cfg)
+		httpClient := &http.Client{Timeout: 5 * time.Minute}
+		a.backupStores = &infrabackup.StoreFactory{
+			LocalBaseDir: cfg.BackupLocalDir,
+			HTTPClient:   httpClient,
+			Clock:        clock.Now,
+			OAuthClients: oauthClients,
+			Persist: func(ctx context.Context, id string, settings map[string]string) error {
+				return a.backupDests.UpdateSettings(ctx, id, settings)
+			},
+		}
+		a.backupConnector = &infrabackup.Connector{
+			HTTPClient:   httpClient,
+			Clock:        clock.Now,
+			OAuthClients: oauthClients,
+		}
 	} else if !cfg.BackupSyncEnabled {
 		slog.Info("backup sync disabled by config")
 	} else {
@@ -153,10 +171,11 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 	return a, nil
 }
 
-// backupProviders reports which destinations this server can use. Local is
-// always available; cloud providers require their OAuth client credentials.
+// backupProviders reports which destinations this server can use. Local,
+// WebDAV and S3 are credential-based and always available; the OAuth cloud
+// providers appear only when their client credentials are configured.
 func backupProviders(cfg *config.Config) []string {
-	providers := []string{"local"}
+	providers := []string{"local", "webdav", "s3"}
 	if cfg.BackupGoogleClientID != "" {
 		providers = append(providers, "gdrive")
 	}
@@ -167,6 +186,28 @@ func backupProviders(cfg *config.Config) []string {
 		providers = append(providers, "onedrive")
 	}
 	return providers
+}
+
+// backupOAuthClients builds the per-provider OAuth client map from config;
+// providers without configured credentials are omitted.
+func backupOAuthClients(cfg *config.Config) map[dombackup.Provider]infrabackup.OAuthClient {
+	clients := map[dombackup.Provider]infrabackup.OAuthClient{}
+	if cfg.BackupGoogleClientID != "" {
+		clients[dombackup.ProviderGoogleDrive] = infrabackup.OAuthClient{
+			ClientID: cfg.BackupGoogleClientID, ClientSecret: cfg.BackupGoogleSecret,
+		}
+	}
+	if cfg.BackupDropboxClientID != "" {
+		clients[dombackup.ProviderDropbox] = infrabackup.OAuthClient{
+			ClientID: cfg.BackupDropboxClientID, ClientSecret: cfg.BackupDropboxSecret,
+		}
+	}
+	if cfg.BackupOneDriveClientID != "" {
+		clients[dombackup.ProviderOneDrive] = infrabackup.OAuthClient{
+			ClientID: cfg.BackupOneDriveClientID, ClientSecret: cfg.BackupOneDriveSecret,
+		}
+	}
+	return clients
 }
 
 // exporterAdapter bridges the ExportVaults use case into ports.Exporter,
@@ -319,6 +360,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 
 	// Per-user backup destinations (sync). Only wired when sealing is available.
 	var backupHandlers *api.BackupHandlers
+	var backupOAuthHandlers *api.BackupOAuthHandlers
 	if a.backupDests != nil {
 		exporter := &exporterAdapter{uc: exportVaults}
 		a.backupRun = &appbackup.RunBackup{
@@ -335,6 +377,15 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			Restore:       &appbackup.Restore{Destinations: a.backupDests, Stores: a.backupStores, Sealer: a.aead},
 			Available:     backupProviders(cfg),
 			Audit:         auditWriter,
+		}
+		backupOAuthHandlers = &api.BackupOAuthHandlers{
+			Connector:    a.backupConnector,
+			Sealer:       a.aead,
+			Destinations: a.backupDests,
+			Clock:        a.clock,
+			IDs:          a.ids,
+			BaseURL:      cfg.BaseURL,
+			Audit:        auditWriter,
 		}
 	}
 
@@ -372,8 +423,9 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Admin: &api.AdminHandlers{
 			ListBackups: &auth.ListBackups{BackupDir: "/backups"},
 		},
-		Export: exportHandlers,
-		Backup: backupHandlers,
+		Export:      exportHandlers,
+		Backup:      backupHandlers,
+		BackupOAuth: backupOAuthHandlers,
 		Import: &api.ImportHandlers{
 			Import: &appvault.ImportItems{
 				Vaults: a.vaults, Items: a.items, Clock: a.clock, IDs: a.ids,

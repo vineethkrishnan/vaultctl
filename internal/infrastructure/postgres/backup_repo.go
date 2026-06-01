@@ -145,6 +145,15 @@ func (r *BackupDestinationRepo) MarkRun(ctx context.Context, id string, status d
 	return err
 }
 
+func (r *BackupDestinationRepo) UpdateSettings(ctx context.Context, id string, settings map[string]string) error {
+	encrypted, err := r.sealSettings(id, settings)
+	if err != nil {
+		return err
+	}
+	_, err = r.Pool.Exec(ctx, `UPDATE backup_destinations SET encrypted_config=$2 WHERE id=$1`, id, encrypted)
+	return err
+}
+
 func (r *BackupDestinationRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.Pool.Exec(ctx, `DELETE FROM backup_destinations WHERE id=$1`, id)
 	return err

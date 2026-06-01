@@ -37,6 +37,7 @@ type Dependencies struct {
 	Export             *ExportHandlers
 	Import             *ImportHandlers
 	Backup             *BackupHandlers
+	BackupOAuth        *BackupOAuthHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	TrustedProxies     []*net.IPNet
@@ -92,6 +93,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Invite redemption is public — new users redeem before registering
 			r.Post("/auth/invites/redeem", deps.Invite.HandleRedeemInvite)
 		})
+
+		// Cloud-backup OAuth callback is a top-level provider redirect with no
+		// Authorization header; the signed state attributes it to a user.
+		if deps.BackupOAuth != nil {
+			r.Get("/backup/oauth/{provider}/callback", deps.BackupOAuth.HandleCallback)
+		}
 
 		// ===== Authenticated routes =====
 		r.Group(func(r chi.Router) {
@@ -157,6 +164,9 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			// Per-user backup destinations (sync). Only wired when sealing is
 			// available (server data key set) and the feature is enabled.
+			if deps.BackupOAuth != nil {
+				r.Post("/backup/oauth/{provider}/start", deps.BackupOAuth.HandleStart)
+			}
 			if deps.Backup != nil {
 				r.Get("/backup/providers", deps.Backup.HandleProviders)
 				r.Route("/backup/destinations", func(r chi.Router) {
