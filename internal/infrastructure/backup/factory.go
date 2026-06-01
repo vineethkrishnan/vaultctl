@@ -66,10 +66,13 @@ func (f *StoreFactory) clock() time.Time {
 func (f *StoreFactory) For(ctx context.Context, dest dombackup.Destination) (ports.BackupStore, error) {
 	switch dest.Provider {
 	case dombackup.ProviderLocal:
-		dir := dest.Settings["dir"]
-		if dir == "" {
-			dir = filepath.Join(f.LocalBaseDir, dest.ID)
+		if f.LocalBaseDir == "" {
+			return nil, fmt.Errorf("%w: local backups are not configured", ErrProviderUnavailable)
 		}
+		// Pin the path under the server-configured base, keyed by the
+		// server-generated user and destination IDs. A user-supplied directory
+		// is never honored — it would be an arbitrary server-side write.
+		dir := filepath.Join(f.LocalBaseDir, dest.UserID, dest.ID)
 		return NewLocalStore(dir)
 	case dombackup.ProviderWebDAV:
 		return NewWebDAVStore(f.httpClient(), dest.Settings)

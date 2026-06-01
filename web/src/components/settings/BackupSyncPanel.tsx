@@ -686,17 +686,10 @@ function DestinationForm({
           />
         </label>
         {provider === "local" && (
-          <label className="col-span-2 space-y-1 text-xs">
-            <span className="text-muted-foreground">
-              Directory (optional — server-side path)
-            </span>
-            <input
-              value={settings.dir ?? ""}
-              onChange={(e) => set("dir", e.target.value)}
-              placeholder="Defaults to the server backup directory"
-              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            />
-          </label>
+          <p className="col-span-2 text-[11px] text-muted-foreground">
+            Stored in the server's configured backup directory. A disk failure
+            loses it — pair it with an off-box destination for durability.
+          </p>
         )}
         {provider === "webdav" && (
           <>
