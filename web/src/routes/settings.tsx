@@ -10,6 +10,7 @@ import { ExportDialog } from "@/components/vault/ExportDialog";
 import { RestoreDialog } from "@/components/vault/RestoreDialog";
 import { SessionsPanel } from "@/components/settings/SessionsPanel";
 import { BackupSyncPanel } from "@/components/settings/BackupSyncPanel";
+import { BiometricSetting } from "@/components/settings/BiometricSetting";
 import { AboutPanel } from "@/components/settings/AboutPanel";
 import {
   Settings,
@@ -195,6 +196,9 @@ export function SettingsPage() {
                 </div>
               )}
             </div>
+
+            {/* Biometric (Touch ID) unlock */}
+            <BiometricSetting />
 
             {/* Safety Number */}
             {identityPubKey && (

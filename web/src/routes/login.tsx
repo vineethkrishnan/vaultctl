@@ -9,6 +9,15 @@ import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
 import type { PreloginResponse, LoginResponse } from "@/shared/types/api";
 import { BrandMark } from "@/components/BrandMark";
 import { deviceLabel } from "@/lib/device";
+import {
+  isBiometricAvailable,
+  isBiometricEnrolled,
+  getBiometricRecord,
+  unlockWithBiometric,
+  clearBiometric,
+  type BiometricKDF,
+} from "@/lib/biometric";
+import { Fingerprint } from "lucide-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -23,6 +32,20 @@ export function LoginPage() {
   // Prelogin state
   const [kdfParams, setKdfParams] = useState<PreloginResponse | null>(null);
   const [remember, setRemember] = useState(false);
+
+  // Biometric (Touch ID) unlock state
+  const [bioEnrolled, setBioEnrolled] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      if ((await isBiometricAvailable()) && isBiometricEnrolled()) {
+        setBioEnrolled(true);
+        const rec = getBiometricRecord();
+        if (rec?.email) setEmail((prev) => prev || rec.email);
+      }
+    })();
+  }, []);
 
   // If an email was remembered on this device, prefill it and skip straight
   // to the master-password step so unlocking only needs the password.
@@ -71,6 +94,67 @@ export function LoginPage() {
     }
   }
 
+  // Shared tail for every unlock path (master password or Touch ID): store
+  // tokens + KDF state, hand keys to the worker, then enter the vault.
+  async function completeUnlock(
+    res: LoginResponse,
+    stretchedKey: Uint8Array,
+    accountEmail: string,
+    kdf: BiometricKDF,
+  ) {
+    setAuth({
+      userId: res.userId,
+      role: res.role,
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
+      sessionId: res.sessionId,
+    });
+    sessionStorage.setItem("vaultctl_email", accountEmail);
+    sessionStorage.setItem("vaultctl_salt", kdf.salt);
+    sessionStorage.setItem("vaultctl_kdf_iter", String(kdf.iterations));
+    sessionStorage.setItem("vaultctl_kdf_mem", String(kdf.memoryKB));
+    sessionStorage.setItem("vaultctl_kdf_par", String(kdf.parallelism));
+    sessionStorage.setItem("vaultctl_id_pubkey", res.identityPublicKey);
+
+    await initKeys({
+      stretchedKey,
+      encryptedPrivateKey: res.encryptedPrivateKey,
+      encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
+      vaults: res.vaults,
+    });
+
+    const firstVault = res.vaults[0];
+    navigate({
+      to: "/vault/$vaultId",
+      params: { vaultId: firstVault ? firstVault.vaultId : "none" },
+    });
+  }
+
+  async function handleBiometricUnlock() {
+    setError(null);
+    setBioBusy(true);
+    try {
+      const { secret, kdf } = await unlockWithBiometric();
+      const res = await apiPost<LoginResponse>("/api/v1/auth/login", {
+        email: secret.email,
+        authHash: secret.authHash,
+        deviceName: await deviceLabel(),
+      });
+      await completeUnlock(res, fromBase64(secret.stretchedKey), secret.email, kdf);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.error.code === "INVALID_CREDENTIALS") {
+        // Stored authHash no longer valid (master password changed elsewhere).
+        clearBiometric();
+        setBioEnrolled(false);
+        setError("Master password changed — sign in once to re-enable Touch ID");
+      } else {
+        setError(err instanceof Error ? err.message : "Touch ID unlock failed");
+      }
+    } finally {
+      setBioBusy(false);
+    }
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!kdfParams) return;
@@ -93,39 +177,12 @@ export function LoginPage() {
         deviceName: await deviceLabel(),
       });
 
-      // Store auth tokens
-      setAuth({
-        userId: res.userId,
-        role: res.role,
-        accessToken: res.accessToken,
-        refreshToken: res.refreshToken,
-        sessionId: res.sessionId,
+      await completeUnlock(res, stretchedKey, email, {
+        salt: kdfParams.salt,
+        iterations: kdfParams.iterations,
+        memoryKB: kdfParams.memoryKB,
+        parallelism: kdfParams.parallelism,
       });
-
-      // Cache KDF params + salt for reprompt verification and lock/unlock
-      sessionStorage.setItem("vaultctl_email", email);
-      sessionStorage.setItem("vaultctl_salt", kdfParams.salt);
-      sessionStorage.setItem("vaultctl_kdf_iter", String(kdfParams.iterations));
-      sessionStorage.setItem("vaultctl_kdf_mem", String(kdfParams.memoryKB));
-      sessionStorage.setItem("vaultctl_kdf_par", String(kdfParams.parallelism));
-      sessionStorage.setItem("vaultctl_id_pubkey", res.identityPublicKey);
-
-      // Initialize key custody
-      await initKeys({
-        stretchedKey,
-        encryptedPrivateKey: res.encryptedPrivateKey,
-        encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
-        vaults: res.vaults,
-      });
-
-      // Navigate to first vault
-      const firstVault = res.vaults[0];
-      if (firstVault) {
-        navigate({ to: "/vault/$vaultId", params: { vaultId: firstVault.vaultId } });
-      } else {
-        // No vaults yet — user needs to create one
-        navigate({ to: "/vault/$vaultId", params: { vaultId: "none" } });
-      }
     } catch (err) {
       if (err instanceof ApiRequestError) {
         if (err.error.code === "INVALID_CREDENTIALS") {
@@ -160,6 +217,25 @@ export function LoginPage() {
         {error && (
           <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
             {error}
+          </div>
+        )}
+
+        {bioEnrolled && (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleBiometricUnlock}
+              disabled={bioBusy}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/15 disabled:opacity-50"
+            >
+              <Fingerprint className="h-4 w-4" />
+              {bioBusy ? "Unlocking…" : "Unlock with Touch ID"}
+            </button>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              or use your master password
+              <span className="h-px flex-1 bg-border" />
+            </div>
           </div>
         )}
 
