@@ -4,7 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
 import { useAuthStore } from "@/lib/auth-store";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Fingerprint } from "lucide-react";
+import {
+  isBiometricAvailable,
+  isBiometricEnrolled,
+  unlockWithBiometric,
+} from "@/lib/biometric";
 
 interface Props {
   open: boolean;
@@ -20,6 +25,7 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bioEnrolled, setBioEnrolled] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,8 +33,34 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
       setPassword("");
       setError(null);
       setTimeout(() => inputRef.current?.focus(), 50);
+      void (async () => {
+        setBioEnrolled((await isBiometricAvailable()) && isBiometricEnrolled());
+      })();
     }
   }, [open]);
+
+  // Biometric step-up: recover the master-password proof (authHash) via Touch
+  // ID and exchange it for a fresh step-up token, no typing required.
+  async function handleBiometric() {
+    setError(null);
+    setLoading(true);
+    try {
+      const { secret } = await unlockWithBiometric();
+      const res = await apiPost<{ accessToken: string }>("/api/v1/auth/step-up", {
+        authHash: secret.authHash,
+      });
+      useAuthStore
+        .getState()
+        .setTokens(res.accessToken, useAuthStore.getState().refreshToken ?? "");
+      onSuccess(res.accessToken);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Touch ID verification failed",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +118,25 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
         {error && (
           <div className="mb-3 rounded-md bg-destructive/10 p-2 text-sm text-destructive">
             {error}
+          </div>
+        )}
+
+        {bioEnrolled && (
+          <div className="mb-4 space-y-2">
+            <button
+              type="button"
+              onClick={handleBiometric}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/15 disabled:opacity-50"
+            >
+              <Fingerprint className="h-4 w-4" />
+              Confirm with Touch ID
+            </button>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              or master password
+              <span className="h-px flex-1 bg-border" />
+            </div>
           </div>
         )}
 
