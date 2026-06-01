@@ -65,13 +65,80 @@ func (l *RateLimiter) AuthAttempt(extract func(*http.Request) string) func(http.
 				return
 			}
 			email := strings.ToLower(strings.TrimSpace(extract(r)))
-			if email != "" && !l.hit(l.perEmail, email, l.PerEmailLimit, l.PerEmailWindow) {
+			// Per-email throttling counts ONLY failed credential attempts, so
+			// signing in legitimately from several clients (web, extension,
+			// Touch ID re-login) never trips it — only repeated wrong-password
+			// guesses do. A successful attempt clears the counter outright.
+			if email != "" && l.overLimit(l.perEmail, email, l.PerEmailLimit) {
 				writeErr(w, http.StatusTooManyRequests, "RATE_LIMITED", "per-email rate limit")
 				return
 			}
-			next.ServeHTTP(w, r)
+			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+			next.ServeHTTP(rec, r)
+			if email == "" {
+				return
+			}
+			switch {
+			case authAttemptFailed(rec.status):
+				l.recordFailure(l.perEmail, email, l.PerEmailWindow)
+			case rec.status < 300:
+				l.reset(l.perEmail, email)
+			}
 		})
 	}
+}
+
+// statusRecorder captures the response status so AuthAttempt can tell a failed
+// credential attempt from a successful one after the handler runs.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
+}
+
+// authAttemptFailed reports whether a status code represents a failed
+// credential attempt worth counting toward the per-email limit. 401 (invalid
+// credentials) and 423 (account locked) are the brute-force signals; 2xx and
+// benign 4xx (validation, conflict) are not.
+func authAttemptFailed(status int) bool {
+	return status == http.StatusUnauthorized || status == http.StatusLocked
+}
+
+// overLimit reports whether key has reached limit within its current window,
+// WITHOUT recording an attempt.
+func (l *RateLimiter) overLimit(m map[string]*bucket, key string, limit int) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	b, ok := m[key]
+	if !ok || b.windowEnd.Before(l.Clock.Now()) {
+		return false
+	}
+	return b.count >= limit
+}
+
+// recordFailure increments the counter for key, starting a fresh window when
+// none is active.
+func (l *RateLimiter) recordFailure(m map[string]*bucket, key string, window time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.Clock.Now()
+	b, ok := m[key]
+	if !ok || b.windowEnd.Before(now) {
+		m[key] = &bucket{count: 1, windowEnd: now.Add(window)}
+		return
+	}
+	b.count++
+}
+
+// reset clears the counter for key, used after a successful attempt.
+func (l *RateLimiter) reset(m map[string]*bucket, key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(m, key)
 }
 
 func (l *RateLimiter) hit(m map[string]*bucket, key string, limit int, window time.Duration) bool {
