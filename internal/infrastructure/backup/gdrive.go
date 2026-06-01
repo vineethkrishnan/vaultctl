@@ -57,7 +57,9 @@ func (s *GoogleDriveStore) Put(ctx context.Context, name string, r io.Reader, _ 
 	if _, err := io.Copy(media, r); err != nil {
 		return err
 	}
-	mw.Close()
+	if err := mw.Close(); err != nil {
+		return err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", &body)

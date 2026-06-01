@@ -31,19 +31,19 @@ type OAuthConfig struct {
 // oauthDefaults holds the provider-constant endpoints and scopes. Credentials
 // are filled in from config per request.
 var oauthDefaults = map[dombackup.Provider]OAuthConfig{
-	dombackup.ProviderGoogleDrive: {
+	dombackup.ProviderGoogleDrive: { //nolint:gosec // G101: public OAuth endpoint URLs, not credentials
 		AuthURL:   "https://accounts.google.com/o/oauth2/v2/auth",
 		TokenURL:  "https://oauth2.googleapis.com/token",
 		Scope:     "https://www.googleapis.com/auth/drive.appdata",
 		AuthExtra: map[string]string{"access_type": "offline", "prompt": "consent"},
 	},
-	dombackup.ProviderDropbox: {
+	dombackup.ProviderDropbox: { //nolint:gosec // G101: public OAuth endpoint URLs, not credentials
 		AuthURL:   "https://www.dropbox.com/oauth2/authorize",
 		TokenURL:  "https://api.dropboxapi.com/oauth2/token",
 		Scope:     "files.content.write files.content.read",
 		AuthExtra: map[string]string{"token_access_type": "offline"},
 	},
-	dombackup.ProviderOneDrive: {
+	dombackup.ProviderOneDrive: { //nolint:gosec // G101: public OAuth endpoint URLs, not credentials
 		AuthURL:   "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
 		TokenURL:  "https://login.microsoftonline.com/common/oauth2/v2.0/token",
 		Scope:     "offline_access Files.ReadWrite.AppFolder",

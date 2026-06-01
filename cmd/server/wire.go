@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -147,7 +146,9 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		a.backupDests = &postgres.BackupDestinationRepo{Pool: pool, Sealer: aead}
 		a.backupRuns = &postgres.BackupRunRepo{Pool: pool}
 		oauthClients := backupOAuthClients(cfg)
-		httpClient := &http.Client{Timeout: 5 * time.Minute}
+		// Guarded client: destinations take user-supplied URLs, so block SSRF
+		// to metadata/loopback/link-local at dial time (see infrabackup/ssrf.go).
+		httpClient := infrabackup.NewGuardedHTTPClient(5 * time.Minute)
 		a.backupStores = &infrabackup.StoreFactory{
 			LocalBaseDir: cfg.BackupLocalDir,
 			HTTPClient:   httpClient,
