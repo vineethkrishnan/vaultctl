@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	trashPurgeSchedule   = "0 3 * * *" // daily at 3 AM
-	sessionPurgeSchedule = "0 * * * *" // every hour
+	trashPurgeSchedule   = "0 3 * * *"    // daily at 3 AM
+	sessionPurgeSchedule = "0 * * * *"    // every hour
+	backupSchedule       = "*/15 * * * *" // every 15 minutes: scan for due backups
 	jobTimeout           = 30 * time.Second
+	backupJobTimeout     = 10 * time.Minute
 )
 
 // Scheduler runs periodic maintenance tasks.
@@ -25,6 +27,19 @@ type Scheduler struct {
 	sessions           ports.SessionStore
 	clock              ports.Clock
 	trashRetentionDays int
+
+	// Optional per-user backup driver, enabled via EnableBackups. Kept as a
+	// closure so the scheduler stays dependent only on ports.
+	backupDests ports.BackupDestinationRepository
+	runBackup   func(ctx context.Context, destinationID string) error
+}
+
+// EnableBackups wires the due-backup scan into the scheduler. run executes one
+// backup for a destination ID (the caller binds it to the RunBackup use case
+// with a scheduled trigger). No-op unless called before Start.
+func (s *Scheduler) EnableBackups(dests ports.BackupDestinationRepository, run func(ctx context.Context, destinationID string) error) {
+	s.backupDests = dests
+	s.runBackup = run
 }
 
 // New creates a scheduler with the given repositories.
@@ -45,6 +60,11 @@ func (s *Scheduler) Start() {
 	}
 	if _, err := s.cron.AddFunc(sessionPurgeSchedule, s.purgeSessions); err != nil {
 		slog.Error("scheduler.register_session_purge.failed", slog.String("err", err.Error()))
+	}
+	if s.runBackup != nil {
+		if _, err := s.cron.AddFunc(backupSchedule, s.runDueBackups); err != nil {
+			slog.Error("scheduler.register_backups.failed", slog.String("err", err.Error()))
+		}
 	}
 
 	s.cron.Start()
@@ -68,6 +88,29 @@ func (s *Scheduler) purgeTrash() {
 	}
 	if n > 0 {
 		slog.Info("scheduler.purge_trash.done", slog.Int("purged", n))
+	}
+}
+
+func (s *Scheduler) runDueBackups() {
+	ctx, cancel := context.WithTimeout(context.Background(), backupJobTimeout)
+	defer cancel()
+
+	due, err := s.backupDests.ListDue(ctx, s.clock.Now())
+	if err != nil {
+		slog.Error("scheduler.backups.list_due.failed", slog.String("err", err.Error()))
+		return
+	}
+	ran := 0
+	for _, dest := range due {
+		if err := s.runBackup(ctx, dest.ID); err != nil {
+			slog.Error("scheduler.backups.run.failed",
+				slog.String("destination_id", dest.ID), slog.String("err", err.Error()))
+			continue
+		}
+		ran++
+	}
+	if ran > 0 {
+		slog.Info("scheduler.backups.done", slog.Int("ran", ran))
 	}
 }
 

@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,10 +13,12 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
+	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	infraauth "github.com/vineethkrishnan/vaultctl/internal/infrastructure/auth"
+	infrabackup "github.com/vineethkrishnan/vaultctl/internal/infrastructure/backup"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/blobstore"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	infracrypto "github.com/vineethkrishnan/vaultctl/internal/infrastructure/crypto"
@@ -39,6 +42,11 @@ type adapters struct {
 	audit   *postgres.AuditRepo
 	attach  *postgres.AttachmentRepo
 	blobs   ports.BlobStore // nil when the blob store is unavailable
+
+	backupDests  *postgres.BackupDestinationRepo // nil when backup sync is off
+	backupRuns   *postgres.BackupRunRepo
+	backupStores *infrabackup.StoreFactory
+	backupRun    *appbackup.RunBackup // set in buildHandlers, read by main for the scheduler
 
 	hasher *infraauth.Argon2Hasher
 	hmac   *infraauth.HMACService
@@ -129,7 +137,50 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		a.blobs = store
 	}
 
+	// Backup sync needs the server data key to seal artifacts + provider
+	// credentials at rest. Without it (or when disabled) the feature is off
+	// and its endpoints are never registered.
+	if cfg.BackupSyncEnabled && aead != nil {
+		a.backupDests = &postgres.BackupDestinationRepo{Pool: pool, Sealer: aead}
+		a.backupRuns = &postgres.BackupRunRepo{Pool: pool}
+		a.backupStores = &infrabackup.StoreFactory{LocalBaseDir: cfg.BackupLocalDir}
+	} else if !cfg.BackupSyncEnabled {
+		slog.Info("backup sync disabled by config")
+	} else {
+		slog.Warn("backup sync disabled: VAULTCTL_DATA_ENCRYPTION_KEY is required to seal artifacts")
+	}
+
 	return a, nil
+}
+
+// backupProviders reports which destinations this server can use. Local is
+// always available; cloud providers require their OAuth client credentials.
+func backupProviders(cfg *config.Config) []string {
+	providers := []string{"local"}
+	if cfg.BackupGoogleClientID != "" {
+		providers = append(providers, "gdrive")
+	}
+	if cfg.BackupDropboxClientID != "" {
+		providers = append(providers, "dropbox")
+	}
+	if cfg.BackupOneDriveClientID != "" {
+		providers = append(providers, "onedrive")
+	}
+	return providers
+}
+
+// exporterAdapter bridges the ExportVaults use case into ports.Exporter,
+// serialising the (client-encrypted) export to JSON bytes for sealing.
+type exporterAdapter struct {
+	uc *auth.ExportVaults
+}
+
+func (e *exporterAdapter) ExportEncrypted(ctx context.Context, userID string) ([]byte, error) {
+	data, err := e.uc.Execute(ctx, auth.ExportVaultInput{Caller: user.ID(userID)})
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(data)
 }
 
 // buildHandlers constructs the use cases + API handler structs.
@@ -261,10 +312,30 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Audit: auditWriter,
 	}
 
-	exportHandlers := &api.ExportHandlers{
-		Export: &auth.ExportVaults{
-			Vaults: a.vaults, Items: a.items, Folders: a.folders,
-		},
+	exportVaults := &auth.ExportVaults{
+		Vaults: a.vaults, Items: a.items, Folders: a.folders,
+	}
+	exportHandlers := &api.ExportHandlers{Export: exportVaults}
+
+	// Per-user backup destinations (sync). Only wired when sealing is available.
+	var backupHandlers *api.BackupHandlers
+	if a.backupDests != nil {
+		exporter := &exporterAdapter{uc: exportVaults}
+		a.backupRun = &appbackup.RunBackup{
+			Destinations: a.backupDests, Runs: a.backupRuns, Stores: a.backupStores,
+			Exporter: exporter, Sealer: a.aead, Clock: a.clock, IDs: a.ids,
+		}
+		backupHandlers = &api.BackupHandlers{
+			Configure:     &appbackup.ConfigureDestination{Destinations: a.backupDests, Clock: a.clock, IDs: a.ids},
+			List:          &appbackup.ListDestinations{Destinations: a.backupDests},
+			Delete:        &appbackup.DeleteDestination{Destinations: a.backupDests},
+			Run:           a.backupRun,
+			ListRuns:      &appbackup.ListRuns{Destinations: a.backupDests, Runs: a.backupRuns},
+			ListArtifacts: &appbackup.ListArtifacts{Destinations: a.backupDests, Stores: a.backupStores},
+			Restore:       &appbackup.Restore{Destinations: a.backupDests, Stores: a.backupStores, Sealer: a.aead},
+			Available:     backupProviders(cfg),
+			Audit:         auditWriter,
+		}
 	}
 
 	apiKeyValidator := &apiKeyValidatorAdapter{
@@ -302,6 +373,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			ListBackups: &auth.ListBackups{BackupDir: "/backups"},
 		},
 		Export: exportHandlers,
+		Backup: backupHandlers,
 		Import: &api.ImportHandlers{
 			Import: &appvault.ImportItems{
 				Vaults: a.vaults, Items: a.items, Clock: a.clock, IDs: a.ids,

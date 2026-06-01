@@ -8,7 +8,16 @@ import (
 	"time"
 
 	"github.com/vineethkrishnan/vaultctl/internal/domain/backup"
+	domaincrypto "github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 )
+
+// Sealer seals/opens bytes with the server data key (AES-256-GCM). The
+// infrastructure ServerAEAD satisfies it. Used to seal a backup artifact and
+// to seal provider credentials at rest.
+type Sealer interface {
+	Encrypt(plaintext, aad []byte) (domaincrypto.EncryptedBlob, error)
+	Decrypt(blob domaincrypto.EncryptedBlob, aad []byte) ([]byte, error)
+}
 
 // StoredObject is one artifact found in a backup destination.
 type StoredObject struct {

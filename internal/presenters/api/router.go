@@ -36,6 +36,7 @@ type Dependencies struct {
 	Admin              *AdminHandlers
 	Export             *ExportHandlers
 	Import             *ImportHandlers
+	Backup             *BackupHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	TrustedProxies     []*net.IPNet
@@ -153,6 +154,26 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			// Data import
 			r.Post("/import", deps.Import.HandleImport)
+
+			// Per-user backup destinations (sync). Only wired when sealing is
+			// available (server data key set) and the feature is enabled.
+			if deps.Backup != nil {
+				r.Get("/backup/providers", deps.Backup.HandleProviders)
+				r.Route("/backup/destinations", func(r chi.Router) {
+					r.Get("/", deps.Backup.HandleList)
+					r.Post("/", deps.Backup.HandleConfigure)
+					r.Route("/{id}", func(r chi.Router) {
+						r.Put("/", deps.Backup.HandleConfigure)
+						r.Delete("/", deps.Backup.HandleDelete)
+						r.Post("/run", deps.Backup.HandleRunNow)
+						r.Get("/runs", deps.Backup.HandleListRuns)
+						r.Get("/artifacts", deps.Backup.HandleListArtifacts)
+						// Restore returns the (client-encrypted) export payload —
+						// sensitive, so step-up is required as with /export.
+						r.With(requireStepUp).Get("/restore", deps.Backup.HandleRestore)
+					})
+				})
+			}
 
 			// Vault management
 			r.Get("/vaults", deps.Vault.HandleListVaults)

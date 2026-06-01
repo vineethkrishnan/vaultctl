@@ -17,6 +17,7 @@ const (
 	ResourceOrganization = "organization"
 	ResourceAPIKey       = "api_key"
 	ResourceInvite       = "invite"
+	ResourceBackup       = "backup_destination"
 )
 
 // Stable action identifiers. Format: "<domain>.<verb>" in lowercase snake.
@@ -57,4 +58,9 @@ const (
 
 	// Admin / maintenance.
 	ActionBackupRun = "backup.run"
+
+	// Per-user backup destinations (sync).
+	ActionBackupConfigured = "backup.configured"
+	ActionBackupRemoved    = "backup.removed"
+	ActionBackupRestored   = "backup.restored"
 )

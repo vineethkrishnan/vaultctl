@@ -407,6 +407,42 @@ func (w *Writer) BackupRun(ctx context.Context, actorID, ip, userAgent string) {
 	})
 }
 
+// BackupConfigured records a user creating or updating a backup destination.
+func (w *Writer) BackupConfigured(ctx context.Context, actorID, destinationID, ip, userAgent string) {
+	w.write(ctx, auditlog.Entry{
+		UserID:       actorID,
+		Action:       auditlog.ActionBackupConfigured,
+		ResourceType: auditlog.ResourceBackup,
+		ResourceID:   destinationID,
+		IPAddress:    ip,
+		UserAgent:    userAgent,
+	})
+}
+
+// BackupRemoved records a user deleting a backup destination.
+func (w *Writer) BackupRemoved(ctx context.Context, actorID, destinationID, ip, userAgent string) {
+	w.write(ctx, auditlog.Entry{
+		UserID:       actorID,
+		Action:       auditlog.ActionBackupRemoved,
+		ResourceType: auditlog.ResourceBackup,
+		ResourceID:   destinationID,
+		IPAddress:    ip,
+		UserAgent:    userAgent,
+	})
+}
+
+// BackupRestored records a user restoring an artifact from a destination.
+func (w *Writer) BackupRestored(ctx context.Context, actorID, destinationID, ip, userAgent string) {
+	w.write(ctx, auditlog.Entry{
+		UserID:       actorID,
+		Action:       auditlog.ActionBackupRestored,
+		ResourceType: auditlog.ResourceBackup,
+		ResourceID:   destinationID,
+		IPAddress:    ip,
+		UserAgent:    userAgent,
+	})
+}
+
 // ===========================================================================
 // noopRepo — used by NewNoop for test wiring
 // ===========================================================================
