@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.8.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.7.1...v1.8.0) (2026-06-01)
+
+
+### Features
+
+* add touch id unlock and default to unlock-until-browser-close ([#162](https://github.com/vineethkrishnan/vaultctl/issues/162)) ([f9f518f](https://github.com/vineethkrishnan/vaultctl/commit/f9f518f4353bc2b2018269866face4c51d78d873))
+* per-user scheduled encrypted backup & sync (local, S3, WebDAV, Drive, Dropbox, OneDrive) ([#164](https://github.com/vineethkrishnan/vaultctl/issues/164)) ([baae0f5](https://github.com/vineethkrishnan/vaultctl/commit/baae0f5d7870d858e79c118f23e2c91376b2179f))
+* seed default folders on registration ([#165](https://github.com/vineethkrishnan/vaultctl/issues/165)) ([6f71493](https://github.com/vineethkrishnan/vaultctl/commit/6f71493c665d43831634abc900868d160486f5a3))
+* web touch id unlock + step-up, and fix the 2fa step-up prompt ([#168](https://github.com/vineethkrishnan/vaultctl/issues/168)) ([d93d1ef](https://github.com/vineethkrishnan/vaultctl/commit/d93d1efd02412054bf904724126f73696e9c41c5))
+
+
+### Bug Fixes
+
+* only failed logins count toward the per-email rate limit, reset on success ([#167](https://github.com/vineethkrishnan/vaultctl/issues/167)) ([d0e338b](https://github.com/vineethkrishnan/vaultctl/commit/d0e338ba2d35c264a05cfd84d42d4cdf0099d9f5))
+* remember the email on multi-step login so the password step saves with it ([#166](https://github.com/vineethkrishnan/vaultctl/issues/166)) ([f28ee5d](https://github.com/vineethkrishnan/vaultctl/commit/f28ee5d43b2a43cac1b9620784e314e957a668ea))
+
+
+### CI/CD
+
+* **deps:** bump the actions group with 7 updates ([#161](https://github.com/vineethkrishnan/vaultctl/issues/161)) ([858d30a](https://github.com/vineethkrishnan/vaultctl/commit/858d30ab05f9dce9ced3ba097d58a88f6a48ce75))
+
 ## [1.7.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.7.0...v1.7.1) (2026-05-31)
 
 
