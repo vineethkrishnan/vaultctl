@@ -29,6 +29,8 @@ import (
 	"net/http"
 	"runtime"
 
+	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
+	dombackup "github.com/vineethkrishnan/vaultctl/internal/domain/backup"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/logging"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/scheduler"
@@ -65,6 +67,16 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	deps.GoVersion = runtime.Version()
 
 	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
+	if adapters.backupRun != nil {
+		runBackup := adapters.backupRun
+		sched.EnableBackups(adapters.backupDests, func(ctx context.Context, destinationID string) error {
+			_, err := runBackup.Execute(ctx, appbackup.RunBackupInput{
+				DestinationID: destinationID,
+				Trigger:       dombackup.TriggerScheduled,
+			})
+			return err
+		})
+	}
 	sched.Start()
 
 	cleanup := func() error {

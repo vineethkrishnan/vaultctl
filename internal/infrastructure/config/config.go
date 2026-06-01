@@ -95,6 +95,21 @@ type Config struct {
 	BackupRetentionDays int `env:"VAULTCTL_BACKUP_RETENTION_DAYS" envDefault:"90"`
 
 	// ===========================================================================
+	// Scheduled per-user backup destinations (sync). The artifact is the user's
+	// client-encrypted export, sealed again with the server data key before it
+	// leaves the box. Cloud providers activate only when their OAuth client
+	// credentials are configured; the local destination is always available.
+	// ===========================================================================
+	BackupSyncEnabled      bool   `env:"VAULTCTL_BACKUP_SYNC_ENABLED" envDefault:"true"`
+	BackupLocalDir         string `env:"VAULTCTL_BACKUP_LOCAL_DIR" envDefault:"/data/backups"`
+	BackupGoogleClientID   string `env:"VAULTCTL_BACKUP_GOOGLE_CLIENT_ID"`
+	BackupGoogleSecret     string `env:"VAULTCTL_BACKUP_GOOGLE_CLIENT_SECRET"`
+	BackupDropboxClientID  string `env:"VAULTCTL_BACKUP_DROPBOX_CLIENT_ID"`
+	BackupDropboxSecret    string `env:"VAULTCTL_BACKUP_DROPBOX_CLIENT_SECRET"`
+	BackupOneDriveClientID string `env:"VAULTCTL_BACKUP_ONEDRIVE_CLIENT_ID"`
+	BackupOneDriveSecret   string `env:"VAULTCTL_BACKUP_ONEDRIVE_CLIENT_SECRET"`
+
+	// ===========================================================================
 	// Attachments (encrypted file storage on the filesystem blob store)
 	// ===========================================================================
 	AttachmentsDir       string `env:"VAULTCTL_ATTACHMENTS_DIR" envDefault:"/data/attachments"`
