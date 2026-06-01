@@ -313,7 +313,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   genSymbols: true,
   historyMax: 5,
   historyTtlMin: 60,
-  autoLockMin: 15,
+  autoLockMin: 0,
 };
 
 // ===========================================================================
