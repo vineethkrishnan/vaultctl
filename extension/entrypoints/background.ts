@@ -353,6 +353,40 @@ let genHistory: GenEntry[] = [];
 const PENDING_USERNAME_TTL_MS = 10 * 60 * 1000;
 const pendingUsernames = new Map<string, { username: string; at: number }>();
 
+// The remembered email/username for a multi-step login must survive an MV3
+// service-worker recycle between the email step and the password step, so it
+// lives in memory-only session storage (cleared on browser close), not just
+// the in-memory map.
+const PENDING_USERNAMES_KEY = "vaultctl_pending_usernames";
+
+async function persistPendingUsernames(): Promise<void> {
+  try {
+    await browser.storage.session.set({
+      [PENDING_USERNAMES_KEY]: [...pendingUsernames.entries()],
+    });
+  } catch {
+    // session storage optional across browsers
+  }
+}
+
+async function rehydratePendingUsernames(): Promise<void> {
+  try {
+    const stored = await browser.storage.session.get(PENDING_USERNAMES_KEY);
+    const saved = stored[PENDING_USERNAMES_KEY] as
+      | [string, { username: string; at: number }][]
+      | undefined;
+    if (Array.isArray(saved)) {
+      for (const [host, entry] of saved) {
+        if (Date.now() - entry.at <= PENDING_USERNAME_TTL_MS) {
+          pendingUsernames.set(host, entry);
+        }
+      }
+    }
+  } catch {
+    // nothing to restore
+  }
+}
+
 async function pruneGenHistory(): Promise<void> {
   const { historyMax, historyTtlMin } = await getSettings();
   const cutoff = Date.now() - historyTtlMin * 60_000;
@@ -685,7 +719,11 @@ async function handleInit(payload: {
 export default defineBackground(() => {
   // Restore the unlocked state and the captured-login queue if the worker was
   // recycled mid-session, so neither the vault nor the alerts reset at random.
-  const rehydrated = Promise.all([rehydrateSession(), rehydrateCaptures()]);
+  const rehydrated = Promise.all([
+    rehydrateSession(),
+    rehydrateCaptures(),
+    rehydratePendingUsernames(),
+  ]);
 
   browser.runtime.onMessage.addListener(
     (
@@ -1160,6 +1198,7 @@ export default defineBackground(() => {
               const username = String(message.username ?? "");
               if (host && username) {
                 pendingUsernames.set(host, { username, at: Date.now() });
+                void persistPendingUsernames();
               }
               sendResponse({ ok: true });
               return;

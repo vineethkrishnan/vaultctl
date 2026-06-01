@@ -583,6 +583,23 @@ export default defineContentScript({
       true,
     );
 
+    // Remember the email/username on ANY form submit, captured at document
+    // level. A multi-step login's first step is an email-only form (no password
+    // field), so findLoginForms ignores it and focusout alone is unreliable —
+    // pressing Enter submits without ever blurring the field. This catches that
+    // step's email (Enter or click) right before the SPA swaps in the password
+    // step, so the password step can be saved/matched with its real email.
+    document.addEventListener(
+      "submit",
+      (e) => {
+        const form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        const { usernameInput } = extractCredentialInputs(form);
+        if (usernameInput?.value) rememberUsername(usernameInput.value);
+      },
+      true,
+    );
+
     // ── Boot: fetch matches + settings, wire forms, optional autofill ──────
     async function refreshMatches() {
       const res = await bg<{
