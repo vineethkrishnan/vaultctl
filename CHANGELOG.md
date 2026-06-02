@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.9.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.8.0...v1.9.0) (2026-06-02)
+
+
+### Features
+
+* **extension:** show site favicon and username in autofill suggestions ([#174](https://github.com/vineethkrishnan/vaultctl/issues/174)) ([6780de6](https://github.com/vineethkrishnan/vaultctl/commit/6780de6c2cd3e49f0ed8b7b92bb61111c9f76144))
+* working master-password recovery via the recovery kit ([#171](https://github.com/vineethkrishnan/vaultctl/issues/171)) ([d6efe6d](https://github.com/vineethkrishnan/vaultctl/commit/d6efe6d44ea6e9398a77e14c732d299afda8c5aa))
+
+
+### Bug Fixes
+
+* **extension:** scope autofill suggestions to the matching site ([#169](https://github.com/vineethkrishnan/vaultctl/issues/169)) ([3e6e748](https://github.com/vineethkrishnan/vaultctl/commit/3e6e74830b0662902d69673f344467c2d1a1ee19))
+* **web:** explain biometric unlock when a device lacks prf support ([#170](https://github.com/vineethkrishnan/vaultctl/issues/170)) ([bc3a36e](https://github.com/vineethkrishnan/vaultctl/commit/bc3a36e7a53caf47ad6ebc1ef9d4a7837ccae806))
+
+
+### CI/CD
+
+* pin gosec and exclude already-justified rules to unbreak the scan ([#172](https://github.com/vineethkrishnan/vaultctl/issues/172)) ([b3f899a](https://github.com/vineethkrishnan/vaultctl/commit/b3f899a5f63b66f6d7a2fffcc34b87a2727dd10a))
+
 ## [1.8.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.7.1...v1.8.0) (2026-06-01)
 
 
