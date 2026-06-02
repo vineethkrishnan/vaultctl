@@ -30,6 +30,7 @@ import {
   unpad,
   AlgID,
 } from "@shared/crypto";
+import { getDomain } from "tldts";
 
 // ===========================================================================
 // Types
@@ -560,11 +561,20 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
   return entries;
 }
 
+// Two hosts belong to the same site when they share a registrable domain
+// (eTLD+1), the way Chrome/Google scope saved passwords: app.example.com,
+// example.com and login.example.com all match, but unrelated sites do not.
+// Hosts with no registrable domain (bare `localhost`, raw IPs) fall back to
+// an exact-hostname check so a dev item saved on `localhost` does not bleed
+// onto every `*.localhost` site.
 function hostMatches(a: string, b: string): boolean {
   if (!a || !b) return false;
   const x = a.toLowerCase();
   const y = b.toLowerCase();
-  return x === y || x.endsWith(`.${y}`) || y.endsWith(`.${x}`);
+  if (x === y) return true;
+  const dx = getDomain(x);
+  const dy = getDomain(y);
+  return dx !== null && dx === dy;
 }
 
 async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
