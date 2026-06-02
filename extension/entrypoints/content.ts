@@ -195,13 +195,25 @@ export default defineContentScript({
       host.id = "vaultctl-picker-host";
       const root = host.attachShadow({ mode: "open" });
       const r = anchor.getBoundingClientRect();
+      // Place below the field, but flip above when there isn't room, and cap
+      // the height so a long list scrolls inside the viewport instead of
+      // overflowing off-screen.
+      const gap = 4;
+      const margin = 8;
+      const spaceBelow = window.innerHeight - r.bottom - gap - margin;
+      const spaceAbove = r.top - gap - margin;
+      const flipUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(120, Math.min(320, flipUp ? spaceAbove : spaceBelow));
+      const vertical = flipUp
+        ? `bottom:${window.innerHeight - r.top + gap}px`
+        : `top:${r.bottom + gap}px`;
       const menu = document.createElement("div");
-      menu.style.cssText = `position:fixed;left:${r.left}px;top:${r.bottom + 4}px;min-width:${Math.max(200, r.width)}px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;overflow:hidden;z-index:2147483647;`;
+      menu.style.cssText = `position:fixed;left:${r.left}px;${vertical};min-width:${Math.max(200, r.width)}px;max-width:min(360px,90vw);max-height:${maxHeight}px;overflow-y:auto;overscroll-behavior:contain;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;z-index:2147483647;`;
       for (const m of matches) {
         const row = document.createElement("button");
         row.type = "button";
         row.style.cssText =
-          "all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;";
+          "all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
         row.textContent = m.username || m.name || "(no username)";
         row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
         row.addEventListener(
