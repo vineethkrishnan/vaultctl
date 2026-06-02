@@ -185,6 +185,16 @@ export default defineContentScript({
     );
     window.addEventListener("resize", () => activeInput && positionIcon(activeInput));
 
+    // The current page's declared favicon (same-origin), used to label picker
+    // rows. Falls back to the conventional /favicon.ico, then to a globe glyph
+    // if neither loads.
+    function pageFaviconUrl(): string {
+      const link = document.querySelector<HTMLLinkElement>(
+        'link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
+      );
+      return link?.href || `${window.location.origin}/favicon.ico`;
+    }
+
     // ── Multi-match picker ───────────────────────────────────────────────
     function showPicker() {
       if (!activeInput || !activeForm) return;
@@ -208,13 +218,44 @@ export default defineContentScript({
         ? `bottom:${window.innerHeight - r.top + gap}px`
         : `top:${r.bottom + gap}px`;
       const menu = document.createElement("div");
-      menu.style.cssText = `position:fixed;left:${r.left}px;${vertical};min-width:${Math.max(200, r.width)}px;max-width:min(360px,90vw);max-height:${maxHeight}px;overflow-y:auto;overscroll-behavior:contain;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;z-index:2147483647;`;
+      menu.style.cssText = `position:fixed;left:${r.left}px;${vertical};min-width:${Math.max(240, r.width)}px;max-width:min(360px,90vw);max-height:${maxHeight}px;overflow-y:auto;overscroll-behavior:contain;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;z-index:2147483647;`;
+      // All matches are for the current site, so the page's own favicon labels
+      // every row (same-origin lookup — no third-party favicon service, which
+      // would leak the visited host).
+      const faviconUrl = pageFaviconUrl();
+      const pageHost = window.location.hostname;
       for (const m of matches) {
         const row = document.createElement("button");
         row.type = "button";
         row.style.cssText =
-          "all:unset;display:block;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-        row.textContent = m.username || m.name || "(no username)";
+          "all:unset;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;";
+
+        const icon = document.createElement("img");
+        icon.src = faviconUrl;
+        icon.alt = "";
+        icon.width = 20;
+        icon.height = 20;
+        icon.style.cssText =
+          "flex:none;width:20px;height:20px;border-radius:4px;object-fit:contain;background:#1f1f23;";
+        // Pages without a usable favicon fall back to a neutral globe glyph.
+        icon.addEventListener("error", () => icon.replaceWith(globeIcon()));
+
+        const text = document.createElement("span");
+        text.style.cssText =
+          "display:flex;flex-direction:column;min-width:0;line-height:1.3;";
+        const primary = document.createElement("span");
+        primary.textContent = m.username || m.name || "(no username)";
+        primary.style.cssText =
+          "font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        const secondaryText =
+          m.username && m.name && m.name !== m.username ? m.name : pageHost;
+        const secondary = document.createElement("span");
+        secondary.textContent = secondaryText;
+        secondary.style.cssText =
+          "font-size:11px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        text.append(primary, secondary);
+        row.append(icon, text);
+
         row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
         row.addEventListener(
           "mouseleave",
@@ -667,4 +708,15 @@ const EMBLEM_PATH =
 
 function emblemSVG(fill = "#ffffff"): string {
   return `<svg width="16" height="16" viewBox="0 0 1024 1024" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="${EMBLEM_PATH}"/></svg>`;
+}
+
+// Neutral globe glyph shown when a page has no loadable favicon, so picker
+// rows always have a consistent leading icon.
+function globeIcon(): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.style.cssText =
+    "flex:none;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#1f1f23;";
+  span.innerHTML =
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>';
+  return span;
 }
