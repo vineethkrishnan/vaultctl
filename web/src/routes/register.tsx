@@ -104,8 +104,10 @@ export function RegisterPage() {
       const wrapSigData = encVaultKeyBytes; // Simplified for self-wrap at registration
       const wrapSig = await ed25519Sign(idPrivKey, wrapSigData);
 
-      // Generate recovery kit
-      const { recoveryKey } = await generateRecoveryKit(rsaKp.privateKey);
+      // Generate recovery kit: wrap both private keys under a fresh recovery
+      // key so a future password reset can restore the full key set.
+      const { recoveryKey, recoveryWrappedPrivKey, recoveryWrappedIdentityPrivKey } =
+        await generateRecoveryKit(rsaKp.privateKey, ed25519Kp.privateKey);
       setRecoveryKeyFormatted(formatRecoveryKey(recoveryKey));
 
       // Register user
@@ -120,6 +122,10 @@ export function RegisterPage() {
         kdfParallelism: DEFAULT_KDF_PARAMS.parallelism,
         encryptedPrivateKey: toBase64(serializeBlob(encPrivKey)),
         encryptedIdentityPrivateKey: toBase64(serializeBlob(encIdPrivKey)),
+        recoveryWrappedPrivateKey: toBase64(serializeBlob(recoveryWrappedPrivKey)),
+        recoveryWrappedIdentityPrivateKey: toBase64(
+          serializeBlob(recoveryWrappedIdentityPrivKey),
+        ),
         publicKey: toBase64(rsaKp.publicKey),
         publicKeySignature: toBase64(pubKeySig),
         identityPublicKey: toBase64(ed25519Kp.publicKey),

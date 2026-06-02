@@ -10,7 +10,6 @@ import (
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
-	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 )
 
@@ -23,15 +22,16 @@ type VerifyRecoveryKeyInput struct {
 	Email string
 }
 
-// VerifyRecoveryKeyOutput returns the encrypted key material so the client
-// can attempt decryption with its recovery key. The server cannot verify
-// the recovery key in a zero-knowledge system — only the client can by
-// trying to decrypt the blobs.
+// VerifyRecoveryKeyOutput returns the recovery-wrapped key material so the
+// client can attempt decryption with its recovery key. The server cannot
+// verify the recovery key in a zero-knowledge system — only the client can by
+// trying to decrypt the blobs. Empty blobs mean the account has no recovery
+// kit on file.
 type VerifyRecoveryKeyOutput struct {
-	EncryptedPrivateKey         crypto.EncryptedBlob
-	EncryptedIdentityPrivateKey crypto.EncryptedBlob
-	Salt                        []byte
-	KDFParams                   user.KDFParams
+	RecoveryWrappedPrivateKey         []byte
+	RecoveryWrappedIdentityPrivateKey []byte
+	Salt                              []byte
+	KDFParams                         user.KDFParams
 }
 
 // VerifyRecoveryKey returns the user's encrypted key material for recovery.
@@ -55,11 +55,45 @@ func (uc *VerifyRecoveryKey) Execute(ctx context.Context, in VerifyRecoveryKeyIn
 	}
 
 	return VerifyRecoveryKeyOutput{
-		EncryptedPrivateKey:         u.EncryptedPrivateKey,
-		EncryptedIdentityPrivateKey: u.EncryptedIdentityPrivateKey,
-		Salt:                        u.Salt,
-		KDFParams:                   u.KDFParams,
+		RecoveryWrappedPrivateKey:         u.RecoveryWrappedPrivateKey,
+		RecoveryWrappedIdentityPrivateKey: u.RecoveryWrappedIdentityPrivateKey,
+		Salt:                              u.Salt,
+		KDFParams:                         u.KDFParams,
 	}, nil
+}
+
+// ===========================================================================
+// RotateRecoveryKey — (re)generate the recovery-wrapped key material
+// ===========================================================================
+
+// RotateRecoveryKeyInput carries the private keys freshly wrapped under a new
+// recovery key. Used by the settings "regenerate recovery kit" flow and by
+// existing accounts opting into recovery for the first time.
+type RotateRecoveryKeyInput struct {
+	UserID                            user.ID
+	RecoveryWrappedPrivateKey         []byte
+	RecoveryWrappedIdentityPrivateKey []byte
+}
+
+// RotateRecoveryKey overwrites the stored recovery-wrapped key material.
+type RotateRecoveryKey struct {
+	Users ports.UserRepository
+}
+
+// Execute runs the use case.
+func (uc *RotateRecoveryKey) Execute(ctx context.Context, in RotateRecoveryKeyInput) error {
+	if len(in.RecoveryWrappedPrivateKey) == 0 {
+		return domain.NewInvalid("recovery_wrapped_private_key", "required")
+	}
+	if len(in.RecoveryWrappedIdentityPrivateKey) == 0 {
+		return domain.NewInvalid("recovery_wrapped_identity_private_key", "required")
+	}
+	if err := uc.Users.UpdateRecoveryWrappedKeys(
+		ctx, in.UserID, in.RecoveryWrappedPrivateKey, in.RecoveryWrappedIdentityPrivateKey,
+	); err != nil {
+		return fmt.Errorf("update recovery wrapped keys: %w", err)
+	}
+	return nil
 }
 
 // ===========================================================================

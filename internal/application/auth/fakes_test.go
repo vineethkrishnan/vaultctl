@@ -248,6 +248,9 @@ func (r *fakeUserRepo) GetRecoveryMaterial(ctx context.Context, email user.Email
 func (r *fakeUserRepo) UpdatePasswordMaterialAndHint(_ context.Context, _ user.ID, _ string, _, _, _ []byte) error {
 	return nil
 }
+func (r *fakeUserRepo) UpdateRecoveryWrappedKeys(_ context.Context, _ user.ID, _, _ []byte) error {
+	return nil
+}
 func (r *fakeUserRepo) CountAll(_ context.Context) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -319,7 +322,7 @@ func (s *fakeSessionStore) RevokeAllForUser(_ context.Context, _ user.ID) error 
 func (s *fakeSessionStore) RevokeByDevice(_ context.Context, _ user.ID, _ string) error {
 	return nil
 }
-func (s *fakeSessionStore) PurgeExpired(_ context.Context) (int, error)         { return 0, nil }
+func (s *fakeSessionStore) PurgeExpired(_ context.Context) (int, error) { return 0, nil }
 func (s *fakeSessionStore) ListForUser(_ context.Context, _ user.ID) ([]user.Session, error) {
 	return nil, nil
 }

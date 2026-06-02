@@ -286,6 +286,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			Tokens: tokens, TokenGenerator: a.tokens, HMAC: a.hmac,
 			Clock: a.clock, IDs: a.ids, RefreshTTL: cfg.JWTRefreshTTL,
 		},
+		RotateRecoveryKey: &auth.RotateRecoveryKey{Users: a.users},
 	}
 
 	userHandlers := &api.UserHandlers{

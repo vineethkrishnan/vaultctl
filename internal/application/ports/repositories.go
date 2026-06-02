@@ -91,6 +91,10 @@ type UserRepository interface {
 	// private keys + optional password hint on recovery/password reset.
 	UpdatePasswordMaterialAndHint(ctx context.Context, id user.ID, authHash string, encPrivKey, encIDPrivKey, encHint []byte) error
 
+	// UpdateRecoveryWrappedKeys overwrites the recovery-wrapped private keys,
+	// used when (re)generating a recovery kit.
+	UpdateRecoveryWrappedKeys(ctx context.Context, id user.ID, recPrivKey, recIDPrivKey []byte) error
+
 	// CountAll returns the total number of users in the system. Used by the
 	// first-user bootstrap path in Register so a fresh install can produce
 	// its first owner without an invite token.

@@ -416,6 +416,18 @@ definitions:
       refreshToken:
         type: string
     type: object
+  internal_presenters_api.RecoveryRotateRequest:
+    properties:
+      recoveryWrappedIdentityPrivateKey:
+        type: string
+      recoveryWrappedPrivateKey:
+        type: string
+    type: object
+  internal_presenters_api.RecoveryRotateResponse:
+    properties:
+      ok:
+        type: boolean
+    type: object
   internal_presenters_api.RecoveryVerifyRequest:
     properties:
       email:
@@ -423,16 +435,19 @@ definitions:
     type: object
   internal_presenters_api.RecoveryVerifyResponse:
     properties:
-      encryptedIdentityPrivateKey:
-        type: string
-      encryptedPrivateKey:
-        type: string
       iterations:
         type: integer
       memoryKB:
         type: integer
       parallelism:
         type: integer
+      recoveryWrappedIdentityPrivateKey:
+        type: string
+      recoveryWrappedPrivateKey:
+        description: |-
+          Private keys wrapped under the recovery key (base64 wire blob). Empty
+          when the account has no recovery kit on file.
+        type: string
       salt:
         type: string
     type: object
@@ -496,6 +511,13 @@ definitions:
       publicKey:
         type: string
       publicKeySignature:
+        type: string
+      recoveryWrappedIdentityPrivateKey:
+        type: string
+      recoveryWrappedPrivateKey:
+        description: |-
+          RecoveryWrappedPrivateKey / RecoveryWrappedIdentityPrivateKey are the
+          private keys wrapped under the recovery key (base64 wire blob). Optional.
         type: string
       salt:
         description: base64
@@ -907,6 +929,39 @@ paths:
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
       summary: Reset password via recovery
+      tags:
+      - Auth
+  /auth/recovery/rotate:
+    post:
+      consumes:
+      - application/json
+      description: Overwrite the recovery-wrapped private keys with copies wrapped
+        under a new recovery key. Requires step-up authentication.
+      parameters:
+      - description: New recovery-wrapped key material
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.RecoveryRotateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.RecoveryRotateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Step-up required
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Rotate recovery kit
       tags:
       - Auth
   /auth/recovery/verify:

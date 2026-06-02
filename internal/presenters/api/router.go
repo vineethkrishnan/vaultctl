@@ -124,6 +124,9 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Password change (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/password/change", deps.Auth.HandlePasswordChange)
 
+			// Recovery-kit (re)generation (requires step-up + rate limit)
+			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/recovery/rotate", deps.Auth.HandleRotateRecoveryKey)
+
 			// API keys (PRD §10.5)
 			r.Post("/users/me/api-keys", deps.APIKey.HandleCreateAPIKey)
 			r.Get("/users/me/api-keys", deps.APIKey.HandleListAPIKeys)

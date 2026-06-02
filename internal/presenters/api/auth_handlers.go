@@ -33,6 +33,7 @@ type AuthHandlers struct {
 	GetPasswordHint   *auth.GetPasswordHint
 	VerifyRecoveryKey *auth.VerifyRecoveryKey
 	ResetViaRecovery  *auth.ResetViaRecovery
+	RotateRecoveryKey *auth.RotateRecoveryKey
 
 	// Users is used by HandleLogin to resolve a user ID for
 	// login.failed audit rows without storing the raw email.
@@ -97,23 +98,35 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+	recPriv, err := decodeOptionalB64(req.RecoveryWrappedPrivateKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	recIDPriv, err := decodeOptionalB64(req.RecoveryWrappedIdentityPrivateKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
 
 	var out auth.RegisterOutput
 	authSecret.Open(func(authHash []byte) {
 		out, err = h.Register.Execute(r.Context(), auth.RegisterInput{
-			Email:                       req.Email,
-			Name:                        req.Name,
-			AuthHash:                    authHash,
-			Salt:                        salt,
-			MasterPasswordPreflight:     req.MasterPasswordPreflight,
-			KDFParams:                   user.KDFParams{Iterations: req.KDFIterations, MemoryKB: req.KDFMemoryKB, Parallelism: req.KDFParallelism},
-			EncryptedPrivateKey:         encPriv,
-			EncryptedIdentityPrivateKey: encIDPriv,
-			PublicKey:                   pubKey,
-			PublicKeySignature:          sig,
-			IdentityPublicKey:           idPub,
-			InviteToken:                 req.InviteToken,
-			PasswordHint:                req.PasswordHint,
+			Email:                             req.Email,
+			Name:                              req.Name,
+			AuthHash:                          authHash,
+			Salt:                              salt,
+			MasterPasswordPreflight:           req.MasterPasswordPreflight,
+			KDFParams:                         user.KDFParams{Iterations: req.KDFIterations, MemoryKB: req.KDFMemoryKB, Parallelism: req.KDFParallelism},
+			EncryptedPrivateKey:               encPriv,
+			EncryptedIdentityPrivateKey:       encIDPriv,
+			RecoveryWrappedPrivateKey:         recPriv,
+			RecoveryWrappedIdentityPrivateKey: recIDPriv,
+			PublicKey:                         pubKey,
+			PublicKeySignature:                sig,
+			IdentityPublicKey:                 idPub,
+			InviteToken:                       req.InviteToken,
+			PasswordHint:                      req.PasswordHint,
 		})
 	})
 	if err != nil {
@@ -519,12 +532,12 @@ func (h *AuthHandlers) HandleVerifyRecoveryKey(w http.ResponseWriter, r *http.Re
 		return
 	}
 	writeJSON(w, http.StatusOK, RecoveryVerifyResponse{
-		EncryptedPrivateKey:         encodeB64Blob(out.EncryptedPrivateKey),
-		EncryptedIdentityPrivateKey: encodeB64Blob(out.EncryptedIdentityPrivateKey),
-		Salt:                        encodeB64(out.Salt),
-		Iterations:                  out.KDFParams.Iterations,
-		MemoryKB:                    out.KDFParams.MemoryKB,
-		Parallelism:                 out.KDFParams.Parallelism,
+		RecoveryWrappedPrivateKey:         encodeB64(out.RecoveryWrappedPrivateKey),
+		RecoveryWrappedIdentityPrivateKey: encodeB64(out.RecoveryWrappedIdentityPrivateKey),
+		Salt:                              encodeB64(out.Salt),
+		Iterations:                        out.KDFParams.Iterations,
+		MemoryKB:                          out.KDFParams.MemoryKB,
+		Parallelism:                       out.KDFParams.Parallelism,
 	})
 }
 
@@ -581,6 +594,47 @@ func (h *AuthHandlers) HandleResetViaRecovery(w http.ResponseWriter, r *http.Req
 		RefreshToken:     out.RefreshToken,
 		RefreshExpiresAt: out.RefreshExpiresAt.UTC().Format(timeFormat),
 	})
+}
+
+// HandleRotateRecoveryKey regenerates the recovery-wrapped key material.
+// @Summary Rotate recovery kit
+// @Description Overwrite the recovery-wrapped private keys with copies wrapped under a new recovery key. Requires step-up authentication.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body RecoveryRotateRequest true "New recovery-wrapped key material"
+// @Success 200 {object} RecoveryRotateResponse
+// @Failure 400 {object} ErrorBody
+// @Failure 403 {object} ErrorBody "Step-up required"
+// @Router /auth/recovery/rotate [post]
+func (h *AuthHandlers) HandleRotateRecoveryKey(w http.ResponseWriter, r *http.Request) {
+	var req RecoveryRotateRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	recPriv, err := decodeB64(req.RecoveryWrappedPrivateKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	recIDPriv, err := decodeB64(req.RecoveryWrappedIdentityPrivateKey)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	callerID := middleware.CallerID(r.Context())
+	if err := h.RotateRecoveryKey.Execute(r.Context(), auth.RotateRecoveryKeyInput{
+		UserID:                            callerID,
+		RecoveryWrappedPrivateKey:         recPriv,
+		RecoveryWrappedIdentityPrivateKey: recIDPriv,
+	}); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	h.Audit.RecoveryKitRotated(r.Context(), string(callerID), middleware.ClientIP(r), r.UserAgent())
+	writeJSON(w, http.StatusOK, RecoveryRotateResponse{OK: true})
 }
 
 // auditLoginFailure resolves the user ID for a failed login attempt

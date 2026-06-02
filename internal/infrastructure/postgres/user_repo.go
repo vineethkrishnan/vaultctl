@@ -26,14 +26,16 @@ func (r *UserRepo) Create(ctx context.Context, u user.User, authHash string) err
 			encrypted_private_key, public_key, public_key_signature,
 			identity_public_key, encrypted_identity_private_key,
 			encrypted_password_hint,
+			encrypted_recovery_wrapped_private_key, encrypted_recovery_wrapped_identity_private_key,
 			role, created_at, updated_at
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
 	`,
 		u.ID, u.Email.String(), u.Name, authHash, u.Salt,
 		u.KDFParams.Iterations, u.KDFParams.MemoryKB, u.KDFParams.Parallelism,
 		encodeBlob(u.EncryptedPrivateKey), encodePublicKey(u.PublicKey), encodeSig(u.PublicKeySignature),
 		encodePublicKey(u.IdentityPublicKey), encodeBlob(u.EncryptedIdentityPrivateKey),
 		u.EncryptedPasswordHint,
+		u.RecoveryWrappedPrivateKey, u.RecoveryWrappedIdentityPrivateKey,
 		string(u.Role), u.CreatedAt, u.UpdatedAt,
 	)
 	if isUniqueViolation(err) {
@@ -58,6 +60,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		       kdf_iterations, kdf_memory, kdf_parallelism,
 		       encrypted_private_key, public_key, public_key_signature,
 		       identity_public_key, encrypted_identity_private_key,
+		       encrypted_recovery_wrapped_private_key, encrypted_recovery_wrapped_identity_private_key,
 		       totp_enabled, totp_last_counter, failed_login_attempts, locked_until,
 		       role, created_at, updated_at
 		FROM users WHERE `+where, arg)
@@ -69,6 +72,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		iter, mem                                    uint32
 		par                                          uint8
 		encPriv, pubKey, pubKeySig, idPub, encIDPriv string
+		recPriv, recIDPriv                           []byte
 		totpEnabled                                  bool
 		totpCounter                                  *int64
 		failedAttempts                               int
@@ -78,6 +82,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 	)
 	err := row.Scan(&uid, &email, &name, &salt, &iter, &mem, &par,
 		&encPriv, &pubKey, &pubKeySig, &idPub, &encIDPriv,
+		&recPriv, &recIDPriv,
 		&totpEnabled, &totpCounter, &failedAttempts, &lockedUntil,
 		&role, &createdAt, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -111,23 +116,42 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		return user.User{}, err
 	}
 	return user.User{
-		ID:                          user.ID(uid),
-		Email:                       em,
-		Name:                        name,
-		Salt:                        salt,
-		KDFParams:                   user.KDFParams{Iterations: iter, MemoryKB: mem, Parallelism: par},
-		EncryptedPrivateKey:         priv,
-		EncryptedIdentityPrivateKey: idPriv,
-		PublicKey:                   pub,
-		IdentityPublicKey:           idp,
-		PublicKeySignature:          sig,
-		TOTPEnabled:                 totpEnabled,
-		FailedLoginAttempts:         failedAttempts,
-		LockedUntil:                 lockedUntil,
-		Role:                        user.Role(role),
-		CreatedAt:                   createdAt,
-		UpdatedAt:                   updatedAt,
+		ID:                                user.ID(uid),
+		Email:                             em,
+		Name:                              name,
+		Salt:                              salt,
+		KDFParams:                         user.KDFParams{Iterations: iter, MemoryKB: mem, Parallelism: par},
+		EncryptedPrivateKey:               priv,
+		EncryptedIdentityPrivateKey:       idPriv,
+		RecoveryWrappedPrivateKey:         recPriv,
+		RecoveryWrappedIdentityPrivateKey: recIDPriv,
+		PublicKey:                         pub,
+		IdentityPublicKey:                 idp,
+		PublicKeySignature:                sig,
+		TOTPEnabled:                       totpEnabled,
+		FailedLoginAttempts:               failedAttempts,
+		LockedUntil:                       lockedUntil,
+		Role:                              user.Role(role),
+		CreatedAt:                         createdAt,
+		UpdatedAt:                         updatedAt,
 	}, nil
+}
+
+// UpdateRecoveryWrappedKeys overwrites the recovery-wrapped private keys for a
+// user, used when (re)generating a recovery kit.
+func (r *UserRepo) UpdateRecoveryWrappedKeys(ctx context.Context, id user.ID, recPrivKey, recIDPrivKey []byte) error {
+	tag, err := r.Pool.Exec(ctx, `
+		UPDATE users SET encrypted_recovery_wrapped_private_key = $1,
+		       encrypted_recovery_wrapped_identity_private_key = $2, updated_at = NOW()
+		WHERE id = $3`,
+		recPrivKey, recIDPrivKey, string(id))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 // UpdateProfile updates the user's display name.
