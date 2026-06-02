@@ -49,8 +49,12 @@ type RegisterRequest struct {
 	PublicKey                   string `json:"publicKey"`
 	PublicKeySignature          string `json:"publicKeySignature"`
 	IdentityPublicKey           string `json:"identityPublicKey"`
-	InviteToken                 string `json:"inviteToken,omitempty"`  // required when registration mode is "invite"
-	PasswordHint                string `json:"passwordHint,omitempty"` // optional plaintext hint, server-encrypted (H4)
+	// RecoveryWrappedPrivateKey / RecoveryWrappedIdentityPrivateKey are the
+	// private keys wrapped under the recovery key (base64 wire blob). Optional.
+	RecoveryWrappedPrivateKey         string `json:"recoveryWrappedPrivateKey,omitempty"`
+	RecoveryWrappedIdentityPrivateKey string `json:"recoveryWrappedIdentityPrivateKey,omitempty"`
+	InviteToken                       string `json:"inviteToken,omitempty"`  // required when registration mode is "invite"
+	PasswordHint                      string `json:"passwordHint,omitempty"` // optional plaintext hint, server-encrypted (H4)
 }
 
 type RegisterResponse struct {
@@ -133,12 +137,14 @@ type RecoveryVerifyRequest struct {
 }
 
 type RecoveryVerifyResponse struct {
-	EncryptedPrivateKey         string `json:"encryptedPrivateKey"`
-	EncryptedIdentityPrivateKey string `json:"encryptedIdentityPrivateKey"`
-	Salt                        string `json:"salt"`
-	Iterations                  uint32 `json:"iterations"`
-	MemoryKB                    uint32 `json:"memoryKB"`
-	Parallelism                 uint8  `json:"parallelism"`
+	// Private keys wrapped under the recovery key (base64 wire blob). Empty
+	// when the account has no recovery kit on file.
+	RecoveryWrappedPrivateKey         string `json:"recoveryWrappedPrivateKey"`
+	RecoveryWrappedIdentityPrivateKey string `json:"recoveryWrappedIdentityPrivateKey"`
+	Salt                              string `json:"salt"`
+	Iterations                        uint32 `json:"iterations"`
+	MemoryKB                          uint32 `json:"memoryKB"`
+	Parallelism                       uint8  `json:"parallelism"`
 }
 
 type RecoveryResetRequest struct {
@@ -152,6 +158,17 @@ type RecoveryResetResponse struct {
 	AccessToken      string `json:"accessToken"`
 	RefreshToken     string `json:"refreshToken"`
 	RefreshExpiresAt string `json:"refreshExpiresAt"`
+}
+
+// RecoveryRotateRequest carries the private keys freshly wrapped under a new
+// recovery key (base64 wire blobs). Used by the settings regenerate flow.
+type RecoveryRotateRequest struct {
+	RecoveryWrappedPrivateKey         string `json:"recoveryWrappedPrivateKey"`
+	RecoveryWrappedIdentityPrivateKey string `json:"recoveryWrappedIdentityPrivateKey"`
+}
+
+type RecoveryRotateResponse struct {
+	OK bool `json:"ok"`
 }
 
 // ===========================================================================
@@ -539,6 +556,15 @@ func decodeB64(s string) ([]byte, error) {
 		return nil, badBase64("base64Field")
 	}
 	return raw, nil
+}
+
+// decodeOptionalB64 decodes a base64 string, returning nil for an empty input
+// so optional wire blobs are stored as NULL rather than empty bytes.
+func decodeOptionalB64(s string) ([]byte, error) {
+	if s == "" {
+		return nil, nil
+	}
+	return decodeB64(s)
 }
 
 // decodeB64Signature decodes a base64-encoded Ed25519 signature.

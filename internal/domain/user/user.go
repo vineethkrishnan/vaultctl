@@ -73,6 +73,12 @@ type User struct {
 	PublicKeySignature crypto.Signature // Ed25519(id_priv, public_key)  (C1)
 	IdentityPublicKey  crypto.PublicKey // Ed25519                       (C1)
 
+	// Recovery-kit material: the private keys wrapped under the random
+	// recovery key (NOT the master password). Nil until the user has a
+	// recovery kit on file. Opaque wire-format AES-GCM blobs.
+	RecoveryWrappedPrivateKey         []byte
+	RecoveryWrappedIdentityPrivateKey []byte
+
 	// EncryptedPasswordHint is a server-encrypted (H4/AES-256-GCM) hint that
 	// helps the user remember their master password. Optional — nil means no
 	// hint was set during registration.

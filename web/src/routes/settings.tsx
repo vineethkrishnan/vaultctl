@@ -11,6 +11,7 @@ import { RestoreDialog } from "@/components/vault/RestoreDialog";
 import { SessionsPanel } from "@/components/settings/SessionsPanel";
 import { BackupSyncPanel } from "@/components/settings/BackupSyncPanel";
 import { BiometricSetting } from "@/components/settings/BiometricSetting";
+import { RecoveryKitSetting } from "@/components/settings/RecoveryKitSetting";
 import { AboutPanel } from "@/components/settings/AboutPanel";
 import {
   Settings,
@@ -199,6 +200,9 @@ export function SettingsPage() {
 
             {/* Biometric (Touch ID) unlock */}
             <BiometricSetting />
+
+            {/* Recovery kit (regenerate) */}
+            <RecoveryKitSetting />
 
             {/* Safety Number */}
             {identityPubKey && (

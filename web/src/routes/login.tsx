@@ -115,6 +115,11 @@ export function LoginPage() {
     sessionStorage.setItem("vaultctl_kdf_mem", String(kdf.memoryKB));
     sessionStorage.setItem("vaultctl_kdf_par", String(kdf.parallelism));
     sessionStorage.setItem("vaultctl_id_pubkey", res.identityPublicKey);
+    sessionStorage.setItem("vaultctl_login_enc_priv", res.encryptedPrivateKey);
+    sessionStorage.setItem(
+      "vaultctl_login_enc_id_priv",
+      res.encryptedIdentityPrivateKey,
+    );
 
     await initKeys({
       stretchedKey,
@@ -312,6 +317,11 @@ export function LoginPage() {
             >
               {loading ? "Deriving keys..." : "Unlock"}
             </button>
+            <div className="text-center text-sm">
+              <Link to="/recovery" className="text-muted-foreground underline">
+                Forgot your master password?
+              </Link>
+            </div>
           </form>
         )}
 

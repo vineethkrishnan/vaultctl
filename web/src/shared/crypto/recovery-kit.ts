@@ -21,19 +21,30 @@ import { type EncryptedBlob, serializeBlob, parseBlob } from "./blob.js";
 import { toBase64 } from "./utils.js";
 
 /**
- * Generate a recovery kit during registration.
+ * Generate a recovery kit. Wraps BOTH private keys (RSA + Ed25519 identity)
+ * under a fresh random recovery key, so a password reset can restore the full
+ * key set. Used at registration and when regenerating the kit from settings.
  *
- * @param privateKey - The user's RSA private key (PKCS#8 DER bytes)
- * @returns recoveryKey (show to user once) + recoveryWrappedPrivKey (send to server)
+ * @param privateKey         - The user's RSA private key (PKCS#8 DER bytes)
+ * @param identityPrivateKey - The user's Ed25519 identity private key bytes
+ * @returns recoveryKey (show to user once) + both wrapped blobs (send to server)
  */
-export async function generateRecoveryKit(privateKey: Uint8Array): Promise<{
+export async function generateRecoveryKit(
+  privateKey: Uint8Array,
+  identityPrivateKey: Uint8Array,
+): Promise<{
   recoveryKey: Uint8Array;
   recoveryWrappedPrivKey: EncryptedBlob;
+  recoveryWrappedIdentityPrivKey: EncryptedBlob;
 }> {
   const recoveryKey = crypto.getRandomValues(new Uint8Array(KEY_SIZE_256));
   const recoveryWrappedPrivKey = await aesGcmEncrypt(recoveryKey, privateKey);
+  const recoveryWrappedIdentityPrivKey = await aesGcmEncrypt(
+    recoveryKey,
+    identityPrivateKey,
+  );
 
-  return { recoveryKey, recoveryWrappedPrivKey };
+  return { recoveryKey, recoveryWrappedPrivKey, recoveryWrappedIdentityPrivKey };
 }
 
 /**

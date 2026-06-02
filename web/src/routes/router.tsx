@@ -10,6 +10,7 @@ import {
 import { useAuthStore } from "@/lib/auth-store";
 import { LoginPage } from "./login";
 import { RegisterPage } from "./register";
+import { RecoveryPage } from "./recovery";
 import { LockPage } from "./lock";
 import { AuthLayout } from "./auth-layout";
 import { VaultItemsPage } from "./vault-items";
@@ -35,6 +36,12 @@ const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
   component: RegisterPage,
+});
+
+const recoveryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recovery",
+  component: RecoveryPage,
 });
 
 const lockRoute = createRoute({
@@ -123,6 +130,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
+  recoveryRoute,
   lockRoute,
   authLayout.addChildren([
     settingsRoute,

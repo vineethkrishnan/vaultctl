@@ -32,6 +32,11 @@ type RegisterInput struct {
 	PublicKey                   crypto.PublicKey
 	PublicKeySignature          crypto.Signature
 	IdentityPublicKey           crypto.PublicKey
+	// RecoveryWrappedPrivateKey / RecoveryWrappedIdentityPrivateKey are the
+	// private keys wrapped under the random recovery key (wire-format blob
+	// bytes). Optional — empty when the client did not enroll a recovery kit.
+	RecoveryWrappedPrivateKey         []byte
+	RecoveryWrappedIdentityPrivateKey []byte
 	// MasterPasswordPreflight is the client-side plaintext master password
 	// supplied PURELY so the server can reject weak passwords before
 	// issuing a user row. It is NOT persisted, logged, or transmitted
@@ -122,20 +127,22 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	}
 
 	u := user.User{
-		ID:                          user.ID(uc.IDs.NewID()),
-		Email:                       email,
-		Name:                        in.Name,
-		Salt:                        append([]byte(nil), in.Salt...),
-		KDFParams:                   in.KDFParams,
-		EncryptedPrivateKey:         in.EncryptedPrivateKey,
-		EncryptedIdentityPrivateKey: in.EncryptedIdentityPrivateKey,
-		PublicKey:                   in.PublicKey,
-		PublicKeySignature:          in.PublicKeySignature,
-		IdentityPublicKey:           in.IdentityPublicKey,
-		EncryptedPasswordHint:       encryptedHint,
-		Role:                        role,
-		CreatedAt:                   now,
-		UpdatedAt:                   now,
+		ID:                                user.ID(uc.IDs.NewID()),
+		Email:                             email,
+		Name:                              in.Name,
+		Salt:                              append([]byte(nil), in.Salt...),
+		KDFParams:                         in.KDFParams,
+		EncryptedPrivateKey:               in.EncryptedPrivateKey,
+		EncryptedIdentityPrivateKey:       in.EncryptedIdentityPrivateKey,
+		RecoveryWrappedPrivateKey:         in.RecoveryWrappedPrivateKey,
+		RecoveryWrappedIdentityPrivateKey: in.RecoveryWrappedIdentityPrivateKey,
+		PublicKey:                         in.PublicKey,
+		PublicKeySignature:                in.PublicKeySignature,
+		IdentityPublicKey:                 in.IdentityPublicKey,
+		EncryptedPasswordHint:             encryptedHint,
+		Role:                              role,
+		CreatedAt:                         now,
+		UpdatedAt:                         now,
 	}
 	if err := u.Validate(); err != nil {
 		return RegisterOutput{}, err

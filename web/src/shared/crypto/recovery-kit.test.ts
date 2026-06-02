@@ -13,24 +13,30 @@ import { parseBlob } from "./blob.js";
 
 describe("recovery kit", () => {
   const fakePrivateKey = crypto.getRandomValues(new Uint8Array(1218));
+  const fakeIdentityKey = crypto.getRandomValues(new Uint8Array(64));
 
-  it("generates a 32-byte recovery key and AES-GCM blob", async () => {
-    const kit = await generateRecoveryKit(fakePrivateKey);
+  it("generates a 32-byte recovery key and AES-GCM blobs for both keys", async () => {
+    const kit = await generateRecoveryKit(fakePrivateKey, fakeIdentityKey);
     expect(kit.recoveryKey.length).toBe(32);
     expect(kit.recoveryWrappedPrivKey.alg).toBe(AlgID.AES_256_GCM);
+    expect(kit.recoveryWrappedIdentityPrivKey.alg).toBe(AlgID.AES_256_GCM);
   });
 
-  it("round-trips: generate → recover", async () => {
-    const kit = await generateRecoveryKit(fakePrivateKey);
-    const recovered = await recoverPrivateKey(
-      kit.recoveryKey,
-      kit.recoveryWrappedPrivKey,
-    );
-    expect(recovered).toEqual(fakePrivateKey);
+  it("round-trips: generate → recover (both keys)", async () => {
+    const kit = await generateRecoveryKit(fakePrivateKey, fakeIdentityKey);
+    expect(
+      await recoverPrivateKey(kit.recoveryKey, kit.recoveryWrappedPrivKey),
+    ).toEqual(fakePrivateKey);
+    expect(
+      await recoverPrivateKey(
+        kit.recoveryKey,
+        kit.recoveryWrappedIdentityPrivKey,
+      ),
+    ).toEqual(fakeIdentityKey);
   });
 
   it("round-trips through wire format", async () => {
-    const kit = await generateRecoveryKit(fakePrivateKey);
+    const kit = await generateRecoveryKit(fakePrivateKey, fakeIdentityKey);
     const wire = serializeRecoveryBlob(kit.recoveryWrappedPrivKey);
     const parsed = parseBlob(wire);
     const recovered = await recoverPrivateKey(kit.recoveryKey, parsed);
@@ -38,7 +44,7 @@ describe("recovery kit", () => {
   });
 
   it("fails with wrong recovery key", async () => {
-    const kit = await generateRecoveryKit(fakePrivateKey);
+    const kit = await generateRecoveryKit(fakePrivateKey, fakeIdentityKey);
     const wrongKey = crypto.getRandomValues(new Uint8Array(32));
     await expect(
       recoverPrivateKey(wrongKey, kit.recoveryWrappedPrivKey),

@@ -25,17 +25,18 @@ const (
 // treat them as contract.
 const (
 	// Authentication + session lifecycle.
-	ActionLoginSuccess      = "login.success"
-	ActionLoginFailed       = "login.failed"
-	ActionLoginFailedNoUser = "login.failed.unknown_email"
-	ActionLogout            = "auth.logout"
-	ActionRefreshed         = "auth.refreshed"
-	ActionStepUp            = "auth.step_up"
-	ActionPasswordChanged   = "auth.password_changed"
-	ActionRecoveryReset     = "auth.recovery_reset"
-	ActionTOTPEnabled       = "auth.totp_enabled"
-	ActionTOTPDisabled      = "auth.totp_disabled"
-	ActionSessionRevoked    = "session.revoked"
+	ActionLoginSuccess       = "login.success"
+	ActionLoginFailed        = "login.failed"
+	ActionLoginFailedNoUser  = "login.failed.unknown_email"
+	ActionLogout             = "auth.logout"
+	ActionRefreshed          = "auth.refreshed"
+	ActionStepUp             = "auth.step_up"
+	ActionPasswordChanged    = "auth.password_changed"
+	ActionRecoveryReset      = "auth.recovery_reset"
+	ActionRecoveryKitRotated = "auth.recovery_kit_rotated"
+	ActionTOTPEnabled        = "auth.totp_enabled"
+	ActionTOTPDisabled       = "auth.totp_disabled"
+	ActionSessionRevoked     = "session.revoked"
 
 	// Vault + sharing lifecycle.
 	ActionVaultCreated       = "vault.created"

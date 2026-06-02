@@ -373,6 +373,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/recovery/rotate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Overwrite the recovery-wrapped private keys with copies wrapped under a new recovery key. Requires step-up authentication.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Rotate recovery kit",
+                "parameters": [
+                    {
+                        "description": "New recovery-wrapped key material",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RecoveryRotateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.RecoveryRotateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Step-up required",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/recovery/verify": {
             "post": {
                 "description": "Returns encrypted key material so the client can attempt decryption with its recovery key.",
@@ -3100,6 +3151,25 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_presenters_api.RecoveryRotateRequest": {
+            "type": "object",
+            "properties": {
+                "recoveryWrappedIdentityPrivateKey": {
+                    "type": "string"
+                },
+                "recoveryWrappedPrivateKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.RecoveryRotateResponse": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_presenters_api.RecoveryVerifyRequest": {
             "type": "object",
             "properties": {
@@ -3111,12 +3181,6 @@ const docTemplate = `{
         "internal_presenters_api.RecoveryVerifyResponse": {
             "type": "object",
             "properties": {
-                "encryptedIdentityPrivateKey": {
-                    "type": "string"
-                },
-                "encryptedPrivateKey": {
-                    "type": "string"
-                },
                 "iterations": {
                     "type": "integer"
                 },
@@ -3125,6 +3189,13 @@ const docTemplate = `{
                 },
                 "parallelism": {
                     "type": "integer"
+                },
+                "recoveryWrappedIdentityPrivateKey": {
+                    "type": "string"
+                },
+                "recoveryWrappedPrivateKey": {
+                    "description": "Private keys wrapped under the recovery key (base64 wire blob). Empty\nwhen the account has no recovery kit on file.",
+                    "type": "string"
                 },
                 "salt": {
                     "type": "string"
@@ -3221,6 +3292,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "publicKeySignature": {
+                    "type": "string"
+                },
+                "recoveryWrappedIdentityPrivateKey": {
+                    "type": "string"
+                },
+                "recoveryWrappedPrivateKey": {
+                    "description": "RecoveryWrappedPrivateKey / RecoveryWrappedIdentityPrivateKey are the\nprivate keys wrapped under the recovery key (base64 wire blob). Optional.",
                     "type": "string"
                 },
                 "salt": {

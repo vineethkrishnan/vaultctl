@@ -170,6 +170,19 @@ func (w *Writer) RecoveryReset(ctx context.Context, userID, ip, userAgent string
 	})
 }
 
+// RecoveryKitRotated records (re)generation of the recovery-wrapped key
+// material from settings.
+func (w *Writer) RecoveryKitRotated(ctx context.Context, userID, ip, userAgent string) {
+	w.write(ctx, auditlog.Entry{
+		UserID:       userID,
+		Action:       auditlog.ActionRecoveryKitRotated,
+		ResourceType: auditlog.ResourceUser,
+		ResourceID:   userID,
+		IPAddress:    ip,
+		UserAgent:    userAgent,
+	})
+}
+
 // TOTPEnabled records activation of two-factor authentication.
 func (w *Writer) TOTPEnabled(ctx context.Context, userID, ip, userAgent string) {
 	w.write(ctx, auditlog.Entry{
