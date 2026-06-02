@@ -21,6 +21,30 @@ type AuditLogRepository interface {
 	Write(ctx context.Context, entry auditlog.Entry) error
 }
 
+// AuditLogReader reads audit entries for the in-app notification feed. It is
+// a separate port from the write-only AuditLogRepository so the audit.Writer
+// stays the only writer.
+type AuditLogReader interface {
+	// ListForUser returns the user's most recent audit entries whose action
+	// is in `actions` (empty = any) and whose created_at is strictly after
+	// `after` (zero = no lower bound), newest first, capped at `limit`.
+	ListForUser(ctx context.Context, userID string, actions []string, after time.Time, limit int) ([]auditlog.Entry, error)
+}
+
+// NotificationState tracks how far a user has read/cleared the notification
+// feed. Nil timestamps mean "never".
+type NotificationState struct {
+	LastReadAt *time.Time
+	ClearedAt  *time.Time
+}
+
+// NotificationStateRepository persists per-user read/clear markers.
+type NotificationStateRepository interface {
+	Get(ctx context.Context, userID string) (NotificationState, error)
+	MarkRead(ctx context.Context, userID string, at time.Time) error
+	Clear(ctx context.Context, userID string, at time.Time) error
+}
+
 // UserRepository persists the User aggregate.
 //
 // Methods marked "raw" carry opaque infrastructure-layer identifiers (e.g.

@@ -314,6 +314,35 @@ definitions:
       refreshToken:
         type: string
     type: object
+  internal_presenters_api.NotificationDTO:
+    properties:
+      action:
+        type: string
+      category:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      read:
+        type: boolean
+      title:
+        type: string
+    type: object
+  internal_presenters_api.NotificationsResponse:
+    properties:
+      notifications:
+        items:
+          $ref: '#/definitions/internal_presenters_api.NotificationDTO'
+        type: array
+      unreadCount:
+        type: integer
+    type: object
+  internal_presenters_api.OKResponse:
+    properties:
+      ok:
+        type: boolean
+    type: object
   internal_presenters_api.OrgMemberResponse:
     properties:
       acceptedAt:
@@ -627,6 +656,26 @@ definitions:
     properties:
       name:
         type: string
+    type: object
+  internal_presenters_api.UpdateStatusResponse:
+    properties:
+      currentVersion:
+        type: string
+      enabled:
+        type: boolean
+      latestVersion:
+        type: string
+      publishedAt:
+        type: string
+      releaseNotes:
+        type: string
+      releaseUrl:
+        type: string
+      severity:
+        description: major | minor | patch | none
+        type: string
+      updateAvailable:
+        type: boolean
     type: object
   internal_presenters_api.UserProfileResponse:
     properties:
@@ -1261,6 +1310,50 @@ paths:
       summary: Import vault items
       tags:
       - Import/Export
+  /notifications:
+    get:
+      description: Returns the caller's recent activity feed (derived from the audit
+        log) and the unread count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.NotificationsResponse'
+      security:
+      - BearerAuth: []
+      summary: List notifications
+      tags:
+      - System
+  /notifications/clear:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.OKResponse'
+      security:
+      - BearerAuth: []
+      summary: Clear notifications
+      tags:
+      - System
+  /notifications/read:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.OKResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark notifications read
+      tags:
+      - System
   /orgs:
     post:
       consumes:
@@ -1556,6 +1649,22 @@ paths:
       summary: Get member public key
       tags:
       - Organizations
+  /updates:
+    get:
+      description: Reports the running version and, when update checking is enabled,
+        the latest GitHub release and whether an update is available.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.UpdateStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: Update check
+      tags:
+      - System
   /users/me:
     get:
       description: Returns the profile of the authenticated user

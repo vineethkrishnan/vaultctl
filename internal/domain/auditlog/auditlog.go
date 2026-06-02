@@ -12,6 +12,10 @@ import "time"
 // anonymised form (IPv4 /24 or IPv6 /56); raw addresses never enter this
 // type.
 type Entry struct {
+	// ID is the audit_logs row UUID. Set only when an Entry is read back
+	// (e.g. for the notification feed); ignored on Write (the DB assigns it).
+	ID string
+
 	// UserID is the actor. Empty string means "unknown / unauthenticated"
 	// (e.g. failed login with an email the server does not recognise) and
 	// is written as NULL so the FK ON DELETE SET NULL still works.
