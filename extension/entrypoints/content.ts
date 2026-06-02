@@ -20,6 +20,7 @@ interface CredMatch {
   itemId: string;
   name: string;
   username: string;
+  passwordLength?: number;
 }
 interface ExtSettings {
   autofill: boolean;
@@ -111,79 +112,142 @@ export default defineContentScript({
       if (passwordInput && res.password) setInputValue(passwordInput, res.password);
     }
 
-    // ── Floating field icon ──────────────────────────────────────────────
-    const iconHost = document.createElement("div");
-    iconHost.style.cssText =
-      "position:absolute;z-index:2147483646;display:none;width:0;height:0;";
-    const iconRoot = iconHost.attachShadow({ mode: "open" });
-    const iconBtn = document.createElement("button");
-    iconBtn.type = "button";
-    iconBtn.setAttribute("aria-label", "Fill from vaultctl");
-    iconBtn.innerHTML = emblemSVG();
-    iconBtn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
-    iconRoot.appendChild(iconBtn);
-    document.body.appendChild(iconHost);
-
+    // ── Persistent field icon (Google-password-manager style) ─────────────
+    // Every username/password field of a matching login form carries a
+    // permanently-visible vaultctl emblem (not just on hover/focus), so the
+    // user always knows the extension is offering credentials here. Focusing
+    // the field — or clicking the emblem — opens the suggestion picker.
     let activeForm: HTMLFormElement | null = null;
     let activeInput: HTMLInputElement | null = null;
+    const fieldIcons = new Map<HTMLInputElement, HTMLButtonElement>();
 
-    function positionIcon(input: HTMLInputElement) {
+    function positionFieldIcon(input: HTMLInputElement, btn: HTMLButtonElement) {
       const r = input.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) {
-        iconHost.style.display = "none";
+      const visible =
+        r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight;
+      btn.style.display = visible ? "flex" : "none";
+      if (!visible) return;
+      btn.style.left = `${r.right - 28}px`;
+      btn.style.top = `${r.top + (r.height - 22) / 2}px`;
+    }
+
+    function decorateField(input: HTMLInputElement) {
+      if (fieldIcons.has(input)) return;
+      const host = document.createElement("div");
+      host.className = "vaultctl-field-icon";
+      host.style.cssText =
+        "all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;";
+      const root = host.attachShadow({ mode: "open" });
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Fill from vaultctl");
+      btn.innerHTML = emblemSVG();
+      btn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (document.getElementById("vaultctl-picker-host")) removePicker();
+        else openPicker(input);
+      });
+      root.appendChild(btn);
+      document.body.appendChild(host);
+      fieldIcons.set(input, btn);
+      positionFieldIcon(input, btn);
+    }
+
+    function removeIconHost(btn: HTMLButtonElement) {
+      const rootNode = btn.getRootNode();
+      if (rootNode instanceof ShadowRoot) rootNode.host.remove();
+    }
+
+    function clearFieldIcons() {
+      for (const btn of fieldIcons.values()) removeIconHost(btn);
+      fieldIcons.clear();
+    }
+
+    function repositionFieldIcons() {
+      for (const [input, btn] of fieldIcons) {
+        if (!input.isConnected) {
+          removeIconHost(btn);
+          fieldIcons.delete(input);
+          continue;
+        }
+        positionFieldIcon(input, btn);
+      }
+    }
+
+    // Attach the persistent emblem to the username + password inputs of every
+    // matching login form. With no matches, there's nothing to offer, so no
+    // icon is shown (matching Chrome's own key icon).
+    function decorateLoginFields() {
+      if (!settings.fieldIcon || matches.length === 0) {
+        clearFieldIcons();
         return;
       }
-      iconBtn.style.left = `${r.right - 28}px`;
-      iconBtn.style.top = `${r.top + (r.height - 22) / 2}px`;
-      iconHost.style.display = "block";
-    }
-
-    function hideIcon() {
-      iconHost.style.display = "none";
-      activeInput = null;
-    }
-
-    iconBtn.addEventListener("mousedown", (e) => e.preventDefault());
-    iconBtn.addEventListener("click", () => {
-      if (!activeForm) return;
-      if (matches.length === 1) {
-        void fillWithMatch(activeForm, matches[0]!);
-        hideIcon();
-      } else if (matches.length > 1) {
-        showPicker();
+      for (const form of findLoginForms()) {
+        const { usernameInput, passwordInput } = extractCredentialInputs(form);
+        if (usernameInput) {
+          decorateField(usernameInput);
+          // Suppress the browser's native autofill-history dropdown on the
+          // email/username field so it doesn't compete with our picker. The
+          // password field is left untouched so new-password detection still
+          // sees its autocomplete hint.
+          usernameInput.autocomplete = "off";
+        }
+        if (passwordInput) decorateField(passwordInput);
       }
-    });
+      repositionFieldIcons();
+    }
 
+    function openPicker(input: HTMLInputElement) {
+      const form = input.closest("form") as HTMLFormElement | null;
+      if (!form || matches.length === 0) return;
+      activeForm = form;
+      activeInput = input;
+      showPicker();
+    }
+
+    // Open the picker as soon as a decorated field gains focus.
     document.addEventListener(
       "focusin",
       (e) => {
-        const target = e.target as HTMLElement;
-        if (!settings.fieldIcon || matches.length === 0) return;
+        const target = e.target;
         if (!(target instanceof HTMLInputElement)) return;
-        const form = target.closest("form") as HTMLFormElement | null;
-        if (!form) return;
-        const { usernameInput, passwordInput } = extractCredentialInputs(form);
-        if (target !== usernameInput && target !== passwordInput) return;
-        activeForm = form;
-        activeInput = target;
-        positionIcon(target);
+        if (!fieldIcons.has(target)) return;
+        openPicker(target);
       },
       true,
     );
     document.addEventListener(
-      "focusout",
-      () =>
-        setTimeout(() => {
-          if (document.activeElement !== activeInput) hideIcon();
-        }, 150),
+      "keydown",
+      (e) => {
+        if (e.key === "Escape") removePicker();
+      },
       true,
     );
+    let repositionScheduled = false;
+    function scheduleReposition() {
+      if (repositionScheduled) return;
+      repositionScheduled = true;
+      requestAnimationFrame(() => {
+        repositionScheduled = false;
+        repositionFieldIcons();
+      });
+    }
+    // Scrolling moves the anchor, so close the (fixed-positioned) picker and
+    // keep the field icons glued to their inputs.
     window.addEventListener(
       "scroll",
-      () => activeInput && positionIcon(activeInput),
+      () => {
+        removePicker();
+        scheduleReposition();
+      },
       true,
     );
-    window.addEventListener("resize", () => activeInput && positionIcon(activeInput));
+    window.addEventListener("resize", () => {
+      removePicker();
+      scheduleReposition();
+    });
 
     // The current page's declared favicon (same-origin), used to label picker
     // rows. Falls back to the conventional /favicon.ico, then to a globe glyph
@@ -223,7 +287,6 @@ export default defineContentScript({
       // every row (same-origin lookup — no third-party favicon service, which
       // would leak the visited host).
       const faviconUrl = pageFaviconUrl();
-      const pageHost = window.location.hostname;
       for (const m of matches) {
         const row = document.createElement("button");
         row.type = "button";
@@ -247,12 +310,14 @@ export default defineContentScript({
         primary.textContent = m.username || m.name || "(no username)";
         primary.style.cssText =
           "font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-        const secondaryText =
-          m.username && m.name && m.name !== m.username ? m.name : pageHost;
+        // Mask the password like Google: a row of dots whose count matches the
+        // stored password length (the password itself is never sent here).
         const secondary = document.createElement("span");
-        secondary.textContent = secondaryText;
+        secondary.textContent = m.passwordLength
+          ? "•".repeat(m.passwordLength)
+          : m.name || "";
         secondary.style.cssText =
-          "font-size:11px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          "font-size:12px;letter-spacing:1px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:clip;";
         text.append(primary, secondary);
         row.append(icon, text);
 
@@ -264,7 +329,6 @@ export default defineContentScript({
         row.addEventListener("click", () => {
           void fillWithMatch(form, m);
           removePicker();
-          hideIcon();
         });
         menu.appendChild(row);
       }
@@ -273,7 +337,13 @@ export default defineContentScript({
       setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
     }
     function onDocClick(e: Event) {
-      if ((e.target as HTMLElement)?.id !== "vaultctl-picker-host") removePicker();
+      // Clicks land on the shadow host (event retargeting). Ignore our own
+      // picker and field-icon hosts so the icon's own handler can toggle and
+      // row clicks can fill before the picker is torn down.
+      const el = e.target as HTMLElement;
+      if (el?.id === "vaultctl-picker-host") return;
+      if (el?.classList?.contains("vaultctl-field-icon")) return;
+      removePicker();
     }
     function removePicker() {
       document.getElementById("vaultctl-picker-host")?.remove();
@@ -662,6 +732,7 @@ export default defineContentScript({
       }>({ type: "matchCredentials", origin: window.location.href });
       if (res?.settings) settings = res.settings;
       matches = res?.matches ?? [];
+      decorateLoginFields();
       if (settings.autofill && matches.length >= 1) {
         const forms = findLoginForms();
         if (forms[0]) void fillWithMatch(forms[0], matches[0]!);
@@ -687,12 +758,19 @@ export default defineContentScript({
     attachSubmitListeners();
     void refreshMatches();
 
-    const mutationObserver = new MutationObserver(() => attachSubmitListeners());
+    const mutationObserver = new MutationObserver(() => {
+      attachSubmitListeners();
+      decorateLoginFields();
+    });
     mutationObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
-    ctx.onInvalidated(() => mutationObserver.disconnect());
+    ctx.onInvalidated(() => {
+      mutationObserver.disconnect();
+      clearFieldIcons();
+      removePicker();
+    });
 
     if (findLoginForms().length > 0) {
       void bg({ type: "loginFormDetected", url: window.location.href });
