@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.9.0...v1.10.0) (2026-06-02)
+
+
+### Features
+
+* **extension:** google-style autofill picker — exact origin, persistent icon, masked password ([#175](https://github.com/vineethkrishnan/vaultctl/issues/175)) ([44e54b0](https://github.com/vineethkrishnan/vaultctl/commit/44e54b0f45feb656988088f52635f1aac97b699f))
+
 ## [1.9.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.8.0...v1.9.0) (2026-06-02)
 
 
