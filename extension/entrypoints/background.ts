@@ -30,7 +30,6 @@ import {
   unpad,
   AlgID,
 } from "@shared/crypto";
-import { getDomain } from "tldts";
 
 // ===========================================================================
 // Types
@@ -268,6 +267,16 @@ async function showCaptureNotification(url: string, username: string): Promise<v
 function safeHostname(url: string): string {
   try {
     return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+// Host including any non-default port (e.g. "locaboo.localhost:380"). Used for
+// matching so a different port or subdomain counts as a different site.
+function safeHost(url: string): string {
+  try {
+    return new URL(url).host;
   } catch {
     return url;
   }
@@ -550,7 +559,7 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
           username: String(data.username ?? ""),
           password: String(data.password ?? ""),
           uri,
-          host: safeHostname(uri),
+          host: safeHost(uri),
         });
       } catch {
         // skip items that fail to decrypt or parse
@@ -561,24 +570,17 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
   return entries;
 }
 
-// Two hosts belong to the same site when they share a registrable domain
-// (eTLD+1), the way Chrome/Google scope saved passwords: app.example.com,
-// example.com and login.example.com all match, but unrelated sites do not.
-// Hosts with no registrable domain (bare `localhost`, raw IPs) fall back to
-// an exact-hostname check so a dev item saved on `localhost` does not bleed
-// onto every `*.localhost` site.
+// A stored item matches only its exact origin host: the same hostname AND the
+// same port. A different port (locaboo.localhost:380) or a different subdomain
+// (booking.locaboo.localhost) is treated as a different site, so suggestions
+// stay scoped to the page the user is actually on.
 function hostMatches(a: string, b: string): boolean {
   if (!a || !b) return false;
-  const x = a.toLowerCase();
-  const y = b.toLowerCase();
-  if (x === y) return true;
-  const dx = getDomain(x);
-  const dy = getDomain(y);
-  return dx !== null && dx === dy;
+  return a.toLowerCase() === b.toLowerCase();
 }
 
 async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
-  const host = safeHostname(origin);
+  const host = safeHost(origin);
   return (await loadLoginEntries()).filter((e) => hostMatches(e.host, host));
 }
 
@@ -1062,12 +1064,14 @@ export default defineBackground(() => {
               sendResponse({
                 ok: true,
                 settings,
-                // Never ship passwords until an explicit fill is requested.
+                // Never ship the password itself until an explicit fill is
+                // requested — only its length, so the picker shows a dot mask.
                 matches: matches.map((m) => ({
                   vaultId: m.vaultId,
                   itemId: m.itemId,
                   name: m.name,
                   username: m.username,
+                  passwordLength: m.password.length,
                 })),
               });
               return;
