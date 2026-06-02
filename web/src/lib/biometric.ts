@@ -34,8 +34,39 @@ interface PrfOutputs {
 }
 
 const STORAGE_KEY = "vaultctl_biometric";
+const UNSUPPORTED_KEY = "vaultctl_biometric_unsupported";
 const HKDF_INFO = new TextEncoder().encode("vaultctl-biometric-wrap-v1");
 const decoder = new TextDecoder();
+
+/**
+ * Thrown when the platform authenticator exists but lacks the WebAuthn PRF
+ * extension (common on Android Chrome and older mobile browsers). PRF cannot
+ * be feature-detected without attempting enrollment, so the UI catches this to
+ * explain the limitation instead of surfacing a raw error.
+ */
+export class BiometricPrfUnsupportedError extends Error {
+  constructor() {
+    super("this device's biometric does not support PRF");
+    this.name = "BiometricPrfUnsupportedError";
+  }
+}
+
+/** Remember that this device/browser can't do PRF, so we stop offering it. */
+export function markBiometricUnsupported(): void {
+  try {
+    localStorage.setItem(UNSUPPORTED_KEY, "1");
+  } catch {
+    // ignore storage failures; worst case we offer enrollment again
+  }
+}
+
+export function isBiometricUnsupported(): boolean {
+  try {
+    return localStorage.getItem(UNSUPPORTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export interface BiometricKDF {
   salt: string;
@@ -157,7 +188,7 @@ export async function enrollBiometric(
 
   const prf = (created.getClientExtensionResults() as { prf?: PrfOutputs }).prf;
   if (!prf || prf.enabled === false) {
-    throw new Error("this device's biometric does not support PRF");
+    throw new BiometricPrfUnsupportedError();
   }
 
   const credentialId = new Uint8Array(created.rawId);

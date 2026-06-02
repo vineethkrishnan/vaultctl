@@ -8,8 +8,11 @@ import type { PreloginResponse } from "@/shared/types/api";
 import {
   isBiometricAvailable,
   isBiometricEnrolled,
+  isBiometricUnsupported,
+  markBiometricUnsupported,
   enrollBiometric,
   clearBiometric,
+  BiometricPrfUnsupportedError,
 } from "@/lib/biometric";
 
 /**
@@ -21,6 +24,7 @@ export function BiometricSetting() {
   const [available, setAvailable] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [unsupported, setUnsupported] = useState(false);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +33,7 @@ export function BiometricSetting() {
     void (async () => {
       setAvailable(await isBiometricAvailable());
       setEnrolled(isBiometricEnrolled());
+      setUnsupported(isBiometricUnsupported());
     })();
   }, []);
 
@@ -69,7 +74,13 @@ export function BiometricSetting() {
       setEnrolling(false);
       setEnrolled(true);
     } catch (err) {
-      if (err instanceof ApiRequestError && err.error.code === "INVALID_CREDENTIALS") {
+      if (err instanceof BiometricPrfUnsupportedError) {
+        markBiometricUnsupported();
+        setUnsupported(true);
+        setEnrolling(false);
+        setPassword("");
+        setError(null);
+      } else if (err instanceof ApiRequestError && err.error.code === "INVALID_CREDENTIALS") {
         setError("Incorrect master password");
       } else {
         setError(err instanceof Error ? err.message : "Could not enable Touch ID");
@@ -84,7 +95,7 @@ export function BiometricSetting() {
     setEnrolled(false);
   }
 
-  if (!available) return null;
+  if (!available && !unsupported) return null;
 
   return (
     <div className="space-y-2 border-t border-border pt-4">
@@ -102,7 +113,9 @@ export function BiometricSetting() {
           <span className="block text-xs text-muted-foreground">
             {enrolled
               ? "Used for unlock and identity confirmation on this device."
-              : "Skip the master password on this device after one verification."}
+              : unsupported
+                ? "This browser can't unlock with biometrics: its authenticator doesn't support the secure key (PRF) vaultctl needs. Unlock with your master password instead, or try a desktop browser."
+                : "Skip the master password on this device after one verification."}
           </span>
         </span>
         {enrolled ? (
@@ -112,6 +125,10 @@ export function BiometricSetting() {
           >
             Disable
           </button>
+        ) : unsupported ? (
+          <span className="shrink-0 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground/60">
+            Not available
+          </span>
         ) : (
           <button
             onClick={() => setEnrolling((v) => !v)}
@@ -122,7 +139,7 @@ export function BiometricSetting() {
         )}
       </div>
 
-      {enrolling && !enrolled && (
+      {enrolling && !enrolled && !unsupported && (
         <div className="space-y-2 pt-1">
           {error && (
             <div className="rounded-md bg-destructive/10 p-2 text-xs text-destructive">
