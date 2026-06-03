@@ -70,8 +70,10 @@ test.describe.serial("Import / Export / Restore", () => {
     // Wait for first vault landing
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    // Go to settings via the sidebar
-    await page.getByRole("link", { name: "Settings" }).click();
+    // Open the profile menu (sidebar footer) and go to Settings. In-app
+    // navigation is required — a full reload would drop the in-memory auth.
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings/);
     await page.getByRole("button", { name: "Data" }).click();
 

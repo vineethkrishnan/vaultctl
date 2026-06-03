@@ -31,7 +31,8 @@ test.describe("Logout", () => {
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    await page.getByRole("button", { name: "Log Out" }).click();
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Log Out" }).click();
 
     await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
     expect(logoutCalled).toBe(true);

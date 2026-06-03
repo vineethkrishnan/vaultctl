@@ -5,6 +5,8 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
 import { VaultSidebar } from "@/components/vault/VaultSidebar";
 import { UpdateBanner } from "@/components/system/UpdateBanner";
+import { QuickActions } from "@/components/layout/QuickActions";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useCryptoWorker } from "@/hooks/use-crypto-worker";
 
@@ -55,6 +57,10 @@ export function AuthLayout() {
             <Menu className="h-5 w-5" />
           </button>
           <span className="text-base font-semibold tracking-tight">VaultCTL</span>
+          <div className="ml-auto flex items-center gap-0.5">
+            <QuickActions />
+            <ProfileMenu align="down" compact />
+          </div>
         </header>
 
         <main

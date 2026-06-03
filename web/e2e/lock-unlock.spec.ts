@@ -34,12 +34,14 @@ test.describe.serial("Lock / unlock", () => {
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    // Click the lock button in the sidebar footer.
-    await page.getByRole("button", { name: "Lock Vault" }).click();
+    // Click the lock button in the sidebar footer's quick-actions row.
+    await page.getByRole("button", { name: "Lock vault" }).click();
 
-    // The auth store flips isLocked=true. Trigger a navigation so the
+    // The auth store flips isLocked=true. Trigger an in-app navigation (a full
+    // reload would drop the in-memory auth and land on /login instead) so the
     // router re-evaluates beforeLoad and redirects to /lock.
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/lock/, { timeout: 10_000 });
     await expect(page.getByRole("heading", { name: "Vault Locked" })).toBeVisible();
   });
