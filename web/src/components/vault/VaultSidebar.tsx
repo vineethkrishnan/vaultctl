@@ -22,8 +22,10 @@ import {
   Sun,
   Moon,
   Settings,
+  Bell,
   X,
 } from "lucide-react";
+import { getNotifications } from "@/lib/system-api";
 
 const navLink =
   "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
@@ -42,6 +44,14 @@ export function VaultSidebar({ open = false, onClose }: Props) {
     queryKey: queryKeys.vaults.list(),
     queryFn: () => apiGet<VaultResponse[]>("/api/v1/vaults"),
   });
+
+  const { data: notifications } = useQuery({
+    queryKey: ["system", "notifications"],
+    queryFn: getNotifications,
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const unread = notifications?.unreadCount ?? 0;
 
   const activeVault = vaults?.find((v) => v.id === vaultId) ?? vaults?.[0];
 
@@ -155,6 +165,15 @@ export function VaultSidebar({ open = false, onClose }: Props) {
 
       {/* Footer actions */}
       <div className="space-y-0.5 border-t border-border px-3 py-3">
+        <Link to="/notifications" className={navLink}>
+          <Bell className="h-4 w-4" />
+          Notifications
+          {unread > 0 && (
+            <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none text-[#042f2a]">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </Link>
         <Link to="/settings" className={navLink}>
           <Settings className="h-4 w-4" />
           Settings

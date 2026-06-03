@@ -17,6 +17,7 @@ import { VaultItemsPage } from "./vault-items";
 import { VaultItemDetailPage } from "./vault-item-detail";
 import { VaultNewItemPage } from "./vault-new-item";
 import { SettingsPage } from "./settings";
+import { NotificationsPage } from "./notifications";
 import { AdminPage } from "./admin";
 import { VaultTrashPage } from "./vault-trash";
 
@@ -104,6 +105,13 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
+// Notifications route
+const notificationsRoute = createRoute({
+  getParentRoute: () => authLayout,
+  path: "/notifications",
+  component: NotificationsPage,
+});
+
 // Admin route
 const adminRoute = createRoute({
   getParentRoute: () => authLayout,
@@ -134,6 +142,7 @@ const routeTree = rootRoute.addChildren([
   lockRoute,
   authLayout.addChildren([
     settingsRoute,
+    notificationsRoute,
     adminRoute,
     vaultRoute.addChildren([
       vaultItemsRoute,
