@@ -14,6 +14,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
+	"github.com/vineethkrishnan/vaultctl/internal/application/notifications"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
 	dombackup "github.com/vineethkrishnan/vaultctl/internal/domain/backup"
@@ -24,6 +25,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	infracrypto "github.com/vineethkrishnan/vaultctl/internal/infrastructure/crypto"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/updatecheck"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
@@ -31,18 +33,19 @@ import (
 // adapters bundles every concrete adapter so main.go can wire handlers in
 // one shot.
 type adapters struct {
-	pool    *postgres.Pool
-	users   *postgres.UserRepo
-	sess    *postgres.SessionStore
-	vaults  *postgres.VaultRepo
-	items   *postgres.ItemRepo
-	folders *postgres.FolderRepo
-	apikeys *postgres.APIKeyRepo
-	invites *postgres.InviteRepo
-	orgs    *postgres.OrgRepo
-	audit   *postgres.AuditRepo
-	attach  *postgres.AttachmentRepo
-	blobs   ports.BlobStore // nil when the blob store is unavailable
+	pool       *postgres.Pool
+	users      *postgres.UserRepo
+	sess       *postgres.SessionStore
+	vaults     *postgres.VaultRepo
+	items      *postgres.ItemRepo
+	folders    *postgres.FolderRepo
+	apikeys    *postgres.APIKeyRepo
+	invites    *postgres.InviteRepo
+	orgs       *postgres.OrgRepo
+	audit      *postgres.AuditRepo
+	notifState *postgres.NotificationStateRepo
+	attach     *postgres.AttachmentRepo
+	blobs      ports.BlobStore // nil when the blob store is unavailable
 
 	backupDests     *postgres.BackupDestinationRepo // nil when backup sync is off
 	backupRuns      *postgres.BackupRunRepo
@@ -105,25 +108,26 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 	}
 
 	a := &adapters{
-		pool:    pool,
-		users:   &postgres.UserRepo{Pool: pool},
-		sess:    &postgres.SessionStore{Pool: pool},
-		vaults:  &postgres.VaultRepo{Pool: pool},
-		items:   &postgres.ItemRepo{Pool: pool},
-		folders: &postgres.FolderRepo{Pool: pool},
-		apikeys: &postgres.APIKeyRepo{Pool: pool},
-		invites: &postgres.InviteRepo{Pool: pool},
-		orgs:    &postgres.OrgRepo{Pool: pool},
-		audit:   &postgres.AuditRepo{Pool: pool},
-		attach:  &postgres.AttachmentRepo{Pool: pool},
-		hasher:  infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
-		hmac:    hmac,
-		jwt:     jwt,
-		tokens:  infraauth.NewTokenGenerator(),
-		totp:    infraauth.NewTOTPProvider(),
-		aead:    aead,
-		clock:   clock,
-		ids:     uuidGen{},
+		pool:       pool,
+		users:      &postgres.UserRepo{Pool: pool},
+		sess:       &postgres.SessionStore{Pool: pool},
+		vaults:     &postgres.VaultRepo{Pool: pool},
+		items:      &postgres.ItemRepo{Pool: pool},
+		folders:    &postgres.FolderRepo{Pool: pool},
+		apikeys:    &postgres.APIKeyRepo{Pool: pool},
+		invites:    &postgres.InviteRepo{Pool: pool},
+		orgs:       &postgres.OrgRepo{Pool: pool},
+		audit:      &postgres.AuditRepo{Pool: pool},
+		notifState: &postgres.NotificationStateRepo{Pool: pool},
+		attach:     &postgres.AttachmentRepo{Pool: pool},
+		hasher:     infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
+		hmac:       hmac,
+		jwt:        jwt,
+		tokens:     infraauth.NewTokenGenerator(),
+		totp:       infraauth.NewTOTPProvider(),
+		aead:       aead,
+		clock:      clock,
+		ids:        uuidGen{},
 		rateLimiter: middleware.NewRateLimiter(
 			clock, cfg.RateLimitRPM, time.Minute,
 			cfg.AuthRateLimitPerEmail, cfg.AuthRateLimitWindow,
@@ -412,16 +416,33 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		}
 	}
 
+	notificationHandlers := &api.NotificationHandlers{
+		Service: &notifications.Service{
+			Audit: a.audit,
+			State: a.notifState,
+			Clock: a.clock,
+		},
+	}
+	updateHandlers := &api.UpdateHandlers{Enabled: cfg.UpdateCheckEnabled}
+	if cfg.UpdateCheckEnabled {
+		updateHandlers.Checker = &updatecheck.Checker{
+			Repo: cfg.UpdateRepo,
+			TTL:  cfg.UpdateCheckInterval,
+		}
+	}
+
 	return api.Dependencies{
-		Tokens:     tokens,
-		Clock:      a.clock,
-		Auth:       authHandlers,
-		User:       userHandlers,
-		Vault:      vaultHandlers,
-		Attachment: attachmentHandlers,
-		APIKey:     apiKeyHandlers,
-		Invite:     inviteHandlers,
-		Org:        orgHandlers,
+		Tokens:       tokens,
+		Clock:        a.clock,
+		Auth:         authHandlers,
+		Update:       updateHandlers,
+		Notification: notificationHandlers,
+		User:         userHandlers,
+		Vault:        vaultHandlers,
+		Attachment:   attachmentHandlers,
+		APIKey:       apiKeyHandlers,
+		Invite:       inviteHandlers,
+		Org:          orgHandlers,
 		Admin: &api.AdminHandlers{
 			ListBackups: &auth.ListBackups{BackupDir: "/backups"},
 		},

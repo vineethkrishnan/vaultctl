@@ -171,6 +171,11 @@ type RecoveryRotateResponse struct {
 	OK bool `json:"ok"`
 }
 
+// OKResponse is a generic success acknowledgement.
+type OKResponse struct {
+	OK bool `json:"ok"`
+}
+
 // ===========================================================================
 // Import DTOs
 // ===========================================================================

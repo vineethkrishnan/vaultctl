@@ -1,6 +1,6 @@
 module github.com/vineethkrishnan/vaultctl
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/awnumar/memguard v0.23.0
