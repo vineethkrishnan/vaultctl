@@ -153,8 +153,13 @@ export function RecoveryKitSetting() {
       {newKey && (
         <div className="space-y-3 pt-1">
           <p className="text-xs text-muted-foreground">
-            Save this recovery key somewhere safe. It will not be shown again.
+            Save this recovery key somewhere safe and private. It will not be shown
+            again, and it replaces any earlier kit.
           </p>
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive">
+            If you lose this key <strong>and</strong> forget your master password, your
+            vault is lost for good &mdash; zero-knowledge means no one can recover it.
+          </div>
           <div className="rounded-md border border-border bg-card p-3 font-mono text-sm break-all select-all">
             {newKey}
           </div>
