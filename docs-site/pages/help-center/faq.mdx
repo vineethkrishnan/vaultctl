@@ -53,6 +53,18 @@ vaultctl server
 
 You will need to provide your own PostgreSQL instance and TLS termination (reverse proxy). The `--no-docker` installer prompts for the database connection.
 
+## The browser extension shows two password lists — why?
+
+If you see the vaultctl suggestion **and** a second dark "Manage passwords…" dropdown on the same field, the second one is **Chrome's own built-in password manager** showing logins you also saved in Chrome.
+
+That dropdown is part of the browser, not a web page, so it is painted on top of everything and **no extension can hide it** — `autocomplete="off"` (which vaultctl already sets) suppresses Chrome's address-autofill list but not its saved-password popup. To see only vaultctl:
+
+1. Open `chrome://settings/passwords` (Google Password Manager → Settings).
+2. Turn off **Offer to save passwords** and **Sign in automatically**.
+3. Delete the saved entries for the sites you keep in vaultctl (they're duplicated there anyway).
+
+After that, only the vaultctl suggestion appears. This is the same trade-off every browser password manager has with Chrome's built-in one.
+
 ## What happens if the server goes down?
 
 If the vaultctl server becomes unreachable:
