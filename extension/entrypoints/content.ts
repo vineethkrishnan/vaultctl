@@ -186,15 +186,19 @@ export default defineContentScript({
       }
       for (const form of findLoginForms()) {
         const { usernameInput, passwordInput } = extractCredentialInputs(form);
+        // Suppress the browser's native autofill / saved-password dropdown on
+        // both fields so it doesn't render on top of our picker. We only reach
+        // here when there's a stored match (a sign-in), so turning off the
+        // password field's autocomplete can't clobber new-password detection
+        // (that path runs only when there are no matches).
         if (usernameInput) {
           decorateField(usernameInput);
-          // Suppress the browser's native autofill-history dropdown on the
-          // email/username field so it doesn't compete with our picker. The
-          // password field is left untouched so new-password detection still
-          // sees its autocomplete hint.
           usernameInput.autocomplete = "off";
         }
-        if (passwordInput) decorateField(passwordInput);
+        if (passwordInput) {
+          decorateField(passwordInput);
+          passwordInput.autocomplete = "off";
+        }
       }
       repositionFieldIcons();
     }
@@ -339,8 +343,12 @@ export default defineContentScript({
     function onDocClick(e: Event) {
       // Clicks land on the shadow host (event retargeting). Ignore our own
       // picker and field-icon hosts so the icon's own handler can toggle and
-      // row clicks can fill before the picker is torn down.
+      // row clicks can fill before the picker is torn down. Also ignore the
+      // anchor field itself: the very click that focuses it (opening the
+      // picker) would otherwise be treated as an outside click and close it
+      // again immediately.
       const el = e.target as HTMLElement;
+      if (el === activeInput) return;
       if (el?.id === "vaultctl-picker-host") return;
       if (el?.classList?.contains("vaultctl-field-icon")) return;
       removePicker();
