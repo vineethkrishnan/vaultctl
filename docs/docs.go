@@ -885,6 +885,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the caller's recent activity feed (derived from the audit log) and the unread count.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "List notifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.NotificationsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/clear": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Clear notifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.OKResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Mark notifications read",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.OKResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/orgs": {
             "post": {
                 "security": [
@@ -1337,6 +1410,31 @@ const docTemplate = `{
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/updates": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reports the running version and, when update checking is enabled, the latest GitHub release and whether an update is available.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Update check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.UpdateStatusResponse"
                         }
                     }
                 }
@@ -2997,6 +3095,51 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_presenters_api.NotificationDTO": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "read": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.NotificationsResponse": {
+            "type": "object",
+            "properties": {
+                "notifications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.NotificationDTO"
+                    }
+                },
+                "unreadCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_presenters_api.OKResponse": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_presenters_api.OrgMemberResponse": {
             "type": "object",
             "properties": {
@@ -3466,6 +3609,36 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.UpdateStatusResponse": {
+            "type": "object",
+            "properties": {
+                "currentVersion": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "latestVersion": {
+                    "type": "string"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "releaseNotes": {
+                    "type": "string"
+                },
+                "releaseUrl": {
+                    "type": "string"
+                },
+                "severity": {
+                    "description": "major | minor | patch | none",
+                    "type": "string"
+                },
+                "updateAvailable": {
+                    "type": "boolean"
                 }
             }
         },

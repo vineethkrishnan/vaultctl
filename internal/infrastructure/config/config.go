@@ -89,6 +89,16 @@ type Config struct {
 	CORSAllowedOrigins []string      `env:"VAULTCTL_CORS_ALLOWED_ORIGINS" envSeparator:","`
 
 	// ===========================================================================
+	// Update check
+	// ===========================================================================
+	// When enabled, the server periodically queries the GitHub Releases API of
+	// UpdateRepo (one outbound call per cache window, server-side only — clients
+	// never phone home) and exposes the result via GET /api/v1/updates.
+	UpdateCheckEnabled  bool          `env:"VAULTCTL_UPDATE_CHECK_ENABLED" envDefault:"true"`
+	UpdateRepo          string        `env:"VAULTCTL_UPDATE_REPO" envDefault:"vineethkrishnan/vaultctl"`
+	UpdateCheckInterval time.Duration `env:"VAULTCTL_UPDATE_CHECK_INTERVAL" envDefault:"6h"`
+
+	// ===========================================================================
 	// Retention
 	// ===========================================================================
 	TrashRetentionDays  int `env:"VAULTCTL_TRASH_RETENTION_DAYS" envDefault:"30"`

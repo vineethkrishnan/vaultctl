@@ -38,6 +38,8 @@ type Dependencies struct {
 	Import             *ImportHandlers
 	Backup             *BackupHandlers
 	BackupOAuth        *BackupOAuthHandlers
+	Update             *UpdateHandlers
+	Notification       *NotificationHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	TrustedProxies     []*net.IPNet
@@ -126,6 +128,16 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			// Recovery-kit (re)generation (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/recovery/rotate", deps.Auth.HandleRotateRecoveryKey)
+
+			// Update check + in-app notification feed
+			if deps.Update != nil {
+				r.Get("/updates", deps.Update.HandleGetUpdates)
+			}
+			if deps.Notification != nil {
+				r.Get("/notifications", deps.Notification.HandleList)
+				r.Post("/notifications/read", deps.Notification.HandleMarkRead)
+				r.Post("/notifications/clear", deps.Notification.HandleClear)
+			}
 
 			// API keys (PRD §10.5)
 			r.Post("/users/me/api-keys", deps.APIKey.HandleCreateAPIKey)

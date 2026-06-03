@@ -65,6 +65,9 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	deps.Version = cli.Version
 	deps.Commit = cli.Commit
 	deps.GoVersion = runtime.Version()
+	if deps.Update != nil {
+		deps.Update.CurrentVersion = cli.Version
+	}
 
 	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
 	if adapters.backupRun != nil {
