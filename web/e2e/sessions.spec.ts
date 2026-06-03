@@ -115,7 +115,8 @@ test.describe.serial("Sessions — UI", () => {
     await page.getByRole("button", { name: "Unlock" }).click();
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByRole("menuitem", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/settings/);
     await page.getByRole("button", { name: "Sessions" }).click();
 

@@ -4,28 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { apiGet } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { useAuthStore } from "@/lib/auth-store";
-import { lock as lockKeys, terminate as terminateWorker } from "@/lib/key-holder";
-import { postAuthLogout } from "@/api/auth/auth";
 import type { VaultResponse } from "@/shared/types/api";
 import { FolderList } from "@/components/vault/FolderList";
 import { BrandMark } from "@/components/BrandMark";
-import { useTheme } from "@/hooks/use-theme";
-import {
-  KeyRound,
-  Star,
-  Trash2,
-  FolderClosed,
-  Lock,
-  LogOut,
-  Plus,
-  Sun,
-  Moon,
-  Settings,
-  Bell,
-  X,
-} from "lucide-react";
-import { getNotifications } from "@/lib/system-api";
+import { QuickActions } from "@/components/layout/QuickActions";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
+import { KeyRound, Star, Trash2, FolderClosed, Plus, X } from "lucide-react";
 
 const navLink =
   "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
@@ -37,43 +21,13 @@ interface Props {
 
 export function VaultSidebar({ open = false, onClose }: Props) {
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
-  const logout = useAuthStore((s) => s.logout);
-  const { theme, toggleTheme } = useTheme();
 
   const { data: vaults } = useQuery({
     queryKey: queryKeys.vaults.list(),
     queryFn: () => apiGet<VaultResponse[]>("/api/v1/vaults"),
   });
 
-  const { data: notifications } = useQuery({
-    queryKey: ["system", "notifications"],
-    queryFn: getNotifications,
-    staleTime: 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
-  });
-  const unread = notifications?.unreadCount ?? 0;
-
   const activeVault = vaults?.find((v) => v.id === vaultId) ?? vaults?.[0];
-
-  function handleLock() {
-    lockKeys();
-    useAuthStore.getState().lock();
-  }
-
-  async function handleLogout() {
-    const { refreshToken } = useAuthStore.getState();
-    try {
-      if (refreshToken) await postAuthLogout({ refreshToken });
-    } catch {
-      // Best effort: revoke server-side, but always tear down locally.
-    }
-    terminateWorker();
-    logout();
-    // Full document navigation wipes the in-memory query cache (which holds
-    // decrypted item data) and guarantees the redirect, which an in-app
-    // navigate would not since route guards only run on navigation.
-    window.location.assign("/login");
-  }
 
   return (
     <aside
@@ -163,36 +117,12 @@ export function VaultSidebar({ open = false, onClose }: Props) {
         </nav>
       )}
 
-      {/* Footer actions */}
-      <div className="space-y-0.5 border-t border-border px-3 py-3">
-        <Link to="/notifications" className={navLink}>
-          <Bell className="h-4 w-4" />
-          Notifications
-          {unread > 0 && (
-            <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none text-[#042f2a]">
-              {unread > 99 ? "99+" : unread}
-            </span>
-          )}
-        </Link>
-        <Link to="/settings" className={navLink}>
-          <Settings className="h-4 w-4" />
-          Settings
-        </Link>
-        <button onClick={toggleTheme} className={`${navLink} w-full`}>
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          {theme === "dark" ? "Light Mode" : "Dark Mode"}
-        </button>
-        <button onClick={handleLock} className={`${navLink} w-full`}>
-          <Lock className="h-4 w-4" />
-          Lock Vault
-        </button>
-        <button
-          onClick={handleLogout}
-          className="row-interactive flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:translate-x-0.5"
-        >
-          <LogOut className="h-4 w-4" />
-          Log Out
-        </button>
+      {/* Footer: quick actions + profile menu (Settings / Log Out) */}
+      <div className="space-y-1.5 border-t border-border px-3 py-3">
+        <div className="flex justify-center">
+          <QuickActions onNavigate={onClose} />
+        </div>
+        <ProfileMenu align="up" onNavigate={onClose} />
       </div>
     </aside>
   );
