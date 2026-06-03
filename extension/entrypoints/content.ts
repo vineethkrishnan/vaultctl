@@ -68,26 +68,46 @@ export default defineContentScript({
       ) as HTMLFormElement[];
     }
 
+    // A one-time-code / 2FA field (e.g. Teleport's "Authenticator Code") must
+    // never be treated as the username, or we fill it with the username and
+    // pin the icon to the wrong field.
+    function isOneTimeCodeField(input: HTMLInputElement): boolean {
+      const hay = `${input.name} ${input.id} ${input.autocomplete} ${
+        input.getAttribute("aria-label") ?? ""
+      } ${input.placeholder ?? ""}`.toLowerCase();
+      return /otp|one[\s-]?time|2fa|two[\s-]?factor|\bmfa\b|\btoken\b|\bcode\b|authenticat|totp|passcode|verif/.test(
+        hay,
+      );
+    }
+
+    function isUsernameCandidate(input: HTMLInputElement): boolean {
+      if (input.type !== "text" && input.type !== "email" && input.type !== "tel") {
+        return false;
+      }
+      return !isOneTimeCodeField(input);
+    }
+
     function extractCredentialInputs(form: HTMLFormElement): {
       usernameInput: HTMLInputElement | null;
       passwordInput: HTMLInputElement | null;
     } {
+      const inputs = [...form.querySelectorAll("input")] as HTMLInputElement[];
+      const passwordInput = inputs.find((i) => i.type === "password") ?? null;
       let usernameInput: HTMLInputElement | null = null;
-      let passwordInput: HTMLInputElement | null = null;
-      for (const input of form.querySelectorAll("input")) {
-        if (
-          input.type === "text" ||
-          input.type === "email" ||
-          input.autocomplete === "username" ||
-          input.name?.includes("user") ||
-          input.name?.includes("email") ||
-          input.id?.includes("user") ||
-          input.id?.includes("email")
-        ) {
-          usernameInput = input;
+      // The username is almost always the field immediately before the
+      // password — search backwards from it, skipping 2FA/OTP fields.
+      if (passwordInput) {
+        const pwIndex = inputs.indexOf(passwordInput);
+        for (let i = pwIndex - 1; i >= 0; i--) {
+          if (isUsernameCandidate(inputs[i]!)) {
+            usernameInput = inputs[i]!;
+            break;
+          }
         }
-        if (input.type === "password") passwordInput = input;
       }
+      // Fallback (e.g. a username-only first step with no password yet): the
+      // first username-ish field anywhere in the form.
+      if (!usernameInput) usernameInput = inputs.find(isUsernameCandidate) ?? null;
       return { usernameInput, passwordInput };
     }
 
