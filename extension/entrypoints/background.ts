@@ -584,6 +584,31 @@ async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
   return (await loadLoginEntries()).filter((e) => hostMatches(e.host, host));
 }
 
+// ===========================================================================
+// Update check — compares THIS extension's version against the latest release
+// the server reports (GET /api/v1/updates), so "update available" reflects the
+// installed extension, not the server.
+// ===========================================================================
+
+function parseSemver(v: string): [number, number, number] | null {
+  const core = v.replace(/^v/, "").split(/[-+]/)[0] ?? "";
+  const parts = core.split(".").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+  return [parts[0]!, parts[1]!, parts[2]!];
+}
+
+function semverSeverity(current: string, latest: string): string {
+  const c = parseSemver(current);
+  const l = parseSemver(latest);
+  if (!c || !l) return "";
+  if (l[0] > c[0]) return "major";
+  if (l[0] < c[0]) return "none";
+  if (l[1] > c[1]) return "minor";
+  if (l[1] < c[1]) return "none";
+  if (l[2] > c[2]) return "patch";
+  return "none";
+}
+
 interface SaveDecision {
   action: "none" | "add" | "update";
   vaultId?: string;
@@ -736,6 +761,27 @@ export default defineBackground(() => {
     rehydrateCaptures(),
     rehydratePendingUsernames(),
   ]);
+
+  // After the browser auto-updates the extension, remember the new version so
+  // the popup can show a one-time "what's new", and surface a desktop alert.
+  browser.runtime.onInstalled.addListener((details) => {
+    if (details.reason !== "update") return;
+    const version = browser.runtime.getManifest().version;
+    void browser.storage.local.set({ vaultctl_whatsnew_version: version });
+    try {
+      const iconUrl = (browser.runtime.getURL as (p: string) => string)(
+        "/icon/icon-128.png",
+      );
+      void browser.notifications?.create?.(`vaultctl-update-${version}`, {
+        type: "basic",
+        iconUrl,
+        title: "vaultctl updated",
+        message: `Updated to v${version}. Open vaultctl to see what's new.`,
+      });
+    } catch {
+      // notifications are best-effort
+    }
+  });
 
   browser.runtime.onMessage.addListener(
     (
@@ -1074,6 +1120,50 @@ export default defineBackground(() => {
                   passwordLength: m.password.length,
                 })),
               });
+              return;
+            }
+
+            case "checkUpdate": {
+              const currentVersion = browser.runtime.getManifest().version;
+              const fail = () =>
+                sendResponse({
+                  ok: true,
+                  enabled: false,
+                  currentVersion,
+                  updateAvailable: false,
+                });
+              if (!unlocked) {
+                fail();
+                return;
+              }
+              try {
+                const res = await apiFetch("/api/v1/updates", { method: "GET" });
+                if (!res.ok) {
+                  fail();
+                  return;
+                }
+                const data = (await res.json()) as {
+                  enabled?: boolean;
+                  latestVersion?: string;
+                  releaseNotes?: string;
+                  releaseUrl?: string;
+                };
+                const latestVersion = data.latestVersion ?? "";
+                const severity = semverSeverity(currentVersion, latestVersion);
+                sendResponse({
+                  ok: true,
+                  enabled: !!data.enabled,
+                  currentVersion,
+                  latestVersion,
+                  severity,
+                  updateAvailable:
+                    severity === "major" || severity === "minor" || severity === "patch",
+                  releaseNotes: data.releaseNotes ?? "",
+                  releaseUrl: data.releaseUrl ?? "",
+                });
+              } catch {
+                fail();
+              }
               return;
             }
 
