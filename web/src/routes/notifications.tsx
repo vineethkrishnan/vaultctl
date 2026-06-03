@@ -7,6 +7,7 @@ import {
   markNotificationsRead,
   clearNotifications,
   type NotificationCategory,
+  type NotificationItem,
 } from "@/lib/system-api";
 
 const categoryIcon: Record<NotificationCategory, typeof Shield> = {
@@ -16,18 +17,41 @@ const categoryIcon: Record<NotificationCategory, typeof Shield> = {
   backup: Database,
 };
 
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  const diff = Date.now() - then;
-  if (Number.isNaN(then)) return "";
-  const min = Math.round(diff / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const day = Math.round(hr / 24);
-  if (day < 30) return `${day}d ago`;
-  return new Date(iso).toLocaleDateString();
+function startOfDay(t: number): number {
+  const d = new Date(t);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+// dayLabel buckets a timestamp into Today / Yesterday / weekday / date, used
+// for the grouped section headers.
+function dayLabel(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "Earlier";
+  const diff = Math.round((startOfDay(Date.now()) - startOfDay(t)) / 86_400_000);
+  if (diff <= 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff < 7) return new Date(iso).toLocaleDateString(undefined, { weekday: "long" });
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function clockTime(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// groupByDay keeps the server's newest-first order and collapses runs of the
+// same day into one section.
+function groupByDay(items: NotificationItem[]) {
+  const groups: { label: string; items: NotificationItem[] }[] = [];
+  for (const n of items) {
+    const label = dayLabel(n.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(n);
+    else groups.push({ label, items: [n] });
+  }
+  return groups;
 }
 
 export function NotificationsPage() {
@@ -45,72 +69,92 @@ export function NotificationsPage() {
   const clearAll = useMutation({ mutationFn: clearNotifications, onSuccess: invalidate });
 
   const items = data?.notifications ?? [];
+  const groups = groupByDay(items);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-4 sm:space-y-5">
+      {/* Title */}
       <div className="flex items-center gap-3">
-        <Bell className="h-6 w-6 text-muted-foreground" />
+        <Bell className="h-6 w-6 shrink-0 text-muted-foreground" />
         <h1 className="text-xl font-bold">Notifications</h1>
         {data && data.unreadCount > 0 && (
           <span className="rounded-full bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">
-            {data.unreadCount} unread
+            {data.unreadCount}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
+      </div>
+
+      {/* Actions: full-width split on mobile, compact + right-aligned on desktop */}
+      {items.length > 0 && (
+        <div className="flex gap-2 sm:justify-end">
           <button
             onClick={() => markRead.mutate()}
-            disabled={markRead.isPending || items.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+            disabled={markRead.isPending || data?.unreadCount === 0}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 sm:flex-none sm:py-1.5"
           >
             <CheckCheck className="h-4 w-4" /> Mark all read
           </button>
           <button
             onClick={() => clearAll.mutate()}
-            disabled={clearAll.isPending || items.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-destructive disabled:opacity-50"
+            disabled={clearAll.isPending}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2.5 text-sm text-muted-foreground hover:text-destructive disabled:opacity-50 sm:flex-none sm:py-1.5"
           >
             <Trash2 className="h-4 w-4" /> Clear all
           </button>
         </div>
-      </div>
+      )}
 
-      <section className="rounded-lg border border-border">
-        {isLoading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : items.length === 0 ? (
-          <div className="p-10 text-center text-sm text-muted-foreground">
-            You're all caught up — no recent activity.
-          </div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {items.map((n) => {
-              const Icon = categoryIcon[n.category] ?? Bell;
-              return (
-                <li
-                  key={n.id}
-                  className={`flex items-start gap-3 px-4 py-3 ${n.read ? "" : "bg-brand/5"}`}
-                >
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/60">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{n.title}</span>
-                      {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-                    </div>
-                    <span className="text-xs capitalize text-muted-foreground">
-                      {n.category}
-                    </span>
-                  </div>
-                  <time className="shrink-0 text-xs text-muted-foreground" dateTime={n.createdAt}>
-                    {relativeTime(n.createdAt)}
-                  </time>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      {isLoading ? (
+        <div className="rounded-lg border border-border p-8 text-center text-sm text-muted-foreground">
+          Loading…
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">
+          You're all caught up — no recent activity.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <section key={group.label}>
+              <h2 className="px-1 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </h2>
+              <ul className="overflow-hidden rounded-lg border border-border divide-y divide-border">
+                {group.items.map((n) => {
+                  const Icon = categoryIcon[n.category] ?? Bell;
+                  return (
+                    <li
+                      key={n.id}
+                      className={`flex items-start gap-3 px-4 py-3.5 ${n.read ? "" : "bg-brand/5"}`}
+                    >
+                      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/60">
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm font-medium leading-snug">{n.title}</span>
+                          {!n.read && (
+                            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                          )}
+                        </div>
+                        <span className="text-xs capitalize text-muted-foreground">
+                          {n.category}
+                        </span>
+                      </div>
+                      <time
+                        className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground"
+                        dateTime={n.createdAt}
+                      >
+                        {clockTime(n.createdAt)}
+                      </time>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
