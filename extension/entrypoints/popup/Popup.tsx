@@ -1551,7 +1551,144 @@ function SettingsTab({
         <Lock className="h-4 w-4 text-muted-foreground" />
         Lock vault
       </button>
+      <UpdateCard />
       <AboutCard />
+    </div>
+  );
+}
+
+interface UpdateInfo {
+  ok: boolean;
+  enabled: boolean;
+  currentVersion: string;
+  latestVersion?: string;
+  severity?: string;
+  updateAvailable: boolean;
+  releaseNotes?: string;
+  releaseUrl?: string;
+}
+
+const WHATSNEW_KEY = "vaultctl_whatsnew_version";
+
+// UpdateCard: checks the connected server for the latest release, compares it
+// to this extension's version, and shows a one-time "what's new" after the
+// browser auto-updates the extension (recorded by background onInstalled).
+function UpdateCard() {
+  const current = browser.runtime.getManifest().version;
+  const [info, setInfo] = useState<UpdateInfo | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [whatsNew, setWhatsNew] = useState<string | null>(null);
+
+  const check = useCallback(async () => {
+    setChecking(true);
+    try {
+      const res = await bg<UpdateInfo>({ type: "checkUpdate" });
+      if (res?.ok) setInfo(res);
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void check();
+    void browser.storage.local.get(WHATSNEW_KEY).then((stored) => {
+      const v = stored[WHATSNEW_KEY] as string | undefined;
+      if (v && v === current) setWhatsNew(v);
+    });
+  }, [check, current]);
+
+  function dismissWhatsNew() {
+    setWhatsNew(null);
+    void browser.storage.local.remove(WHATSNEW_KEY);
+  }
+
+  const notes = info?.releaseNotes?.trim();
+
+  return (
+    <div className="space-y-2.5 rounded-lg border border-border bg-card/50 p-3">
+      {whatsNew && (
+        <div className="rounded-md border border-brand/30 bg-brand/10 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-brand">
+              Updated to v{whatsNew}
+            </span>
+            <button
+              onClick={dismissWhatsNew}
+              aria-label="Dismiss"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {notes && (
+            <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-line text-[11px] text-muted-foreground">
+              {notes}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium">Updates</span>
+        <button
+          onClick={() => void check()}
+          disabled={checking}
+          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${checking ? "animate-spin" : ""}`} />
+          Check
+        </button>
+      </div>
+
+      {info && !info.enabled && (
+        <p className="text-[11px] text-muted-foreground">
+          Update checking is off on this server.
+        </p>
+      )}
+
+      {info && info.enabled && !info.updateAvailable && (
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Check className="h-3 w-3 text-brand" /> You're on the latest version (v
+          {current}).
+        </p>
+      )}
+
+      {info && info.updateAvailable && (
+        <div className="space-y-1.5">
+          <p className="text-[11px]">
+            <span className="font-medium text-brand">v{info.latestVersion}</span> is
+            available
+            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""} — you're
+            on v{current}. Your browser updates the extension automatically.
+          </p>
+          <div className="flex items-center gap-2">
+            {notes && (
+              <button
+                onClick={() => setShowNotes((v) => !v)}
+                className="text-[11px] text-brand hover:underline"
+              >
+                {showNotes ? "Hide" : "What's new"}
+              </button>
+            )}
+            {info.releaseUrl && (
+              <a
+                href={info.releaseUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                Release <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+          {showNotes && notes && (
+            <p className="max-h-32 overflow-y-auto whitespace-pre-line rounded-md border border-border bg-background/50 p-2 text-[11px] text-muted-foreground">
+              {notes}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
