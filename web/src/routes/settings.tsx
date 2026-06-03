@@ -13,6 +13,7 @@ import { BackupSyncPanel } from "@/components/settings/BackupSyncPanel";
 import { BiometricSetting } from "@/components/settings/BiometricSetting";
 import { RecoveryKitSetting } from "@/components/settings/RecoveryKitSetting";
 import { AboutPanel } from "@/components/settings/AboutPanel";
+import { UpdatePanel } from "@/components/settings/UpdatePanel";
 import {
   Settings,
   Shield,
@@ -236,7 +237,18 @@ export function SettingsPage() {
           </>
         )}
 
-        {tab === "about" && <AboutPanel />}
+        {tab === "about" && (
+          <div className="space-y-6">
+            <AboutPanel />
+            <section className="rounded-lg border border-border p-4">
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                <h2 className="font-semibold">Updates</h2>
+              </div>
+              <UpdatePanel />
+            </section>
+          </div>
+        )}
       </div>
     </div>
   );

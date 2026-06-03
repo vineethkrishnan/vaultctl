@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
 import { VaultSidebar } from "@/components/vault/VaultSidebar";
+import { UpdateBanner } from "@/components/system/UpdateBanner";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useCryptoWorker } from "@/hooks/use-crypto-worker";
 
@@ -61,6 +62,7 @@ export function AuthLayout() {
           className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8"
           role="main"
         >
+          <UpdateBanner />
           <div key={pathname} className="animate-fade-up">
             <Outlet />
           </div>

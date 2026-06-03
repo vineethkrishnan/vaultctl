@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowUpCircle, X } from "lucide-react";
+import {
+  getUpdateStatus,
+  getNotifyLevel,
+  severityPassesLevel,
+  snoozeUpdate,
+  isUpdateSnoozed,
+  getLastSeenVersion,
+  setLastSeenVersion,
+} from "@/lib/system-api";
+import { WhatsNewModal } from "@/components/system/WhatsNewModal";
+
+function parseable(v?: string): boolean {
+  return !!v && /^\d+\.\d+\.\d+$/.test(v.replace(/^v/, ""));
+}
+
+export function UpdateBanner() {
+  const { data } = useQuery({
+    queryKey: ["system", "updates"],
+    queryFn: getUpdateStatus,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+  const [dismissed, setDismissed] = useState(false);
+  const [modal, setModal] = useState<"available" | "whatsnew" | null>(null);
+
+  // Post-update "what's new": when the running version has changed since the
+  // last one this device saw, show the notes once. First-ever load just records
+  // the version silently.
+  useEffect(() => {
+    if (!data || !parseable(data.currentVersion)) return;
+    const lastSeen = getLastSeenVersion();
+    if (lastSeen && lastSeen !== data.currentVersion) {
+      setModal("whatsnew");
+    }
+    if (lastSeen !== data.currentVersion) {
+      setLastSeenVersion(data.currentVersion);
+    }
+  }, [data]);
+
+  const showBanner =
+    !!data &&
+    data.updateAvailable &&
+    !dismissed &&
+    !isUpdateSnoozed() &&
+    severityPassesLevel(data.severity, getNotifyLevel());
+
+  return (
+    <>
+      {showBanner && data && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-brand/30 bg-brand/10 px-4 py-2.5 text-sm">
+          <ArrowUpCircle className="h-4 w-4 shrink-0 text-brand" />
+          <span className="min-w-0">
+            vaultctl <strong>v{data.latestVersion}</strong> is available
+            {data.severity && data.severity !== "none" ? ` (${data.severity})` : ""}.
+            You're on v{data.currentVersion}.
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setModal("available")}
+              className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-[#042f2a] hover:bg-brand/90"
+            >
+              What's new
+            </button>
+            <button
+              onClick={() => {
+                snoozeUpdate(24);
+                setDismissed(true);
+              }}
+              className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Remind me later
+            </button>
+            <button
+              onClick={() => setDismissed(true)}
+              aria-label="Dismiss"
+              className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {modal && data && (
+        <WhatsNewModal
+          mode={modal}
+          version={modal === "available" ? data.latestVersion : data.currentVersion}
+          notes={data.releaseNotes}
+          releaseUrl={data.releaseUrl}
+          onClose={() => setModal(null)}
+          onRemindLater={() => {
+            snoozeUpdate(24);
+            setDismissed(true);
+            setModal(null);
+          }}
+        />
+      )}
+    </>
+  );
+}
