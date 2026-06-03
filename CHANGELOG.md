@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.11.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.10.0...v1.11.0) (2026-06-03)
+
+
+### Features
+
+* **extension:** update check, what's-new, and version sync ([#182](https://github.com/vineethkrishnan/vaultctl/issues/182)) ([619009b](https://github.com/vineethkrishnan/vaultctl/commit/619009be59ccf1ef1c517da005f2bd8431713b79))
+* **server:** update-check and audit-backed notification api ([#178](https://github.com/vineethkrishnan/vaultctl/issues/178)) ([c4c02bb](https://github.com/vineethkrishnan/vaultctl/commit/c4c02bbcc053e6c1607ac61891760df2930ea3b5))
+* **web:** update banner, what's-new, and notification centre ([#179](https://github.com/vineethkrishnan/vaultctl/issues/179)) ([e705b7c](https://github.com/vineethkrishnan/vaultctl/commit/e705b7ce81de65faa3536dd62f9c100c2bbedae5))
+
+
+### Bug Fixes
+
+* **extension:** keep the autofill picker open on focus and suppress native dropdown on both fields ([#177](https://github.com/vineethkrishnan/vaultctl/issues/177)) ([162cb49](https://github.com/vineethkrishnan/vaultctl/commit/162cb49a616cbfbc336efb6b98f117760bef90cd))
+
+
+### CI/CD
+
+* bump go to 1.26.4 for the net/textproto and crypto/x509 fixes ([#180](https://github.com/vineethkrishnan/vaultctl/issues/180)) ([0e8b980](https://github.com/vineethkrishnan/vaultctl/commit/0e8b9802a91a9a885e28cafdd3d790aa21015309))
+
 ## [1.10.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.9.0...v1.10.0) (2026-06-02)
 
 
