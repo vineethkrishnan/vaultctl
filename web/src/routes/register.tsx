@@ -212,10 +212,16 @@ export function RegisterPage() {
           <div className="space-y-2">
             <h1 className="text-2xl font-bold">Recovery Kit</h1>
             <p className="text-sm text-muted-foreground">
-              Save this recovery key somewhere safe. It&apos;s the only way to
-              recover your vault if you forget your master password. This will
+              Save this recovery key somewhere safe and private. With it you can
+              reset your master password and keep all your vault data. It will
               not be shown again.
             </p>
+          </div>
+
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            If you lose this key <strong>and</strong> forget your master password,
+            your vault is gone for good. vaultctl is zero-knowledge &mdash; no one,
+            not even an administrator, can recover it. There is no other way back in.
           </div>
 
           <div className="rounded-md border border-border bg-card p-4 font-mono text-sm break-all select-all">

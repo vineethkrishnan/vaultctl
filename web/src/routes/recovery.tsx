@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
-import { apiPost, ApiRequestError } from "@/lib/api-client";
+import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
 import { initKeys } from "@/lib/key-holder";
 import {
   deriveKeys,
@@ -44,12 +44,13 @@ export function RecoveryPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
-  const [step, setStep] = useState<"email" | "reset">("email");
+  const [step, setStep] = useState<"email" | "reset" | "nokit">("email");
   const [email, setEmail] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [material, setMaterial] = useState<RecoveryVerifyResponse | null>(null);
+  const [hint, setHint] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -63,9 +64,18 @@ export function RecoveryPage() {
         { email },
       );
       if (!res.recoveryWrappedPrivateKey || !res.recoveryWrappedIdentityPrivateKey) {
-        setError(
-          "No recovery kit is on file for this account. Sign in and generate one from Settings, then try again.",
-        );
+        // No recovery kit was ever stored for this account, so the kit can't
+        // help here. Surface the password hint (if any) to jog their memory
+        // instead of sending them in a circle.
+        try {
+          const h = await apiGet<{ hint: string }>(
+            `/api/v1/auth/password/hint?email=${encodeURIComponent(email)}`,
+          );
+          setHint(h.hint ?? "");
+        } catch {
+          setHint("");
+        }
+        setStep("nokit");
         return;
       }
       setMaterial(res);
@@ -232,6 +242,30 @@ export function RecoveryPage() {
               {loading ? "Checking..." : "Continue"}
             </button>
           </form>
+        ) : step === "nokit" ? (
+          <div className="rounded-md border border-border bg-card p-4 text-sm">
+            <p className="font-medium">No recovery kit on file for this account.</p>
+            {hint ? (
+              <>
+                <p className="mt-1.5 text-muted-foreground">
+                  Your master password can&apos;t be reset without a recovery kit, but
+                  here&apos;s the hint you saved:
+                </p>
+                <p className="mt-2 rounded-md bg-accent/40 px-3 py-2 font-mono">{hint}</p>
+                <p className="mt-2 text-muted-foreground">
+                  If that jogs your memory, head back and sign in. Once you&apos;re in,
+                  create a recovery kit from Settings so this can&apos;t happen again.
+                </p>
+              </>
+            ) : (
+              <p className="mt-1.5 text-muted-foreground">
+                vaultctl is zero-knowledge: without your master password or a recovery kit,
+                the vault cannot be decrypted &mdash; not by you, not by an administrator.
+                If your instance has an administrator, contact them. Once you can sign in,
+                create a recovery kit from Settings so this can&apos;t happen again.
+              </p>
+            )}
+          </div>
         ) : (
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-2">
