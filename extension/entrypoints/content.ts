@@ -313,7 +313,7 @@ export default defineContentScript({
         const primary = document.createElement("span");
         primary.textContent = m.username || m.name || "(no username)";
         primary.style.cssText =
-          "font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          "font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
         // Mask the password like Google: a row of dots whose count matches the
         // stored password length (the password itself is never sent here).
         const secondary = document.createElement("span");
