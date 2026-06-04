@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useAuthStore } from "@/lib/auth-store";
 import { lock as lockKeys } from "@/lib/key-holder";
 import { getNotifications } from "@/lib/system-api";
+import { useUpdateNotification } from "@/hooks/use-update-notification";
 
 // QuickActions is the always-one-tap row: notifications (with unread badge),
 // theme toggle, and lock. Shared by the desktop sidebar footer and the mobile
@@ -19,7 +20,8 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
     staleTime: 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
   });
-  const unread = notifications?.unreadCount ?? 0;
+  const { show: showUpdate } = useUpdateNotification();
+  const unread = (notifications?.unreadCount ?? 0) + (showUpdate ? 1 : 0);
 
   function lockVault() {
     lockKeys();
