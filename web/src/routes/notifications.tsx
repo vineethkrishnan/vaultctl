@@ -1,14 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Shield, KeyRound, Database, User, CheckCheck, Trash2 } from "lucide-react";
+import {
+  Bell,
+  Shield,
+  KeyRound,
+  Database,
+  User,
+  CheckCheck,
+  Trash2,
+  ArrowUpCircle,
+  X,
+} from "lucide-react";
 import {
   getNotifications,
   markNotificationsRead,
   clearNotifications,
+  snoozeUpdate,
   type NotificationCategory,
   type NotificationItem,
 } from "@/lib/system-api";
+import { useUpdateNotification } from "@/hooks/use-update-notification";
+import { WhatsNewModal } from "@/components/system/WhatsNewModal";
 
 const categoryIcon: Record<NotificationCategory, typeof Shield> = {
   security: Shield,
@@ -68,6 +82,11 @@ export function NotificationsPage() {
   const markRead = useMutation({ mutationFn: markNotificationsRead, onSuccess: invalidate });
   const clearAll = useMutation({ mutationFn: clearNotifications, onSuccess: invalidate });
 
+  const { status: updateStatus, show: showUpdate } = useUpdateNotification();
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const updateVisible = showUpdate && !!updateStatus && !updateDismissed;
+
   const items = data?.notifications ?? [];
   const groups = groupByDay(items);
 
@@ -83,6 +102,58 @@ export function NotificationsPage() {
           </span>
         )}
       </div>
+
+      {updateVisible && updateStatus && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-brand/30 bg-brand/10 px-4 py-3 text-sm">
+          <ArrowUpCircle className="h-5 w-5 shrink-0 text-brand" />
+          <span className="min-w-0">
+            vaultctl <strong>v{updateStatus.latestVersion}</strong> is available
+            {updateStatus.severity && updateStatus.severity !== "none"
+              ? ` (${updateStatus.severity})`
+              : ""}
+            . You're on v{updateStatus.currentVersion}.
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowWhatsNew(true)}
+              className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-[#042f2a] hover:bg-brand/90"
+            >
+              What's new
+            </button>
+            <button
+              onClick={() => {
+                snoozeUpdate(24);
+                setUpdateDismissed(true);
+              }}
+              className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Remind me later
+            </button>
+            <button
+              onClick={() => setUpdateDismissed(true)}
+              aria-label="Dismiss"
+              className="rounded-md p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showWhatsNew && updateStatus && (
+        <WhatsNewModal
+          mode="available"
+          version={updateStatus.latestVersion}
+          notes={updateStatus.releaseNotes}
+          releaseUrl={updateStatus.releaseUrl}
+          onClose={() => setShowWhatsNew(false)}
+          onRemindLater={() => {
+            snoozeUpdate(24);
+            setUpdateDismissed(true);
+            setShowWhatsNew(false);
+          }}
+        />
+      )}
 
       {/* Actions: full-width split on mobile, compact + right-aligned on desktop */}
       {items.length > 0 && (
@@ -109,9 +180,11 @@ export function NotificationsPage() {
           Loading…
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">
-          You're all caught up — no recent activity.
-        </div>
+        updateVisible ? null : (
+          <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">
+            You're all caught up — no recent activity.
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           {groups.map((group) => (

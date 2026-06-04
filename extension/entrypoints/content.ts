@@ -488,6 +488,7 @@ export default defineContentScript({
       actionLabel: string;
       successMessage: string;
       onAction: () => Promise<{ ok?: boolean; error?: string }>;
+      onDismiss?: () => void;
     }) {
       document.getElementById("vaultctl-toast-host")?.remove();
       const host = document.createElement("div");
@@ -607,9 +608,45 @@ export default defineContentScript({
         }
       };
 
-      dismiss.addEventListener("click", close);
+      dismiss.addEventListener("click", () => {
+        opts.onDismiss?.();
+        close();
+      });
       action.addEventListener("click", () => void submit());
+      // Auto-timeout closes the toast WITHOUT resolving the capture, so a submit
+      // that redirected mid-prompt can still re-open it on the page the user
+      // lands on. Only an explicit dismiss or a successful save resolves it.
       setTimeout(close, Math.max(2000, settings.toastMs));
+    }
+
+    // showSavePrompt renders the save/update toast for a queued capture, wired
+    // so the action saves that exact capture (by id, using the password the
+    // background already holds) and an explicit dismiss marks it read so it
+    // stops re-prompting. Used both on the original submit and when re-opened
+    // on a redirected page.
+    function showSavePrompt(prompt: {
+      id: string;
+      action?: string;
+      host: string;
+      username: string;
+    }) {
+      const isUpdate = prompt.action === "update";
+      const who = prompt.username || prompt.host;
+      showToast({
+        message: isUpdate
+          ? `Update the saved password for ${who}?`
+          : `Save this login for ${prompt.host} to vaultctl?`,
+        actionLabel: isUpdate ? "Update" : "Save",
+        successMessage: isUpdate
+          ? `Updated and locked ${who}`
+          : `Locked ${prompt.host} in your vault`,
+        onAction: () =>
+          bg<{ ok?: boolean; error?: string }>({
+            type: "saveCapturedLogin",
+            id: prompt.id,
+          }),
+        onDismiss: () => void bg({ type: "markCaptureRead", id: prompt.id }),
+      });
     }
 
     // ── Submit capture → save/update decision ─────────────────────────────
@@ -643,69 +680,35 @@ export default defineContentScript({
 
       // Queue the durable capture FIRST and synchronously, before any await.
       // A submit usually navigates the page (redirect to a dashboard), which
-      // tears down this content script; anything dispatched after an await can
-      // be lost. The background persists this capture and raises a notification
-      // + toolbar badge, so the credential is never silently dropped — the user
-      // can still confirm and save it from the popup even after the redirect.
-      // The background fills in a remembered email when this step carried none.
-      void bg({
-        type: "loginSubmitted",
-        url: origin,
-        username: immediateUsername,
-        password,
-      });
-
+      // tears down this content script; the sendMessage is dispatched here so
+      // the background receives and persists the capture even if the page is
+      // gone before the response arrives. The background recovers a remembered
+      // email when this step carried none, de-dupes already-saved credentials,
+      // and returns the save decision so the toast can label itself.
       void (async () => {
-        let username = immediateUsername;
-        if (!username) {
-          // Password-only step: fall back to the email captured earlier.
-          const r = await bg<{ username?: string }>({
-            type: "getRememberedUsername",
-            host,
-          });
-          username = r?.username ?? "";
-        }
+        const queued = await bg<{
+          ok?: boolean;
+          id?: string;
+          skipped?: boolean;
+          action?: string;
+          username?: string;
+        }>({
+          type: "loginSubmitted",
+          url: origin,
+          username: immediateUsername,
+          password,
+        });
 
         if (!settings.savePrompt) return;
-        const d = await bg<{
-          ok?: boolean;
-          action?: string;
-          vaultId?: string;
-          itemId?: string;
-          name?: string;
-        }>({ type: "saveDecision", origin, username, password });
-        if (!d?.ok || !d.action || d.action === "none") return;
-        if (d.action === "add") {
-          showToast({
-            message: `Save this login for ${host} to vaultctl?`,
-            actionLabel: "Save",
-            successMessage: `Locked ${host} in your vault`,
-            onAction: () =>
-              bg<{ ok?: boolean; error?: string }>({
-                type: "commitSave",
-                action: "add",
-                host,
-                username,
-                password,
-                uri: origin,
-              }),
-          });
-        } else if (d.action === "update") {
-          showToast({
-            message: `Update the saved password for ${username || host}?`,
-            actionLabel: "Update",
-            successMessage: `Updated and locked ${username || host}`,
-            onAction: () =>
-              bg<{ ok?: boolean; error?: string }>({
-                type: "commitSave",
-                action: "update",
-                vaultId: d.vaultId,
-                itemId: d.itemId,
-                username,
-                password,
-              }),
-          });
-        }
+        if (!queued?.ok || queued.skipped || !queued.id) return;
+        // If the page already navigated, this toast won't render here — the
+        // capture is queued and getPendingPrompt re-opens it on the next load.
+        showSavePrompt({
+          id: queued.id,
+          action: queued.action,
+          host,
+          username: queued.username || immediateUsername,
+        });
       })();
     }
 
@@ -783,8 +786,19 @@ export default defineContentScript({
       },
     );
 
+    // After a submit redirects to a new page, re-open the save toast here so the
+    // user still gets a chance to save the credential they just entered.
+    async function maybeReopenSavePrompt() {
+      if (!settings.savePrompt) return;
+      const res = await bg<{
+        ok?: boolean;
+        prompt?: { id: string; action?: string; host: string; username: string };
+      }>({ type: "getPendingPrompt", host: window.location.hostname });
+      if (res?.prompt) showSavePrompt(res.prompt);
+    }
+
     attachSubmitListeners();
-    void refreshMatches();
+    void refreshMatches().then(() => void maybeReopenSavePrompt());
 
     const mutationObserver = new MutationObserver(() => {
       attachSubmitListeners();

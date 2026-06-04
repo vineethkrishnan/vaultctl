@@ -23,6 +23,7 @@ import {
   Mail,
   Fingerprint,
   Heart,
+  ArrowUpCircle,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import {
@@ -91,6 +92,21 @@ interface CapturedLoginSummary {
 type Phase = "loading" | "connect" | "email" | "password" | "list";
 type TabId = "vault" | "generator" | "send" | "notifications" | "settings";
 
+// Which update severities raise the Alerts-tab notice. Default "all" means an
+// available update is shown when the user hasn't set a preference. Mirrors the
+// web client's NotifyLevel.
+type UpdateNotifyLevel = "all" | "minor" | "major" | "off";
+
+function severityPassesLevel(
+  severity: string | undefined,
+  level: UpdateNotifyLevel,
+): boolean {
+  if (level === "off") return false;
+  if (level === "all") return true;
+  if (level === "major") return severity === "major";
+  return severity === "minor" || severity === "major";
+}
+
 const decoder = new TextDecoder();
 
 const DOCS_URL = "https://vaultctl.vinelabs.de";
@@ -157,6 +173,8 @@ export function Popup() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnrolled, setBiometricEnrolled] = useState(false);
   const [biometricBusy, setBiometricBusy] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [updateNotify, setUpdateNotify] = useState<UpdateNotifyLevel>("all");
 
   const loadItems = useCallback(
     async (vaultId: string) => {
@@ -301,6 +319,24 @@ export function Popup() {
       cancelled = true;
     };
   }, [loadItems]);
+
+  // Check for an available update once unlocked so the Alerts tab can surface it
+  // (in addition to the Settings update card), gated by the user's preference.
+  useEffect(() => {
+    if (phase !== "list") return;
+    let cancelled = false;
+    (async () => {
+      const stored = await bg<{ settings?: ExtSettings }>({ type: "getSettings" });
+      if (!cancelled && stored?.settings) {
+        setUpdateNotify(stored.settings.updateNotify ?? "all");
+      }
+      const res = await bg<UpdateInfo>({ type: "checkUpdate" });
+      if (!cancelled && res?.ok) setUpdateInfo(res);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase]);
 
   async function handleConnect(e: FormEvent) {
     e.preventDefault();
@@ -534,6 +570,12 @@ export function Popup() {
   }
 
   const unreadCaptures = captures.reduce((n, c) => (c.read ? n : n + 1), 0);
+  const updatePending =
+    !!updateInfo &&
+    updateInfo.enabled &&
+    updateInfo.updateAvailable &&
+    severityPassesLevel(updateInfo.severity, updateNotify);
+  const alertCount = unreadCaptures + (updatePending ? 1 : 0);
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (phase === "loading") {
@@ -829,6 +871,7 @@ export function Popup() {
         {tab === "notifications" && (
           <NotificationsTab
             captures={captures}
+            update={updatePending ? updateInfo : null}
             onSave={handleSaveCapture}
             onDismiss={handleDismissCapture}
             onMarkRead={handleMarkCaptureRead}
@@ -868,9 +911,9 @@ export function Popup() {
           >
             <span className="relative">
               <Icon className="h-[18px] w-[18px]" />
-              {id === "notifications" && unreadCaptures > 0 && (
+              {id === "notifications" && alertCount > 0 && (
                 <span className="absolute -right-2 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-semibold leading-none text-primary-foreground">
-                  {unreadCaptures > 9 ? "9+" : unreadCaptures}
+                  {alertCount > 9 ? "9+" : alertCount}
                 </span>
               )}
             </span>
@@ -1137,8 +1180,42 @@ function SendTab() {
 }
 
 // ── Notifications tab ────────────────────────────────────────────────────
+function UpdateAlert({ info }: { info: UpdateInfo }) {
+  const current = browser.runtime.getManifest().version;
+  return (
+    <div className="rounded-lg border border-brand/30 bg-brand/10 p-3">
+      <div className="flex items-start gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand/15 text-brand">
+          <ArrowUpCircle className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold">
+            vaultctl v{info.latestVersion} is available
+            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            You&apos;re on v{current}. Your browser updates the extension
+            automatically.
+          </div>
+          {info.releaseUrl && (
+            <a
+              href={info.releaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-0.5 text-[11px] text-brand hover:underline"
+            >
+              Release notes <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NotificationsTab({
   captures,
+  update,
   onSave,
   onDismiss,
   onMarkRead,
@@ -1146,6 +1223,7 @@ function NotificationsTab({
   onClearAll,
 }: {
   captures: CapturedLoginSummary[];
+  update: UpdateInfo | null;
   onSave: (id: string) => void;
   onDismiss: (id: string) => void;
   onMarkRead: (id: string) => void;
@@ -1155,6 +1233,13 @@ function NotificationsTab({
   const unread = captures.reduce((n, c) => (c.read ? n : n + 1), 0);
 
   if (captures.length === 0) {
+    if (update) {
+      return (
+        <div className="animate-fade-in space-y-2 p-3">
+          <UpdateAlert info={update} />
+        </div>
+      );
+    }
     return (
       <div className="animate-fade-in flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
@@ -1171,6 +1256,7 @@ function NotificationsTab({
 
   return (
     <div className="animate-fade-in space-y-2 p-3">
+      {update && <UpdateAlert info={update} />}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {unread > 0 ? `${unread} unread` : "All caught up"}
@@ -1255,6 +1341,7 @@ interface ExtSettings {
   savePrompt: boolean;
   toastMs: number;
   suggestPassword: boolean;
+  updateNotify: UpdateNotifyLevel;
   genLength: number;
   genLower: boolean;
   genUpper: boolean;
@@ -1524,6 +1611,26 @@ function SettingsTab({
               <option value={30}>30 min</option>
               <option value={60}>1 hour</option>
               <option value={0}>Until I close the browser</option>
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-3 pt-1">
+            <span className="min-w-0">
+              <span className="block text-sm">Update alerts</span>
+              <span className="block text-[11px] text-muted-foreground">
+                When a newer vaultctl release raises a notice in Alerts
+              </span>
+            </span>
+            <select
+              value={settings.updateNotify}
+              onChange={(e) =>
+                update({ updateNotify: e.target.value as UpdateNotifyLevel })
+              }
+              className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
+            >
+              <option value="all">All updates</option>
+              <option value="minor">Minor &amp; major</option>
+              <option value="major">Major only</option>
+              <option value="off">Off</option>
             </select>
           </label>
         </div>
