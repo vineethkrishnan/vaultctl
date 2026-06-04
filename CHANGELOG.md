@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.12.1...v1.13.0) (2026-06-04)
+
+
+### Features
+
+* surface update alerts in notification areas and keep the save toast alive across redirects ([#192](https://github.com/vineethkrishnan/vaultctl/issues/192)) ([a32dffb](https://github.com/vineethkrishnan/vaultctl/commit/a32dffbad6a39eae430c4897850f917262106305))
+
 ## [1.12.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.12.0...v1.12.1) (2026-06-04)
 
 
