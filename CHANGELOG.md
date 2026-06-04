@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.12.0...v1.12.1) (2026-06-04)
+
+
+### Build System
+
+* unify platform versions via release-please extra-files ([#190](https://github.com/vineethkrishnan/vaultctl/issues/190)) ([b45ff34](https://github.com/vineethkrishnan/vaultctl/commit/b45ff3478b9f150eb6d7b2f313195944cf8a7ff6))
+
 ## [1.12.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.11.0...v1.12.0) (2026-06-03)
 
 
