@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.12.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.11.0...v1.12.0) (2026-06-03)
+
+
+### Features
+
+* **web:** mobile-first notifications page with day grouping ([#187](https://github.com/vineethkrishnan/vaultctl/issues/187)) ([66ca003](https://github.com/vineethkrishnan/vaultctl/commit/66ca0036b99be8c5004e6bcd1dfd250ffbdb8495))
+* **web:** rich profile menu + quick-actions row (sidebar + mobile) ([#186](https://github.com/vineethkrishnan/vaultctl/issues/186)) ([c3f0482](https://github.com/vineethkrishnan/vaultctl/commit/c3f048206530207928abb70e781fc92ef46babbb))
+
+
+### Bug Fixes
+
+* **extension:** bold the username in autofill suggestions ([#183](https://github.com/vineethkrishnan/vaultctl/issues/183)) ([787ead8](https://github.com/vineethkrishnan/vaultctl/commit/787ead8fb56c3496d8296492710b6b6f9fca84f3))
+* **extension:** pick the real username field, not the 2fa/code field ([#189](https://github.com/vineethkrishnan/vaultctl/issues/189)) ([9e2612b](https://github.com/vineethkrishnan/vaultctl/commit/9e2612bde04be743e345565b83a960858cf0c628))
+* **web:** clearer recovery dead-ends and stronger "don't lose the kit" warnings ([#188](https://github.com/vineethkrishnan/vaultctl/issues/188)) ([87ff06b](https://github.com/vineethkrishnan/vaultctl/commit/87ff06b307cf9b0699b45095fe66855b395a942a))
+
+
+### Documentation
+
+* **faq:** explain chrome's duplicate password dropdown in the extension ([#185](https://github.com/vineethkrishnan/vaultctl/issues/185)) ([8df6ab6](https://github.com/vineethkrishnan/vaultctl/commit/8df6ab61987ce4236b0b4ee7eec5d2e382a97c67))
+
 ## [1.11.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.10.0...v1.11.0) (2026-06-03)
 
 
