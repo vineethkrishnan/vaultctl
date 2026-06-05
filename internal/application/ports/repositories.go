@@ -123,6 +123,25 @@ type UserRepository interface {
 	// first-user bootstrap path in Register so a fresh install can produce
 	// its first owner without an invite token.
 	CountAll(ctx context.Context) (int, error)
+
+	// MarkEmailVerified flags the user's email as confirmed at the given time.
+	MarkEmailVerified(ctx context.Context, id user.ID, at time.Time) error
+}
+
+// EmailVerificationRepository persists the one active signup verification code
+// per user (an HMAC digest, never cleartext).
+type EmailVerificationRepository interface {
+	// Upsert stores the active code for a user, replacing any existing one.
+	Upsert(ctx context.Context, v user.EmailVerification) error
+
+	// Get returns the active code for a user, or ErrNotFound when none exists.
+	Get(ctx context.Context, userID user.ID) (user.EmailVerification, error)
+
+	// IncrementAttempts bumps the wrong-guess counter for a user's code.
+	IncrementAttempts(ctx context.Context, userID user.ID) error
+
+	// Delete removes a user's code (after success or invalidation).
+	Delete(ctx context.Context, userID user.ID) error
 }
 
 // InviteRepository persists organisation invite tokens (M11).

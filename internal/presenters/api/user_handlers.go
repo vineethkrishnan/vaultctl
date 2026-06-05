@@ -39,13 +39,23 @@ func (h *UserHandlers) HandleGetProfile(w http.ResponseWriter, r *http.Request) 
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, UserProfileResponse{
-		ID:        string(u.ID),
-		Email:     u.Email.String(),
-		Name:      u.Name,
-		Role:      string(u.Role),
-		CreatedAt: u.CreatedAt.UTC().Format(timeFormat),
-	})
+	writeJSON(w, http.StatusOK, newUserProfileResponse(u))
+}
+
+func newUserProfileResponse(u user.User) UserProfileResponse {
+	resp := UserProfileResponse{
+		ID:            string(u.ID),
+		Email:         u.Email.String(),
+		Name:          u.Name,
+		Role:          string(u.Role),
+		CreatedAt:     u.CreatedAt.UTC().Format(timeFormat),
+		EmailVerified: u.EmailVerified,
+	}
+	if u.EmailVerifiedAt != nil {
+		t := u.EmailVerifiedAt.UTC().Format(timeFormat)
+		resp.EmailVerifiedAt = &t
+	}
+	return resp
 }
 
 // HandleUpdateProfile updates the authenticated user's profile.
@@ -87,13 +97,7 @@ func (h *UserHandlers) HandleUpdateProfile(w http.ResponseWriter, r *http.Reques
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, UserProfileResponse{
-		ID:        string(u.ID),
-		Email:     u.Email.String(),
-		Name:      u.Name,
-		Role:      string(u.Role),
-		CreatedAt: u.CreatedAt.UTC().Format(timeFormat),
-	})
+	writeJSON(w, http.StatusOK, newUserProfileResponse(u))
 }
 
 // HandleListSessions returns all active sessions for the authenticated user.

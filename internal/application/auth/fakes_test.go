@@ -256,6 +256,15 @@ func (r *fakeUserRepo) CountAll(_ context.Context) (int, error) {
 	defer r.mu.Unlock()
 	return len(r.byEmail), nil
 }
+func (r *fakeUserRepo) MarkEmailVerified(_ context.Context, id user.ID, at time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if u, ok := r.byID[id]; ok {
+		u.EmailVerified = true
+		u.EmailVerifiedAt = &at
+	}
+	return nil
+}
 
 // fakeSessionStore is an in-memory SessionStore.
 type fakeSessionStore struct {

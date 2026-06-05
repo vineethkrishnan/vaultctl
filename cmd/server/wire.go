@@ -14,6 +14,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
+	"github.com/vineethkrishnan/vaultctl/internal/application/email"
 	"github.com/vineethkrishnan/vaultctl/internal/application/notifications"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
@@ -46,6 +47,7 @@ type adapters struct {
 	audit      *postgres.AuditRepo
 	notifState *postgres.NotificationStateRepo
 	attach     *postgres.AttachmentRepo
+	emailVerif *postgres.EmailVerificationRepo
 	blobs      ports.BlobStore // nil when the blob store is unavailable
 
 	backupDests     *postgres.BackupDestinationRepo // nil when backup sync is off
@@ -122,6 +124,7 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		audit:      &postgres.AuditRepo{Pool: pool},
 		notifState: &postgres.NotificationStateRepo{Pool: pool},
 		attach:     &postgres.AttachmentRepo{Pool: pool},
+		emailVerif: &postgres.EmailVerificationRepo{Pool: pool},
 		hasher:     infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
 		hmac:       hmac,
 		jwt:        jwt,
@@ -254,9 +257,26 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	// feeds every action.
 	auditWriter := audit.New(a.audit, a.clock, slog.Default())
 
+	// Email verification: wired only when a mailer is configured, so a
+	// deployment without SMTP skips the gate entirely.
+	var sendVerification *auth.SendEmailVerification
+	var verifyEmail *auth.VerifyEmail
+	if a.mailer.Enabled() {
+		emailComposer := email.New(a.mailer, cfg.BaseURL)
+		sendVerification = &auth.SendEmailVerification{
+			Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
+			Sender: emailComposer, CodeTTL: cfg.EmailOTPTTL,
+		}
+		verifyEmail = &auth.VerifyEmail{
+			Users: a.users, Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
+		}
+	}
+
 	authHandlers := &api.AuthHandlers{
-		Users: a.users,
-		Audit: auditWriter,
+		Users:            a.users,
+		Audit:            auditWriter,
+		SendVerification: sendVerification,
+		VerifyEmail:      verifyEmail,
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
 			Encrypter: a.aead,

@@ -62,6 +62,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		       identity_public_key, encrypted_identity_private_key,
 		       encrypted_recovery_wrapped_private_key, encrypted_recovery_wrapped_identity_private_key,
 		       totp_enabled, totp_last_counter, failed_login_attempts, locked_until,
+		       email_verified, email_verified_at,
 		       role, created_at, updated_at
 		FROM users WHERE `+where, arg)
 
@@ -77,6 +78,8 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		totpCounter                                  *int64
 		failedAttempts                               int
 		lockedUntil                                  *time.Time
+		emailVerified                                bool
+		emailVerifiedAt                              *time.Time
 		role                                         string
 		createdAt, updatedAt                         time.Time
 	)
@@ -84,6 +87,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		&encPriv, &pubKey, &pubKeySig, &idPub, &encIDPriv,
 		&recPriv, &recIDPriv,
 		&totpEnabled, &totpCounter, &failedAttempts, &lockedUntil,
+		&emailVerified, &emailVerifiedAt,
 		&role, &createdAt, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return user.User{}, domain.ErrNotFound
@@ -129,12 +133,23 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		IdentityPublicKey:                 idp,
 		PublicKeySignature:                sig,
 		TOTPEnabled:                       totpEnabled,
+		EmailVerified:                     emailVerified,
+		EmailVerifiedAt:                   emailVerifiedAt,
 		FailedLoginAttempts:               failedAttempts,
 		LockedUntil:                       lockedUntil,
 		Role:                              user.Role(role),
 		CreatedAt:                         createdAt,
 		UpdatedAt:                         updatedAt,
 	}, nil
+}
+
+// MarkEmailVerified flags the user's email as confirmed at the given time.
+func (r *UserRepo) MarkEmailVerified(ctx context.Context, id user.ID, at time.Time) error {
+	_, err := r.Pool.Exec(ctx, `
+		UPDATE users SET email_verified = TRUE, email_verified_at = $2, updated_at = NOW()
+		WHERE id = $1`,
+		string(id), at)
+	return err
 }
 
 // UpdateRecoveryWrappedKeys overwrites the recovery-wrapped private keys for a

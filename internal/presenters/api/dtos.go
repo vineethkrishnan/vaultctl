@@ -431,11 +431,18 @@ type APIKeyResponse struct {
 // ===========================================================================
 
 type UserProfileResponse struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"createdAt"`
+	ID              string  `json:"id"`
+	Email           string  `json:"email"`
+	Name            string  `json:"name"`
+	Role            string  `json:"role"`
+	CreatedAt       string  `json:"createdAt"`
+	EmailVerified   bool    `json:"emailVerified"`
+	EmailVerifiedAt *string `json:"emailVerifiedAt,omitempty"`
+}
+
+// VerifyEmailRequest carries the one-time code from the verify-email screen.
+type VerifyEmailRequest struct {
+	Code string `json:"code"`
 }
 
 type UpdateProfileRequest struct {

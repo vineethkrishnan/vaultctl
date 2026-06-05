@@ -137,6 +137,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Recovery-kit (re)generation (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/recovery/rotate", deps.Auth.HandleRotateRecoveryKey)
 
+			// Email verification (mounted only when a mailer is wired)
+			if deps.Auth.VerifyEmail != nil {
+				r.Post("/auth/email/verify", deps.Auth.HandleVerifyEmail)
+				r.Post("/auth/email/resend", deps.Auth.HandleResendVerification)
+			}
+
 			// Update check + in-app notification feed
 			if deps.Update != nil {
 				r.Get("/updates", deps.Update.HandleGetUpdates)

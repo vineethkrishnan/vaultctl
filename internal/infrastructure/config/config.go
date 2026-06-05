@@ -118,6 +118,8 @@ type Config struct {
 	SMTPFrom     string        `env:"VAULTCTL_SMTP_FROM" envDefault:"vaultctl <no-reply@localhost>"`
 	SMTPTLS      string        `env:"VAULTCTL_SMTP_TLS" envDefault:"starttls"`
 	SMTPTimeout  time.Duration `env:"VAULTCTL_SMTP_TIMEOUT" envDefault:"15s"`
+	// EmailOTPTTL is how long a signup verification code stays valid.
+	EmailOTPTTL time.Duration `env:"VAULTCTL_EMAIL_OTP_TTL" envDefault:"15m"`
 
 	// ===========================================================================
 	// Retention
