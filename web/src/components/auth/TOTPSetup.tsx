@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { Shield, Check } from "lucide-react";
 import { QRCode } from "@/components/ui/QRCode";
@@ -26,6 +27,7 @@ type Step = "setup" | "verify";
  * 4. POST /auth/totp/enable → verify code + enable
  */
 export function TOTPSetup({ onComplete, onCancel }: Props) {
+  const { t } = useTranslation(["security", "common"]);
   const [step, setStep] = useState<Step>("setup");
   const [secret, setSecret] = useState("");
   const [otpauthUrl, setOtpauthUrl] = useState("");
@@ -51,7 +53,7 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
       } else if (err instanceof ApiRequestError) {
         setError(err.error.message);
       } else {
-        setError("Failed to setup TOTP");
+        setError(t("totp.setupFailed"));
       }
     } finally {
       setLoading(false);
@@ -68,12 +70,12 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
     } catch (err) {
       if (err instanceof ApiRequestError) {
         if (err.error.code === "INVALID_CREDENTIALS") {
-          setError("Invalid code - check your authenticator app");
+          setError(t("totp.invalidCode"));
         } else {
           setError(err.error.message);
         }
       } else {
-        setError("Verification failed");
+        setError(t("totp.verifyFailed"));
       }
     } finally {
       setLoading(false);
@@ -85,11 +87,10 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Enable Two-Factor Authentication</h2>
+          <h2 className="text-lg font-semibold">{t("totp.enableTitle")}</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Add an extra layer of security. You&apos;ll need an authenticator app like
-          Google Authenticator or Authy.
+          {t("totp.enableIntro")}
         </p>
         <div className="flex gap-2">
           <button
@@ -97,13 +98,13 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
             disabled={loading}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? "Setting up..." : "Begin Setup"}
+            {loading ? t("totp.settingUp") : t("totp.beginSetup")}
           </button>
           <button
             onClick={onCancel}
             className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            Cancel
+            {t("common:actions.cancel")}
           </button>
         </div>
         {error && (
@@ -123,9 +124,9 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Scan QR Code</h2>
+      <h2 className="text-lg font-semibold">{t("totp.scanTitle")}</h2>
       <p className="text-sm text-muted-foreground">
-        Scan this QR code with your authenticator app, or enter the secret key manually.
+        {t("totp.scanIntro")}
       </p>
 
       {/* Scannable QR of the otpauth:// URL */}
@@ -136,7 +137,7 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
       )}
 
       <div className="space-y-1">
-        <label className="text-sm font-medium">Manual entry key</label>
+        <label className="text-sm font-medium">{t("totp.manualKey")}</label>
         <code className="block rounded bg-muted px-3 py-2 font-mono text-sm tracking-wider select-all">
           {secret}
         </code>
@@ -145,7 +146,7 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
       <form onSubmit={handleVerify} className="space-y-4">
         <div className="space-y-1">
           <label htmlFor="totp-code" className="text-sm font-medium">
-            Verification code
+            {t("totp.verificationCode")}
           </label>
           <input
             id="totp-code"
@@ -171,14 +172,14 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             <Check className="mr-1 inline h-4 w-4" />
-            {loading ? "Verifying..." : "Enable 2FA"}
+            {loading ? t("totp.verifying") : t("totp.enable")}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            Cancel
+            {t("common:actions.cancel")}
           </button>
         </div>
       </form>

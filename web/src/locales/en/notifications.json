@@ -1,0 +1,17 @@
+{
+  "title": "Notifications",
+  "markAllRead": "Mark all read",
+  "clearAll": "Clear all",
+  "empty": "You're all caught up - no recent activity.",
+  "groups": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "earlier": "Earlier"
+  },
+  "categories": {
+    "security": "Security",
+    "vault": "Vault",
+    "account": "Account",
+    "backup": "Backup"
+  }
+}

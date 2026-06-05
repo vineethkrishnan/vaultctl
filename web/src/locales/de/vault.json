@@ -1,0 +1,270 @@
+{
+  "itemTypes": {
+    "login": "Zugangsdaten",
+    "secure_note": "Sichere Notiz",
+    "credit_card": "Kreditkarte",
+    "identity": "Identität",
+    "api_key": "API-Schlüssel",
+    "ssh_key": "SSH-Schlüssel",
+    "passkey": "Passkey"
+  },
+  "items": {
+    "title": "Alle Einträge",
+    "subtitle": "Ihre gespeicherten Zugangsdaten und Geheimnisse, Ende-zu-Ende-verschlüsselt.",
+    "newItem": "Neuer Eintrag",
+    "createItem": "Eintrag erstellen",
+    "empty": {
+      "title": "Noch keine Einträge",
+      "subtitle": "Erstellen Sie Ihren ersten Eintrag, um zu beginnen."
+    },
+    "noVaults": "Keine Tresore gefunden.",
+    "loadFailed": "Einträge konnten nicht geladen werden",
+    "searchPlaceholder": "Name, Benutzername oder URL suchen",
+    "filterByType": "Nach Typ filtern",
+    "allTypes": "Alle Typen",
+    "noMatchQuery": "Keine Einträge passen zu \"{{query}}\".",
+    "noMatchFilter": "Keine Einträge passen zu diesem Filter.",
+    "copiedToast": "{{label}} kopiert - Zwischenablage wird in 30s geleert",
+    "copyLabels": {
+      "username": "Benutzername",
+      "password": "Passwort",
+      "item": "Eintrag"
+    },
+    "rowMenu": {
+      "actions": "Eintragsaktionen",
+      "copyUsername": "Benutzername kopieren",
+      "copyPassword": "Passwort kopieren",
+      "copyItem": "Eintrag kopieren",
+      "addFavorite": "Zu Favoriten hinzufügen",
+      "removeFavorite": "Favorit entfernen",
+      "moveToTrash": "In den Papierkorb verschieben"
+    },
+    "text": {
+      "username": "Benutzername: {{value}}",
+      "password": "Passwort: {{value}}",
+      "uri": "URI: {{value}}"
+    },
+    "trashConfirm": {
+      "title": "In den Papierkorb verschieben",
+      "message": "\"{{name}}\" in den Papierkorb verschieben? Sie können den Eintrag später aus dem Papierkorb wiederherstellen.",
+      "confirmLabel": "In den Papierkorb verschieben"
+    }
+  },
+  "sidebar": {
+    "closeMenu": "Menü schließen",
+    "vaults": "Tresore",
+    "allItems": "Alle Einträge",
+    "favorites": "Favoriten",
+    "trash": "Papierkorb",
+    "newItem": "Neuer Eintrag"
+  },
+  "folders": {
+    "heading": "Ordner",
+    "newFolder": "Neuer Ordner",
+    "newFolderTitle": "Neuer Ordner",
+    "namePlaceholder": "Ordnername",
+    "deleteConfirm": "Ordner \"{{name}}\" löschen?",
+    "decryptError": "[Fehler]"
+  },
+  "newItem": {
+    "title": "Neuer Eintrag",
+    "chooseType": "Wählen Sie einen Eintragstyp:",
+    "namePlaceholder": "Eintragsname",
+    "newOfType": "Neu: {{type}}",
+    "creating": "Wird erstellt...",
+    "create": "Eintrag erstellen",
+    "createFailed": "Erstellen fehlgeschlagen"
+  },
+  "editor": {
+    "namePlaceholder": "Eintragsname",
+    "addFavorite": "Zu Favoriten hinzufügen",
+    "removeFavorite": "Aus Favoriten entfernen",
+    "moveToTrash": "In den Papierkorb verschieben",
+    "saving": "Wird gespeichert...",
+    "saved": "Gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "unknownType": "Unbekannter Eintragstyp: {{type}}",
+    "decryptionFailed": "[Entschlüsselung fehlgeschlagen]"
+  },
+  "trash": {
+    "title": "Papierkorb",
+    "empty": "Der Papierkorb ist leer",
+    "restore": "Wiederherstellen",
+    "deletePermanently": "Endgültig löschen",
+    "deleteError": "Der Eintrag konnte nicht gelöscht werden",
+    "decryptionFailed": "[Entschlüsselung fehlgeschlagen]",
+    "purgeConfirm": {
+      "title": "Endgültig löschen",
+      "message": "\"{{name}}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden, und Sie werden nach Ihrem Master-Passwort gefragt.",
+      "confirmLabel": "Endgültig löschen"
+    }
+  },
+  "reprompt": {
+    "title": "Master-Passwort erforderlich",
+    "subtitle": "Für diesen Eintrag ist Ihr Master-Passwort erforderlich, um die Geheimnisse anzuzeigen.",
+    "passwordPlaceholder": "Master-Passwort",
+    "incorrect": "Falsches Passwort",
+    "verifyFailed": "Überprüfung fehlgeschlagen",
+    "verifying": "Wird überprüft..."
+  },
+  "passwordGenerator": {
+    "regenerate": "Neu generieren",
+    "copy": "Kopieren",
+    "length": "Länge: {{count}}",
+    "usePassword": "Dieses Passwort verwenden"
+  },
+  "safetyNumber": {
+    "label": "Sicherheitsnummer",
+    "description": "Überprüfen Sie diese Nummer über einen anderen Kanal, um die Echtheit des Identitätsschlüssels zu bestätigen.",
+    "copy": "Kopieren"
+  },
+  "export": {
+    "heading": "Exportieren",
+    "description": "Laden Sie ein verschlüsseltes, signiertes Backup aller Tresore herunter, auf die Sie Zugriff haben. Die Datei ist ohne Ihr Master-Passwort nutzlos - die Eintragsinhalte bleiben verschlüsselt. Ein erneuter Import auf demselben Konto stellt Einträge wieder her, die Sie später löschen.",
+    "signedNote": "Mit Ihrem Identitätsschlüssel (Ed25519) signiert. Jede Manipulation auf Byte-Ebene vor dem erneuten Import führt zum Fehlschlagen der Signaturprüfung, und der Import wird verweigert.",
+    "building": "Backup wird erstellt...",
+    "download": "Verschlüsseltes Backup herunterladen",
+    "notSignedIn": "Nicht angemeldet",
+    "serverReturned": "Server hat {{status}} zurückgegeben",
+    "unknownError": "Export aus unbekanntem Grund fehlgeschlagen",
+    "savedFile": "<1>{{filename}}</1> gespeichert ({{size}})"
+  },
+  "import": {
+    "heading": "Importieren",
+    "description": "Importieren Sie Einträge aus einem Export eines Passwort-Managers. Alle Daten werden clientseitig verschlüsselt, bevor sie an den Server gesendet werden.",
+    "targetVault": "Ziel-Tresor",
+    "selectVault": "Tresor auswählen...",
+    "format": "Format",
+    "selectFile": "{{format}}-Datei auswählen",
+    "selectVaultFirst": "Zuerst einen Tresor auswählen",
+    "noItemsFound": "Keine Einträge in der Datei gefunden",
+    "parseFailed": "Datei konnte nicht verarbeitet werden",
+    "importFailed": "Import fehlgeschlagen",
+    "itemsFound": "<1>{{count}}</1> Einträge gefunden:",
+    "typeCount": "{{count}} {{type}}",
+    "importingProgress": "Wird importiert... ({{count}})",
+    "importAll": "Alle importieren",
+    "successCount": "<1>{{count}}</1> Einträge erfolgreich importiert",
+    "failedCount": "{{count}} Einträge fehlgeschlagen",
+    "importMore": "Weitere importieren"
+  },
+  "restore": {
+    "heading": "Verschlüsseltes Backup wiederherstellen",
+    "description": "Laden Sie eine verschlüsselte vaultctl-Backup-Datei hoch (aus dem Export-Bereich oben). Die Signatur wird gegen Ihren Identitätsschlüssel geprüft, bevor Daten an den Server gesendet werden. Einträge werden in ihren ursprünglichen Tresoren wiederhergestellt - Tresore, die auf diesem Konto nicht mehr existieren, werden übersprungen.",
+    "tamperNote": "Manipulierte, kontofremde oder formatfremde Dateien werden vor jedem Netzwerkaufruf abgelehnt.",
+    "selectFile": "Backup-Datei auswählen",
+    "signatureVerified": "Signatur überprüft",
+    "created": "Erstellt: {{date}}",
+    "itemsAcrossVaults": "{{items}} Einträge in {{vaults}} Tresoren",
+    "foldersCount": "{{count}} Ordner",
+    "restoring": "Wird wiederhergestellt...",
+    "restore": "Wiederherstellen",
+    "restoreAnother": "Weiteres wiederherstellen",
+    "vaultRestored": "Tresor <1>{{vaultId}}</1>: <3>{{count}}</3> Einträge wiederhergestellt",
+    "vaultFailed": "Tresor <1>{{vaultId}}</1>: {{reason}}",
+    "notSignedIn": "Nicht angemeldet",
+    "identityKeyUnavailable": "Öffentlicher Identitätsschlüssel nicht verfügbar - melden Sie sich erneut an und versuchen Sie es noch einmal",
+    "readFailed": "Die ausgewählte Datei konnte nicht gelesen werden",
+    "serverReturned": "Server hat {{status}} zurückgegeben",
+    "errors": {
+      "signature": "Signaturprüfung fehlgeschlagen - die Datei wurde verändert oder beschädigt. Vertrauen Sie ihrem Inhalt NICHT.",
+      "userMismatch": "Dieses Backup gehört zu einem anderen Konto und kann hier nicht wiederhergestellt werden.",
+      "version": "{{message}}. Aktualisieren Sie vaultctl auf eine neuere Version.",
+      "unknown": "Unbekannter Fehler"
+    }
+  },
+  "sharing": {
+    "heading": "Freigabe",
+    "personalVaultNote": "Dies ist ein persönlicher Tresor. Um Einträge mit anderen zu teilen, erstellen Sie einen gemeinsamen Tresor und verschieben Sie Einträge dorthin.",
+    "members": "Mitglieder",
+    "noMembers": "Noch keine Mitglieder.",
+    "you": "(Sie)",
+    "removeMember": "Mitglied entfernen",
+    "addMember": "Mitglied hinzufügen",
+    "userIdPlaceholder": "Benutzer-ID",
+    "roleMember": "Mitglied",
+    "roleAdmin": "Administrator",
+    "add": "Hinzufügen",
+    "invited": "{{recipient}} als {{role}} eingeladen"
+  },
+  "attachments": {
+    "heading": "Anhänge",
+    "encrypting": "Wird verschlüsselt...",
+    "addFile": "Datei hinzufügen",
+    "empty": "Keine Anhänge. Dateien werden in Ihrem Browser verschlüsselt, bevor sie hochgeladen werden.",
+    "uploadFailed": "Hochladen fehlgeschlagen",
+    "decrypting": "Wird entschlüsselt...",
+    "nameUnavailable": "[Name nicht verfügbar]",
+    "download": "Herunterladen und entschlüsseln",
+    "delete": "Anhang löschen"
+  },
+  "fields": {
+    "reveal": "Anzeigen",
+    "hide": "Ausblenden",
+    "show": "Anzeigen",
+    "copy": "Kopieren",
+    "remove": "Entfernen",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "uri": "URI",
+    "totp": "TOTP-Geheimnis",
+    "notes": "Notizen",
+    "content": "Inhalt",
+    "cardholderName": "Karteninhaber",
+    "cardNumber": "Kartennummer",
+    "expiry": "Ablauf (MM/JJ)",
+    "expiryPlaceholder": "MM/JJ",
+    "cvv": "Prüfziffer",
+    "cardType": "Kartentyp",
+    "cardTypePlaceholder": "Visa, Mastercard...",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "address": "Adresse",
+    "city": "Stadt",
+    "state": "Bundesland",
+    "postalCode": "Postleitzahl",
+    "country": "Land",
+    "ssn": "Sozialversicherungsnummer",
+    "passportNumber": "Reisepassnummer",
+    "licenseNumber": "Führerscheinnummer",
+    "apiKey": "API-Schlüssel",
+    "environment": "Umgebung",
+    "environmentPlaceholder": "production, staging...",
+    "serviceUrl": "Dienst-URL",
+    "expiresAt": "Läuft ab am",
+    "expiresAtPlaceholder": "JJJJ-MM-TT",
+    "publicKey": "Öffentlicher Schlüssel",
+    "privateKey": "Privater Schlüssel",
+    "passphrase": "Passphrase",
+    "keyType": "Schlüsseltyp",
+    "keyTypePlaceholder": "ED25519, RSA...",
+    "fingerprint": "Fingerabdruck",
+    "host": "Host",
+    "rpId": "Relying-Party-ID",
+    "rpName": "Relying-Party-Name",
+    "credentialId": "Anmeldedaten-ID",
+    "userHandle": "Benutzer-Handle",
+    "discoverable": "Auffindbare Anmeldedaten",
+    "generatePassword": "Passwort generieren",
+    "hideGenerator": "Generator ausblenden"
+  },
+  "customFields": {
+    "heading": "Benutzerdefinierte Felder",
+    "addField": "Feld hinzufügen",
+    "empty": "Keine benutzerdefinierten Felder. Fügen Sie eines hinzu, um zusätzliche Metadaten wie Sicherheitsfragen, Wiederherstellungscodes oder beliebige Schlüssel-Wert-Paare zu speichern.",
+    "namePlaceholder": "Name",
+    "valuePlaceholder": "Wert",
+    "fieldType": "Feldtyp",
+    "typeText": "Text",
+    "typeHidden": "Verborgen",
+    "typeBoolean": "Boolesch",
+    "typeUrl": "URL",
+    "yes": "Ja",
+    "no": "Nein"
+  },
+  "passwordHistory": {
+    "heading": "Passwortverlauf"
+  }
+}

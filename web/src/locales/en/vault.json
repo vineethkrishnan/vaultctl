@@ -1,0 +1,270 @@
+{
+  "itemTypes": {
+    "login": "Login",
+    "secure_note": "Secure Note",
+    "credit_card": "Credit Card",
+    "identity": "Identity",
+    "api_key": "API Key",
+    "ssh_key": "SSH Key",
+    "passkey": "Passkey"
+  },
+  "items": {
+    "title": "All Items",
+    "subtitle": "Your saved logins and secrets, end-to-end encrypted.",
+    "newItem": "New Item",
+    "createItem": "Create Item",
+    "empty": {
+      "title": "No items yet",
+      "subtitle": "Create your first item to get started."
+    },
+    "noVaults": "No vaults found.",
+    "loadFailed": "Failed to load items",
+    "searchPlaceholder": "Search name, username or URL",
+    "filterByType": "Filter by type",
+    "allTypes": "All types",
+    "noMatchQuery": "No items match \"{{query}}\".",
+    "noMatchFilter": "No items match this filter.",
+    "copiedToast": "Copied {{label}} - clipboard clears in 30s",
+    "copyLabels": {
+      "username": "username",
+      "password": "password",
+      "item": "item"
+    },
+    "rowMenu": {
+      "actions": "Item actions",
+      "copyUsername": "Copy username",
+      "copyPassword": "Copy password",
+      "copyItem": "Copy item",
+      "addFavorite": "Add to favorites",
+      "removeFavorite": "Remove favorite",
+      "moveToTrash": "Move to trash"
+    },
+    "text": {
+      "username": "Username: {{value}}",
+      "password": "Password: {{value}}",
+      "uri": "URI: {{value}}"
+    },
+    "trashConfirm": {
+      "title": "Move to trash",
+      "message": "Move \"{{name}}\" to trash? You can restore it later from Trash.",
+      "confirmLabel": "Move to trash"
+    }
+  },
+  "sidebar": {
+    "closeMenu": "Close menu",
+    "vaults": "Vaults",
+    "allItems": "All Items",
+    "favorites": "Favorites",
+    "trash": "Trash",
+    "newItem": "New Item"
+  },
+  "folders": {
+    "heading": "Folders",
+    "newFolder": "New Folder",
+    "newFolderTitle": "New folder",
+    "namePlaceholder": "Folder name",
+    "deleteConfirm": "Delete folder \"{{name}}\"?",
+    "decryptError": "[error]"
+  },
+  "newItem": {
+    "title": "New Item",
+    "chooseType": "Choose an item type:",
+    "namePlaceholder": "Item name",
+    "newOfType": "New {{type}}",
+    "creating": "Creating...",
+    "create": "Create Item",
+    "createFailed": "Failed to create"
+  },
+  "editor": {
+    "namePlaceholder": "Item name",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites",
+    "moveToTrash": "Move to trash",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "saveFailed": "Save failed",
+    "unknownType": "Unknown item type: {{type}}",
+    "decryptionFailed": "[decryption failed]"
+  },
+  "trash": {
+    "title": "Trash",
+    "empty": "Trash is empty",
+    "restore": "Restore",
+    "deletePermanently": "Delete permanently",
+    "deleteError": "Could not delete the item",
+    "decryptionFailed": "[decryption failed]",
+    "purgeConfirm": {
+      "title": "Delete permanently",
+      "message": "Permanently delete \"{{name}}\"? This cannot be undone, and you will be asked for your master password.",
+      "confirmLabel": "Delete forever"
+    }
+  },
+  "reprompt": {
+    "title": "Master Password Required",
+    "subtitle": "This item requires your master password to reveal secrets.",
+    "passwordPlaceholder": "Master password",
+    "incorrect": "Incorrect password",
+    "verifyFailed": "Verification failed",
+    "verifying": "Verifying..."
+  },
+  "passwordGenerator": {
+    "regenerate": "Regenerate",
+    "copy": "Copy",
+    "length": "Length: {{count}}",
+    "usePassword": "Use This Password"
+  },
+  "safetyNumber": {
+    "label": "Safety Number",
+    "description": "Verify this number out-of-band to confirm identity key authenticity.",
+    "copy": "Copy"
+  },
+  "export": {
+    "heading": "Export",
+    "description": "Download an encrypted, signed backup of every vault you can access. The file is useless without your master password - item contents stay encrypted. Re-importing on the same account restores any items you later delete.",
+    "signedNote": "Signed with your identity key (Ed25519). Any byte-level tampering before re-import will fail signature verification and the import will refuse to run.",
+    "building": "Building backup...",
+    "download": "Download encrypted backup",
+    "notSignedIn": "Not signed in",
+    "serverReturned": "Server returned {{status}}",
+    "unknownError": "Export failed for an unknown reason",
+    "savedFile": "Saved <1>{{filename}}</1> ({{size}})"
+  },
+  "import": {
+    "heading": "Import",
+    "description": "Import items from a password manager export. All data is encrypted client-side before being sent to the server.",
+    "targetVault": "Target vault",
+    "selectVault": "Select a vault...",
+    "format": "Format",
+    "selectFile": "Select {{format}} file",
+    "selectVaultFirst": "Select a vault first",
+    "noItemsFound": "No items found in file",
+    "parseFailed": "Failed to parse file",
+    "importFailed": "Import failed",
+    "itemsFound": "<1>{{count}}</1> items found:",
+    "typeCount": "{{count}} {{type}}(s)",
+    "importingProgress": "Importing... ({{count}})",
+    "importAll": "Import All",
+    "successCount": "<1>{{count}}</1> items imported successfully",
+    "failedCount": "{{count}} items failed",
+    "importMore": "Import More"
+  },
+  "restore": {
+    "heading": "Restore encrypted backup",
+    "description": "Upload a vaultctl encrypted backup file (from the Export section above). Signature is verified against your identity key before any data is sent to the server. Items are restored into their original vaults - vaults that no longer exist on this account are skipped.",
+    "tamperNote": "Tampered, cross-account, or foreign-format files are rejected before any network call.",
+    "selectFile": "Select backup file",
+    "signatureVerified": "Signature verified",
+    "created": "Created: {{date}}",
+    "itemsAcrossVaults": "{{items}} items across {{vaults}} vaults",
+    "foldersCount": "{{count}} folders",
+    "restoring": "Restoring...",
+    "restore": "Restore",
+    "restoreAnother": "Restore another",
+    "vaultRestored": "Vault <1>{{vaultId}}</1>: <3>{{count}}</3> items restored",
+    "vaultFailed": "Vault <1>{{vaultId}}</1>: {{reason}}",
+    "notSignedIn": "Not signed in",
+    "identityKeyUnavailable": "Identity public key unavailable - sign in again and retry",
+    "readFailed": "Could not read the selected file",
+    "serverReturned": "server returned {{status}}",
+    "errors": {
+      "signature": "Signature verification failed - the file was modified or corrupted. Do NOT trust its contents.",
+      "userMismatch": "This backup belongs to a different account and cannot be restored here.",
+      "version": "{{message}}. Upgrade vaultctl to a newer version.",
+      "unknown": "Unknown error"
+    }
+  },
+  "sharing": {
+    "heading": "Sharing",
+    "personalVaultNote": "This is a personal vault. To share items with others, create a shared vault and move items into it.",
+    "members": "Members",
+    "noMembers": "No members yet.",
+    "you": "(you)",
+    "removeMember": "Remove member",
+    "addMember": "Add member",
+    "userIdPlaceholder": "User ID",
+    "roleMember": "Member",
+    "roleAdmin": "Admin",
+    "add": "Add",
+    "invited": "Invited {{recipient}} as {{role}}"
+  },
+  "attachments": {
+    "heading": "Attachments",
+    "encrypting": "Encrypting...",
+    "addFile": "Add file",
+    "empty": "No attachments. Files are encrypted in your browser before upload.",
+    "uploadFailed": "Upload failed",
+    "decrypting": "Decrypting...",
+    "nameUnavailable": "[name unavailable]",
+    "download": "Download and decrypt",
+    "delete": "Delete attachment"
+  },
+  "fields": {
+    "reveal": "Reveal",
+    "hide": "Hide",
+    "show": "Show",
+    "copy": "Copy",
+    "remove": "Remove",
+    "username": "Username",
+    "password": "Password",
+    "uri": "URI",
+    "totp": "TOTP Secret",
+    "notes": "Notes",
+    "content": "Content",
+    "cardholderName": "Cardholder Name",
+    "cardNumber": "Card Number",
+    "expiry": "Expiry (MM/YY)",
+    "expiryPlaceholder": "MM/YY",
+    "cvv": "CVV",
+    "cardType": "Card Type",
+    "cardTypePlaceholder": "Visa, Mastercard...",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address",
+    "city": "City",
+    "state": "State",
+    "postalCode": "Postal Code",
+    "country": "Country",
+    "ssn": "SSN",
+    "passportNumber": "Passport Number",
+    "licenseNumber": "License Number",
+    "apiKey": "API Key",
+    "environment": "Environment",
+    "environmentPlaceholder": "production, staging...",
+    "serviceUrl": "Service URL",
+    "expiresAt": "Expires At",
+    "expiresAtPlaceholder": "YYYY-MM-DD",
+    "publicKey": "Public Key",
+    "privateKey": "Private Key",
+    "passphrase": "Passphrase",
+    "keyType": "Key Type",
+    "keyTypePlaceholder": "ED25519, RSA...",
+    "fingerprint": "Fingerprint",
+    "host": "Host",
+    "rpId": "Relying Party ID",
+    "rpName": "Relying Party Name",
+    "credentialId": "Credential ID",
+    "userHandle": "User Handle",
+    "discoverable": "Discoverable credential",
+    "generatePassword": "Generate password",
+    "hideGenerator": "Hide generator"
+  },
+  "customFields": {
+    "heading": "Custom fields",
+    "addField": "Add field",
+    "empty": "No custom fields. Add one to store extra metadata like security questions, recovery codes, or arbitrary key-value pairs.",
+    "namePlaceholder": "Name",
+    "valuePlaceholder": "Value",
+    "fieldType": "Field type",
+    "typeText": "Text",
+    "typeHidden": "Hidden",
+    "typeBoolean": "Boolean",
+    "typeUrl": "URL",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "passwordHistory": {
+    "heading": "Password history"
+  }
+}

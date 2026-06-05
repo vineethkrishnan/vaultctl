@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Fingerprint, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { fromBase64, sha256 } from "@/shared/crypto";
@@ -31,6 +32,7 @@ async function deriveSafetyNumber(publicKeyB64: string): Promise<string> {
 }
 
 export function SafetyNumber({ identityPublicKey, label }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
   const [safetyNumber, setSafetyNumber] = useState<string | null>(null);
   const { copy } = useClipboard(0); // no auto-clear for safety numbers
 
@@ -46,11 +48,11 @@ export function SafetyNumber({ identityPublicKey, label }: Props) {
       <div className="flex items-center gap-2">
         <Fingerprint className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">
-          {label ?? "Safety Number"}
+          {label ?? t("vault:safetyNumber.label")}
         </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Verify this number out-of-band to confirm identity key authenticity.
+        {t("vault:safetyNumber.description")}
       </p>
       <div className="flex items-center gap-2">
         <code className="flex-1 rounded bg-muted px-3 py-2 font-mono text-xs tracking-wider select-all">
@@ -59,7 +61,7 @@ export function SafetyNumber({ identityPublicKey, label }: Props) {
         <button
           onClick={() => copy(safetyNumber.replace(/ /g, ""))}
           className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
-          title="Copy"
+          title={t("vault:safetyNumber.copy")}
         >
           <Copy className="h-3.5 w-3.5" />
         </button>

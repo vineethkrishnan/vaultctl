@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation, Trans } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -38,12 +40,12 @@ function startOfDay(t: number): number {
 
 // dayLabel buckets a timestamp into Today / Yesterday / weekday / date, used
 // for the grouped section headers.
-function dayLabel(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "Earlier";
-  const diff = Math.round((startOfDay(Date.now()) - startOfDay(t)) / 86_400_000);
-  if (diff <= 0) return "Today";
-  if (diff === 1) return "Yesterday";
+function dayLabel(iso: string, t: TFunction): string {
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return t("notifications:groups.earlier");
+  const diff = Math.round((startOfDay(Date.now()) - startOfDay(time)) / 86_400_000);
+  if (diff <= 0) return t("notifications:groups.today");
+  if (diff === 1) return t("notifications:groups.yesterday");
   if (diff < 7) return new Date(iso).toLocaleDateString(undefined, { weekday: "long" });
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
@@ -57,10 +59,10 @@ function clockTime(iso: string): string {
 
 // groupByDay keeps the server's newest-first order and collapses runs of the
 // same day into one section.
-function groupByDay(items: NotificationItem[]) {
+function groupByDay(items: NotificationItem[], t: TFunction) {
   const groups: { label: string; items: NotificationItem[] }[] = [];
   for (const n of items) {
-    const label = dayLabel(n.createdAt);
+    const label = dayLabel(n.createdAt, t);
     const last = groups[groups.length - 1];
     if (last && last.label === label) last.items.push(n);
     else groups.push({ label, items: [n] });
@@ -69,6 +71,7 @@ function groupByDay(items: NotificationItem[]) {
 }
 
 export function NotificationsPage() {
+  const { t } = useTranslation(["notifications", "system", "common"]);
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["system", "notifications"],
@@ -88,14 +91,14 @@ export function NotificationsPage() {
   const updateVisible = showUpdate && !!updateStatus && !updateDismissed;
 
   const items = data?.notifications ?? [];
-  const groups = groupByDay(items);
+  const groups = groupByDay(items, t);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 sm:space-y-5">
       {/* Title */}
       <div className="flex items-center gap-3">
         <Bell className="h-6 w-6 shrink-0 text-muted-foreground" />
-        <h1 className="text-xl font-bold">Notifications</h1>
+        <h1 className="text-xl font-bold">{t("notifications:title")}</h1>
         {data && data.unreadCount > 0 && (
           <span className="rounded-full bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">
             {data.unreadCount}
@@ -107,18 +110,23 @@ export function NotificationsPage() {
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-brand/30 bg-brand/10 px-4 py-3 text-sm">
           <ArrowUpCircle className="h-5 w-5 shrink-0 text-brand" />
           <span className="min-w-0">
-            vaultctl <strong>v{updateStatus.latestVersion}</strong> is available
+            <Trans
+              t={t}
+              i18nKey="system:update.available"
+              values={{ version: updateStatus.latestVersion }}
+              components={{ 1: <strong /> }}
+            />
             {updateStatus.severity && updateStatus.severity !== "none"
-              ? ` (${updateStatus.severity})`
+              ? t("system:update.severitySuffix", { severity: updateStatus.severity })
               : ""}
-            . You're on v{updateStatus.currentVersion}.
+            . {t("system:update.youAreOn", { version: updateStatus.currentVersion })}
           </span>
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => setShowWhatsNew(true)}
               className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-[#042f2a] hover:bg-brand/90"
             >
-              What's new
+              {t("system:update.whatsNew")}
             </button>
             <button
               onClick={() => {
@@ -127,11 +135,11 @@ export function NotificationsPage() {
               }}
               className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              Remind me later
+              {t("system:update.remindLater")}
             </button>
             <button
               onClick={() => setUpdateDismissed(true)}
-              aria-label="Dismiss"
+              aria-label={t("common:actions.dismiss")}
               className="rounded-md p-1 text-muted-foreground hover:text-foreground"
             >
               <X className="h-4 w-4" />
@@ -163,26 +171,26 @@ export function NotificationsPage() {
             disabled={markRead.isPending || data?.unreadCount === 0}
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 sm:flex-none sm:py-1.5"
           >
-            <CheckCheck className="h-4 w-4" /> Mark all read
+            <CheckCheck className="h-4 w-4" /> {t("notifications:markAllRead")}
           </button>
           <button
             onClick={() => clearAll.mutate()}
             disabled={clearAll.isPending}
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-input px-3 py-2.5 text-sm text-muted-foreground hover:text-destructive disabled:opacity-50 sm:flex-none sm:py-1.5"
           >
-            <Trash2 className="h-4 w-4" /> Clear all
+            <Trash2 className="h-4 w-4" /> {t("notifications:clearAll")}
           </button>
         </div>
       )}
 
       {isLoading ? (
         <div className="rounded-lg border border-border p-8 text-center text-sm text-muted-foreground">
-          Loading...
+          {t("common:loading")}
         </div>
       ) : items.length === 0 ? (
         updateVisible ? null : (
           <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">
-            You're all caught up - no recent activity.
+            {t("notifications:empty")}
           </div>
         )
       ) : (
@@ -210,8 +218,8 @@ export function NotificationsPage() {
                             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                           )}
                         </div>
-                        <span className="text-xs capitalize text-muted-foreground">
-                          {n.category}
+                        <span className="text-xs text-muted-foreground">
+                          {t(`notifications:categories.${n.category}`)}
                         </span>
                       </div>
                       <time

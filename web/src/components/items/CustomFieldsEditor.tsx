@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Eye, EyeOff, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
 import type { CustomField } from "@/shared/types/item-data";
@@ -27,6 +28,8 @@ interface Props {
 }
 
 export function CustomFieldsEditor({ fields, onChange }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
+
   function addField() {
     onChange([...fields, { name: "", value: "", type: "text" }]);
   }
@@ -45,7 +48,7 @@ export function CustomFieldsEditor({ fields, onChange }: Props) {
     <div className="space-y-3 border-t border-border pt-4">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-foreground">
-          Custom fields
+          {t("vault:customFields.heading")}
         </label>
         <button
           type="button"
@@ -53,14 +56,13 @@ export function CustomFieldsEditor({ fields, onChange }: Props) {
           className="flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <Plus className="h-3 w-3" />
-          Add field
+          {t("vault:customFields.addField")}
         </button>
       </div>
 
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No custom fields. Add one to store extra metadata like security
-          questions, recovery codes, or arbitrary key-value pairs.
+          {t("vault:customFields.empty")}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -88,6 +90,7 @@ function CustomFieldRow({
   onChange: (patch: Partial<CustomField>) => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation(["vault", "common"]);
   const [revealed, setRevealed] = useState(false);
   const { copy } = useClipboard();
 
@@ -97,7 +100,7 @@ function CustomFieldRow({
         type="text"
         value={field.name}
         onChange={(e) => onChange({ name: e.target.value })}
-        placeholder="Name"
+        placeholder={t("vault:customFields.namePlaceholder")}
         className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none ring-ring focus:ring-2"
       />
       <select
@@ -106,12 +109,12 @@ function CustomFieldRow({
           onChange({ type: e.target.value as CustomField["type"] })
         }
         className="rounded-md border border-input bg-background px-2 py-1 text-sm outline-none"
-        title="Field type"
+        title={t("vault:customFields.fieldType")}
       >
-        <option value="text">Text</option>
-        <option value="hidden">Hidden</option>
-        <option value="boolean">Boolean</option>
-        <option value="url">URL</option>
+        <option value="text">{t("vault:customFields.typeText")}</option>
+        <option value="hidden">{t("vault:customFields.typeHidden")}</option>
+        <option value="boolean">{t("vault:customFields.typeBoolean")}</option>
+        <option value="url">{t("vault:customFields.typeUrl")}</option>
       </select>
       {field.type === "boolean" ? (
         <label className="flex items-center gap-2 px-2 text-sm text-muted-foreground">
@@ -122,14 +125,14 @@ function CustomFieldRow({
               onChange({ value: e.target.checked ? "true" : "false" })
             }
           />
-          {field.value === "true" ? "Yes" : "No"}
+          {field.value === "true" ? t("vault:customFields.yes") : t("vault:customFields.no")}
         </label>
       ) : (
         <input
           type={field.type === "hidden" && !revealed ? "password" : "text"}
           value={field.value}
           onChange={(e) => onChange({ value: e.target.value })}
-          placeholder="Value"
+          placeholder={t("vault:customFields.valuePlaceholder")}
           className="min-w-0 flex-[2] rounded-md border border-input bg-background px-2 py-1 text-sm outline-none ring-ring focus:ring-2"
         />
       )}
@@ -138,7 +141,7 @@ function CustomFieldRow({
           type="button"
           onClick={() => setRevealed(!revealed)}
           className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-foreground"
-          title={revealed ? "Hide" : "Reveal"}
+          title={revealed ? t("vault:fields.hide") : t("vault:fields.reveal")}
         >
           {revealed ? (
             <EyeOff className="h-3.5 w-3.5" />
@@ -155,7 +158,7 @@ function CustomFieldRow({
             type="button"
             onClick={() => copy(field.value)}
             className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-foreground"
-            title="Copy"
+            title={t("vault:fields.copy")}
           >
             <Copy className="h-3.5 w-3.5" />
           </button>
@@ -164,7 +167,7 @@ function CustomFieldRow({
         type="button"
         onClick={onRemove}
         className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-destructive"
-        title="Remove"
+        title={t("vault:fields.remove")}
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

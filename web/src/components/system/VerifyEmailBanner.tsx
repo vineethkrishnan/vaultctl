@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation, Trans } from "react-i18next";
 import { MailWarning, Loader2 } from "lucide-react";
 import {
   getAccountStatus,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/account-api";
 
 export function VerifyEmailBanner() {
+  const { t } = useTranslation("account");
   const queryClient = useQueryClient();
   const { data } = useQuery({
     queryKey: accountStatusQueryKey,
@@ -38,16 +40,21 @@ export function VerifyEmailBanner() {
           className={`h-4 w-4 shrink-0 ${urgent ? "text-destructive" : "text-amber-600"}`}
         />
         <span className="min-w-0">
-          Confirm your email <strong>{data.email}</strong> to keep full access.
+          <Trans
+            t={t}
+            i18nKey="verify.bannerLead"
+            values={{ email: data.email }}
+            components={{ 1: <strong /> }}
+          />
           {daysLeft > 0
-            ? ` ${daysLeft} day${daysLeft === 1 ? "" : "s"} left before your vault becomes read-only.`
-            : " Your vault is read-only until you verify."}
+            ? t("verify.daysLeft", { count: daysLeft })
+            : t("verify.readOnlyNow")}
         </span>
         <button
           onClick={() => setOpen(true)}
           className="ml-auto rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Enter code
+          {t("verify.enterCode")}
         </button>
       </div>
 
@@ -74,6 +81,7 @@ function VerifyEmailDialog({
   onClose: () => void;
   onVerified: () => void;
 }) {
+  const { t } = useTranslation(["account", "common"]);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
@@ -96,7 +104,7 @@ function VerifyEmailDialog({
       await verifyEmail(code.trim());
       onVerified();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed");
+      setError(err instanceof Error ? err.message : t("verify.failed"));
     } finally {
       setBusy(false);
     }
@@ -110,7 +118,7 @@ function VerifyEmailDialog({
       await resendEmailVerification();
       setResent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend the code");
+      setError(err instanceof Error ? err.message : t("verify.resendFailed"));
     } finally {
       setResending(false);
     }
@@ -130,9 +138,9 @@ function VerifyEmailDialog({
         aria-modal="true"
         className="animate-scale-in w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-xl"
       >
-        <h2 className="mb-1 text-lg font-semibold">Confirm your email</h2>
+        <h2 className="mb-1 text-lg font-semibold">{t("verify.dialogTitle")}</h2>
         <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-          Enter the 6-digit code we sent to {email}.
+          {t("verify.dialogLead", { email })}
         </p>
 
         <input
@@ -152,7 +160,7 @@ function VerifyEmailDialog({
         )}
         {resent && !error && (
           <div className="mb-3 rounded-lg bg-emerald-500/10 p-2.5 text-xs text-emerald-600">
-            A new code is on its way.
+            {t("verify.resent")}
           </div>
         )}
 
@@ -163,7 +171,7 @@ function VerifyEmailDialog({
             disabled={resending}
             className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
           >
-            {resending ? "Sending..." : "Resend code"}
+            {resending ? t("verify.sending") : t("verify.resend")}
           </button>
           <div className="flex gap-2">
             <button
@@ -171,7 +179,7 @@ function VerifyEmailDialog({
               onClick={onClose}
               className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Cancel
+              {t("common:actions.cancel")}
             </button>
             <button
               type="submit"
@@ -179,7 +187,7 @@ function VerifyEmailDialog({
               className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-              Verify
+              {t("verify.verify")}
             </button>
           </div>
         </div>

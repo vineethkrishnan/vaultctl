@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LoginData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function LoginFields({ data, onChange }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
   const [showGenerator, setShowGenerator] = useState(false);
 
   const set = <K extends keyof LoginData>(key: K, value: LoginData[K]) =>
@@ -21,15 +23,15 @@ export function LoginFields({ data, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <Field label="Username" value={data.username} onChange={(v) => set("username", v)} copyable />
-      <Field label="Password" value={data.password} onChange={(v) => set("password", v)} type="password" copyable />
+      <Field label={t("vault:fields.username")} value={data.username} onChange={(v) => set("username", v)} copyable />
+      <Field label={t("vault:fields.password")} value={data.password} onChange={(v) => set("password", v)} type="password" copyable />
       <button
         type="button"
         onClick={() => setShowGenerator(!showGenerator)}
         className="flex items-center gap-1.5 text-xs text-primary hover:underline"
       >
         <Wand2 className="h-3 w-3" />
-        {showGenerator ? "Hide generator" : "Generate password"}
+        {showGenerator ? t("vault:fields.hideGenerator") : t("vault:fields.generatePassword")}
       </button>
       {showGenerator && (
         <PasswordGenerator
@@ -39,9 +41,9 @@ export function LoginFields({ data, onChange }: Props) {
           }}
         />
       )}
-      <Field label="URI" value={data.uri} onChange={(v) => set("uri", v)} type="url" copyable />
-      <Field label="TOTP Secret" value={data.totp} onChange={(v) => set("totp", v)} type="password" />
-      <Field label="Notes" value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.uri")} value={data.uri} onChange={(v) => set("uri", v)} type="url" copyable />
+      <Field label={t("vault:fields.totp")} value={data.totp} onChange={(v) => set("totp", v)} type="password" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

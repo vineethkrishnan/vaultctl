@@ -1,0 +1,34 @@
+{
+  "title": "Admin",
+  "orgs": {
+    "heading": "Organizations",
+    "newNamePlaceholder": "New organization name",
+    "create": "Create",
+    "manageLabel": "Manage organization",
+    "orgIdPlaceholder": "Organization ID"
+  },
+  "members": {
+    "heading": "Members ({{count}})",
+    "empty": "No members.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "remove": "Remove member"
+  },
+  "invites": {
+    "heading": "Invites",
+    "expires": "expires {{date}}",
+    "revoke": "Revoke invite",
+    "emailPlaceholder": "Email address",
+    "invite": "Invite"
+  },
+  "backups": {
+    "heading": "Backups",
+    "refresh": "Refresh",
+    "empty": "No backups found."
+  },
+  "roles": {
+    "member": "member",
+    "admin": "admin",
+    "owner": "owner"
+  }
+}

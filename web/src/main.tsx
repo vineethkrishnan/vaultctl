@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./routes/router";
+import { i18nReady } from "./lib/i18n";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/geist-mono";
 import "./app.css";
@@ -18,10 +19,16 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </StrictMode>,
-);
+function render() {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+}
+
+// Render only once translations are loaded so the UI never flashes raw keys and
+// route components never suspend mid-navigation. Render anyway if i18n fails.
+i18nReady.then(render, render);

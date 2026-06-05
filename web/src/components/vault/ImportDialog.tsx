@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useRef } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiPost } from "@/lib/api-client";
@@ -22,6 +23,7 @@ const encoder = new TextEncoder();
 const DEFAULT_FORMAT: ImportFormat = "bitwarden-csv";
 
 export function ImportDialog() {
+  const { t } = useTranslation(["vault", "common"]);
   const params = useParams({ strict: false }) as { vaultId?: string };
   const { data: vaultsRes } = useGetVaults();
   const vaults = vaultsRes?.status === 200 ? vaultsRes.data : [];
@@ -62,12 +64,12 @@ export function ImportDialog() {
     try {
       const items = await getImporter(effectiveFormat).parse(file);
       if (items.length === 0) {
-        setError("No items found in file");
+        setError(t("vault:import.noItemsFound"));
         return;
       }
       setParsedItems(items);
     } catch {
-      setError("Failed to parse file");
+      setError(t("vault:import.parseFailed"));
     }
   }
 
@@ -109,7 +111,7 @@ export function ImportDialog() {
     try {
       await importMutation.mutateAsync();
     } catch {
-      setError("Import failed");
+      setError(t("vault:import.importFailed"));
     } finally {
       setImporting(false);
     }
@@ -119,12 +121,11 @@ export function ImportDialog() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Upload className="h-5 w-5 text-muted-foreground" />
-        <h2 className="text-lg font-semibold">Import</h2>
+        <h2 className="text-lg font-semibold">{t("vault:import.heading")}</h2>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Import items from a password manager export. All data is encrypted
-        client-side before being sent to the server.
+        {t("vault:import.description")}
       </p>
 
       {!parsedItems.length && !result && (
@@ -132,7 +133,7 @@ export function ImportDialog() {
           {!params.vaultId && (
             <>
               <label htmlFor="import-vault" className="text-sm font-medium">
-                Target vault
+                {t("vault:import.targetVault")}
               </label>
               <select
                 id="import-vault"
@@ -140,7 +141,7 @@ export function ImportDialog() {
                 onChange={(event) => setSelectedVaultId(event.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="">Select a vault...</option>
+                <option value="">{t("vault:import.selectVault")}</option>
                 {vaults.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name ?? v.id}
@@ -150,7 +151,7 @@ export function ImportDialog() {
             </>
           )}
           <label htmlFor="import-format" className="text-sm font-medium">
-            Format
+            {t("vault:import.format")}
           </label>
           <select
             id="import-format"
@@ -182,7 +183,9 @@ export function ImportDialog() {
           className="flex items-center gap-2 rounded-md border border-dashed border-border px-4 py-8 text-sm text-muted-foreground hover:border-primary hover:text-foreground w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FileText className="h-5 w-5" />
-          {vaultId ? `Select ${activeImporter.label} file` : "Select a vault first"}
+          {vaultId
+            ? t("vault:import.selectFile", { format: activeImporter.label })
+            : t("vault:import.selectVaultFirst")}
         </button>
       )}
 
@@ -195,7 +198,12 @@ export function ImportDialog() {
       {parsedItems.length > 0 && !result && (
         <div className="space-y-3">
           <div className="rounded-md border border-border p-3 text-sm">
-            <strong>{parsedItems.length}</strong> items found:
+            <Trans
+              t={t}
+              i18nKey="vault:import.itemsFound"
+              values={{ count: parsedItems.length }}
+              components={{ 1: <strong /> }}
+            />
             <ul className="mt-1 space-y-0.5 text-muted-foreground">
               {Object.entries(
                 parsedItems.reduce<Record<string, number>>((counts, item) => {
@@ -204,7 +212,10 @@ export function ImportDialog() {
                 }, {}),
               ).map(([itemType, count]) => (
                 <li key={itemType}>
-                  {count} {itemType.replace("_", " ")}(s)
+                  {t("vault:import.typeCount", {
+                    count,
+                    type: t(`vault:itemTypes.${itemType}`),
+                  })}
                 </li>
               ))}
             </ul>
@@ -216,13 +227,15 @@ export function ImportDialog() {
               disabled={importing}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {importing ? `Importing... (${importMutation.variables ?? 0})` : "Import All"}
+              {importing
+                ? t("vault:import.importingProgress", { count: importMutation.variables ?? 0 })
+                : t("vault:import.importAll")}
             </button>
             <button
               onClick={() => setParsedItems([])}
               className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Cancel
+              {t("common:actions.cancel")}
             </button>
           </div>
         </div>
@@ -233,13 +246,18 @@ export function ImportDialog() {
           <div className="flex items-center gap-2 text-sm">
             <Check className="h-4 w-4 text-green-500" />
             <span>
-              <strong>{result.success}</strong> items imported successfully
+              <Trans
+                t={t}
+                i18nKey="vault:import.successCount"
+                values={{ count: result.success }}
+                components={{ 1: <strong /> }}
+              />
             </span>
           </div>
           {result.failed > 0 && (
             <div className="flex items-center gap-2 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4" />
-              <span>{result.failed} items failed</span>
+              <span>{t("vault:import.failedCount", { count: result.failed })}</span>
             </div>
           )}
           <button
@@ -249,7 +267,7 @@ export function ImportDialog() {
             }}
             className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            Import More
+            {t("vault:import.importMore")}
           </button>
         </div>
       )}

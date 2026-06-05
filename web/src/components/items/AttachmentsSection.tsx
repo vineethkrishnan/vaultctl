@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Download, Trash2, Loader2, Upload } from "lucide-react";
 import { queryKeys } from "@/lib/query-keys";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function AttachmentsSection({ vaultId, itemId }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
     mutationFn: (file: File) => uploadAttachment(vaultId, itemId, file),
     onSuccess: invalidate,
     onError: (e) =>
-      setError(e instanceof Error ? e.message : "Upload failed"),
+      setError(e instanceof Error ? e.message : t("vault:attachments.uploadFailed")),
   });
 
   const deleteMutation = useMutation({
@@ -59,7 +61,7 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Paperclip className="h-4 w-4 text-muted-foreground" />
-          Attachments
+          {t("vault:attachments.heading")}
         </div>
         <button
           type="button"
@@ -72,7 +74,7 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
           ) : (
             <Upload className="h-3.5 w-3.5" />
           )}
-          {uploadMutation.isPending ? "Encrypting..." : "Add file"}
+          {uploadMutation.isPending ? t("vault:attachments.encrypting") : t("vault:attachments.addFile")}
         </button>
         <input
           ref={fileInput}
@@ -89,7 +91,7 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
         <div className="h-10 animate-pulse rounded bg-muted" />
       ) : !attachments || attachments.length === 0 ? (
         <p className="text-xs text-muted-foreground">
-          No attachments. Files are encrypted in your browser before upload.
+          {t("vault:attachments.empty")}
         </p>
       ) : (
         <ul className="space-y-1.5">
@@ -125,7 +127,8 @@ function AttachmentRow({
   onDelete: () => void;
   deleting: boolean;
 }) {
-  const [filename, setFilename] = useState("Decrypting...");
+  const { t } = useTranslation(["vault", "common"]);
+  const [filename, setFilename] = useState(t("vault:attachments.decrypting"));
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -135,7 +138,7 @@ function AttachmentRow({
         if (!cancelled) setFilename(name);
       })
       .catch(() => {
-        if (!cancelled) setFilename("[name unavailable]");
+        if (!cancelled) setFilename(t("vault:attachments.nameUnavailable"));
       });
     return () => {
       cancelled = true;
@@ -165,7 +168,7 @@ function AttachmentRow({
         onClick={handleDownload}
         disabled={downloading}
         className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-        title="Download and decrypt"
+        title={t("vault:attachments.download")}
       >
         {downloading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -178,7 +181,7 @@ function AttachmentRow({
         onClick={onDelete}
         disabled={deleting}
         className="rounded-md p-1.5 text-muted-foreground hover:text-destructive disabled:opacity-50"
-        title="Delete attachment"
+        title={t("vault:attachments.delete")}
       >
         {deleting ? (
           <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { Download, Shield, AlertTriangle, Check } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { signIdentity } from "@/lib/key-holder";
@@ -21,6 +22,7 @@ import { getExport } from "@/api/import-export/import-export";
  * envelope signature only guarantees integrity and authorship.
  */
 export function ExportDialog() {
+  const { t } = useTranslation(["vault", "common"]);
   const userId = useAuthStore((s) => s.userId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function ExportDialog() {
     setDone(null);
 
     if (!userId) {
-      setError("Not signed in");
+      setError(t("vault:export.notSignedIn"));
       return;
     }
 
@@ -41,7 +43,7 @@ export function ExportDialog() {
     try {
       const res = await getExport();
       if (res.status !== 200) {
-        setError(`Server returned ${res.status}`);
+        setError(t("vault:export.serverReturned", { status: res.status }));
         return;
       }
       // The server returns the raw ExportData shape { vaults, items, folders }.
@@ -72,7 +74,7 @@ export function ExportDialog() {
       setError(
         err instanceof Error
           ? err.message
-          : "Export failed for an unknown reason",
+          : t("vault:export.unknownError"),
       );
     } finally {
       setBusy(false);
@@ -83,22 +85,17 @@ export function ExportDialog() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Download className="h-5 w-5 text-muted-foreground" />
-        <h2 className="text-lg font-semibold">Export</h2>
+        <h2 className="text-lg font-semibold">{t("vault:export.heading")}</h2>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Download an encrypted, signed backup of every vault you can access.
-        The file is useless without your master password - item contents
-        stay encrypted. Re-importing on the same account restores any items
-        you later delete.
+        {t("vault:export.description")}
       </p>
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
         <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <div>
-          Signed with your identity key (Ed25519). Any byte-level tampering
-          before re-import will fail signature verification and the import
-          will refuse to run.
+          {t("vault:export.signedNote")}
         </div>
       </div>
 
@@ -108,7 +105,7 @@ export function ExportDialog() {
         className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         <Download className="h-4 w-4" />
-        {busy ? "Building backup..." : "Download encrypted backup"}
+        {busy ? t("vault:export.building") : t("vault:export.download")}
       </button>
 
       {error && (
@@ -122,7 +119,12 @@ export function ExportDialog() {
         <div className="flex items-center gap-2 text-sm text-green-500">
           <Check className="h-4 w-4" />
           <span>
-            Saved <strong>{done.filename}</strong> ({formatBytes(done.bytes)})
+            <Trans
+              t={t}
+              i18nKey="vault:export.savedFile"
+              values={{ filename: done.filename, size: formatBytes(done.bytes) }}
+              components={{ 1: <strong /> }}
+            />
           </span>
         </div>
       )}

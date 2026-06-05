@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useEffect } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
@@ -20,6 +21,7 @@ import {
 import { Fingerprint } from "lucide-react";
 
 export function LoginPage() {
+  const { t } = useTranslation(["auth", "common"]);
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -87,7 +89,7 @@ export function LoginPage() {
       if (err instanceof ApiRequestError) {
         setError(err.error.message);
       } else {
-        setError("Connection failed");
+        setError(t("errors.connectionFailed"));
       }
     } finally {
       setLoading(false);
@@ -151,9 +153,9 @@ export function LoginPage() {
         // Stored authHash no longer valid (master password changed elsewhere).
         clearBiometric();
         setBioEnrolled(false);
-        setError("Master password changed - sign in once to re-enable Touch ID");
+        setError(t("errors.bioMasterChanged"));
       } else {
-        setError(err instanceof Error ? err.message : "Touch ID unlock failed");
+        setError(err instanceof Error ? err.message : t("errors.bioFailed"));
       }
     } finally {
       setBioBusy(false);
@@ -191,14 +193,14 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiRequestError) {
         if (err.error.code === "INVALID_CREDENTIALS") {
-          setError("Invalid email or password");
+          setError(t("errors.invalidCredentials"));
         } else if (err.error.code === "ACCOUNT_LOCKED") {
-          setError("Account locked due to too many failed attempts");
+          setError(t("errors.accountLocked"));
         } else {
           setError(err.error.message);
         }
       } else {
-        setError("Login failed - check your connection");
+        setError(t("errors.loginFailed"));
       }
     } finally {
       setLoading(false);
@@ -215,7 +217,7 @@ export function LoginPage() {
             <BrandMark variant="wordmark" className="block text-3xl" />
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            A zero-knowledge, self-hosted password vault.
+            {t("tagline")}
           </p>
         </div>
 
@@ -234,11 +236,11 @@ export function LoginPage() {
               className="flex w-full items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/15 disabled:opacity-50"
             >
               <Fingerprint className="h-4 w-4" />
-              {bioBusy ? "Unlocking..." : "Unlock with Touch ID"}
+              {bioBusy ? t("biometric.unlocking") : t("biometric.unlock")}
             </button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
-              or use your master password
+              {t("biometric.orPassword")}
               <span className="h-px flex-1 bg-border" />
             </div>
           </div>
@@ -248,7 +250,7 @@ export function LoginPage() {
           <form onSubmit={handlePrelogin} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                {t("login.emailLabel")}
               </label>
               <input
                 id="email"
@@ -269,20 +271,25 @@ export function LoginPage() {
                 onChange={(e) => setRemember(e.target.checked)}
                 className="accent-brand"
               />
-              Remember me on this device
+              {t("login.rememberMe")}
             </label>
             <button
               type="submit"
               disabled={loading || !email}
               className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Loading..." : "Continue"}
+              {loading ? t("common:loading") : t("common:actions.continue")}
             </button>
           </form>
         ) : (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              Logging in as <strong>{email}</strong>{" "}
+              <Trans
+                t={t}
+                i18nKey="login.loggingInAs"
+                values={{ email }}
+                components={{ 1: <strong /> }}
+              />{" "}
               <button
                 type="button"
                 onClick={() => {
@@ -292,12 +299,12 @@ export function LoginPage() {
                 }}
                 className="text-primary underline"
               >
-                change
+                {t("login.change")}
               </button>
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
-                Master Password
+                {t("login.masterPassword")}
               </label>
               <input
                 id="password"
@@ -315,20 +322,20 @@ export function LoginPage() {
               disabled={loading || !password}
               className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Deriving keys..." : "Unlock"}
+              {loading ? t("login.derivingKeys") : t("login.unlock")}
             </button>
             <div className="text-center text-sm">
               <Link to="/recovery" className="text-muted-foreground underline">
-                Forgot your master password?
+                {t("login.forgotPassword")}
               </Link>
             </div>
           </form>
         )}
 
         <div className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          {t("login.noAccount")}{" "}
           <Link to="/register" className="text-primary underline">
-            Create one
+            {t("login.createOne")}
           </Link>
         </div>
       </div>

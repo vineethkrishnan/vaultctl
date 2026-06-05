@@ -1,0 +1,17 @@
+{
+  "title": "Benachrichtigungen",
+  "markAllRead": "Alle als gelesen markieren",
+  "clearAll": "Alle löschen",
+  "empty": "Sie sind auf dem neuesten Stand - keine aktuellen Aktivitäten.",
+  "groups": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "earlier": "Früher"
+  },
+  "categories": {
+    "security": "Sicherheit",
+    "vault": "Tresor",
+    "account": "Konto",
+    "backup": "Sicherung"
+  }
+}

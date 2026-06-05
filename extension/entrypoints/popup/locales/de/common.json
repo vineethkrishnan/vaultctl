@@ -1,0 +1,18 @@
+{
+  "appName": "VaultCTL",
+  "vault": "Tresor",
+  "continue": "Weiter",
+  "cancel": "Abbrechen",
+  "save": "Speichern",
+  "enable": "Aktivieren",
+  "disable": "Deaktivieren",
+  "clear": "Leeren",
+  "clearAll": "Alle löschen",
+  "dismiss": "Verwerfen",
+  "loading": "Wird geladen...",
+  "copy": "Kopieren",
+  "documentation": "Dokumentation",
+  "support": "Support",
+  "username": "Benutzername",
+  "password": "Passwort"
+}

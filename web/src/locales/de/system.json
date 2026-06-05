@@ -1,0 +1,22 @@
+{
+  "update": {
+    "available": "vaultctl <1>v{{version}}</1> ist verfügbar",
+    "severitySuffix": " ({{severity}})",
+    "youAreOn": "Sie verwenden v{{version}}.",
+    "whatsNew": "Neuerungen",
+    "remindLater": "Später erinnern"
+  },
+  "whatsNew": {
+    "title": "Neuerungen",
+    "viewRelease": "Versionshinweise ansehen",
+    "updatedTo": "Aktualisiert auf v{{version}}",
+    "updateAvailable": "Update verfügbar",
+    "versionSuffix": " - v{{version}}",
+    "close": "Schließen",
+    "viewFullRelease": "Vollständige Versionshinweise ansehen",
+    "remindLater": "Später erinnern",
+    "gotIt": "Verstanden",
+    "done": "Fertig",
+    "noNotes": "Keine Versionshinweise."
+  }
+}

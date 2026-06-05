@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Monitor, AlertTriangle, Check, History } from "lucide-react";
 import {
@@ -40,6 +41,7 @@ function lastActiveTs(g: DeviceGroup): number {
 }
 
 export function SessionsPanel() {
+  const { t } = useTranslation(["settings", "common"]);
   const queryClient = useQueryClient();
   const currentSessionId = useAuthStore((s) => s.sessionId);
 
@@ -124,7 +126,7 @@ export function SessionsPanel() {
   async function handleRevoke(group: DeviceGroup) {
     if (group.isCurrent) {
       const confirmed = window.confirm(
-        "Revoking this device will log you out here. Continue?",
+        t("settings:sessions.revokeCurrentConfirm"),
       );
       if (!confirmed) return;
     }
@@ -148,7 +150,7 @@ export function SessionsPanel() {
     return (
       <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
         <AlertTriangle className="h-4 w-4" />
-        <span>Failed to load sessions</span>
+        <span>{t("settings:sessions.loadFailed")}</span>
       </div>
     );
   }
@@ -157,12 +159,11 @@ export function SessionsPanel() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Monitor className="h-4 w-4 text-muted-foreground" />
-        <h2 className="font-semibold">Active sessions</h2>
+        <h2 className="font-semibold">{t("settings:sessions.activeTitle")}</h2>
         <span className="text-xs text-muted-foreground">({active.length})</span>
       </div>
       <p className="text-xs text-muted-foreground">
-        Devices currently signed in. Revoking a device ends its access
-        immediately.
+        {t("settings:sessions.activeDescription")}
       </p>
 
       {otherIds.length > 0 && (
@@ -172,12 +173,12 @@ export function SessionsPanel() {
           disabled={revokeMutation.isPending}
           className="rounded-md border border-input px-3 py-1.5 text-xs text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
         >
-          Sign out of all other devices
+          {t("settings:sessions.signOutOthers")}
         </button>
       )}
 
       {active.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No active sessions.</p>
+        <p className="text-sm text-muted-foreground">{t("settings:sessions.noActive")}</p>
       ) : (
         <ul className="space-y-2">
           {active.map((group) => (
@@ -196,7 +197,7 @@ export function SessionsPanel() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-semibold">Past sessions</h2>
+              <h2 className="font-semibold">{t("settings:sessions.pastTitle")}</h2>
               <span className="text-xs text-muted-foreground">
                 ({past.length})
               </span>
@@ -207,12 +208,11 @@ export function SessionsPanel() {
               disabled={revokeMutation.isPending}
               className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
             >
-              Clear all
+              {t("settings:sessions.clearAll")}
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Older sessions that have not been active recently. Revoke any you do
-            not recognize.
+            {t("settings:sessions.pastDescription")}
           </p>
           <ul className="space-y-2">
             {past.map((group) => (
@@ -242,6 +242,7 @@ function SessionRow({
   onRevoke: () => void;
   muted?: boolean;
 }) {
+  const { t } = useTranslation("settings");
   const lastIso = group.lastActiveAt ?? group.createdAt;
   return (
     <li
@@ -257,20 +258,20 @@ function SessionRow({
           {group.isCurrent && (
             <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
               <Check className="h-3 w-3" />
-              This device
+              {t("sessions.thisDevice")}
             </span>
           )}
           {group.ids.length > 1 && (
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              {group.ids.length} sessions
+              {t("sessions.sessionCount", { count: group.ids.length })}
             </span>
           )}
         </div>
         <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          <dt>IP</dt>
+          <dt>{t("sessions.ip")}</dt>
           <dd className="break-all font-mono">{group.ipAddress || "-"}</dd>
-          <dt>Last active</dt>
-          <dd>{group.isCurrent ? "now" : relativeAge(lastIso)}</dd>
+          <dt>{t("sessions.lastActive")}</dt>
+          <dd>{group.isCurrent ? t("sessions.now") : relativeAge(lastIso)}</dd>
         </dl>
       </div>
       <button
@@ -278,11 +279,11 @@ function SessionRow({
         onClick={onRevoke}
         disabled={pending}
         className="flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
-        title={group.isCurrent ? "Log out of this device" : "Revoke device"}
+        title={group.isCurrent ? t("sessions.logOutTitle") : t("sessions.revokeTitle")}
       >
         <LogOut className="h-3.5 w-3.5" />
         <span className="sm:hidden">
-          {group.isCurrent ? "Log out" : "Revoke"}
+          {group.isCurrent ? t("sessions.logOut") : t("sessions.revoke")}
         </span>
       </button>
     </li>

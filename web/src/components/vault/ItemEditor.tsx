@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { decryptData, decryptName, encryptData, encryptName } from "@/lib/key-holder";
-import { ITEM_TYPE_LABELS } from "@/components/vault/ItemList";
 import { RepromptDialog } from "@/components/vault/RepromptDialog";
 import { LoginFields } from "@/components/items/LoginFields";
 import { SecureNoteFields } from "@/components/items/SecureNoteFields";
@@ -29,6 +29,7 @@ interface Props {
 }
 
 export function ItemEditor({ vaultId, itemId }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -59,7 +60,7 @@ export function ItemEditor({ vaultId, itemId }: Props) {
           setFavorite(item!.favorite);
         }
       } catch {
-        if (!cancelled) setName("[decryption failed]");
+        if (!cancelled) setName(t("vault:editor.decryptionFailed"));
       }
 
       // If reprompt, wait for password confirmation before decrypting data
@@ -181,17 +182,17 @@ export function ItemEditor({ vaultId, itemId }: Props) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full bg-transparent text-xl font-bold outline-none placeholder:text-muted-foreground"
-            placeholder="Item name"
+            placeholder={t("vault:editor.namePlaceholder")}
           />
           <span className="text-xs text-muted-foreground">
-            {ITEM_TYPE_LABELS[item?.itemType ?? ""] ?? item?.itemType}
+            {item?.itemType ? t(`vault:itemTypes.${item.itemType}`) : ""}
           </span>
         </div>
         <button
           type="button"
           onClick={() => setFavorite(!favorite)}
           className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
-          title={favorite ? "Remove from favorites" : "Add to favorites"}
+          title={favorite ? t("vault:editor.removeFavorite") : t("vault:editor.addFavorite")}
         >
           <Star
             className={`h-5 w-5 ${favorite ? "fill-yellow-500 text-yellow-500" : ""}`}
@@ -201,7 +202,7 @@ export function ItemEditor({ vaultId, itemId }: Props) {
           type="button"
           onClick={() => trashMutation.mutate()}
           className="rounded-md p-1.5 text-muted-foreground hover:text-destructive"
-          title="Move to trash"
+          title={t("vault:editor.moveToTrash")}
         >
           <Trash2 className="h-5 w-5" />
         </button>
@@ -225,16 +226,16 @@ export function ItemEditor({ vaultId, itemId }: Props) {
           disabled={saving}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? t("vault:editor.saving") : t("common:actions.save")}
         </button>
         {updateMutation.isSuccess && (
           <span className="self-center text-sm text-muted-foreground">
-            Saved
+            {t("vault:editor.saved")}
           </span>
         )}
         {updateMutation.isError && (
           <span className="self-center text-sm text-destructive">
-            Save failed
+            {t("vault:editor.saveFailed")}
           </span>
         )}
       </div>
@@ -252,6 +253,7 @@ function TypeFields({
   data: Record<string, unknown>;
   onChange: (d: Record<string, unknown>) => void;
 }) {
+  const { t } = useTranslation(["vault", "common"]);
   // Cast through unknown to the specific type - the schema parser guarantees shape
   switch (itemType) {
     case "login":
@@ -271,7 +273,7 @@ function TypeFields({
     default:
       return (
         <p className="text-sm text-muted-foreground">
-          Unknown item type: {itemType}
+          {t("vault:editor.unknownType", { type: itemType })}
         </p>
       );
   }

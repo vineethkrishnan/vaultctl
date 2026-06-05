@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
@@ -41,6 +42,7 @@ interface ResetResponse {
  * key or any plaintext key - only the re-encrypted blobs and the new auth hash.
  */
 export function RecoveryPage() {
+  const { t } = useTranslation(["auth", "common"]);
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -84,7 +86,7 @@ export function RecoveryPage() {
       // The server returns the same error for unknown emails to avoid
       // leaking which accounts exist.
       if (err instanceof ApiRequestError) setError(err.error.message);
-      else setError("Connection failed");
+      else setError(t("auth:recovery.errors.connectionFailed"));
     } finally {
       setLoading(false);
     }
@@ -96,11 +98,11 @@ export function RecoveryPage() {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth:recovery.errors.passwordsMismatch"));
       return;
     }
     if (newPassword.length < 10) {
-      setError("New password must be at least 10 characters");
+      setError(t("auth:recovery.errors.passwordTooShort"));
       return;
     }
 
@@ -110,7 +112,7 @@ export function RecoveryPage() {
       try {
         recoveryKeyBytes = parseRecoveryKey(recoveryKey.trim());
       } catch {
-        setError("That doesn't look like a valid recovery key");
+        setError(t("auth:recovery.errors.invalidKey"));
         return;
       }
 
@@ -127,7 +129,7 @@ export function RecoveryPage() {
           fromBase64(material.recoveryWrappedIdentityPrivateKey),
         );
       } catch {
-        setError("Incorrect recovery key for this account");
+        setError(t("auth:recovery.errors.incorrectKey"));
         return;
       }
 
@@ -191,7 +193,7 @@ export function RecoveryPage() {
       });
     } catch (err) {
       if (err instanceof ApiRequestError) setError(err.error.message);
-      else setError(err instanceof Error ? err.message : "Recovery failed");
+      else setError(err instanceof Error ? err.message : t("auth:recovery.errors.recoveryFailed"));
     } finally {
       if (recoveryKeyBytes) zero(recoveryKeyBytes);
       setLoading(false);
@@ -203,10 +205,9 @@ export function RecoveryPage() {
       <div className="w-full max-w-sm space-y-6 p-6">
         <div className="flex flex-col items-center space-y-3 text-center">
           <BrandMark className="text-7xl text-brand" />
-          <h1 className="text-xl font-bold">Recover your vault</h1>
+          <h1 className="text-xl font-bold">{t("auth:recovery.title")}</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Use your recovery key to set a new master password. Your vault data
-            is preserved.
+            {t("auth:recovery.subtitle")}
           </p>
         </div>
 
@@ -220,7 +221,7 @@ export function RecoveryPage() {
           <form onSubmit={handleVerify} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="rec-email" className="text-sm font-medium">
-                Email
+                {t("auth:recovery.emailLabel")}
               </label>
               <input
                 id="rec-email"
@@ -239,30 +240,25 @@ export function RecoveryPage() {
               disabled={loading || !email}
               className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Checking..." : "Continue"}
+              {loading ? t("auth:recovery.checking") : t("common:actions.continue")}
             </button>
           </form>
         ) : step === "nokit" ? (
           <div className="rounded-md border border-border bg-card p-4 text-sm">
-            <p className="font-medium">No recovery kit on file for this account.</p>
+            <p className="font-medium">{t("auth:recovery.noKitTitle")}</p>
             {hint ? (
               <>
                 <p className="mt-1.5 text-muted-foreground">
-                  Your master password can&apos;t be reset without a recovery kit, but
-                  here&apos;s the hint you saved:
+                  {t("auth:recovery.noKitHintIntro")}
                 </p>
                 <p className="mt-2 rounded-md bg-accent/40 px-3 py-2 font-mono">{hint}</p>
                 <p className="mt-2 text-muted-foreground">
-                  If that jogs your memory, head back and sign in. Once you&apos;re in,
-                  create a recovery kit from Settings so this can&apos;t happen again.
+                  {t("auth:recovery.noKitHintFollowup")}
                 </p>
               </>
             ) : (
               <p className="mt-1.5 text-muted-foreground">
-                vaultctl is zero-knowledge: without your master password or a recovery kit,
-                the vault cannot be decrypted &mdash; not by you, not by an administrator.
-                If your instance has an administrator, contact them. Once you can sign in,
-                create a recovery kit from Settings so this can&apos;t happen again.
+                {t("auth:recovery.noKitNoHint")}
               </p>
             )}
           </div>
@@ -270,7 +266,7 @@ export function RecoveryPage() {
           <form onSubmit={handleReset} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="rec-key" className="text-sm font-medium">
-                Recovery key
+                {t("auth:recovery.keyLabel")}
               </label>
               <textarea
                 id="rec-key"
@@ -285,7 +281,7 @@ export function RecoveryPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="rec-pw" className="text-sm font-medium">
-                New master password
+                {t("auth:recovery.newPasswordLabel")}
               </label>
               <input
                 id="rec-pw"
@@ -300,7 +296,7 @@ export function RecoveryPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="rec-pw2" className="text-sm font-medium">
-                Confirm new password
+                {t("auth:recovery.confirmPasswordLabel")}
               </label>
               <input
                 id="rec-pw2"
@@ -317,14 +313,14 @@ export function RecoveryPage() {
               disabled={loading || !recoveryKey || !newPassword || !confirmPassword}
               className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Recovering..." : "Reset master password"}
+              {loading ? t("auth:recovery.recovering") : t("auth:recovery.resetSubmit")}
             </button>
           </form>
         )}
 
         <div className="text-center text-sm text-muted-foreground">
           <Link to="/login" className="text-primary underline">
-            Back to login
+            {t("auth:recovery.backToLogin")}
           </Link>
         </div>
       </div>

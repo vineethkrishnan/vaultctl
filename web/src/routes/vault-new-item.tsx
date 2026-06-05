@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiPost } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { encryptData, encryptName } from "@/lib/key-holder";
-import { ITEM_TYPE_LABELS, ITEM_TYPE_ICONS } from "@/components/vault/ItemList";
+import { ITEM_TYPE_ICONS } from "@/components/vault/ItemList";
 import { LoginFields } from "@/components/items/LoginFields";
 import { SecureNoteFields } from "@/components/items/SecureNoteFields";
 import { CreditCardFields } from "@/components/items/CreditCardFields";
@@ -31,6 +32,7 @@ const DEFAULT_DATA: Record<ItemType, () => ItemData> = {
 };
 
 export function VaultNewItemPage() {
+  const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -93,10 +95,10 @@ export function VaultNewItemPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-xl font-bold">New Item</h1>
+          <h1 className="text-xl font-bold">{t("vault:newItem.title")}</h1>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Choose an item type:
+          {t("vault:newItem.chooseType")}
         </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {ITEM_TYPES.map((type) => {
@@ -109,7 +111,7 @@ export function VaultNewItemPage() {
               >
                 <Icon className="h-6 w-6 text-muted-foreground" />
                 <span className="text-sm font-medium">
-                  {ITEM_TYPE_LABELS[type]}
+                  {t(`vault:itemTypes.${type}`)}
                 </span>
               </button>
             );
@@ -137,11 +139,11 @@ export function VaultNewItemPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-transparent text-xl font-bold outline-none placeholder:text-muted-foreground"
-              placeholder="Item name"
+              placeholder={t("vault:newItem.namePlaceholder")}
               autoFocus
             />
             <span className="text-xs text-muted-foreground">
-              New {ITEM_TYPE_LABELS[selectedType]}
+              {t("vault:newItem.newOfType", { type: t(`vault:itemTypes.${selectedType}`) })}
             </span>
           </div>
         </div>
@@ -160,11 +162,11 @@ export function VaultNewItemPage() {
             disabled={saving}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {saving ? "Creating..." : "Create Item"}
+            {saving ? t("vault:newItem.creating") : t("vault:newItem.create")}
           </button>
           {createMutation.isError && (
             <span className="self-center text-sm text-destructive">
-              Failed to create
+              {t("vault:newItem.createFailed")}
             </span>
           )}
         </div>

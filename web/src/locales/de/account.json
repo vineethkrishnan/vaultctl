@@ -1,0 +1,30 @@
+{
+  "verify": {
+    "bannerLead": "Bestätigen Sie Ihre E-Mail-Adresse <1>{{email}}</1>, um den vollen Zugriff zu behalten.",
+    "daysLeft_one": " Noch {{count}} Tag, bis Ihr Tresor schreibgeschützt wird.",
+    "daysLeft_other": " Noch {{count}} Tage, bis Ihr Tresor schreibgeschützt wird.",
+    "readOnlyNow": " Ihr Tresor ist schreibgeschützt, bis Sie ihn bestätigen.",
+    "enterCode": "Code eingeben",
+    "dialogTitle": "E-Mail-Adresse bestätigen",
+    "dialogLead": "Geben Sie den 6-stelligen Code ein, den wir an {{email}} gesendet haben.",
+    "resend": "Code erneut senden",
+    "sending": "Wird gesendet...",
+    "resent": "Ein neuer Code ist unterwegs.",
+    "verify": "Bestätigen",
+    "failed": "Bestätigung fehlgeschlagen",
+    "resendFailed": "Code konnte nicht erneut gesendet werden"
+  },
+  "digest": {
+    "title": "E-Mail-Zusammenfassung",
+    "description": "Erhalten Sie eine regelmäßige Zusammenfassung der Kontoaktivität: Anmeldungen, hinzugefügte Einträge, Warnungen zu neuen Geräten und Erinnerungen zum Rotieren veralteter Zugangsdaten.",
+    "frequency": "Häufigkeit",
+    "options": {
+      "off": "Aus",
+      "daily": "Täglich",
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich",
+      "quarterly": "Vierteljährlich",
+      "yearly": "Jährlich"
+    }
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "connect": {
+    "intro": "Connect to your vault server to get started.",
+    "serverUrlLabel": "Server URL",
+    "serverUrlPlaceholder": "https://vault.example.com",
+    "checking": "Checking server...",
+    "errors": {
+      "invalidUrl": "Enter the full server URL, including http:// or https://",
+      "notVaultctl": "{{server}} doesn't look like a vaultctl server.",
+      "serverUnhealthy": "The server is reachable but reporting a problem. You may not be able to sign in until it recovers.",
+      "unreachable": "Couldn't reach that server."
+    }
+  },
+  "email": {
+    "intro": "Sign in to your vault.",
+    "placeholder": "you@example.com",
+    "rememberMe": "Remember me on this device",
+    "changeServer": "Change server ({{host}})",
+    "connectionFailed": "Connection failed"
+  },
+  "password": {
+    "intro": "Master password for <strong>{{email}}</strong>",
+    "placeholder": "Master password",
+    "deriving": "Deriving keys...",
+    "unlock": "Unlock",
+    "useDifferentAccount": "Use a different account",
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "accountLocked": "Account locked - too many attempts",
+      "loginFailed": "Login failed"
+    }
+  },
+  "biometric": {
+    "unlockButton": "Unlock with Touch ID",
+    "orMasterPassword": "or use your master password",
+    "errors": {
+      "masterPasswordChanged": "Master password changed - sign in once to re-enable Touch ID",
+      "rateLimited": "Too many attempts - wait a few minutes and try again",
+      "unlockFailed": "Touch ID unlock failed"
+    }
+  },
+  "footer": {
+    "craftedBy": "Crafted by team"
+  },
+  "vault": {
+    "fallbackName": "Vault",
+    "searchPlaceholder": "Search vault...",
+    "noItems": "No items in this vault",
+    "noMatches": "No matches",
+    "copyUsername": "Copy username",
+    "copyPassword": "Copy password",
+    "openSite": "Open site",
+    "noVaults": "No vaults on this account yet - create one in the web vault.",
+    "errors": {
+      "decryptPassword": "Could not decrypt password"
+    }
+  },
+  "status": {
+    "copied": "Copied {{label}} - clipboard clears in 30s"
+  },
+  "tabs": {
+    "vault": "Vault",
+    "generator": "Generator",
+    "send": "Send",
+    "alerts": "Alerts",
+    "settings": "Settings"
+  },
+  "tabTitles": {
+    "vault": "Vault",
+    "generator": "Generator",
+    "send": "Send",
+    "notifications": "Notifications",
+    "settings": "Settings"
+  },
+  "generator": {
+    "length": "Length",
+    "regenerate": "Regenerate",
+    "copyPassword": "Copy password",
+    "recent": "Recent ({{count}})",
+    "empty": "Generated passwords you copy or fill appear here.",
+    "keep": "Keep",
+    "expire": "Expire",
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "expireOptions": {
+      "15m": "15m",
+      "1h": "1h",
+      "4h": "4h",
+      "24h": "24h"
+    }
+  },
+  "send": {
+    "title": "Send isn't available yet",
+    "body": "Ephemeral encrypted sharing needs server support that vaultctl doesn't have yet. It'll show up here once the backend lands."
+  },
+  "notifications": {
+    "title": "No notifications",
+    "body": "When the extension catches a login you haven't saved yet, it shows up here. Nothing to review right now.",
+    "unread": "{{count}} unread",
+    "allCaughtUp": "All caught up",
+    "markAllRead": "Mark all read",
+    "savePrompt": "Save login for {{host}}?",
+    "noUsername": "(no username)",
+    "captureMeta": "{{username}} ({{age}})",
+    "saveError": "Could not save this login to the vault"
+  },
+  "update": {
+    "available": "vaultctl v{{version}} is available",
+    "availableWithSeverity": "vaultctl v{{version}} is available ({{severity}})",
+    "autoUpdateNote": "You're on v{{current}}. Your browser updates the extension automatically.",
+    "releaseNotes": "Release notes",
+    "release": "Release",
+    "heading": "Updates",
+    "check": "Check",
+    "checkingOff": "Update checking is off on this server.",
+    "onLatest": "You're on the latest version (v{{current}}).",
+    "cardLine": "<version>v{{version}}</version> is available - you're on v{{current}}. Your browser updates the extension automatically.",
+    "cardLineSeverity": "<version>v{{version}}</version> is available ({{severity}}) - you're on v{{current}}. Your browser updates the extension automatically.",
+    "whatsNew": "What's new",
+    "hide": "Hide",
+    "updatedTo": "Updated to v{{version}}"
+  },
+  "settings": {
+    "server": "Server",
+    "notSet": "not set",
+    "autofillSaving": "Autofill & saving",
+    "fieldIcon": "Show field icon",
+    "fieldIconHint": "Inline icon inside login fields to fill",
+    "autofill": "Autofill on page load",
+    "autofillHint": "Fill matching logins automatically, no click",
+    "savePromptLabel": "Offer to save / update",
+    "savePromptHint": "Prompt after a login submit",
+    "suggestPassword": "Suggest strong passwords",
+    "suggestPasswordHint": "Offer a generated password on signup fields",
+    "promptTimeout": "Prompt timeout",
+    "promptTimeoutHint": "How long the save/update prompt stays before it fades",
+    "autoLock": "Auto-lock",
+    "autoLockHint": "Lock after this much inactivity. Closing the browser always locks.",
+    "updateAlerts": "Update alerts",
+    "updateAlertsHint": "When a newer vaultctl release raises a notice in Alerts",
+    "language": "Language",
+    "languageHint": "Display language for the extension",
+    "openWebVault": "Open web vault",
+    "lockVault": "Lock vault",
+    "autoLockOptions": {
+      "1min": "1 min",
+      "5min": "5 min",
+      "15min": "15 min",
+      "30min": "30 min",
+      "1hour": "1 hour",
+      "untilClose": "Until I close the browser"
+    },
+    "updateNotifyOptions": {
+      "all": "All updates",
+      "minor": "Minor & major",
+      "major": "Major only",
+      "off": "Off"
+    },
+    "security": "Security",
+    "biometricUnlock": "Unlock with Touch ID",
+    "biometricEnrolledHint": "Stored behind your device biometric on this browser.",
+    "biometricSetupHint": "Skip the master password on this device after one sign-in.",
+    "biometricConfirm": "Confirm and register Touch ID",
+    "biometricErrors": {
+      "missingFields": "Enter your email and master password",
+      "invalidCredentials": "Invalid email or password",
+      "rateLimited": "Too many attempts - try again later",
+      "enableFailed": "Could not enable Touch ID"
+    }
+  },
+  "about": {
+    "tagline": "Zero-knowledge password vault. Encryption keys never leave this device.",
+    "version": "Version",
+    "maintainedBy": "Maintained by",
+    "craftedFrom": "Crafted from"
+  }
+}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import {
@@ -12,14 +13,10 @@ import {
 } from "@/lib/system-api";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
 
-const LEVELS: { value: NotifyLevel; label: string }[] = [
-  { value: "all", label: "All updates (patches, minor & major)" },
-  { value: "minor", label: "Minor & major only" },
-  { value: "major", label: "Major only" },
-  { value: "off", label: "Don't notify me" },
-];
+const LEVELS: NotifyLevel[] = ["all", "minor", "major", "off"];
 
 export function UpdatePanel() {
+  const { t } = useTranslation("settings");
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["system", "updates"],
     queryFn: getUpdateStatus,
@@ -47,16 +44,23 @@ export function UpdatePanel() {
             ) : (
               <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
             )}
-            Software updates
+            {t("update.title")}
           </span>
           <span className="block text-xs text-muted-foreground">
             {!data
-              ? "Checking for updates..."
+              ? t("update.checking")
               : !data.enabled
-                ? "Update checking is disabled on this server."
+                ? t("update.disabled")
                 : data.updateAvailable
-                  ? `v${data.latestVersion} is available${data.severity && data.severity !== "none" ? ` (${data.severity})` : ""} - you're on v${data.currentVersion}.`
-                  : `You're on the latest version (v${data.currentVersion}).`}
+                  ? t("update.available", {
+                      version: data.latestVersion,
+                      current: data.currentVersion,
+                      severity:
+                        data.severity && data.severity !== "none"
+                          ? t("update.severitySuffix", { severity: data.severity })
+                          : "",
+                    })
+                  : t("update.upToDateDetail", { current: data.currentVersion })}
           </span>
         </span>
         <button
@@ -65,7 +69,7 @@ export function UpdatePanel() {
           className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          Check now
+          {t("update.checkNow")}
         </button>
       </div>
 
@@ -74,13 +78,13 @@ export function UpdatePanel() {
           onClick={() => setShowNotes(true)}
           className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          What's new in v{data.latestVersion}
+          {t("update.whatsNew", { version: data.latestVersion })}
         </button>
       )}
 
       <div className="space-y-1 pt-1">
         <label htmlFor="notify-level" className="text-xs font-medium text-muted-foreground">
-          Notify me about
+          {t("update.notifyMeAbout")}
         </label>
         <select
           id="notify-level"
@@ -88,19 +92,18 @@ export function UpdatePanel() {
           onChange={(e) => changeLevel(e.target.value as NotifyLevel)}
           className="block rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          {LEVELS.map((l) => (
-            <option key={l.value} value={l.value}>
-              {l.label}
+          {LEVELS.map((value) => (
+            <option key={value} value={value}>
+              {t(`update.levels.${value}`)}
             </option>
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
-          The self-hosted server is updated by your administrator; vaultctl shows
-          a banner with the release notes when a new version is published.
+          {t("update.notifyHint")}
         </p>
       </div>
 
-      {upToDate && <span className="sr-only">Up to date</span>}
+      {upToDate && <span className="sr-only">{t("update.upToDate")}</span>}
 
       {showNotes && data && (
         <WhatsNewModal

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
 
 export function LockPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const [password, setPassword] = useState("");
@@ -21,16 +23,14 @@ export function LockPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Vault Locked</h1>
-          <p className="text-sm text-muted-foreground">
-            Your vault has been locked. Enter your master password to unlock.
-          </p>
+          <h1 className="text-2xl font-bold">{t("lock.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("lock.subtitle")}</p>
         </div>
 
         <form onSubmit={handleUnlock} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="lock-password" className="text-sm font-medium">
-              Master Password
+              {t("login.masterPassword")}
             </label>
             <input
               id="lock-password"
@@ -48,7 +48,7 @@ export function LockPage() {
             disabled={!password}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            Unlock
+            {t("login.unlock")}
           </button>
         </form>
 
@@ -59,7 +59,7 @@ export function LockPage() {
           }}
           className="w-full text-sm text-muted-foreground hover:text-foreground"
         >
-          Log out instead
+          {t("lock.logoutInstead")}
         </button>
       </div>
     </div>

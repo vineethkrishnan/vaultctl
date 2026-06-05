@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { History, Eye, EyeOff, Copy, Check } from "lucide-react";
 import type { PasswordHistoryEntry } from "@/shared/types/item-data";
 
@@ -9,13 +10,15 @@ interface PasswordHistoryProps {
 }
 
 export function PasswordHistory({ entries }: PasswordHistoryProps) {
+  const { t } = useTranslation(["vault", "common"]);
+
   if (entries.length === 0) return null;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <History className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-sm font-medium">Password history</span>
+        <span className="text-sm font-medium">{t("vault:passwordHistory.heading")}</span>
         <span className="text-xs text-muted-foreground">
           ({entries.length})
         </span>
@@ -30,6 +33,7 @@ export function PasswordHistory({ entries }: PasswordHistoryProps) {
 }
 
 function PasswordHistoryRow({ entry }: { entry: PasswordHistoryEntry }) {
+  const { t } = useTranslation(["vault", "common"]);
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -54,7 +58,7 @@ function PasswordHistoryRow({ entry }: { entry: PasswordHistoryEntry }) {
           type="button"
           onClick={() => setVisible(!visible)}
           className="rounded p-1 text-muted-foreground hover:text-foreground"
-          title={visible ? "Hide" : "Show"}
+          title={visible ? t("vault:fields.hide") : t("vault:fields.show")}
         >
           {visible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
         </button>
@@ -62,7 +66,7 @@ function PasswordHistoryRow({ entry }: { entry: PasswordHistoryEntry }) {
           type="button"
           onClick={handleCopy}
           className="rounded p-1 text-muted-foreground hover:text-foreground"
-          title="Copy"
+          title={t("vault:fields.copy")}
         >
           {copied ? (
             <Check className="h-3 w-3 text-green-500" />

@@ -8,6 +8,8 @@ import {
   type CSSProperties,
 } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
@@ -44,16 +46,6 @@ const ITEM_TYPE_ICONS: Record<string, typeof KeyRound> = {
   passkey: Fingerprint,
 };
 
-const ITEM_TYPE_LABELS: Record<string, string> = {
-  login: "Login",
-  secure_note: "Secure Note",
-  credit_card: "Credit Card",
-  identity: "Identity",
-  api_key: "API Key",
-  ssh_key: "SSH Key",
-  passkey: "Passkey",
-};
-
 const decoder = new TextDecoder();
 
 interface DecryptedItem extends ItemResponse {
@@ -73,15 +65,16 @@ function avatarStyle(name: string): CSSProperties {
   };
 }
 
-function itemToText(item: DecryptedItem): string {
+function itemToText(item: DecryptedItem, t: TFunction): string {
   const lines = [item.decryptedName];
-  if (item.username) lines.push(`Username: ${item.username}`);
-  if (item.password) lines.push(`Password: ${item.password}`);
-  if (item.uri) lines.push(`URI: ${item.uri}`);
+  if (item.username) lines.push(t("vault:items.text.username", { value: item.username }));
+  if (item.password) lines.push(t("vault:items.text.password", { value: item.password }));
+  if (item.uri) lines.push(t("vault:items.text.uri", { value: item.uri }));
   return lines.join("\n");
 }
 
 export function ItemList() {
+  const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const search = useSearch({ strict: false }) as {
     favorites?: boolean;
@@ -121,7 +114,7 @@ export function ItemList() {
     async function decrypt() {
       const results: DecryptedItem[] = [];
       for (const item of items!) {
-        let decryptedName = "[decryption failed]";
+        let decryptedName = t("vault:editor.decryptionFailed");
         let username: string | undefined;
         let password: string | undefined;
         let uri: string | undefined;
@@ -209,7 +202,7 @@ export function ItemList() {
   if (vaultId === "none") {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card/40 py-20 text-center">
-        <p className="text-muted-foreground">No vaults found.</p>
+        <p className="text-muted-foreground">{t("vault:items.noVaults")}</p>
       </div>
     );
   }
@@ -233,7 +226,7 @@ export function ItemList() {
   if (error) {
     return (
       <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load items
+        {t("vault:items.loadFailed")}
       </div>
     );
   }
@@ -244,16 +237,16 @@ export function ItemList() {
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand">
           <KeyRound className="h-6 w-6" />
         </div>
-        <p className="text-lg font-medium">No items yet</p>
+        <p className="text-lg font-medium">{t("vault:items.empty.title")}</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create your first item to get started.
+          {t("vault:items.empty.subtitle")}
         </p>
         <Link
           to="/vault/$vaultId/items/new"
           params={{ vaultId }}
           className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
         >
-          Create Item
+          {t("vault:items.createItem")}
         </Link>
       </div>
     );
@@ -268,20 +261,20 @@ export function ItemList() {
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search name, username or URL"
+            placeholder={t("vault:items.searchPlaceholder")}
             className="w-full rounded-lg border border-border bg-card/50 py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
           />
         </div>
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          aria-label="Filter by type"
+          aria-label={t("vault:items.filterByType")}
           className="rounded-lg border border-border bg-card/50 px-3 py-2.5 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20 sm:w-44"
         >
-          <option value="all">All types</option>
-          {presentTypes.map((t) => (
-            <option key={t} value={t}>
-              {ITEM_TYPE_LABELS[t] ?? t}
+          <option value="all">{t("vault:items.allTypes")}</option>
+          {presentTypes.map((type) => (
+            <option key={type} value={type}>
+              {t(`vault:itemTypes.${type}`)}
             </option>
           ))}
         </select>
@@ -289,13 +282,15 @@ export function ItemList() {
 
       {!visible.length ? (
         <div className="rounded-xl border border-border bg-card/40 py-12 text-center text-sm text-muted-foreground">
-          No items match {filter ? `"${filter}"` : "this filter"}.
+          {filter
+            ? t("vault:items.noMatchQuery", { query: filter })
+            : t("vault:items.noMatchFilter")}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border bg-card/40 backdrop-blur-sm">
           {visible.map((item, i) => {
             const Icon = ITEM_TYPE_ICONS[item.itemType] ?? KeyRound;
-            const typeLabel = ITEM_TYPE_LABELS[item.itemType] ?? item.itemType;
+            const typeLabel = t(`vault:itemTypes.${item.itemType}`);
             return (
               <div
                 key={item.id}
@@ -337,12 +332,16 @@ export function ItemList() {
                 <RowMenu
                   item={item}
                   onCopyUsername={() =>
-                    item.username && handleCopy(item.username, "username")
+                    item.username &&
+                    handleCopy(item.username, t("vault:items.copyLabels.username"))
                   }
                   onCopyPassword={() =>
-                    item.password && handleCopy(item.password, "password")
+                    item.password &&
+                    handleCopy(item.password, t("vault:items.copyLabels.password"))
                   }
-                  onCopyItem={() => handleCopy(itemToText(item), "item")}
+                  onCopyItem={() =>
+                    handleCopy(itemToText(item, t), t("vault:items.copyLabels.item"))
+                  }
                   onToggleFavorite={() => favoriteMutation.mutate(item)}
                   onDelete={() => handleDelete(item)}
                 />
@@ -355,19 +354,21 @@ export function ItemList() {
       {copied && (
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-foreground shadow-lg">
           <Check className="h-3.5 w-3.5 text-brand" />
-          Copied {copied} - clipboard clears in 30s
+          {t("vault:items.copiedToast", { label: copied })}
         </div>
       )}
 
       <ConfirmDialog
         open={!!pendingTrash}
-        title="Move to trash"
+        title={t("vault:items.trashConfirm.title")}
         message={
           pendingTrash
-            ? `Move "${pendingTrash.decryptedName}" to trash? You can restore it later from Trash.`
+            ? t("vault:items.trashConfirm.message", {
+                name: pendingTrash.decryptedName,
+              })
             : ""
         }
-        confirmLabel="Move to trash"
+        confirmLabel={t("vault:items.trashConfirm.confirmLabel")}
         destructive
         busy={trashMutation.isPending}
         onConfirm={() => {
@@ -396,6 +397,7 @@ function RowMenu({
   onToggleFavorite: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation(["vault", "common"]);
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -452,7 +454,7 @@ function RowMenu({
         ref={btnRef}
         type="button"
         onClick={toggle}
-        aria-label="Item actions"
+        aria-label={t("vault:items.rowMenu.actions")}
         aria-haspopup="menu"
         aria-expanded={open}
         className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -468,21 +470,21 @@ function RowMenu({
             className="animate-scale-in z-50 w-48 overflow-hidden rounded-lg border border-border bg-popover py-1 text-sm shadow-xl"
           >
             {item.username && (
-              <MenuItem icon={Copy} label="Copy username" onClick={() => run(onCopyUsername)} />
+              <MenuItem icon={Copy} label={t("vault:items.rowMenu.copyUsername")} onClick={() => run(onCopyUsername)} />
             )}
             {item.password && (
-              <MenuItem icon={Copy} label="Copy password" onClick={() => run(onCopyPassword)} />
+              <MenuItem icon={Copy} label={t("vault:items.rowMenu.copyPassword")} onClick={() => run(onCopyPassword)} />
             )}
-            <MenuItem icon={ClipboardCopy} label="Copy item" onClick={() => run(onCopyItem)} />
+            <MenuItem icon={ClipboardCopy} label={t("vault:items.rowMenu.copyItem")} onClick={() => run(onCopyItem)} />
             <MenuItem
               icon={Star}
-              label={item.favorite ? "Remove favorite" : "Add to favorites"}
+              label={item.favorite ? t("vault:items.rowMenu.removeFavorite") : t("vault:items.rowMenu.addFavorite")}
               onClick={() => run(onToggleFavorite)}
             />
             <div className="my-1 border-t border-border" />
             <MenuItem
               icon={Trash2}
-              label="Move to trash"
+              label={t("vault:items.rowMenu.moveToTrash")}
               destructive
               onClick={() => run(onDelete)}
             />
@@ -519,4 +521,4 @@ function MenuItem({
   );
 }
 
-export { ITEM_TYPE_ICONS, ITEM_TYPE_LABELS };
+export { ITEM_TYPE_ICONS };

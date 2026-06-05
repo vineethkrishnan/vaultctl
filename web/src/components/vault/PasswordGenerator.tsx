@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { RefreshCw, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function PasswordGenerator({ onSelect }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
   const [length, setLength] = useState(20);
   const [useLower, setUseLower] = useState(true);
   const [useUpper, setUseUpper] = useState(true);
@@ -50,7 +52,7 @@ export function PasswordGenerator({ onSelect }: Props) {
           type="button"
           onClick={regenerate}
           className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
-          title="Regenerate"
+          title={t("vault:passwordGenerator.regenerate")}
         >
           <RefreshCw className="h-4 w-4" />
         </button>
@@ -58,7 +60,7 @@ export function PasswordGenerator({ onSelect }: Props) {
           type="button"
           onClick={() => copy(password)}
           className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
-          title="Copy"
+          title={t("vault:passwordGenerator.copy")}
         >
           <Copy className="h-4 w-4" />
         </button>
@@ -67,7 +69,7 @@ export function PasswordGenerator({ onSelect }: Props) {
       {/* Length slider */}
       <div className="flex items-center gap-3">
         <label className="text-xs text-muted-foreground w-16">
-          Length: {length}
+          {t("vault:passwordGenerator.length", { count: length })}
         </label>
         <input
           type="range"
@@ -111,7 +113,7 @@ export function PasswordGenerator({ onSelect }: Props) {
           onClick={() => onSelect(password)}
           className="w-full rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Use This Password
+          {t("vault:passwordGenerator.usePassword")}
         </button>
       )}
     </div>

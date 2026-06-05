@@ -1,0 +1,34 @@
+{
+  "title": "Administration",
+  "orgs": {
+    "heading": "Organisationen",
+    "newNamePlaceholder": "Name der neuen Organisation",
+    "create": "Erstellen",
+    "manageLabel": "Organisation verwalten",
+    "orgIdPlaceholder": "Organisations-ID"
+  },
+  "members": {
+    "heading": "Mitglieder ({{count}})",
+    "empty": "Keine Mitglieder.",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "remove": "Mitglied entfernen"
+  },
+  "invites": {
+    "heading": "Einladungen",
+    "expires": "läuft ab {{date}}",
+    "revoke": "Einladung widerrufen",
+    "emailPlaceholder": "E-Mail-Adresse",
+    "invite": "Einladen"
+  },
+  "backups": {
+    "heading": "Sicherungen",
+    "refresh": "Aktualisieren",
+    "empty": "Keine Sicherungen gefunden."
+  },
+  "roles": {
+    "member": "Mitglied",
+    "admin": "Administrator",
+    "owner": "Eigentümer"
+  }
+}

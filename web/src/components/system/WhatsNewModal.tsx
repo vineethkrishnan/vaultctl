@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Sparkles, ExternalLink, X } from "lucide-react";
 
 interface Props {
@@ -16,7 +18,7 @@ interface Props {
 // elements (no innerHTML, no markdown dependency). It recognises ## / ###
 // headings and -/* bullet lists; everything else is a paragraph. Inline **bold**
 // and [text](url) markers are stripped to plain text.
-function renderNotes(notes: string): React.ReactNode {
+function renderNotes(notes: string, t: TFunction): React.ReactNode {
   const clean = (s: string) =>
     s
       .replace(/\*\*(.+?)\*\*/g, "$1")
@@ -62,7 +64,7 @@ function renderNotes(notes: string): React.ReactNode {
     }
   }
   flush();
-  return out.length ? out : <p className="text-sm text-muted-foreground">No release notes.</p>;
+  return out.length ? out : <p className="text-sm text-muted-foreground">{t("whatsNew.noNotes")}</p>;
 }
 
 export function WhatsNewModal({
@@ -73,18 +75,19 @@ export function WhatsNewModal({
   onClose,
   onRemindLater,
 }: Props) {
+  const { t } = useTranslation("system");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-lg border border-border bg-card shadow-lg">
         <div className="flex items-center gap-2 border-b border-border px-5 py-4">
           <Sparkles className="h-5 w-5 text-brand" />
           <h2 className="text-lg font-semibold">
-            {mode === "available" ? "Update available" : "What's new"}
-            {version ? ` - v${version}` : ""}
+            {mode === "available" ? t("whatsNew.updateAvailable") : t("whatsNew.title")}
+            {version ? t("whatsNew.versionSuffix", { version }) : ""}
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("whatsNew.close")}
             className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           >
             <X className="h-5 w-5" />
@@ -92,7 +95,7 @@ export function WhatsNewModal({
         </div>
 
         <div className="space-y-2 overflow-y-auto px-5 py-4">
-          {renderNotes(notes ?? "")}
+          {renderNotes(notes ?? "", t)}
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-4">
@@ -103,7 +106,7 @@ export function WhatsNewModal({
               rel="noopener noreferrer"
               className="mr-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground underline hover:text-foreground"
             >
-              View full release <ExternalLink className="h-3.5 w-3.5" />
+              {t("whatsNew.viewFullRelease")} <ExternalLink className="h-3.5 w-3.5" />
             </a>
           )}
           {mode === "available" && onRemindLater && (
@@ -111,14 +114,14 @@ export function WhatsNewModal({
               onClick={onRemindLater}
               className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
             >
-              Remind me later
+              {t("whatsNew.remindLater")}
             </button>
           )}
           <button
             onClick={onClose}
             className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            {mode === "available" ? "Got it" : "Done"}
+            {mode === "available" ? t("whatsNew.gotIt") : t("whatsNew.done")}
           </button>
         </div>
       </div>
