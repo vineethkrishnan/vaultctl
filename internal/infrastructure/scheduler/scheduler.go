@@ -17,6 +17,7 @@ const (
 	sessionPurgeSchedule  = "0 * * * *"    // every hour
 	backupSchedule        = "*/15 * * * *" // every 15 minutes: scan for due backups
 	updateRefreshSchedule = "*/15 * * * *" // every 15 minutes: refresh the release cache
+	digestSchedule        = "5 * * * *"    // hourly at :05: send any due activity digests
 	jobTimeout            = 30 * time.Second
 	backupJobTimeout      = 10 * time.Minute
 )
@@ -37,6 +38,15 @@ type Scheduler struct {
 	// Optional release-cache refresh, enabled via EnableUpdateRefresh. A closure
 	// so the scheduler doesn't depend on the updatecheck package.
 	refreshUpdate func(ctx context.Context) error
+
+	// Optional activity-digest run, enabled via EnableDigests.
+	runDigests func(ctx context.Context) error
+}
+
+// EnableDigests wires periodic sending of due activity digests. No-op unless
+// called before Start.
+func (s *Scheduler) EnableDigests(run func(ctx context.Context) error) {
+	s.runDigests = run
 }
 
 // EnableUpdateRefresh wires periodic refresh of the update-check cache so a new
@@ -83,6 +93,11 @@ func (s *Scheduler) Start() {
 			slog.Error("scheduler.register_update_refresh.failed", slog.String("err", err.Error()))
 		}
 		go s.refreshUpdateCheck() // warm the cache on boot rather than waiting a full interval
+	}
+	if s.runDigests != nil {
+		if _, err := s.cron.AddFunc(digestSchedule, s.sendDigests); err != nil {
+			slog.Error("scheduler.register_digests.failed", slog.String("err", err.Error()))
+		}
 	}
 
 	s.cron.Start()
@@ -138,6 +153,15 @@ func (s *Scheduler) refreshUpdateCheck() {
 
 	if err := s.refreshUpdate(ctx); err != nil {
 		slog.Warn("scheduler.update_refresh.failed", slog.String("err", err.Error()))
+	}
+}
+
+func (s *Scheduler) sendDigests() {
+	ctx, cancel := context.WithTimeout(context.Background(), backupJobTimeout)
+	defer cancel()
+
+	if err := s.runDigests(ctx); err != nil {
+		slog.Warn("scheduler.digests.failed", slog.String("err", err.Error()))
 	}
 }
 

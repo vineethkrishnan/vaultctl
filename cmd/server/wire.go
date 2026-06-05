@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,8 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
+	"github.com/vineethkrishnan/vaultctl/internal/application/digest"
+	"github.com/vineethkrishnan/vaultctl/internal/application/email"
 	"github.com/vineethkrishnan/vaultctl/internal/application/notifications"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	appvault "github.com/vineethkrishnan/vaultctl/internal/application/vault"
@@ -24,6 +27,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/blobstore"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	infracrypto "github.com/vineethkrishnan/vaultctl/internal/infrastructure/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/mailer"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/updatecheck"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
@@ -33,19 +37,24 @@ import (
 // adapters bundles every concrete adapter so main.go can wire handlers in
 // one shot.
 type adapters struct {
-	pool       *postgres.Pool
-	users      *postgres.UserRepo
-	sess       *postgres.SessionStore
-	vaults     *postgres.VaultRepo
-	items      *postgres.ItemRepo
-	folders    *postgres.FolderRepo
-	apikeys    *postgres.APIKeyRepo
-	invites    *postgres.InviteRepo
-	orgs       *postgres.OrgRepo
-	audit      *postgres.AuditRepo
-	notifState *postgres.NotificationStateRepo
-	attach     *postgres.AttachmentRepo
-	blobs      ports.BlobStore // nil when the blob store is unavailable
+	pool           *postgres.Pool
+	users          *postgres.UserRepo
+	sess           *postgres.SessionStore
+	vaults         *postgres.VaultRepo
+	items          *postgres.ItemRepo
+	folders        *postgres.FolderRepo
+	apikeys        *postgres.APIKeyRepo
+	invites        *postgres.InviteRepo
+	orgs           *postgres.OrgRepo
+	audit          *postgres.AuditRepo
+	notifState     *postgres.NotificationStateRepo
+	attach         *postgres.AttachmentRepo
+	emailVerif     *postgres.EmailVerificationRepo
+	knownLogins    *postgres.KnownLoginRepo
+	digestPrefs    *postgres.DigestPrefsRepo
+	digestActivity *postgres.DigestActivityRepo
+	digestService  *digest.Service // set in buildHandlers, read by main for the scheduler
+	blobs          ports.BlobStore // nil when the blob store is unavailable
 
 	backupDests     *postgres.BackupDestinationRepo // nil when backup sync is off
 	backupRuns      *postgres.BackupRunRepo
@@ -60,8 +69,9 @@ type adapters struct {
 	totp   *infraauth.TOTPProvider
 	aead   *infracrypto.ServerAEAD
 
-	clock ports.Clock
-	ids   ports.IDGenerator
+	clock  ports.Clock
+	ids    ports.IDGenerator
+	mailer ports.Mailer
 
 	rateLimiter *middleware.RateLimiter
 }
@@ -108,26 +118,39 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 	}
 
 	a := &adapters{
-		pool:       pool,
-		users:      &postgres.UserRepo{Pool: pool},
-		sess:       &postgres.SessionStore{Pool: pool},
-		vaults:     &postgres.VaultRepo{Pool: pool},
-		items:      &postgres.ItemRepo{Pool: pool},
-		folders:    &postgres.FolderRepo{Pool: pool},
-		apikeys:    &postgres.APIKeyRepo{Pool: pool},
-		invites:    &postgres.InviteRepo{Pool: pool},
-		orgs:       &postgres.OrgRepo{Pool: pool},
-		audit:      &postgres.AuditRepo{Pool: pool},
-		notifState: &postgres.NotificationStateRepo{Pool: pool},
-		attach:     &postgres.AttachmentRepo{Pool: pool},
-		hasher:     infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
-		hmac:       hmac,
-		jwt:        jwt,
-		tokens:     infraauth.NewTokenGenerator(),
-		totp:       infraauth.NewTOTPProvider(),
-		aead:       aead,
-		clock:      clock,
-		ids:        uuidGen{},
+		pool:           pool,
+		users:          &postgres.UserRepo{Pool: pool},
+		sess:           &postgres.SessionStore{Pool: pool},
+		vaults:         &postgres.VaultRepo{Pool: pool},
+		items:          &postgres.ItemRepo{Pool: pool},
+		folders:        &postgres.FolderRepo{Pool: pool},
+		apikeys:        &postgres.APIKeyRepo{Pool: pool},
+		invites:        &postgres.InviteRepo{Pool: pool},
+		orgs:           &postgres.OrgRepo{Pool: pool},
+		audit:          &postgres.AuditRepo{Pool: pool},
+		notifState:     &postgres.NotificationStateRepo{Pool: pool},
+		attach:         &postgres.AttachmentRepo{Pool: pool},
+		emailVerif:     &postgres.EmailVerificationRepo{Pool: pool},
+		knownLogins:    &postgres.KnownLoginRepo{Pool: pool},
+		digestPrefs:    &postgres.DigestPrefsRepo{Pool: pool},
+		digestActivity: &postgres.DigestActivityRepo{Pool: pool},
+		hasher:         infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
+		hmac:           hmac,
+		jwt:            jwt,
+		tokens:         infraauth.NewTokenGenerator(),
+		totp:           infraauth.NewTOTPProvider(),
+		aead:           aead,
+		clock:          clock,
+		ids:            uuidGen{},
+		mailer: mailer.New(mailer.Config{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+			TLSMode:  mailer.TLSMode(cfg.SMTPTLS),
+			Timeout:  cfg.SMTPTimeout,
+		}),
 		rateLimiter: middleware.NewRateLimiter(
 			clock, cfg.RateLimitRPM, time.Minute,
 			cfg.AuthRateLimitPerEmail, cfg.AuthRateLimitWindow,
@@ -243,9 +266,39 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	// feeds every action.
 	auditWriter := audit.New(a.audit, a.clock, slog.Default())
 
+	// Email verification: wired only when a mailer is configured, so a
+	// deployment without SMTP skips the gate entirely.
+	var sendVerification *auth.SendEmailVerification
+	var verifyEmail *auth.VerifyEmail
+	var notifyLogin *auth.NotifyLogin
+	if a.mailer.Enabled() {
+		emailComposer := email.New(a.mailer, cfg.BaseURL)
+		sendVerification = &auth.SendEmailVerification{
+			Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
+			Sender: emailComposer, CodeTTL: cfg.EmailOTPTTL,
+		}
+		verifyEmail = &auth.VerifyEmail{
+			Users: a.users, Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
+		}
+		if cfg.LoginAlertsEnabled {
+			notifyLogin = &auth.NotifyLogin{
+				Known: a.knownLogins, HMAC: a.hmac, Clock: a.clock, Sender: emailComposer,
+			}
+		}
+		a.digestService = &digest.Service{
+			Prefs:    a.digestPrefs,
+			Activity: a.digestActivity,
+			Sender:   emailComposer,
+			Clock:    a.clock,
+		}
+	}
+
 	authHandlers := &api.AuthHandlers{
-		Users: a.users,
-		Audit: auditWriter,
+		Users:            a.users,
+		Audit:            auditWriter,
+		SendVerification: sendVerification,
+		VerifyEmail:      verifyEmail,
+		NotifyLogin:      notifyLogin,
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
 			Encrypter: a.aead,
@@ -296,6 +349,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	userHandlers := &api.UserHandlers{
 		Users:    a.users,
 		Sessions: a.sess,
+		Digest:   a.digestService,
 		Audit:    auditWriter,
 	}
 
@@ -423,6 +477,11 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			Clock: a.clock,
 		},
 	}
+	var emailVerifyGate func(http.Handler) http.Handler
+	if a.mailer.Enabled() {
+		emailVerifyGate = api.NewEmailVerifyGate(a.users, a.clock, cfg.EmailVerifyGrace)
+	}
+
 	updateHandlers := &api.UpdateHandlers{
 		Enabled:      cfg.UpdateCheckEnabled,
 		RolloutDelay: cfg.UpdateRolloutDelay,
@@ -464,6 +523,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		RegistrationMode:   cfg.RegistrationMode,
 		Env:                string(cfg.Env),
 		DB:                 a.pool,
+		EmailVerifyGate:    emailVerifyGate,
 	}, nil
 }
 

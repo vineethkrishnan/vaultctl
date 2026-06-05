@@ -431,11 +431,29 @@ type APIKeyResponse struct {
 // ===========================================================================
 
 type UserProfileResponse struct {
-	ID        string `json:"id"`
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	Role      string `json:"role"`
-	CreatedAt string `json:"createdAt"`
+	ID              string  `json:"id"`
+	Email           string  `json:"email"`
+	Name            string  `json:"name"`
+	Role            string  `json:"role"`
+	CreatedAt       string  `json:"createdAt"`
+	EmailVerified   bool    `json:"emailVerified"`
+	EmailVerifiedAt *string `json:"emailVerifiedAt,omitempty"`
+}
+
+// VerifyEmailRequest carries the one-time code from the verify-email screen.
+type VerifyEmailRequest struct {
+	Code string `json:"code"`
+}
+
+// EmailPreferencesResponse reports a user's email-digest preference.
+type EmailPreferencesResponse struct {
+	DigestFrequency string `json:"digestFrequency"`
+}
+
+// UpdateEmailPreferencesRequest sets the digest frequency
+// (off|daily|weekly|monthly|quarterly|yearly).
+type UpdateEmailPreferencesRequest struct {
+	DigestFrequency string `json:"digestFrequency"`
 }
 
 type UpdateProfileRequest struct {

@@ -123,6 +123,38 @@ type UserRepository interface {
 	// first-user bootstrap path in Register so a fresh install can produce
 	// its first owner without an invite token.
 	CountAll(ctx context.Context) (int, error)
+
+	// MarkEmailVerified flags the user's email as confirmed at the given time.
+	MarkEmailVerified(ctx context.Context, id user.ID, at time.Time) error
+}
+
+// EmailVerificationRepository persists the one active signup verification code
+// per user (an HMAC digest, never cleartext).
+type EmailVerificationRepository interface {
+	// Upsert stores the active code for a user, replacing any existing one.
+	Upsert(ctx context.Context, v user.EmailVerification) error
+
+	// Get returns the active code for a user, or ErrNotFound when none exists.
+	Get(ctx context.Context, userID user.ID) (user.EmailVerification, error)
+
+	// IncrementAttempts bumps the wrong-guess counter for a user's code.
+	IncrementAttempts(ctx context.Context, userID user.ID) error
+
+	// Delete removes a user's code (after success or invalidation).
+	Delete(ctx context.Context, userID user.ID) error
+}
+
+// KnownLoginRepository records the device fingerprints and networks a user has
+// signed in from, so a genuinely new one can raise a single alert.
+type KnownLoginRepository interface {
+	// Lookup reports, for a (fingerprint, network) pair: whether this device
+	// fingerprint has been seen for the user (deviceSeen), whether this exact
+	// pair has been seen (networkSeen), and whether the user has any prior
+	// login on record at all (anySeen, false on the very first login).
+	Lookup(ctx context.Context, userID user.ID, fingerprint []byte, network string) (deviceSeen, networkSeen, anySeen bool, err error)
+
+	// Record upserts the (fingerprint, network) pair, refreshing last_seen_at.
+	Record(ctx context.Context, userID user.ID, fingerprint []byte, network, label string, now time.Time) error
 }
 
 // InviteRepository persists organisation invite tokens (M11).

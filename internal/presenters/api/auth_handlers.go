@@ -4,9 +4,11 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
@@ -34,6 +36,15 @@ type AuthHandlers struct {
 	VerifyRecoveryKey *auth.VerifyRecoveryKey
 	ResetViaRecovery  *auth.ResetViaRecovery
 	RotateRecoveryKey *auth.RotateRecoveryKey
+
+	// Email-verification use cases. Nil when no mailer is wired, in which case
+	// registration skips the send and the verify/resend routes are not mounted.
+	SendVerification *auth.SendEmailVerification
+	VerifyEmail      *auth.VerifyEmail
+
+	// NotifyLogin sends new-device / new-network alerts. Nil when disabled or
+	// no mailer is wired.
+	NotifyLogin *auth.NotifyLogin
 
 	// Users is used by HandleLogin to resolve a user ID for
 	// login.failed audit rows without storing the raw email.
@@ -133,7 +144,89 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
+
+	// Best-effort: a verification-send failure must not fail registration. The
+	// user can resend from the app. Skipped entirely when no mailer is wired.
+	if h.SendVerification != nil {
+		if verr := h.SendVerification.Execute(r.Context(), out.UserID, req.Email); verr != nil {
+			slog.WarnContext(r.Context(), "register.send_verification.failed", slog.String("err", verr.Error()))
+		}
+	}
+
 	writeJSON(w, http.StatusCreated, RegisterResponse{UserID: string(out.UserID), Role: string(out.Role)})
+}
+
+// HandleVerifyEmail confirms the authenticated user's email with a one-time code.
+// @Summary Verify email
+// @Description Confirms the caller's email address using the emailed one-time code.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body VerifyEmailRequest true "Verification code"
+// @Success 204 "Verified"
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Router /auth/email/verify [post]
+func (h *AuthHandlers) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
+	var req VerifyEmailRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if req.Code == "" {
+		writeError(w, r, domain.NewInvalid("code", "required"))
+		return
+	}
+	if err := h.VerifyEmail.Execute(r.Context(), middleware.CallerID(r.Context()), req.Code); err != nil {
+		writeError(w, r, mapVerifyError(err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleResendVerification re-issues a verification code to the caller.
+// @Summary Resend email verification
+// @Description Issues a fresh verification code to the caller's email.
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Success 204 "Sent"
+// @Failure 401 {object} ErrorBody
+// @Router /auth/email/resend [post]
+func (h *AuthHandlers) HandleResendVerification(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	u, err := h.Users.FindByID(r.Context(), callerID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if u.EmailVerified {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err := h.SendVerification.Execute(r.Context(), callerID, u.Email.String()); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// mapVerifyError turns verification sentinels into client-facing domain errors
+// with stable codes the frontend can branch on.
+func mapVerifyError(err error) error {
+	switch {
+	case errors.Is(err, auth.ErrVerificationInvalid):
+		return domain.NewInvalid("code", "that code is incorrect")
+	case errors.Is(err, auth.ErrVerificationExpired):
+		return domain.NewInvalid("code", "that code has expired, request a new one")
+	case errors.Is(err, auth.ErrVerificationAttempts):
+		return domain.NewInvalid("code", "too many attempts, request a new code")
+	case errors.Is(err, auth.ErrNoVerificationPending):
+		return domain.NewInvalid("code", "no code pending, request a new one")
+	default:
+		return err
+	}
 }
 
 // HandlePrelogin returns KDF parameters for a given email.
@@ -201,6 +294,20 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Audit.LoginSuccess(r.Context(), string(out.UserID), ip, userAgent)
+
+	// New-device / new-network alert, off the request path so a slow SMTP send
+	// never delays the login response. Detach from the request's cancellation
+	// (the response returns first) while keeping its values - not bare Background.
+	if h.NotifyLogin != nil {
+		alertCtx := context.WithoutCancel(r.Context())
+		userID, email := out.UserID, req.Email
+		go func() {
+			if e := h.NotifyLogin.Execute(alertCtx, userID, email, userAgent, ip); e != nil {
+				slog.WarnContext(alertCtx, "login.alert.failed", slog.String("err", e.Error())) //nolint:gosec // G706: slog quotes the field; err is an internal send failure, not attacker-controlled output
+			}
+		}()
+	}
+
 	vaults := make([]VaultMembershipDTO, 0, len(out.Vaults))
 	for _, v := range out.Vaults {
 		vaults = append(vaults, VaultMembershipDTO{

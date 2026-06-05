@@ -87,6 +87,11 @@ type User struct {
 	Role        Role
 	TOTPEnabled bool
 
+	// EmailVerified is set once the user confirms their address via an emailed
+	// one-time code. EmailVerifiedAt records when (nil until verified).
+	EmailVerified   bool
+	EmailVerifiedAt *time.Time
+
 	FailedLoginAttempts int
 	LockedUntil         *time.Time
 

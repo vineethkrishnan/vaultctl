@@ -50,6 +50,9 @@ type Dependencies struct {
 	Commit             string
 	GoVersion          string
 	DB                 Pinger
+	// EmailVerifyGate gates vault mutations for accounts unverified past the
+	// grace window. Nil when email verification is not enforced (no mailer).
+	EmailVerifyGate func(http.Handler) http.Handler
 }
 
 // Pinger is the readiness probe the health endpoint uses to confirm the vault's
@@ -137,6 +140,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Recovery-kit (re)generation (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/recovery/rotate", deps.Auth.HandleRotateRecoveryKey)
 
+			// Email verification (mounted only when a mailer is wired)
+			if deps.Auth.VerifyEmail != nil {
+				r.Post("/auth/email/verify", deps.Auth.HandleVerifyEmail)
+				r.Post("/auth/email/resend", deps.Auth.HandleResendVerification)
+			}
+
 			// Update check + in-app notification feed
 			if deps.Update != nil {
 				r.Get("/updates", deps.Update.HandleGetUpdates)
@@ -157,6 +166,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Put("/users/me", deps.User.HandleUpdateProfile)
 			r.Get("/users/me/sessions", deps.User.HandleListSessions)
 			r.Delete("/users/me/sessions/{id}", deps.User.HandleRevokeSession)
+
+			// Email-digest preferences (only when a mailer is wired)
+			if deps.User.Digest != nil {
+				r.Get("/users/me/email-preferences", deps.User.HandleGetEmailPreferences)
+				r.Put("/users/me/email-preferences", deps.User.HandleUpdateEmailPreferences)
+			}
 
 			// Organizations (admin only)
 			r.With(requireAdmin).Post("/orgs", deps.Org.HandleCreateOrg)
@@ -208,44 +223,53 @@ func NewRouter(deps Dependencies) http.Handler {
 				})
 			}
 
-			// Vault management
-			r.Get("/vaults", deps.Vault.HandleListVaults)
-			r.Post("/vaults", deps.Vault.HandleCreateVault)
-
-			// Vault items
-			r.Route("/vaults/{vaultId}", func(r chi.Router) {
-				r.Get("/items", deps.Vault.HandleListItems)
-				r.Post("/items", deps.Vault.HandleCreateItem)
-				r.Get("/items/{id}", deps.Vault.HandleGetItem)
-				r.Put("/items/{id}", deps.Vault.HandleUpdateItem)
-				r.Delete("/items/{id}", deps.Vault.HandleTrashItem)
-
-				// Encrypted attachments (only when the blob store is available)
-				if deps.Attachment != nil {
-					r.Get("/items/{id}/attachments", deps.Attachment.HandleList)
-					r.Post("/items/{id}/attachments", deps.Attachment.HandleCreate)
-					r.Get("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDownload)
-					r.Delete("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDelete)
+			// Vault data routes. When email verification is enforced, the gate
+			// blocks mutating requests from accounts unverified past the grace
+			// window (read-only) while still allowing reads.
+			r.Group(func(r chi.Router) {
+				if deps.EmailVerifyGate != nil {
+					r.Use(deps.EmailVerifyGate)
 				}
 
-				// Trash
-				r.Get("/trash", deps.Vault.HandleListTrash)
-				r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
-				// H10 step-up required for irreversible purge
-				r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
-				// Bulk purge all expired trash (H10 step-up required)
-				r.With(requireStepUp).Delete("/trash", deps.Vault.HandlePurgeExpiredTrash)
+				// Vault management
+				r.Get("/vaults", deps.Vault.HandleListVaults)
+				r.Post("/vaults", deps.Vault.HandleCreateVault)
 
-				// Folders
-				r.Get("/folders", deps.Vault.HandleListFolders)
-				r.Post("/folders", deps.Vault.HandleCreateFolder)
-				r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
-				r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+				// Vault items
+				r.Route("/vaults/{vaultId}", func(r chi.Router) {
+					r.Get("/items", deps.Vault.HandleListItems)
+					r.Post("/items", deps.Vault.HandleCreateItem)
+					r.Get("/items/{id}", deps.Vault.HandleGetItem)
+					r.Put("/items/{id}", deps.Vault.HandleUpdateItem)
+					r.Delete("/items/{id}", deps.Vault.HandleTrashItem)
 
-				// Sharing
-				r.Post("/members", deps.Vault.HandleShareVault)
-				r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
-				r.Put("/rekey", deps.Vault.HandleRekeyVault)
+					// Encrypted attachments (only when the blob store is available)
+					if deps.Attachment != nil {
+						r.Get("/items/{id}/attachments", deps.Attachment.HandleList)
+						r.Post("/items/{id}/attachments", deps.Attachment.HandleCreate)
+						r.Get("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDownload)
+						r.Delete("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDelete)
+					}
+
+					// Trash
+					r.Get("/trash", deps.Vault.HandleListTrash)
+					r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
+					// H10 step-up required for irreversible purge
+					r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
+					// Bulk purge all expired trash (H10 step-up required)
+					r.With(requireStepUp).Delete("/trash", deps.Vault.HandlePurgeExpiredTrash)
+
+					// Folders
+					r.Get("/folders", deps.Vault.HandleListFolders)
+					r.Post("/folders", deps.Vault.HandleCreateFolder)
+					r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
+					r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+
+					// Sharing
+					r.Post("/members", deps.Vault.HandleShareVault)
+					r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
+					r.Put("/rekey", deps.Vault.HandleRekeyVault)
+				})
 			})
 		})
 	})
