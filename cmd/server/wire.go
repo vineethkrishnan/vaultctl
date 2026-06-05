@@ -24,6 +24,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/blobstore"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/config"
 	infracrypto "github.com/vineethkrishnan/vaultctl/internal/infrastructure/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/mailer"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/updatecheck"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
@@ -60,8 +61,9 @@ type adapters struct {
 	totp   *infraauth.TOTPProvider
 	aead   *infracrypto.ServerAEAD
 
-	clock ports.Clock
-	ids   ports.IDGenerator
+	clock  ports.Clock
+	ids    ports.IDGenerator
+	mailer ports.Mailer
 
 	rateLimiter *middleware.RateLimiter
 }
@@ -128,6 +130,15 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		aead:       aead,
 		clock:      clock,
 		ids:        uuidGen{},
+		mailer: mailer.New(mailer.Config{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword,
+			From:     cfg.SMTPFrom,
+			TLSMode:  mailer.TLSMode(cfg.SMTPTLS),
+			Timeout:  cfg.SMTPTimeout,
+		}),
 		rateLimiter: middleware.NewRateLimiter(
 			clock, cfg.RateLimitRPM, time.Minute,
 			cfg.AuthRateLimitPerEmail, cfg.AuthRateLimitWindow,

@@ -106,6 +106,20 @@ type Config struct {
 	UpdateRolloutDelay time.Duration `env:"VAULTCTL_UPDATE_ROLLOUT_DELAY" envDefault:"0"`
 
 	// ===========================================================================
+	// Email (SMTP). Transactional mail for signup verification, security
+	// alerts, and digests. Mail is disabled (logged, not sent) until SMTPHost
+	// is set, so a deployment without SMTP stays usable - email-gated features
+	// then skip their gate. SMTPTLS is one of: starttls (587), tls (465), none.
+	// ===========================================================================
+	SMTPHost     string        `env:"VAULTCTL_SMTP_HOST"`
+	SMTPPort     int           `env:"VAULTCTL_SMTP_PORT" envDefault:"587"`
+	SMTPUsername string        `env:"VAULTCTL_SMTP_USERNAME"`
+	SMTPPassword string        `env:"VAULTCTL_SMTP_PASSWORD"`
+	SMTPFrom     string        `env:"VAULTCTL_SMTP_FROM" envDefault:"vaultctl <no-reply@localhost>"`
+	SMTPTLS      string        `env:"VAULTCTL_SMTP_TLS" envDefault:"starttls"`
+	SMTPTimeout  time.Duration `env:"VAULTCTL_SMTP_TIMEOUT" envDefault:"15s"`
+
+	// ===========================================================================
 	// Retention
 	// ===========================================================================
 	TrashRetentionDays  int `env:"VAULTCTL_TRASH_RETENTION_DAYS" envDefault:"30"`
