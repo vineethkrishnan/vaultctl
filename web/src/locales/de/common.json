@@ -1,0 +1,15 @@
+{
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "retry": "Erneut versuchen",
+    "continue": "Weiter",
+    "dismiss": "Schließen",
+    "working": "Wird ausgeführt..."
+  },
+  "loading": "Wird geladen...",
+  "language": "Sprache"
+}

@@ -1,0 +1,8 @@
+{
+  "title": "Einstellungen",
+  "language": {
+    "title": "Sprache",
+    "description": "Wählen Sie die Sprache für die vaultctl-Oberfläche.",
+    "label": "Sprache der Oberfläche"
+  }
+}

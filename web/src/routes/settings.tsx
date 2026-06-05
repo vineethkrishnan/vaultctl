@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth-store";
 import { SafetyNumber } from "@/components/vault/SafetyNumber";
 import { TOTPSetup } from "@/components/auth/TOTPSetup";
@@ -15,6 +16,7 @@ import { RecoveryKitSetting } from "@/components/settings/RecoveryKitSetting";
 import { AboutPanel } from "@/components/settings/AboutPanel";
 import { UpdatePanel } from "@/components/settings/UpdatePanel";
 import { EmailDigestSetting } from "@/components/settings/EmailDigestSetting";
+import { LanguageSwitcher } from "@/components/settings/LanguageSwitcher";
 import {
   Settings,
   Shield,
@@ -47,6 +49,7 @@ const TABS: { id: TabId; label: string; icon: typeof User }[] = [
 ];
 
 export function SettingsPage() {
+  const { t } = useTranslation("settings");
   const userId = useAuthStore((s) => s.userId);
   const identityPubKey = sessionStorage.getItem("vaultctl_id_pubkey") ?? "";
 
@@ -71,7 +74,7 @@ export function SettingsPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-xl font-bold">Settings</h1>
+        <h1 className="text-xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Tab bar */}
@@ -117,6 +120,7 @@ export function SettingsPage() {
         )}
 
         {tab === "profile" && <EmailDigestSetting />}
+        {tab === "profile" && <LanguageSwitcher />}
 
         {tab === "security" && (
           <section className="space-y-4 rounded-lg border border-border p-4">

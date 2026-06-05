@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Mail } from "lucide-react";
 import {
   getEmailPreferences,
@@ -9,16 +10,17 @@ import {
   type DigestFrequency,
 } from "@/lib/account-api";
 
-const OPTIONS: { value: DigestFrequency; label: string }[] = [
-  { value: "off", label: "Off" },
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "yearly", label: "Yearly" },
+const FREQUENCIES: DigestFrequency[] = [
+  "off",
+  "daily",
+  "weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
 ];
 
 export function EmailDigestSetting() {
+  const { t } = useTranslation("account");
   const queryClient = useQueryClient();
   const { data, isError } = useQuery({
     queryKey: emailPrefsQueryKey,
@@ -39,15 +41,12 @@ export function EmailDigestSetting() {
     <section className="space-y-3 rounded-lg border border-border p-4">
       <div className="flex items-center gap-2">
         <Mail className="h-4 w-4 text-muted-foreground" />
-        <h2 className="font-semibold">Email digest</h2>
+        <h2 className="font-semibold">{t("digest.title")}</h2>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Get a periodic summary of account activity: sign-ins, items added,
-        new-device alerts, and reminders to rotate stale logins.
-      </p>
+      <p className="text-sm text-muted-foreground">{t("digest.description")}</p>
       <div className="flex items-center gap-2">
         <label htmlFor="digest-frequency" className="text-sm font-medium">
-          Frequency
+          {t("digest.frequency")}
         </label>
         <select
           id="digest-frequency"
@@ -56,9 +55,9 @@ export function EmailDigestSetting() {
           onChange={(e) => mutation.mutate(e.target.value as DigestFrequency)}
           className="rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20 disabled:opacity-50"
         >
-          {OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
+          {FREQUENCIES.map((value) => (
+            <option key={value} value={value}>
+              {t(`digest.options.${value}`)}
             </option>
           ))}
         </select>

@@ -1,0 +1,14 @@
+{
+  "update": {
+    "available": "vaultctl <1>v{{version}}</1> is available",
+    "severitySuffix": " ({{severity}})",
+    "youAreOn": "You're on v{{version}}.",
+    "whatsNew": "What's new",
+    "remindLater": "Remind me later"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "viewRelease": "View release notes",
+    "updatedTo": "Updated to v{{version}}"
+  }
+}

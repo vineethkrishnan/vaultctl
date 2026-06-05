@@ -1,0 +1,8 @@
+{
+  "title": "Settings",
+  "language": {
+    "title": "Language",
+    "description": "Choose the language for the vaultctl interface.",
+    "label": "Interface language"
+  }
+}

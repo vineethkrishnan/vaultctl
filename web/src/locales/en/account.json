@@ -1,0 +1,30 @@
+{
+  "verify": {
+    "bannerLead": "Confirm your email <1>{{email}}</1> to keep full access.",
+    "daysLeft_one": " {{count}} day left before your vault becomes read-only.",
+    "daysLeft_other": " {{count}} days left before your vault becomes read-only.",
+    "readOnlyNow": " Your vault is read-only until you verify.",
+    "enterCode": "Enter code",
+    "dialogTitle": "Confirm your email",
+    "dialogLead": "Enter the 6-digit code we sent to {{email}}.",
+    "resend": "Resend code",
+    "sending": "Sending...",
+    "resent": "A new code is on its way.",
+    "verify": "Verify",
+    "failed": "Verification failed",
+    "resendFailed": "Could not resend the code"
+  },
+  "digest": {
+    "title": "Email digest",
+    "description": "Get a periodic summary of account activity: sign-ins, items added, new-device alerts, and reminders to rotate stale logins.",
+    "frequency": "Frequency",
+    "options": {
+      "off": "Off",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "yearly": "Yearly"
+    }
+  }
+}
