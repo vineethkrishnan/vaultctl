@@ -41,7 +41,7 @@ func rsaBlobFor(marker byte) crypto.EncryptedBlob {
 }
 
 // testEd25519Sig returns a placeholder 64-byte signature (the domain only
-// checks length, not signature validity — that's infra's job, see H1 notes).
+// checks length, not signature validity - that's infra's job, see H1 notes).
 func testEd25519Sig(t *testing.T) crypto.Signature {
 	t.Helper()
 	s, err := crypto.NewEd25519Signature(bytes.Repeat([]byte{0xEE}, crypto.Ed25519SignatureSize))
@@ -123,7 +123,7 @@ func sharedMember(t *testing.T, vaultID domainvault.ID, userID, senderID user.ID
 }
 
 // seedSharedVaultWithMembers configures a shared vault V with admins A, B
-// and plain member C. Returns nothing — helpers panic on error via t.Fatal.
+// and plain member C. Returns nothing - helpers panic on error via t.Fatal.
 func seedSharedVaultWithMembers(t *testing.T, vaults *fakeVaultRepo, vaultID domainvault.ID) {
 	t.Helper()
 	vaults.seedVault(domainvault.Vault{
@@ -292,7 +292,7 @@ func TestRekey_RemovedAdminCannotDecryptNewItems(t *testing.T) {
 	}
 }
 
-// TestRekey_CallerMustBeAdmin asserts the role gate on RekeyVault — a plain
+// TestRekey_CallerMustBeAdmin asserts the role gate on RekeyVault - a plain
 // member cannot submit a rekey even if they're an active member of the vault.
 func TestRekey_CallerMustBeAdmin(t *testing.T) {
 	t.Parallel()
@@ -318,7 +318,7 @@ func TestRekey_CallerMustBeAdmin(t *testing.T) {
 // TestRekey_RejectsMalformedBlob verifies that a rekey submission carrying
 // a blob under the WRONG wrap algorithm (AES-256-KW in a shared vault) is
 // rejected BEFORE any storage mutation. This is part of the C2 contract:
-// the rekey is atomic — partial application would leave the vault in an
+// the rekey is atomic - partial application would leave the vault in an
 // unrecoverable state.
 func TestRekey_RejectsMalformedBlob(t *testing.T) {
 	t.Parallel()
@@ -341,7 +341,7 @@ func TestRekey_RejectsMalformedBlob(t *testing.T) {
 		EncryptedName: originalName,
 	})
 
-	// AES-256-KW blob — valid AES-KW shape, but WRONG for a shared vault
+	// AES-256-KW blob - valid AES-KW shape, but WRONG for a shared vault
 	// (which requires RSA-OAEP per domain.Member.Validate).
 	kwBlob := crypto.EncryptedBlob{
 		Version:    crypto.V1,
@@ -358,7 +358,7 @@ func TestRekey_RejectsMalformedBlob(t *testing.T) {
 		Caller:  "B",
 		VaultID: vaultID,
 		NewKeys: []RekeyBlob{
-			// First blob is fine — proves validation runs over the whole
+			// First blob is fine - proves validation runs over the whole
 			// slice before ANY persistence.
 			{UserID: "B", EncryptedVaultKey: rsaBlobFor(0x22), WrapSignature: testEd25519Sig(t)},
 			// Second blob is the poison.
@@ -395,7 +395,7 @@ func TestRekey_RejectsMalformedBlob(t *testing.T) {
 }
 
 // TestRemoveMember_RefusesSelfRemoval is a regression guard for
-// sharing.go:104 — an admin cannot remove themselves; they must transfer
+// sharing.go:104 - an admin cannot remove themselves; they must transfer
 // ownership first. This prevents accidental lockout of a single-admin vault.
 func TestRemoveMember_RefusesSelfRemoval(t *testing.T) {
 	t.Parallel()

@@ -30,7 +30,7 @@ async function pageFetch(
   );
 }
 
-// Sharing flows — M15 owner/member/rekey contract.
+// Sharing flows - M15 owner/member/rekey contract.
 //
 // UI GAP: The vaultctl web client does not yet ship a sharing UI
 // (no invite dialog, no member list panel, no role editor). We therefore
@@ -38,7 +38,7 @@ async function pageFetch(
 // API surface is still exercised under the same Playwright harness. Once
 // the UI lands, drive it end-to-end and drop the direct fetches.
 
-test.describe.serial("Vault sharing — API contract", () => {
+test.describe.serial("Vault sharing - API contract", () => {
   let state: MockState;
 
   test.beforeEach(async ({ page }) => {
@@ -97,7 +97,7 @@ test.describe.serial("Vault sharing — API contract", () => {
     const body = removeResponse.body as { rekeyRequired: boolean };
     expect(body.rekeyRequired).toBe(true);
 
-    // Client should then call rekey — simulate that call.
+    // Client should then call rekey - simulate that call.
     const rekeyResponse = await pageFetch(page, "/api/v1/vaults/vault-1/rekey", {
       method: "PUT",
     });
@@ -114,6 +114,6 @@ test.describe.serial("Vault sharing — API contract", () => {
   // click-through test that opens an invite dialog, types a user id,
   // asserts the invite POST fires, then asserts the member list updates.
   test.skip("end-to-end invite via UI (no UI yet)", async () => {
-    // Placeholder — remove when the invite dialog ships.
+    // Placeholder - remove when the invite dialog ships.
   });
 });

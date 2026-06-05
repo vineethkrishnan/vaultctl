@@ -144,7 +144,7 @@ func (r *fakeVaultRepo) IsActiveMember(_ context.Context, u user.ID, v domainvau
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	// Rich members table wins — it carries RemovedAt soft-delete state.
+	// Rich members table wins - it carries RemovedAt soft-delete state.
 	if m, ok := r.members[membershipKey{v, u}]; ok {
 		if !m.IsActive() {
 			return "", false, nil
@@ -233,7 +233,7 @@ type fakeItemRepo struct {
 	byKey   map[itemKey]*domainvault.Item
 	failOps map[string]error
 	// When IDOR=true, Get silently returns ErrNotFound if vaultID doesn't
-	// match the stored item — mirroring the real SQL query's guard.
+	// match the stored item - mirroring the real SQL query's guard.
 }
 
 func newFakeItemRepo() *fakeItemRepo {
@@ -261,7 +261,7 @@ func (r *fakeItemRepo) Create(_ context.Context, it domainvault.Item) error {
 func (r *fakeItemRepo) Get(_ context.Context, v domainvault.ID, i domainvault.ItemID) (domainvault.Item, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	// KEY IS (vault_id, item_id) — this is the IDOR guard at the repo
+	// KEY IS (vault_id, item_id) - this is the IDOR guard at the repo
 	// level. A (wrong_vault, victim_item) lookup returns nothing.
 	it, ok := r.byKey[itemKey{v, i}]
 	if !ok {

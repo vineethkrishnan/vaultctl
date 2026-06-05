@@ -24,7 +24,7 @@ func fixtureDir(t *testing.T) string {
 	// Walk up from internal/domain/crypto to repo root.
 	dir := filepath.Join("..", "..", "..", "testdata", "crypto")
 	if _, err := os.Stat(dir); err != nil {
-		t.Skipf("fixture dir not found at %s — run 'cd web && npx vitest run' first", dir)
+		t.Skipf("fixture dir not found at %s - run 'cd web && npx vitest run' first", dir)
 	}
 	return dir
 }

@@ -132,7 +132,7 @@ func TestInvite_LifeCycle(t *testing.T) {
 		t.Fatalf("original invite mutated")
 	}
 	if used.IsRedeemable(later) {
-		t.Fatalf("used invite must not be redeemable — single-use (M11)")
+		t.Fatalf("used invite must not be redeemable - single-use (M11)")
 	}
 	// Second redemption fails.
 	if _, err := used.Redeem(later); err == nil {

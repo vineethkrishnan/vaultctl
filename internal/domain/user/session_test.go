@@ -101,7 +101,7 @@ func TestSession_Validate_Invariants(t *testing.T) {
 
 func TestSession_Validate_NoCreatedAt(t *testing.T) {
 	// A Session loaded from DB without a CreatedAt (zero value) should
-	// still validate as long as expires_at is in the future — the
+	// still validate as long as expires_at is in the future - the
 	// "after created_at" check only fires when CreatedAt is set.
 	t.Parallel()
 	s := validSession(t)

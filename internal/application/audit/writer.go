@@ -249,7 +249,7 @@ func (w *Writer) VaultRekeyed(ctx context.Context, actorID, vaultID, ip, userAge
 }
 
 // VaultMemberAdded records a new member being added to a shared vault.
-// One row per target user — the audit schema has no free-form meta
+// One row per target user - the audit schema has no free-form meta
 // column, so the target is encoded by writing a row per pair.
 func (w *Writer) VaultMemberAdded(ctx context.Context, actorID, vaultID, targetUserID, ip, userAgent string) {
 	w.write(ctx, auditlog.Entry{
@@ -457,7 +457,7 @@ func (w *Writer) BackupRestored(ctx context.Context, actorID, destinationID, ip,
 }
 
 // ===========================================================================
-// noopRepo — used by NewNoop for test wiring
+// noopRepo - used by NewNoop for test wiring
 // ===========================================================================
 
 type noopRepo struct{}

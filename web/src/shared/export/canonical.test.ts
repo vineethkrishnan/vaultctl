@@ -60,7 +60,7 @@ describe("canonicalize", () => {
 
   it("emits UTF-8 bytes", () => {
     const bytes = canonicalize({ name: "café" });
-    // "café" has a multi-byte é — verify we're encoding UTF-8 not UTF-16.
+    // "café" has a multi-byte é - verify we're encoding UTF-8 not UTF-16.
     const decoded = new TextDecoder().decode(bytes);
     expect(decoded).toBe('{"name":"café"}');
   });

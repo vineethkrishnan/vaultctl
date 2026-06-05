@@ -7,7 +7,7 @@ import { type Page, type Route } from "@playwright/test";
 //
 // This helper accepts a mutable MockState and performs realistic CRUD
 // simulation so tests can observe state changes triggered by the UI. Nothing
-// ever leaves the browser — the mock is the entire backend.
+// ever leaves the browser - the mock is the entire backend.
 //
 // Encrypted blobs are opaque base64 strings. Names are base64-encoded
 // plaintext on purpose so the companion stubCryptoWorker helper can

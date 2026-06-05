@@ -15,11 +15,11 @@ import (
 
 // DerivedKeys mirrors the TS DerivedKeys plus the intermediate masterKey.
 // The master key is exposed so callers can zeroise it explicitly once they
-// are done — see Zero().
+// are done - see Zero().
 type DerivedKeys struct {
-	MasterKey    []byte // 32 bytes — must be zeroed on exit
-	StretchedKey []byte // 32 bytes — HKDF(master, "enc")
-	AuthHash     []byte // 32 bytes — HKDF(master, "auth")
+	MasterKey    []byte // 32 bytes - must be zeroed on exit
+	StretchedKey []byte // 32 bytes - HKDF(master, "enc")
+	AuthHash     []byte // 32 bytes - HKDF(master, "auth")
 }
 
 // Zero scrubs every byte of the derived material in place. Callers MUST call

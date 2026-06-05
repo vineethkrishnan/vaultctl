@@ -25,7 +25,7 @@ type GetPasswordHintOutput struct {
 }
 
 // GetPasswordHint retrieves and decrypts the user's password hint. This is
-// a public endpoint (no auth) — the same enumeration protection as prelogin
+// a public endpoint (no auth) - the same enumeration protection as prelogin
 // applies: unknown emails return an empty hint indistinguishably.
 type GetPasswordHint struct {
 	Users     ports.UserRepository
@@ -36,7 +36,7 @@ type GetPasswordHint struct {
 func (uc *GetPasswordHint) Execute(ctx context.Context, in GetPasswordHintInput) (GetPasswordHintOutput, error) {
 	email, err := user.NewEmail(in.Email)
 	if err != nil {
-		// Malformed email — return empty hint, don't leak existence
+		// Malformed email - return empty hint, don't leak existence
 		return GetPasswordHintOutput{}, nil
 	}
 
@@ -59,13 +59,13 @@ func (uc *GetPasswordHint) Execute(ctx context.Context, in GetPasswordHintInput)
 
 	blob, err := crypto.ParseBlob(hint)
 	if err != nil {
-		// Corrupted blob — treat as no hint
+		// Corrupted blob - treat as no hint
 		return GetPasswordHintOutput{}, nil
 	}
 
 	plaintext, err := uc.Encrypter.Decrypt(blob, []byte("password_hint:"+email.String()))
 	if err != nil {
-		// Decryption failure — treat as no hint rather than exposing error
+		// Decryption failure - treat as no hint rather than exposing error
 		return GetPasswordHintOutput{}, nil
 	}
 

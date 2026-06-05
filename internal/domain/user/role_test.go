@@ -19,7 +19,7 @@ func TestParseRole(t *testing.T) {
 		{"owner", RoleOwner, false},
 		{"", "", true},
 		{"guest", "", true},
-		{"Owner", "", true}, // case-sensitive — canonical is lowercase
+		{"Owner", "", true}, // case-sensitive - canonical is lowercase
 	}
 	for _, tc := range cases {
 		got, err := ParseRole(tc.in)

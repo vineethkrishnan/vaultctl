@@ -132,8 +132,8 @@ export function BackupSyncPanel() {
 
       <p className="text-sm text-muted-foreground">
         Schedule automatic, encrypted backups of your vaults to a destination of
-        your choice. Backups carry only ciphertext — they are useless without
-        your master password — and run on the server even when this app is
+        your choice. Backups carry only ciphertext - they are useless without
+        your master password - and run on the server even when this app is
         closed.
       </p>
 
@@ -162,7 +162,7 @@ export function BackupSyncPanel() {
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading destinations…
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading destinations...
         </div>
       ) : (
         <div className="space-y-3">
@@ -319,7 +319,7 @@ function DestinationCard({
         <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-muted-foreground">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
           <span>
-            A local copy lives on the server's disk. A disk failure loses it —
+            A local copy lives on the server's disk. A disk failure loses it -
             pair it with an off-box destination for real durability.
           </span>
         </div>
@@ -688,7 +688,7 @@ function DestinationForm({
         {provider === "local" && (
           <p className="col-span-2 text-[11px] text-muted-foreground">
             Stored in the server's configured backup directory. A disk failure
-            loses it — pair it with an off-box destination for durability.
+            loses it - pair it with an off-box destination for durability.
           </p>
         )}
         {provider === "webdav" && (
@@ -802,7 +802,7 @@ function DestinationForm({
           disabled={save.isPending || !label.trim()}
           className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {save.isPending ? "Saving…" : existing ? "Save" : "Add"}
+          {save.isPending ? "Saving..." : existing ? "Save" : "Add"}
         </button>
         <button
           onClick={onCancel}

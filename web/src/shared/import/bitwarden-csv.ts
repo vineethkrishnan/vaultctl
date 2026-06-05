@@ -20,7 +20,7 @@ export async function parse(input: File | string | Uint8Array): Promise<ParsedIt
   return parsedItemArraySchema.parse(parseBitwardenCSV(text));
 }
 
-/** Synchronous core parser — exposed for tests and round-tripping. */
+/** Synchronous core parser - exposed for tests and round-tripping. */
 export function parseBitwardenCSV(csv: string): ParsedItem[] {
   const rows = parseCSV(csv);
   if (rows.length < 2) return [];

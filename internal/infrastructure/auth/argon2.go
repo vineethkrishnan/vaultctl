@@ -20,7 +20,7 @@ import (
 // RE-HASH the client-provided authHash. This second hash is what ends up in
 // users.auth_hash and is what the server compares against at login.
 //
-// These are SEPARATE from the client-side KDFParams on user.User — those
+// These are SEPARATE from the client-side KDFParams on user.User - those
 // drive the initial Argon2id that turns the master password into the master
 // key.
 type ServerArgon2Params struct {

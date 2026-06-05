@@ -151,7 +151,7 @@ export function LoginPage() {
         // Stored authHash no longer valid (master password changed elsewhere).
         clearBiometric();
         setBioEnrolled(false);
-        setError("Master password changed — sign in once to re-enable Touch ID");
+        setError("Master password changed - sign in once to re-enable Touch ID");
       } else {
         setError(err instanceof Error ? err.message : "Touch ID unlock failed");
       }
@@ -198,7 +198,7 @@ export function LoginPage() {
           setError(err.error.message);
         }
       } else {
-        setError("Login failed — check your connection");
+        setError("Login failed - check your connection");
       }
     } finally {
       setLoading(false);
@@ -234,7 +234,7 @@ export function LoginPage() {
               className="flex w-full items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/15 disabled:opacity-50"
             >
               <Fingerprint className="h-4 w-4" />
-              {bioBusy ? "Unlocking…" : "Unlock with Touch ID"}
+              {bioBusy ? "Unlocking..." : "Unlock with Touch ID"}
             </button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" />

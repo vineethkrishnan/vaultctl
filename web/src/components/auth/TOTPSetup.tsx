@@ -68,7 +68,7 @@ export function TOTPSetup({ onComplete, onCancel }: Props) {
     } catch (err) {
       if (err instanceof ApiRequestError) {
         if (err.error.code === "INVALID_CREDENTIALS") {
-          setError("Invalid code — check your authenticator app");
+          setError("Invalid code - check your authenticator app");
         } else {
           setError(err.error.message);
         }

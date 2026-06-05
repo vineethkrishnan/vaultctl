@@ -66,7 +66,7 @@ func TestRefresh_HappyPath_RotatesToken(t *testing.T) {
 	// OLD token should no longer resolve a session.
 	oldHash, _ := user.NewRefreshTokenHash(fakeHMAC{}.HashString("rtok-old"))
 	if _, err := sess.FindByTokenHash(context.Background(), oldHash); err == nil {
-		t.Fatalf("old refresh token still maps to a session — rotation broken")
+		t.Fatalf("old refresh token still maps to a session - rotation broken")
 	}
 
 	// NEW token resolves to the same session id.

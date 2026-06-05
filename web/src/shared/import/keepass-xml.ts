@@ -7,18 +7,18 @@
  *   <KeePassFile>
  *     <Root>
  *       <Group>
- *         <Name>…</Name>
- *         <Group>…</Group>          (nested subgroups)
+ *         <Name>...</Name>
+ *         <Group>...</Group>          (nested subgroups)
  *         <Entry>
  *           <String>
  *             <Key>Title</Key>
- *             <Value>…</Value>
+ *             <Value>...</Value>
  *           </String>
  *           <String>
  *             <Key>UserName</Key>
- *             <Value>…</Value>
+ *             <Value>...</Value>
  *           </String>
- *           …Password / URL / Notes / arbitrary custom keys…
+ *           ...Password / URL / Notes / arbitrary custom keys...
  *         </Entry>
  *       </Group>
  *     </Root>

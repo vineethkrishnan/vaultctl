@@ -15,7 +15,7 @@ import (
 // Security-review additions:
 //   - WrapSignature: Ed25519 signature by Sender's identity key binding
 //     (VaultID, UserID, EncryptedVaultKey). (H1)
-//   - SenderID: who wrapped the key for this recipient — needed to look up
+//   - SenderID: who wrapped the key for this recipient - needed to look up
 //     the sender's identity public key during verification. (H1)
 //   - RemovedAt: soft-delete marker; audit trail never loses membership
 //     history. (M3)
@@ -35,7 +35,7 @@ type Member struct {
 }
 
 // Validate asserts the Member invariants. It does NOT verify the signature
-// cryptographically — that's an infrastructure concern (M8 acceptance test).
+// cryptographically - that's an infrastructure concern (M8 acceptance test).
 func (m Member) Validate(vaultType Type) error {
 	if m.VaultID.IsZero() {
 		return domain.NewInvalid("vault_id", "required")
@@ -74,7 +74,7 @@ func (m Member) Validate(vaultType Type) error {
 func (m Member) IsActive() bool { return m.RemovedAt == nil }
 
 // Remove marks the membership as removed at the given instant. It returns a
-// NEW Member — members are value objects; immutability is cheap and prevents
+// NEW Member - members are value objects; immutability is cheap and prevents
 // accidental shared-state bugs in use cases.
 func (m Member) Remove(at time.Time) Member {
 	out := m

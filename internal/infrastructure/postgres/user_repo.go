@@ -280,7 +280,7 @@ func (r *UserRepo) GetHint(ctx context.Context, email user.Email) ([]byte, error
 }
 
 // GetRecoveryMaterial returns the user's crypto material for recovery.
-// This reuses FindByEmail — the domain already returns all needed fields.
+// This reuses FindByEmail - the domain already returns all needed fields.
 func (r *UserRepo) GetRecoveryMaterial(ctx context.Context, email user.Email) (user.User, error) {
 	return r.FindByEmail(ctx, email)
 }

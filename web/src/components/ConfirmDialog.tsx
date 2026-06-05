@@ -15,7 +15,7 @@ interface Props {
   onCancel: () => void;
 }
 
-/** Themed replacement for window.confirm — overlay + card matching the app. */
+/** Themed replacement for window.confirm - overlay + card matching the app. */
 export function ConfirmDialog({
   open,
   title,

@@ -28,7 +28,7 @@ type ErrorBody struct {
 }
 
 // writeError maps domain + application errors to HTTP responses. This is
-// the single source of truth for status codes — handlers just call it.
+// the single source of truth for status codes - handlers just call it.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	code, status, field := mapErr(err)
 	w.Header().Set("Content-Type", "application/json")
@@ -40,7 +40,7 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	_ = json.NewEncoder(w).Encode(body)
 
 	// 5xx errors are interesting; log them with the request ID so operators
-	// can find them. 4xx are client-driven — don't spam the log.
+	// can find them. 4xx are client-driven - don't spam the log.
 	if status >= 500 {
 		slog.ErrorContext(r.Context(), "request.error", slog.String("code", code), slog.String("err", err.Error()))
 	}
@@ -91,7 +91,7 @@ func mapErr(err error) (code string, status int, field string) {
 	// Vault authorization
 	switch {
 	case errors.Is(err, appvault.ErrNotMember):
-		// Map to 404 — don't leak "vault exists but you can't see it".
+		// Map to 404 - don't leak "vault exists but you can't see it".
 		return "NOT_FOUND", http.StatusNotFound, ""
 	case errors.Is(err, appvault.ErrInsufficientRole):
 		return "FORBIDDEN", http.StatusForbidden, ""
@@ -115,7 +115,7 @@ func readJSON(r *http.Request, dst any) error {
 		}
 		return &domain.Invalid{Field: "body", Message: "malformed JSON"}
 	}
-	// Reject trailing junk — ensures exactly one JSON value.
+	// Reject trailing junk - ensures exactly one JSON value.
 	if _, err := io.ReadAll(r.Body); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {

@@ -29,7 +29,7 @@ const docTemplate = `{
                 "summary": "Trigger backup",
                 "responses": {
                     "501": {
-                        "description": "Not implemented — use CLI",
+                        "description": "Not implemented - use CLI",
                         "schema": {
                             "$ref": "#/definitions/internal_presenters_api.ErrorBody"
                         }

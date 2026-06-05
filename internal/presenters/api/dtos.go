@@ -21,7 +21,7 @@ func badBase64(field string) error {
 // Callers MUST defer Destroy on the returned Secret.
 //
 // Returning a Secret (rather than raw []byte) forces every auth handler
-// to borrow the bytes through Secret.Open — any plaintext authHash copy
+// to borrow the bytes through Secret.Open - any plaintext authHash copy
 // is confined to the narrow window of a single handler call.
 func decodeAuthHashSecret(s string) (*secure.Secret, error) {
 	raw, err := base64.StdEncoding.DecodeString(s)

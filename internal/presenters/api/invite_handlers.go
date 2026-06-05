@@ -152,7 +152,7 @@ func (h *InviteHandlers) HandleRevokeInvite(w http.ResponseWriter, r *http.Reque
 		writeError(w, r, err)
 		return
 	}
-	// orgID is unknown here (the URL does not carry it); store empty —
+	// orgID is unknown here (the URL does not carry it); store empty -
 	// the resource_id on the invite row is the stable forensic anchor.
 	h.Audit.InviteRevoked(r.Context(), string(callerID), "", inviteID, middleware.ClientIP(r), r.UserAgent())
 

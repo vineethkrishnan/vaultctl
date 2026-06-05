@@ -126,7 +126,7 @@ func RequireJWTOrAPIKey(tokens ports.TokenIssuer, apiKeys APIKeyValidator) func(
 				return
 			}
 
-			// JWT failed — try API key
+			// JWT failed - try API key
 			if apiKeys != nil {
 				userID, role, apiErr := apiKeys.Validate(r.Context(), tok)
 				if apiErr == nil {

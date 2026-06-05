@@ -32,7 +32,7 @@ type BackupHandlers struct {
 }
 
 // ===========================================================================
-// Wire types — Settings are write-only and never echoed back (they carry
+// Wire types - Settings are write-only and never echoed back (they carry
 // provider credentials sealed at rest).
 // ===========================================================================
 
@@ -185,7 +185,7 @@ func (h *BackupHandlers) HandleRunNow(w http.ResponseWriter, r *http.Request) {
 		Trigger:       dombackup.TriggerManual,
 	})
 	if err != nil && run.ID == "" {
-		// Not found / ownership / record failure — no run was created.
+		// Not found / ownership / record failure - no run was created.
 		writeError(w, r, err)
 		return
 	}

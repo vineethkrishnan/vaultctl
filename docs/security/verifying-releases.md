@@ -3,7 +3,7 @@
 **You are running a credential vault. Verify every release before you install it.**
 
 vaultctl publishes three layers of supply-chain evidence for every tagged
-release, all signed by GitHub Actions OIDC (keyless Sigstore — no private
+release, all signed by GitHub Actions OIDC (keyless Sigstore - no private
 keys anywhere). You MUST verify at least the layer you use to install.
 
 | Layer | What it proves | Required for |
@@ -34,7 +34,7 @@ curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-li
 cosign version
 ```
 
-No API keys, no private keys, no accounts — cosign verifies against the
+No API keys, no private keys, no accounts - cosign verifies against the
 public Sigstore transparency log (Rekor).
 
 ## The identity you are verifying against
@@ -55,7 +55,7 @@ export CERT_OIDC_ISSUER='https://token.actions.githubusercontent.com'
 ```
 
 If `cosign verify` ever reports an identity that does NOT match this
-regex, **stop and do not install** — the binary was signed by some other
+regex, **stop and do not install** - the binary was signed by some other
 workflow and that is a red flag.
 
 ---
@@ -134,7 +134,7 @@ DIGEST=$(cosign verify \
   --certificate-oidc-issuer     "${CERT_OIDC_ISSUER}" \
   "ghcr.io/vineethkrishnan/vaultctl:${VERSION}" 2>/dev/null \
   | jq -r '.[0].critical.image."docker-manifest-digest"')
-echo "${DIGEST}"   # sha256:…
+echo "${DIGEST}"   # sha256:...
 
 docker pull "ghcr.io/vineethkrishnan/vaultctl@${DIGEST}"
 ```
@@ -193,10 +193,10 @@ curl -sSfLO "${BASE}/vaultctl_Linux_x86_64.tar.gz.sbom.cdx.json"
 Feed it into your vuln scanner or license-compliance tool. Examples:
 
 ```sh
-# Grype — known-CVE scan
+# Grype - known-CVE scan
 grype sbom:./vaultctl_Linux_x86_64.tar.gz.sbom.cdx.json
 
-# Dependency-Track / FOSSA — upload the .cdx.json to your instance
+# Dependency-Track / FOSSA - upload the .cdx.json to your instance
 ```
 
 ---
@@ -210,7 +210,7 @@ Any failure at any layer is a hard stop:
    for active compromise notices.
 3. **Open a security advisory draft** on that page describing what you
    observed. Maintainers are notified.
-4. **Do not re-try the download from a mirror** — use the canonical
+4. **Do not re-try the download from a mirror** - use the canonical
    GitHub Releases URL and re-verify. A mirror cannot fix an identity
    mismatch.
 
@@ -246,6 +246,6 @@ Fail-closed: if cosign errors, the deploy step fails, nothing ships.
 
 ## Related docs
 
-- `.goreleaser.yaml` — the build + sign configuration being verified
-- `.github/workflows/release.yml` — the workflow whose OIDC identity is
+- `.goreleaser.yaml` - the build + sign configuration being verified
+- `.github/workflows/release.yml` - the workflow whose OIDC identity is
   baked into every certificate

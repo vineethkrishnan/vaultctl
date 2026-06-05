@@ -6,7 +6,7 @@ import { useClipboard } from "@/hooks/use-clipboard";
 import type { CustomField } from "@/shared/types/item-data";
 
 /**
- * Custom fields editor — M7 polish.
+ * Custom fields editor - M7 polish.
  *
  * Every item type's zod schema already carries a `customFields: CustomField[]`
  * array (see shared/types/item-data.ts). Until now no UI rendered it. This
@@ -14,10 +14,10 @@ import type { CustomField } from "@/shared/types/item-data";
  * the type-specific fields.
  *
  * Supported kinds match the schema's `type` enum:
- *   - text     — plain text, always visible
- *   - hidden   — masked like a password field with reveal + copy
- *   - boolean  — checkbox
- *   - url      — text that renders as a link in read mode (we're in edit
+ *   - text     - plain text, always visible
+ *   - hidden   - masked like a password field with reveal + copy
+ *   - boolean  - checkbox
+ *   - url      - text that renders as a link in read mode (we're in edit
  *                mode here so just a plain input with a copy button)
  */
 
@@ -60,7 +60,7 @@ export function CustomFieldsEditor({ fields, onChange }: Props) {
       {fields.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           No custom fields. Add one to store extra metadata like security
-          questions, recovery codes, or arbitrary key–value pairs.
+          questions, recovery codes, or arbitrary key-value pairs.
         </p>
       ) : (
         <ul className="space-y-2">

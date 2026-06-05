@@ -49,8 +49,8 @@ export interface UnlockSecret {
 interface BiometricRecord {
   credentialId: string; // base64
   rpId: string;
-  prfSalt: string; // base64 — fixed PRF input for this enrollment
-  wrapped: string; // base64 — AES-GCM wire bytes of JSON(UnlockSecret)
+  prfSalt: string; // base64 - fixed PRF input for this enrollment
+  wrapped: string; // base64 - AES-GCM wire bytes of JSON(UnlockSecret)
   email: string; // shown on the unlock button; not a secret
   createdAt: number;
 }

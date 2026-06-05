@@ -10,7 +10,7 @@
 //  2. ItemRepository methods take BOTH vaultID and itemID, and the SQL
 //     query includes `WHERE id = :id AND vault_id = :vaultId` so a request
 //     carrying a foreign vault's UUID + a victim's item UUID returns
-//     ErrNotFound — indistinguishable from "no such item".
+//     ErrNotFound - indistinguishable from "no such item".
 package vault
 
 import (
@@ -25,7 +25,7 @@ import (
 )
 
 // ErrNotMember is the authorization sentinel returned by ensureActiveMember.
-// Handler layer maps it to HTTP 404 (NOT 403) — we don't leak "vault exists".
+// Handler layer maps it to HTTP 404 (NOT 403) - we don't leak "vault exists".
 var ErrNotMember = errors.New("vault: caller is not an active member")
 
 // ErrInsufficientRole is returned when the caller is a member but does not
@@ -34,7 +34,7 @@ var ErrNotMember = errors.New("vault: caller is not an active member")
 var ErrInsufficientRole = errors.New("vault: insufficient role for this action")
 
 // ensureActiveMember is the single authorization entry point for vault
-// use cases. It is deliberately verbose — "active member (M3 removed_at
+// use cases. It is deliberately verbose - "active member (M3 removed_at
 // filter applied)" is the key contract.
 func ensureActiveMember(ctx context.Context, vaults ports.VaultRepository, userID user.ID, vaultID domainvault.ID) (user.Role, error) {
 	if userID.IsZero() {

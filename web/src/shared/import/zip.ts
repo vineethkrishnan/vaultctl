@@ -26,7 +26,7 @@ export async function readZip(bytes: Uint8Array): Promise<ZipEntry[]> {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
   // Locate end-of-central-directory record (EOCD). Scan backwards from the
-  // end of the buffer — EOCD may be followed by a comment of up to 64KB.
+  // end of the buffer - EOCD may be followed by a comment of up to 64KB.
   let eocdOffset = -1;
   const scanLimit = Math.max(0, bytes.length - 0xffff - 22);
   for (let offset = bytes.length - 22; offset >= scanLimit; offset--) {

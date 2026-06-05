@@ -4,7 +4,7 @@
 // release and caches the result. The check is server-side and opt-in: clients
 // (web app, extension) read the cached answer from the API and never contact
 // GitHub themselves, so a self-hosted instance phones home at most once per
-// cache window — and never at all when disabled.
+// cache window - and never at all when disabled.
 package updatecheck
 
 import (

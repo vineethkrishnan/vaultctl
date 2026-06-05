@@ -12,7 +12,7 @@ Retrieve the authenticated user's profile.
 GET /users/me
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -61,7 +61,7 @@ PUT /users/me
 |-------|------|----------|-------------|
 | `name` | string | yes | New display name |
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 Returns the full updated profile (same shape as Get Profile).
 
@@ -88,7 +88,7 @@ Retrieve all active sessions for the authenticated user.
 GET /users/me/sessions
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 [
@@ -127,7 +127,7 @@ Revoke a specific session, logging that device out.
 DELETE /users/me/sessions/:sessionId
 ```
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 

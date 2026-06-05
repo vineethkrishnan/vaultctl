@@ -101,7 +101,7 @@ func (uc *TOTPEnable) decryptSecret(ctx context.Context, userID user.ID) (string
 		return "", fmt.Errorf("load totp secret: %w", err)
 	}
 	if encSecret == nil {
-		return "", fmt.Errorf("totp: no secret configured — call setup first")
+		return "", fmt.Errorf("totp: no secret configured - call setup first")
 	}
 	blob, err := crypto.ParseBlob(encSecret)
 	if err != nil {

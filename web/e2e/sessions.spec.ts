@@ -34,7 +34,7 @@ async function pageFetch(
 // The first block verifies the mock route contract directly. The second
 // block drives the actual SessionsPanel UI on the Settings page.
 
-test.describe.serial("Sessions — API contract", () => {
+test.describe.serial("Sessions - API contract", () => {
   let state: MockState;
 
   test.beforeEach(async ({ page }) => {
@@ -86,14 +86,14 @@ test.describe.serial("Sessions — API contract", () => {
   });
 });
 
-test.describe.serial("Sessions — UI", () => {
+test.describe.serial("Sessions - UI", () => {
   let state: MockState;
 
   test.beforeEach(async ({ page }) => {
     state = createMockState({
       vaults: [{ id: "vault-1", name: "Personal", type: "personal" }],
       sessions: [
-        // Use "test-session-id" for the current session — matches
+        // Use "test-session-id" for the current session - matches
         // the sessionStorage value seeded by the mock auth flow.
         { id: "test-session-id", deviceName: "This Browser", current: true },
         { id: "sess-phone", deviceName: "iPhone" },

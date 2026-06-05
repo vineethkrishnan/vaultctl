@@ -109,7 +109,7 @@ func newCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Item display name (required)")
-	cmd.Flags().StringVar(&itemType, "type", "login", "Item type (login, note, card, …)")
+	cmd.Flags().StringVar(&itemType, "type", "login", "Item type (login, note, card, ...)")
 	cmd.Flags().StringVar(&username, "username", "", "Login username")
 	cmd.Flags().StringVar(&password, "password", "", "Login password")
 	cmd.Flags().StringVar(&uri, "uri", "", "Login URI")

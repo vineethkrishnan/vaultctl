@@ -1,6 +1,6 @@
 # Setup walkthrough
 
-End-to-end first-deploy walkthrough on a fresh host. Captured against the bundled `docker-compose.simple.yml` stack with the SPA served by the embedded Go binary on `http://localhost:8090` (the production compose with Caddy uses `${VAULTCTL_BASE_URL}` and auto-TLS — the UI flow is the same).
+End-to-end first-deploy walkthrough on a fresh host. Captured against the bundled `docker-compose.simple.yml` stack with the SPA served by the embedded Go binary on `http://localhost:8090` (the production compose with Caddy uses `${VAULTCTL_BASE_URL}` and auto-TLS - the UI flow is the same).
 
 ## 1. Bring up the stack
 
@@ -39,11 +39,11 @@ The default `VAULTCTL_REGISTRATION_MODE` is `invite`, but on a fresh install the
 
 ![Empty register form](screenshots/02-register-empty.png)
 
-The password is the only thing that ever derives your encryption keys — there is no way to recover items without it (or the recovery kit shown next). Pick something strong; the embedded denylist will reject the obvious offenders.
+The password is the only thing that ever derives your encryption keys - there is no way to recover items without it (or the recovery kit shown next). Pick something strong; the embedded denylist will reject the obvious offenders.
 
 ![Filled register form](screenshots/03-register-filled.png)
 
-Submit. The browser does the heavy crypto in a worker — Argon2id key derivation, RSA-2048 keypair, Ed25519 identity keypair, AES-KW vault key wrap — before anything hits the server. You then land on the recovery kit screen.
+Submit. The browser does the heavy crypto in a worker - Argon2id key derivation, RSA-2048 keypair, Ed25519 identity keypair, AES-KW vault key wrap - before anything hits the server. You then land on the recovery kit screen.
 
 ## 4. Save the recovery kit
 
@@ -57,7 +57,7 @@ Tick the confirmation, click **Continue to Login**, and re-enter your email and 
 
 ## 5. Add the first item
 
-Click **New Item**. Choose a type — Login, Secure Note, Credit Card, Identity, API Key, SSH Key, or Passkey.
+Click **New Item**. Choose a type - Login, Secure Note, Credit Card, Identity, API Key, SSH Key, or Passkey.
 
 ![Item type picker](screenshots/06-new-item-types.png)
 
@@ -65,13 +65,13 @@ Fill in the fields. Use the built-in **Generate password** button if you'd rathe
 
 ![New login filled](screenshots/07-new-item-filled.png)
 
-Save. Every encrypted blob round-trips through the worker — the server only ever sees ciphertext. The item shows up in the vault list:
+Save. Every encrypted blob round-trips through the worker - the server only ever sees ciphertext. The item shows up in the vault list:
 
 ![Vault with item](screenshots/08-vault-with-item.png)
 
 ## 6. From here
 
-- **CLI:** `vaultctl login`, `vaultctl ls`, `vaultctl get GitHub` — uses the same backend, decrypts client-side. See [`README.md`](../../README.md#cli).
+- **CLI:** `vaultctl login`, `vaultctl ls`, `vaultctl get GitHub` - uses the same backend, decrypts client-side. See [`README.md`](../../README.md#cli).
 - **Browser extension:** build with `cd extension && npm run build`, load `extension/.output/chrome-mv3/` into Chrome (`chrome://extensions` -> Developer mode -> Load unpacked).
 - **Sharing:** create a shared vault, then invite a teammate from **Admin** -> **Invites**.
 - **Backups:** `vaultctl backup --output /var/backups/vaultctl` runs an encrypted dump and prunes per `VAULTCTL_BACKUP_RETENTION_DAYS`.

@@ -36,7 +36,7 @@ type Prelogin struct {
 }
 
 // Execute looks up the user by email and returns their KDF params. For any
-// lookup miss — malformed email OR unknown email — returns a deterministic
+// lookup miss - malformed email OR unknown email - returns a deterministic
 // fake salt with identical response shape so an attacker cannot distinguish
 // registered from unregistered accounts (H2).
 func (uc *Prelogin) Execute(ctx context.Context, in PreloginInput) (PreloginOutput, error) {

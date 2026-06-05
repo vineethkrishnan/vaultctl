@@ -12,7 +12,7 @@ Retrieve all vaults the authenticated user has access to, including their encryp
 GET /vaults
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -77,7 +77,7 @@ POST /vaults
 | `encryptedVaultKey` | string | Base64-encoded vault key wrapped with the user's RSA public key (shared) or AES Key Wrap (personal) |
 | `wrapSignature` | string | Base64-encoded Ed25519 signature over the wrapped key bytes |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -139,7 +139,7 @@ POST /vaults/:vaultId/members
 | `wrapSignature` | string | yes | Ed25519 signature over the wrapped key bytes |
 | `role` | string | yes | Role to assign: `admin` or `member` |
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 
@@ -172,7 +172,7 @@ Remove a member from a shared vault. Returns whether a rekey is required and the
 DELETE /vaults/:vaultId/members/:userId
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -249,7 +249,7 @@ POST /vaults/:vaultId/rekey
 | `items[].encryptedData` | string | Item data re-encrypted with new vault key |
 | `items[].encryptedName` | string | Item name re-encrypted with new vault key |
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 

@@ -268,7 +268,7 @@ function SessionRow({
         </div>
         <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           <dt>IP</dt>
-          <dd className="break-all font-mono">{group.ipAddress || "—"}</dd>
+          <dd className="break-all font-mono">{group.ipAddress || "-"}</dd>
           <dt>Last active</dt>
           <dd>{group.isCurrent ? "now" : relativeAge(lastIso)}</dd>
         </dl>

@@ -100,7 +100,7 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Post("/auth/recovery/verify", deps.Auth.HandleVerifyRecoveryKey)
 			r.Post("/auth/recovery/reset", deps.Auth.HandleResetViaRecovery)
 
-			// Invite redemption is public — new users redeem before registering
+			// Invite redemption is public - new users redeem before registering
 			r.Post("/auth/invites/redeem", deps.Invite.HandleRedeemInvite)
 		})
 
@@ -114,14 +114,14 @@ func NewRouter(deps Dependencies) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(requireAuth)
 
-			// Step-up auth — rate-limited to prevent brute-force re-auth
+			// Step-up auth - rate-limited to prevent brute-force re-auth
 			if deps.RateLimiter != nil {
 				r.With(deps.RateLimiter.PerIP).Post("/auth/step-up", deps.Auth.HandleStepUp)
 			} else {
 				r.Post("/auth/step-up", deps.Auth.HandleStepUp)
 			}
 
-			// TOTP 2FA management — rate-limited
+			// TOTP 2FA management - rate-limited
 			totpMw := []func(http.Handler) http.Handler{requireStepUp}
 			if deps.RateLimiter != nil {
 				totpMw = append(totpMw, deps.RateLimiter.PerIP)
@@ -169,7 +169,7 @@ func NewRouter(deps Dependencies) http.Handler {
 				// Organization member public key
 				r.Get("/members/{userId}/pubkey", deps.User.HandleGetMemberPublicKey)
 
-				// Invite management (admin only) — scoped to the org
+				// Invite management (admin only) - scoped to the org
 				r.With(requireAdmin).Post("/invites", deps.Invite.HandleCreateInvite)
 				r.With(requireAdmin).Get("/invites", deps.Invite.HandleListInvites)
 				r.With(requireAdmin).Delete("/invites/{inviteId}", deps.Invite.HandleRevokeInvite)
@@ -179,7 +179,7 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.With(requireAdmin).Post("/admin/backup", deps.Admin.HandleBackup)
 			r.With(requireAdmin).Get("/admin/backups", deps.Admin.HandleListBackups)
 
-			// Data export (step-up required — sensitive data)
+			// Data export (step-up required - sensitive data)
 			r.With(requireStepUp).Get("/export", deps.Export.HandleExport)
 
 			// Data import
@@ -201,7 +201,7 @@ func NewRouter(deps Dependencies) http.Handler {
 						r.Post("/run", deps.Backup.HandleRunNow)
 						r.Get("/runs", deps.Backup.HandleListRuns)
 						r.Get("/artifacts", deps.Backup.HandleListArtifacts)
-						// Restore returns the (client-encrypted) export payload —
+						// Restore returns the (client-encrypted) export payload -
 						// sensitive, so step-up is required as with /export.
 						r.With(requireStepUp).Get("/restore", deps.Backup.HandleRestore)
 					})

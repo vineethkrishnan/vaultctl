@@ -14,7 +14,7 @@ import (
 )
 
 // ===========================================================================
-// VerifyRecoveryKey — returns crypto material for client-side recovery
+// VerifyRecoveryKey - returns crypto material for client-side recovery
 // ===========================================================================
 
 // VerifyRecoveryKeyInput is the POST /auth/recovery/verify request.
@@ -24,7 +24,7 @@ type VerifyRecoveryKeyInput struct {
 
 // VerifyRecoveryKeyOutput returns the recovery-wrapped key material so the
 // client can attempt decryption with its recovery key. The server cannot
-// verify the recovery key in a zero-knowledge system — only the client can by
+// verify the recovery key in a zero-knowledge system - only the client can by
 // trying to decrypt the blobs. Empty blobs mean the account has no recovery
 // kit on file.
 type VerifyRecoveryKeyOutput struct {
@@ -63,7 +63,7 @@ func (uc *VerifyRecoveryKey) Execute(ctx context.Context, in VerifyRecoveryKeyIn
 }
 
 // ===========================================================================
-// RotateRecoveryKey — (re)generate the recovery-wrapped key material
+// RotateRecoveryKey - (re)generate the recovery-wrapped key material
 // ===========================================================================
 
 // RotateRecoveryKeyInput carries the private keys freshly wrapped under a new
@@ -97,7 +97,7 @@ func (uc *RotateRecoveryKey) Execute(ctx context.Context, in RotateRecoveryKeyIn
 }
 
 // ===========================================================================
-// ResetViaRecovery — reset password after client-side recovery verification
+// ResetViaRecovery - reset password after client-side recovery verification
 // ===========================================================================
 
 // ResetViaRecoveryInput is the POST /auth/recovery/reset request. The client
@@ -120,7 +120,7 @@ type ResetViaRecoveryOutput struct {
 
 // ResetViaRecovery replaces the auth hash and encrypted keys, revokes all
 // sessions, and issues fresh tokens. This is like PasswordChange but
-// without requiring the old auth hash — the client proves knowledge of the
+// without requiring the old auth hash - the client proves knowledge of the
 // recovery key by submitting correctly re-encrypted key material.
 type ResetViaRecovery struct {
 	Users          ports.UserRepository

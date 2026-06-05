@@ -107,7 +107,7 @@ func TestJWTService_Expired(t *testing.T) {
 	t.Parallel()
 	svc := newTestJWT(t, nil)
 	// Issue a token at t=0, then ask the service to verify as if we are at
-	// t=1h — well past the 15min TTL.
+	// t=1h - well past the 15min TTL.
 	now := frozen
 	tok, _ := svc.Issue("u1", "member", now, time.Time{})
 

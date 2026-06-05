@@ -12,7 +12,7 @@ Retrieve all folders in a vault.
 GET /vaults/:vaultId/folders
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -57,7 +57,7 @@ POST /vaults/:vaultId/folders
 |-------|------|-------------|
 | `encryptedName` | string | Base64-encoded AES-256-GCM blob containing the folder name (PKCS#7 padded to 32B) |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -96,7 +96,7 @@ PUT /vaults/:vaultId/folders/:folderId
 }
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -127,7 +127,7 @@ Permanently delete a folder.
 DELETE /vaults/:vaultId/folders/:folderId
 ```
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 

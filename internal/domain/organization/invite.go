@@ -17,7 +17,7 @@ const InviteTokenBits = 256
 // InviteTokenHashSize is the length of the HMAC-SHA256 hash stored per invite.
 const InviteTokenHashSize = 32
 
-// MaxInviteTTL is the policy ceiling on invite lifetimes (M11: 24–72h).
+// MaxInviteTTL is the policy ceiling on invite lifetimes (M11: 24-72h).
 const MaxInviteTTL = 72 * time.Hour
 
 // MinInviteTTL keeps invites from being effectively dead-on-arrival.
@@ -125,7 +125,7 @@ func (i Invite) IsRedeemable(now time.Time) bool {
 }
 
 // Redeem returns a new Invite marked as used at `at`. Returns an error if
-// the invite is no longer redeemable — single-use enforcement is explicit.
+// the invite is no longer redeemable - single-use enforcement is explicit.
 func (i Invite) Redeem(at time.Time) (Invite, error) {
 	if !i.IsRedeemable(at) {
 		return Invite{}, domain.NewInvalid("invite", "not redeemable")

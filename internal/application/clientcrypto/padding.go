@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-// PaddingBlockSize matches web/src/shared/crypto/padding.ts — item and folder
+// PaddingBlockSize matches web/src/shared/crypto/padding.ts - item and folder
 // names are padded to a multiple of 32 bytes before encryption to avoid
 // leaking plaintext length.
 const PaddingBlockSize = 32
@@ -18,7 +18,7 @@ var ErrInvalidPadding = errors.New("clientcrypto: invalid PKCS#7 padding")
 
 // Pad appends PKCS#7 padding to data so the output length is a multiple of
 // PaddingBlockSize. If data is already aligned, a full block (32 bytes) of
-// padding is appended — standard PKCS#7 behaviour.
+// padding is appended - standard PKCS#7 behaviour.
 func Pad(data []byte) []byte {
 	padLen := PaddingBlockSize - (len(data) % PaddingBlockSize)
 	padded := make([]byte, len(data)+padLen)

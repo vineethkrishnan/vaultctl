@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * EncryptedBlob — versioned ciphertext envelope (PRD §9.9, C5).
+ * EncryptedBlob - versioned ciphertext envelope (PRD §9.9, C5).
  *
  * Wire format (concatenated bytes):
  *   version (1B) || alg_id (1B) || nonce (NonceSize) || ciphertext (var) || tag (TagSize)

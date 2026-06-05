@@ -14,8 +14,8 @@ func newLockCmd() *cobra.Command {
 		Short: "Lock the vault (no-op for CLI single-shot processes)",
 		Long: `Lock the vault by clearing any in-memory key cache.
 
-The CLI is single-shot — each invocation derives keys, uses them, and
-exits — so there is nothing persistent to wipe. This command exists for
+The CLI is single-shot - each invocation derives keys, uses them, and
+exits - so there is nothing persistent to wipe. This command exists for
 API parity with the browser and extension clients. It succeeds silently.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if isJSON(cmd) {

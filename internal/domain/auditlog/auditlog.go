@@ -7,7 +7,7 @@ import "time"
 // Entry is one row in audit_logs. Fields mirror the SQL schema in
 // migrations/20260405120000_init.up.sql.
 //
-// UserID, ResourceType, and ResourceID are optional — the repository
+// UserID, ResourceType, and ResourceID are optional - the repository
 // translates zero values to SQL NULL. IPAddress is ALWAYS the already
 // anonymised form (IPv4 /24 or IPv6 /56); raw addresses never enter this
 // type.
@@ -36,7 +36,7 @@ type Entry struct {
 	// refuse (and swallow) writes for malformed addresses.
 	IPAddress string
 
-	// UserAgent is the raw User-Agent header value. No redaction — it is
+	// UserAgent is the raw User-Agent header value. No redaction - it is
 	// not PII by itself.
 	UserAgent string
 

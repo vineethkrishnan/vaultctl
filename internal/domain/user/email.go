@@ -16,7 +16,7 @@ import (
 
 // Email is a normalised email address. Normalisation is the single-source-of-
 // truth for lookups: everywhere the address is used (prelogin lookup, invite
-// redemption, HMAC'd enumeration salt — H2) we operate on the normalised form.
+// redemption, HMAC'd enumeration salt - H2) we operate on the normalised form.
 type Email struct {
 	value string
 }
@@ -30,7 +30,7 @@ const MaxEmailLength = 255
 
 // NewEmail normalises and validates raw. Normalisation is: trim outer
 // whitespace + lower-case the entire address. We do NOT strip Gmail-style
-// dots or plus-tags — users often rely on those for addressing.
+// dots or plus-tags - users often rely on those for addressing.
 func NewEmail(raw string) (Email, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
@@ -41,7 +41,7 @@ func NewEmail(raw string) (Email, error) {
 	}
 	lowered := strings.ToLower(trimmed)
 
-	// Minimal structural check — full RFC 5322 validation is out of scope for
+	// Minimal structural check - full RFC 5322 validation is out of scope for
 	// the domain layer. We enforce exactly ONE '@', non-empty local + domain,
 	// and at least one '.' in the domain.
 	at := strings.IndexByte(lowered, '@')

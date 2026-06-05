@@ -80,7 +80,7 @@ export function WhatsNewModal({
           <Sparkles className="h-5 w-5 text-brand" />
           <h2 className="text-lg font-semibold">
             {mode === "available" ? "Update available" : "What's new"}
-            {version ? ` — v${version}` : ""}
+            {version ? ` - v${version}` : ""}
           </h2>
           <button
             onClick={onClose}

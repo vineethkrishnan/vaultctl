@@ -51,7 +51,7 @@ const lockRoute = createRoute({
   component: LockPage,
 });
 
-// Authenticated layout (pathless — doesn't add to URL)
+// Authenticated layout (pathless - doesn't add to URL)
 const authLayout = createRoute({
   getParentRoute: () => rootRoute,
   id: "auth",

@@ -3,7 +3,7 @@
 // Package secure wraps memguard to give the rest of the server a single,
 // minimal API for "sensitive bytes that must not sit in pageable memory."
 //
-// Scope (architecture §12.1 — "non-negotiable for a vault"):
+// Scope (architecture §12.1 - "non-negotiable for a vault"):
 //   - Long-lived server config secrets (HMAC peppers, data-encryption key,
 //     JWT signing keys) are stored as *Secret for the lifetime of the
 //     process and wiped on shutdown.
@@ -48,7 +48,7 @@ func NewSecretFromBytes(raw []byte) *Secret {
 }
 
 // NewSecretFromString wraps a string secret. Go strings are immutable, so
-// the source cannot be zeroed — prefer NewSecretFromBytes whenever the
+// the source cannot be zeroed - prefer NewSecretFromBytes whenever the
 // caller owns a mutable slice (decoded config, parsed JSON, etc.).
 func NewSecretFromString(s string) *Secret {
 	if s == "" {
@@ -58,7 +58,7 @@ func NewSecretFromString(s string) *Secret {
 }
 
 // Open borrows the protected bytes for the minimum window. The fn
-// receives a slice backed by the LockedBuffer — callers MUST NOT retain
+// receives a slice backed by the LockedBuffer - callers MUST NOT retain
 // the slice past fn's return. A destroyed or nil Secret yields nil.
 func (s *Secret) Open(fn func([]byte)) {
 	if s == nil || s.lb == nil || !s.lb.IsAlive() {

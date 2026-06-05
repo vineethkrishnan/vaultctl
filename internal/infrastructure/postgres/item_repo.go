@@ -18,7 +18,7 @@ import (
 // ItemRepo is the pgx-backed ports.ItemRepository.
 //
 // EVERY query includes `WHERE vault_id = $1 AND id = $2` so that a
-// cross-vault UUID substitution returns no rows — the SQL enforcement of
+// cross-vault UUID substitution returns no rows - the SQL enforcement of
 // the H11 IDOR guard.
 type ItemRepo struct{ Pool *Pool }
 

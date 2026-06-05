@@ -5,7 +5,7 @@
 // Every key here mirrors the VAULTCTL_ prefix enumerated in prd.md §11.1.
 // Values that are load-bearing for security (data-encryption key, server peppers,
 // JWT secrets, SSL mode) have NO defaults and MUST be supplied explicitly in
-// production (VAULTCTL_ENV=production) — fail-closed by construction.
+// production (VAULTCTL_ENV=production) - fail-closed by construction.
 package config
 
 import (
@@ -49,7 +49,7 @@ type Config struct {
 	DBSSLInsecureOK bool `env:"VAULTCTL_DB_SSL_INSECURE_OK" envDefault:"false"`
 
 	// ===========================================================================
-	// JWT signing keys — dual-key rotation (H8)
+	// JWT signing keys - dual-key rotation (H8)
 	// ===========================================================================
 	JWTSecretCurrent string        `env:"VAULTCTL_JWT_SECRET_CURRENT"`
 	JWTSecretNext    string        `env:"VAULTCTL_JWT_SECRET_NEXT"`

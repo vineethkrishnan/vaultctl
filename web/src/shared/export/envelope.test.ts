@@ -94,7 +94,7 @@ describe("buildSignedEnvelope + verifyEnvelope", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tampering — the critical M6-hardening acceptance test
+// Tampering - the critical M6-hardening acceptance test
 // ---------------------------------------------------------------------------
 
 describe("tamper detection", () => {

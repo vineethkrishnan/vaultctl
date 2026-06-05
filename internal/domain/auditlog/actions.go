@@ -5,7 +5,7 @@
 //
 // Audit writes are cross-cutting side effects: they MUST NOT fail the
 // business operation that triggered them. All action strings are stable
-// contract — changing or removing one is a breaking change for any
+// contract - changing or removing one is a breaking change for any
 // downstream SIEM/log analyser.
 package auditlog
 
@@ -21,7 +21,7 @@ const (
 )
 
 // Stable action identifiers. Format: "<domain>.<verb>" in lowercase snake.
-// NEVER change or remove an existing action string — downstream consumers
+// NEVER change or remove an existing action string - downstream consumers
 // treat them as contract.
 const (
 	// Authentication + session lifecycle.

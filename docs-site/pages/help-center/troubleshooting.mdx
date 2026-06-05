@@ -18,7 +18,7 @@ docker compose exec -T vaultctl /usr/local/bin/vaultctl migrate up
 docker compose -f docker-compose.simple.yml exec -T vaultctl /usr/local/bin/vaultctl migrate up
 ```
 
-The one-line installer does this for you. `migrate up` is idempotent — safe to re-run after every upgrade.
+The one-line installer does this for you. `migrate up` is idempotent - safe to re-run after every upgrade.
 
 ---
 
@@ -33,7 +33,7 @@ The one-line installer does this for you. `migrate up` is idempotent — safe to
   docker info        # should now succeed
   ```
 - **PATH:** Homebrew installs to `/usr/local/bin` (Intel) or `/opt/homebrew/bin` (Apple Silicon). If `docker` is "not found" in a non-interactive shell, ensure that directory is on your `PATH`.
-- **Docker Desktop:** if you already run Docker Desktop, the installer uses it instead of colima — just make sure it is started.
+- **Docker Desktop:** if you already run Docker Desktop, the installer uses it instead of colima - just make sure it is started.
 
 ---
 
@@ -78,7 +78,7 @@ The one-line installer does this for you. `migrate up` is idempotent — safe to
 - **KDF mismatch:** If you changed KDF parameters after registration (not recommended), the client may derive a different auth hash. Use the same parameters that were set during account creation.
 
 <Callout type="info">
-  If your account is locked, you will receive an `ACCOUNT_LOCKED` error. The lockout expires automatically — there is no manual unlock.
+  If your account is locked, you will receive an `ACCOUNT_LOCKED` error. The lockout expires automatically - there is no manual unlock.
 </Callout>
 
 ---
@@ -91,7 +91,7 @@ This is **expected behavior**. vaultctl uses Argon2id with 64 MB of memory and 3
 
 - **2-5 seconds** is normal on modern hardware.
 - **Older or low-memory devices** may take longer.
-- **Do not reduce KDF parameters** to speed up login — this weakens security.
+- **Do not reduce KDF parameters** to speed up login - this weakens security.
 
 ---
 

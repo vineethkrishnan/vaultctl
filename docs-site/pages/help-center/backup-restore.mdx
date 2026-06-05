@@ -49,7 +49,7 @@ docker compose cp db:/tmp/backup.dump ./backups/
 | Session/refresh tokens | Hashed (SHA-256) | Expire naturally; revoked on restore if needed |
 
 <Callout type="info">
-  Because all sensitive data is encrypted, a database backup is safe to store — an attacker cannot extract passwords from it without the master password. However, the backup does contain email addresses and vault names in plaintext.
+  Because all sensitive data is encrypted, a database backup is safe to store - an attacker cannot extract passwords from it without the master password. However, the backup does contain email addresses and vault names in plaintext.
 </Callout>
 
 ## Restore
@@ -84,7 +84,7 @@ systemctl start vaultctl
 </Steps>
 
 <Callout type="warning">
-  After a restore, all active sessions are invalidated. Users will need to log in again. This is expected — refresh tokens from before the restore point will no longer be valid.
+  After a restore, all active sessions are invalidated. Users will need to log in again. This is expected - refresh tokens from before the restore point will no longer be valid.
 </Callout>
 
 ## Scheduled Backups

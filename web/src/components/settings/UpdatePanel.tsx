@@ -51,11 +51,11 @@ export function UpdatePanel() {
           </span>
           <span className="block text-xs text-muted-foreground">
             {!data
-              ? "Checking for updates…"
+              ? "Checking for updates..."
               : !data.enabled
                 ? "Update checking is disabled on this server."
                 : data.updateAvailable
-                  ? `v${data.latestVersion} is available${data.severity && data.severity !== "none" ? ` (${data.severity})` : ""} — you're on v${data.currentVersion}.`
+                  ? `v${data.latestVersion} is available${data.severity && data.severity !== "none" ? ` (${data.severity})` : ""} - you're on v${data.currentVersion}.`
                   : `You're on the latest version (v${data.currentVersion}).`}
           </span>
         </span>

@@ -19,7 +19,7 @@ type RefreshInput struct {
 }
 
 // RefreshOutput carries the rotated tokens. The old refresh token is
-// invalidated atomically — a successful refresh returns a NEW refresh
+// invalidated atomically - a successful refresh returns a NEW refresh
 // token; any subsequent use of the old one is treated as compromise and
 // the session is revoked.
 type RefreshOutput struct {
@@ -28,7 +28,7 @@ type RefreshOutput struct {
 	RefreshExpiresAt time.Time
 
 	// UserID and SessionID are exposed so the HTTP layer can emit audit
-	// rows. They are NOT marshalled back to the client — the API DTO
+	// rows. They are NOT marshalled back to the client - the API DTO
 	// only carries the token triple.
 	UserID    user.ID
 	SessionID user.SessionID
