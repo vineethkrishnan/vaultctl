@@ -4,6 +4,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -40,6 +41,10 @@ type AuthHandlers struct {
 	// registration skips the send and the verify/resend routes are not mounted.
 	SendVerification *auth.SendEmailVerification
 	VerifyEmail      *auth.VerifyEmail
+
+	// NotifyLogin sends new-device / new-network alerts. Nil when disabled or
+	// no mailer is wired.
+	NotifyLogin *auth.NotifyLogin
 
 	// Users is used by HandleLogin to resolve a user ID for
 	// login.failed audit rows without storing the raw email.
@@ -289,6 +294,18 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Audit.LoginSuccess(r.Context(), string(out.UserID), ip, userAgent)
+
+	// New-device / new-network alert, off the request path so a slow SMTP send
+	// never delays the login response.
+	if h.NotifyLogin != nil {
+		userID, email := out.UserID, req.Email
+		go func() {
+			if e := h.NotifyLogin.Execute(context.Background(), userID, email, userAgent, ip); e != nil {
+				slog.Warn("login.alert.failed", slog.String("err", e.Error()))
+			}
+		}()
+	}
+
 	vaults := make([]VaultMembershipDTO, 0, len(out.Vaults))
 	for _, v := range out.Vaults {
 		vaults = append(vaults, VaultMembershipDTO{

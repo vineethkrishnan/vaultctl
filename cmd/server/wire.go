@@ -36,20 +36,21 @@ import (
 // adapters bundles every concrete adapter so main.go can wire handlers in
 // one shot.
 type adapters struct {
-	pool       *postgres.Pool
-	users      *postgres.UserRepo
-	sess       *postgres.SessionStore
-	vaults     *postgres.VaultRepo
-	items      *postgres.ItemRepo
-	folders    *postgres.FolderRepo
-	apikeys    *postgres.APIKeyRepo
-	invites    *postgres.InviteRepo
-	orgs       *postgres.OrgRepo
-	audit      *postgres.AuditRepo
-	notifState *postgres.NotificationStateRepo
-	attach     *postgres.AttachmentRepo
-	emailVerif *postgres.EmailVerificationRepo
-	blobs      ports.BlobStore // nil when the blob store is unavailable
+	pool        *postgres.Pool
+	users       *postgres.UserRepo
+	sess        *postgres.SessionStore
+	vaults      *postgres.VaultRepo
+	items       *postgres.ItemRepo
+	folders     *postgres.FolderRepo
+	apikeys     *postgres.APIKeyRepo
+	invites     *postgres.InviteRepo
+	orgs        *postgres.OrgRepo
+	audit       *postgres.AuditRepo
+	notifState  *postgres.NotificationStateRepo
+	attach      *postgres.AttachmentRepo
+	emailVerif  *postgres.EmailVerificationRepo
+	knownLogins *postgres.KnownLoginRepo
+	blobs       ports.BlobStore // nil when the blob store is unavailable
 
 	backupDests     *postgres.BackupDestinationRepo // nil when backup sync is off
 	backupRuns      *postgres.BackupRunRepo
@@ -113,27 +114,28 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 	}
 
 	a := &adapters{
-		pool:       pool,
-		users:      &postgres.UserRepo{Pool: pool},
-		sess:       &postgres.SessionStore{Pool: pool},
-		vaults:     &postgres.VaultRepo{Pool: pool},
-		items:      &postgres.ItemRepo{Pool: pool},
-		folders:    &postgres.FolderRepo{Pool: pool},
-		apikeys:    &postgres.APIKeyRepo{Pool: pool},
-		invites:    &postgres.InviteRepo{Pool: pool},
-		orgs:       &postgres.OrgRepo{Pool: pool},
-		audit:      &postgres.AuditRepo{Pool: pool},
-		notifState: &postgres.NotificationStateRepo{Pool: pool},
-		attach:     &postgres.AttachmentRepo{Pool: pool},
-		emailVerif: &postgres.EmailVerificationRepo{Pool: pool},
-		hasher:     infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
-		hmac:       hmac,
-		jwt:        jwt,
-		tokens:     infraauth.NewTokenGenerator(),
-		totp:       infraauth.NewTOTPProvider(),
-		aead:       aead,
-		clock:      clock,
-		ids:        uuidGen{},
+		pool:        pool,
+		users:       &postgres.UserRepo{Pool: pool},
+		sess:        &postgres.SessionStore{Pool: pool},
+		vaults:      &postgres.VaultRepo{Pool: pool},
+		items:       &postgres.ItemRepo{Pool: pool},
+		folders:     &postgres.FolderRepo{Pool: pool},
+		apikeys:     &postgres.APIKeyRepo{Pool: pool},
+		invites:     &postgres.InviteRepo{Pool: pool},
+		orgs:        &postgres.OrgRepo{Pool: pool},
+		audit:       &postgres.AuditRepo{Pool: pool},
+		notifState:  &postgres.NotificationStateRepo{Pool: pool},
+		attach:      &postgres.AttachmentRepo{Pool: pool},
+		emailVerif:  &postgres.EmailVerificationRepo{Pool: pool},
+		knownLogins: &postgres.KnownLoginRepo{Pool: pool},
+		hasher:      infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
+		hmac:        hmac,
+		jwt:         jwt,
+		tokens:      infraauth.NewTokenGenerator(),
+		totp:        infraauth.NewTOTPProvider(),
+		aead:        aead,
+		clock:       clock,
+		ids:         uuidGen{},
 		mailer: mailer.New(mailer.Config{
 			Host:     cfg.SMTPHost,
 			Port:     cfg.SMTPPort,
@@ -262,6 +264,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	// deployment without SMTP skips the gate entirely.
 	var sendVerification *auth.SendEmailVerification
 	var verifyEmail *auth.VerifyEmail
+	var notifyLogin *auth.NotifyLogin
 	if a.mailer.Enabled() {
 		emailComposer := email.New(a.mailer, cfg.BaseURL)
 		sendVerification = &auth.SendEmailVerification{
@@ -271,6 +274,11 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		verifyEmail = &auth.VerifyEmail{
 			Users: a.users, Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
 		}
+		if cfg.LoginAlertsEnabled {
+			notifyLogin = &auth.NotifyLogin{
+				Known: a.knownLogins, HMAC: a.hmac, Clock: a.clock, Sender: emailComposer,
+			}
+		}
 	}
 
 	authHandlers := &api.AuthHandlers{
@@ -278,6 +286,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Audit:            auditWriter,
 		SendVerification: sendVerification,
 		VerifyEmail:      verifyEmail,
+		NotifyLogin:      notifyLogin,
 		Register: &auth.Register{
 			Users: a.users, Hasher: a.hasher, Clock: a.clock, IDs: a.ids,
 			Encrypter: a.aead,

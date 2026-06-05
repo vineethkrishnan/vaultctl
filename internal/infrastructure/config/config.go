@@ -124,6 +124,9 @@ type Config struct {
 	// before its vault becomes read-only (creates/edits/shares blocked) until
 	// the email is confirmed. Only enforced when a mailer is configured.
 	EmailVerifyGrace time.Duration `env:"VAULTCTL_EMAIL_VERIFY_GRACE" envDefault:"168h"`
+	// LoginAlertsEnabled emails the user when a sign-in comes from a new device
+	// or network. Only active when a mailer is configured.
+	LoginAlertsEnabled bool `env:"VAULTCTL_LOGIN_ALERTS_ENABLED" envDefault:"true"`
 
 	// ===========================================================================
 	// Retention

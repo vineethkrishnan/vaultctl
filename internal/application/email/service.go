@@ -62,6 +62,40 @@ func (s *Service) SendVerificationCode(ctx context.Context, to, code string, ttl
 	})
 }
 
+// SendLoginAlert emails a security alert about a sign-in from a new device or
+// network. Copy is strictly factual: it states only what the server knows
+// (device label, IP, time) and never asserts a location it cannot verify.
+func (s *Service) SendLoginAlert(ctx context.Context, to, reason, deviceLabel, ipAddress string, when time.Time) error {
+	what := "A new sign-in"
+	switch reason {
+	case "new_device":
+		what = "A sign-in from a new device"
+	case "new_network":
+		what = "A sign-in from a new network"
+	}
+	ip := ipAddress
+	if ip == "" {
+		ip = "unknown"
+	}
+	c := content{
+		heading: "New sign-in to your vault",
+		intro: []string{
+			what + " just happened on your vaultctl account.",
+			"Device: " + deviceLabel,
+			"When: " + when.UTC().Format("2 Jan 2006, 15:04 MST"),
+			"IP address: " + ip,
+		},
+		ctaLabel: "Review your sessions",
+		ctaURL:   s.BaseURL + "/settings",
+		outro: []string{
+			"If this was you, no action is needed.",
+			"If you don't recognise it, change your master password and sign out other sessions right away.",
+		},
+	}
+	text, htmlBody := s.render(c)
+	return s.Mailer.Send(ctx, ports.Email{To: to, Subject: "New sign-in to your vaultctl account", Text: text, HTML: htmlBody})
+}
+
 func humanizeDuration(d time.Duration) string {
 	if d >= time.Hour && d%time.Hour == 0 {
 		h := int(d / time.Hour)

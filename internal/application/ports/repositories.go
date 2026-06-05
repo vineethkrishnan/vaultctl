@@ -144,6 +144,19 @@ type EmailVerificationRepository interface {
 	Delete(ctx context.Context, userID user.ID) error
 }
 
+// KnownLoginRepository records the device fingerprints and networks a user has
+// signed in from, so a genuinely new one can raise a single alert.
+type KnownLoginRepository interface {
+	// Lookup reports, for a (fingerprint, network) pair: whether this device
+	// fingerprint has been seen for the user (deviceSeen), whether this exact
+	// pair has been seen (networkSeen), and whether the user has any prior
+	// login on record at all (anySeen, false on the very first login).
+	Lookup(ctx context.Context, userID user.ID, fingerprint []byte, network string) (deviceSeen, networkSeen, anySeen bool, err error)
+
+	// Record upserts the (fingerprint, network) pair, refreshing last_seen_at.
+	Record(ctx context.Context, userID user.ID, fingerprint []byte, network, label string, now time.Time) error
+}
+
 // InviteRepository persists organisation invite tokens (M11).
 type InviteRepository interface {
 	Create(ctx context.Context, invite organization.Invite) error
