@@ -120,6 +120,10 @@ type Config struct {
 	SMTPTimeout  time.Duration `env:"VAULTCTL_SMTP_TIMEOUT" envDefault:"15s"`
 	// EmailOTPTTL is how long a signup verification code stays valid.
 	EmailOTPTTL time.Duration `env:"VAULTCTL_EMAIL_OTP_TTL" envDefault:"15m"`
+	// EmailVerifyGrace is how long an unverified account keeps full access
+	// before its vault becomes read-only (creates/edits/shares blocked) until
+	// the email is confirmed. Only enforced when a mailer is configured.
+	EmailVerifyGrace time.Duration `env:"VAULTCTL_EMAIL_VERIFY_GRACE" envDefault:"168h"`
 
 	// ===========================================================================
 	// Retention

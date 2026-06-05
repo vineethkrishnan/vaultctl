@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -454,6 +455,11 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			Clock: a.clock,
 		},
 	}
+	var emailVerifyGate func(http.Handler) http.Handler
+	if a.mailer.Enabled() {
+		emailVerifyGate = api.NewEmailVerifyGate(a.users, a.clock, cfg.EmailVerifyGrace)
+	}
+
 	updateHandlers := &api.UpdateHandlers{
 		Enabled:      cfg.UpdateCheckEnabled,
 		RolloutDelay: cfg.UpdateRolloutDelay,
@@ -495,6 +501,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		RegistrationMode:   cfg.RegistrationMode,
 		Env:                string(cfg.Env),
 		DB:                 a.pool,
+		EmailVerifyGate:    emailVerifyGate,
 	}, nil
 }
 

@@ -50,6 +50,9 @@ type Dependencies struct {
 	Commit             string
 	GoVersion          string
 	DB                 Pinger
+	// EmailVerifyGate gates vault mutations for accounts unverified past the
+	// grace window. Nil when email verification is not enforced (no mailer).
+	EmailVerifyGate func(http.Handler) http.Handler
 }
 
 // Pinger is the readiness probe the health endpoint uses to confirm the vault's
@@ -214,44 +217,53 @@ func NewRouter(deps Dependencies) http.Handler {
 				})
 			}
 
-			// Vault management
-			r.Get("/vaults", deps.Vault.HandleListVaults)
-			r.Post("/vaults", deps.Vault.HandleCreateVault)
-
-			// Vault items
-			r.Route("/vaults/{vaultId}", func(r chi.Router) {
-				r.Get("/items", deps.Vault.HandleListItems)
-				r.Post("/items", deps.Vault.HandleCreateItem)
-				r.Get("/items/{id}", deps.Vault.HandleGetItem)
-				r.Put("/items/{id}", deps.Vault.HandleUpdateItem)
-				r.Delete("/items/{id}", deps.Vault.HandleTrashItem)
-
-				// Encrypted attachments (only when the blob store is available)
-				if deps.Attachment != nil {
-					r.Get("/items/{id}/attachments", deps.Attachment.HandleList)
-					r.Post("/items/{id}/attachments", deps.Attachment.HandleCreate)
-					r.Get("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDownload)
-					r.Delete("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDelete)
+			// Vault data routes. When email verification is enforced, the gate
+			// blocks mutating requests from accounts unverified past the grace
+			// window (read-only) while still allowing reads.
+			r.Group(func(r chi.Router) {
+				if deps.EmailVerifyGate != nil {
+					r.Use(deps.EmailVerifyGate)
 				}
 
-				// Trash
-				r.Get("/trash", deps.Vault.HandleListTrash)
-				r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
-				// H10 step-up required for irreversible purge
-				r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
-				// Bulk purge all expired trash (H10 step-up required)
-				r.With(requireStepUp).Delete("/trash", deps.Vault.HandlePurgeExpiredTrash)
+				// Vault management
+				r.Get("/vaults", deps.Vault.HandleListVaults)
+				r.Post("/vaults", deps.Vault.HandleCreateVault)
 
-				// Folders
-				r.Get("/folders", deps.Vault.HandleListFolders)
-				r.Post("/folders", deps.Vault.HandleCreateFolder)
-				r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
-				r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+				// Vault items
+				r.Route("/vaults/{vaultId}", func(r chi.Router) {
+					r.Get("/items", deps.Vault.HandleListItems)
+					r.Post("/items", deps.Vault.HandleCreateItem)
+					r.Get("/items/{id}", deps.Vault.HandleGetItem)
+					r.Put("/items/{id}", deps.Vault.HandleUpdateItem)
+					r.Delete("/items/{id}", deps.Vault.HandleTrashItem)
 
-				// Sharing
-				r.Post("/members", deps.Vault.HandleShareVault)
-				r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
-				r.Put("/rekey", deps.Vault.HandleRekeyVault)
+					// Encrypted attachments (only when the blob store is available)
+					if deps.Attachment != nil {
+						r.Get("/items/{id}/attachments", deps.Attachment.HandleList)
+						r.Post("/items/{id}/attachments", deps.Attachment.HandleCreate)
+						r.Get("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDownload)
+						r.Delete("/items/{id}/attachments/{attachmentId}", deps.Attachment.HandleDelete)
+					}
+
+					// Trash
+					r.Get("/trash", deps.Vault.HandleListTrash)
+					r.Post("/trash/{id}/restore", deps.Vault.HandleRestoreItem)
+					// H10 step-up required for irreversible purge
+					r.With(requireStepUp).Delete("/trash/{id}", deps.Vault.HandlePurgeItem)
+					// Bulk purge all expired trash (H10 step-up required)
+					r.With(requireStepUp).Delete("/trash", deps.Vault.HandlePurgeExpiredTrash)
+
+					// Folders
+					r.Get("/folders", deps.Vault.HandleListFolders)
+					r.Post("/folders", deps.Vault.HandleCreateFolder)
+					r.Put("/folders/{folderId}", deps.Vault.HandleRenameFolder)
+					r.Delete("/folders/{folderId}", deps.Vault.HandleDeleteFolder)
+
+					// Sharing
+					r.Post("/members", deps.Vault.HandleShareVault)
+					r.Delete("/members/{userId}", deps.Vault.HandleRemoveMember)
+					r.Put("/rekey", deps.Vault.HandleRekeyVault)
+				})
 			})
 		})
 	})
