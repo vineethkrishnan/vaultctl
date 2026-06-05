@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.14.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.13.0...v1.14.0) (2026-06-05)
+
+
+### Features
+
+* **email:** pluggable mailer, signup OTP verification, login alerts, and activity digests ([#196](https://github.com/vineethkrishnan/vaultctl/issues/196)) ([f5e056c](https://github.com/vineethkrishnan/vaultctl/commit/f5e056c98e4e4ab85db9780d5ebda15d52289311))
+* **extension:** clearer unreachable-server errors, DB-aware health, and update-delay fix ([#199](https://github.com/vineethkrishnan/vaultctl/issues/199)) ([d70d5f8](https://github.com/vineethkrishnan/vaultctl/commit/d70d5f8e6c00cf97300388a80348c4e36392cc1b))
+* surface update alerts in notification areas and keep the save toast alive across redirects ([#194](https://github.com/vineethkrishnan/vaultctl/issues/194)) ([c56dbb3](https://github.com/vineethkrishnan/vaultctl/commit/c56dbb3851a877d965687f88d01deaa83cef7c3d))
+* **web:** english + german i18n across web and extension ([#197](https://github.com/vineethkrishnan/vaultctl/issues/197)) ([bec95df](https://github.com/vineethkrishnan/vaultctl/commit/bec95df803e243b9dcc37594e8e4d2be74458e26))
+
 ## [1.13.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.12.1...v1.13.0) (2026-06-04)
 
 
