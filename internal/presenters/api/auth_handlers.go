@@ -296,12 +296,14 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	h.Audit.LoginSuccess(r.Context(), string(out.UserID), ip, userAgent)
 
 	// New-device / new-network alert, off the request path so a slow SMTP send
-	// never delays the login response.
+	// never delays the login response. Detach from the request's cancellation
+	// (the response returns first) while keeping its values - not bare Background.
 	if h.NotifyLogin != nil {
+		alertCtx := context.WithoutCancel(r.Context())
 		userID, email := out.UserID, req.Email
 		go func() {
-			if e := h.NotifyLogin.Execute(context.Background(), userID, email, userAgent, ip); e != nil {
-				slog.Warn("login.alert.failed", slog.String("err", e.Error()))
+			if e := h.NotifyLogin.Execute(alertCtx, userID, email, userAgent, ip); e != nil {
+				slog.WarnContext(alertCtx, "login.alert.failed", slog.String("err", e.Error())) //nolint:gosec // G706: slog quotes the field; err is an internal send failure, not attacker-controlled output
 			}
 		}()
 	}
