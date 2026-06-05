@@ -20,8 +20,11 @@ export function useUpdateNotification(): {
   const { data } = useQuery({
     queryKey: ["system", "updates"],
     queryFn: getUpdateStatus,
-    staleTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    // The server detects a release within ~15m; poll on a matching cadence (and
+    // on tab focus) so a long-lived session reflects it without a reload.
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const show =

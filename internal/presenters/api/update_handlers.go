@@ -14,6 +14,18 @@ type UpdateHandlers struct {
 	Enabled        bool
 	CurrentVersion string
 	Checker        *updatecheck.Checker
+	// RolloutDelay holds an available update back from clients until this long
+	// after its publish time. 0 reveals as soon as the release is detected.
+	RolloutDelay time.Duration
+	// Now defaults to time.Now; injectable for tests.
+	Now func() time.Time
+}
+
+func (h *UpdateHandlers) now() time.Time {
+	if h.Now != nil {
+		return h.Now()
+	}
+	return time.Now()
 }
 
 // UpdateStatusResponse describes whether a newer release is available.
@@ -44,8 +56,14 @@ func (h *UpdateHandlers) HandleGetUpdates(w http.ResponseWriter, r *http.Request
 	}
 	rel, err := h.Checker.Latest(r.Context())
 	if err != nil {
-		// A failed/offline check must not be an error to the client — just
+		// A failed/offline check must not be an error to the client - just
 		// report the current version with no update available.
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	if h.withinRolloutHoldback(rel) {
+		// Staged rollout: the server knows about this release but withholds it
+		// from clients until publishedAt + RolloutDelay. Report as up to date.
 		writeJSON(w, http.StatusOK, resp)
 		return
 	}
@@ -58,4 +76,14 @@ func (h *UpdateHandlers) HandleGetUpdates(w http.ResponseWriter, r *http.Request
 		resp.PublishedAt = rel.PublishedAt.UTC().Format(time.RFC3339)
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (h *UpdateHandlers) withinRolloutHoldback(rel updatecheck.Release) bool {
+	if h.RolloutDelay <= 0 || rel.PublishedAt.IsZero() {
+		return false
+	}
+	if !updatecheck.UpdateAvailable(h.CurrentVersion, rel.Version) {
+		return false
+	}
+	return h.now().Before(rel.PublishedAt.Add(h.RolloutDelay))
 }

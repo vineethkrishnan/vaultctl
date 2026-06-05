@@ -70,6 +70,13 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	}
 
 	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
+	if deps.Update != nil && deps.Update.Checker != nil {
+		checker := deps.Update.Checker
+		sched.EnableUpdateRefresh(func(ctx context.Context) error {
+			_, err := checker.Latest(ctx)
+			return err
+		})
+	}
 	if adapters.backupRun != nil {
 		runBackup := adapters.backupRun
 		sched.EnableBackups(adapters.backupDests, func(ctx context.Context, destinationID string) error {
