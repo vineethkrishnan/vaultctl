@@ -460,6 +460,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 		RegistrationMode:   cfg.RegistrationMode,
 		Env:                string(cfg.Env),
+		DB:                 a.pool,
 	}, nil
 }
 

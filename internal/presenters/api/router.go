@@ -3,7 +3,7 @@
 package api
 
 import (
-	"encoding/json"
+	"context"
 	"io/fs"
 	"net"
 	"net/http"
@@ -49,6 +49,14 @@ type Dependencies struct {
 	Version            string
 	Commit             string
 	GoVersion          string
+	DB                 Pinger
+}
+
+// Pinger is the readiness probe the health endpoint uses to confirm the vault's
+// backing store is reachable. *pgxpool.Pool satisfies it; the composition root
+// (wire.go) binds the concrete pool so this package stays free of infra imports.
+type Pinger interface {
+	Ping(ctx context.Context) error
 }
 
 // NewRouter assembles the chi router with the full middleware stack and
@@ -74,7 +82,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/health", healthHandler)
+		r.Get("/health", healthHandler(deps.DB))
 		r.Get("/config", configHandler(deps))
 
 		// ===== Auth (unauthenticated) =====
@@ -306,17 +314,43 @@ func serveIndex(w http.ResponseWriter, body []byte) {
 	_, _ = w.Write(body)
 }
 
-// healthHandler returns server health status.
+// healthHandler returns server and vault (database) health.
 // @Summary Health check
-// @Description Returns server health status
+// @Description Reports liveness and pings the database. Returns 503 when the database is unreachable.
 // @Tags System
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} map[string]any
+// @Failure 503 {object} map[string]any
 // @Router /health [get]
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+func healthHandler(db Pinger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		databaseStatus := "ok"
+		if db != nil {
+			if err := db.Ping(ctx); err != nil {
+				databaseStatus = "down"
+			}
+		}
+
+		if databaseStatus != "ok" {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"status": "degraded",
+				"checks": map[string]string{"database": databaseStatus},
+				"error": map[string]string{
+					"code":    "DB_UNAVAILABLE",
+					"message": "The server is running but its database is unavailable.",
+				},
+			})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status": "ok",
+			"checks": map[string]string{"database": databaseStatus},
+		})
+	}
 }
 
 // configHandler returns public server configuration.
