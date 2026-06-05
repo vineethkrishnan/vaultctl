@@ -9,6 +9,14 @@
   "whatsNew": {
     "title": "What's new",
     "viewRelease": "View release notes",
-    "updatedTo": "Updated to v{{version}}"
+    "updatedTo": "Updated to v{{version}}",
+    "updateAvailable": "Update available",
+    "versionSuffix": " - v{{version}}",
+    "close": "Close",
+    "viewFullRelease": "View full release",
+    "remindLater": "Remind me later",
+    "gotIt": "Got it",
+    "done": "Done",
+    "noNotes": "No release notes."
   }
 }

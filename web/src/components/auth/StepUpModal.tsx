@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
 import { useAuthStore } from "@/lib/auth-store";
@@ -22,6 +23,7 @@ interface Props {
  * with step-up claim. Called when an API returns 403 STEP_UP_REQUIRED.
  */
 export function StepUpModal({ open, onSuccess, onCancel }: Props) {
+  const { t } = useTranslation(["security", "common"]);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
       onSuccess(res.accessToken);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Touch ID verification failed",
+        err instanceof Error ? err.message : t("stepUp.bioFailed"),
       );
     } finally {
       setLoading(false);
@@ -93,9 +95,9 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
       onSuccess(res.accessToken);
     } catch (err) {
       if (err instanceof ApiRequestError && err.error.code === "INVALID_CREDENTIALS") {
-        setError("Incorrect password");
+        setError(t("stepUp.incorrectPassword"));
       } else {
-        setError("Verification failed");
+        setError(t("stepUp.verifyFailed"));
       }
     } finally {
       setLoading(false);
@@ -109,10 +111,10 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Confirm Identity</h2>
+          <h2 className="text-lg font-semibold">{t("stepUp.title")}</h2>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          This action requires your master password.
+          {t("stepUp.requiresMasterPassword")}
         </p>
 
         {error && (
@@ -130,11 +132,11 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
               className="flex w-full items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/15 disabled:opacity-50"
             >
               <Fingerprint className="h-4 w-4" />
-              Confirm with Touch ID
+              {t("stepUp.confirmWithTouchId")}
             </button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
-              or master password
+              {t("stepUp.orMasterPassword")}
               <span className="h-px flex-1 bg-border" />
             </div>
           </div>
@@ -146,7 +148,7 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Master password"
+            placeholder={t("stepUp.masterPasswordPlaceholder")}
             autoComplete="current-password"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
           />
@@ -156,14 +158,14 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
               disabled={loading || !password}
               className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Verifying..." : "Confirm"}
+              {loading ? t("stepUp.verifying") : t("stepUp.confirm")}
             </button>
             <button
               type="button"
               onClick={onCancel}
               className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Cancel
+              {t("common:actions.cancel")}
             </button>
           </div>
         </form>

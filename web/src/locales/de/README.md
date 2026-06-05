@@ -18,3 +18,7 @@ Reviewed namespaces (tick when a native pass is done):
 - [ ] account.json
 - [ ] settings.json
 - [ ] auth.json
+- [ ] security.json
+- [ ] vault.json
+- [ ] notifications.json
+- [ ] admin.json

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 
 interface Props {
@@ -20,13 +21,17 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   busy = false,
   onConfirm,
   onCancel,
 }: Props) {
+  const { t } = useTranslation("common");
+  const resolvedConfirmLabel = confirmLabel ?? t("actions.confirm");
+  const resolvedCancelLabel = cancelLabel ?? t("actions.cancel");
+
   useEffect(() => {
     if (!open) return;
     function onEsc(e: KeyboardEvent) {
@@ -66,7 +71,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             type="button"
@@ -79,7 +84,7 @@ export function ConfirmDialog({
                 : "bg-primary text-primary-foreground hover:bg-primary/90"
             }`}
           >
-            {busy ? "Working..." : confirmLabel}
+            {busy ? t("actions.working") : resolvedConfirmLabel}
           </button>
         </div>
       </div>

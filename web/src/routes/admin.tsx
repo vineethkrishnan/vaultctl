@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ShieldAlert, Building2, UserPlus, Mail, Trash2, RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -27,11 +28,12 @@ import type { OrgMemberResponse, InviteResponse, BackupInfoDTO } from "@/api/mod
  * Only accessible to admin-role users.
  */
 export function AdminPage() {
+  const { t } = useTranslation("admin");
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div className="flex items-center gap-3">
         <ShieldAlert className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-xl font-bold">Admin</h1>
+        <h1 className="text-xl font-bold">{t("title")}</h1>
       </div>
 
       <OrgSection />
@@ -45,6 +47,7 @@ export function AdminPage() {
 // ============================================================================
 
 function OrgSection() {
+  const { t } = useTranslation("admin");
   const [orgName, setOrgName] = useState("");
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
 
@@ -62,7 +65,7 @@ function OrgSection() {
     <section className="space-y-4 rounded-lg border border-border p-4">
       <div className="flex items-center gap-2">
         <Building2 className="h-4 w-4 text-muted-foreground" />
-        <h2 className="font-semibold">Organizations</h2>
+        <h2 className="font-semibold">{t("orgs.heading")}</h2>
       </div>
 
       {/* Create org */}
@@ -71,7 +74,7 @@ function OrgSection() {
           type="text"
           value={orgName}
           onChange={(e) => setOrgName(e.target.value)}
-          placeholder="New organization name"
+          placeholder={t("orgs.newNamePlaceholder")}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
         <button
@@ -79,19 +82,19 @@ function OrgSection() {
           disabled={!orgName.trim() || createOrg.isPending}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          Create
+          {t("orgs.create")}
         </button>
       </div>
 
       {/* Org ID input for managing existing org */}
       <div className="space-y-2 border-t border-border pt-4">
-        <label className="text-sm font-medium">Manage organization</label>
+        <label className="text-sm font-medium">{t("orgs.manageLabel")}</label>
         <div className="flex gap-2">
           <input
             type="text"
             value={activeOrgId ?? ""}
             onChange={(e) => setActiveOrgId(e.target.value || null)}
-            placeholder="Organization ID"
+            placeholder={t("orgs.orgIdPlaceholder")}
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
           />
         </div>
@@ -104,6 +107,7 @@ function OrgSection() {
 }
 
 function MembersSubSection({ orgId }: { orgId: string }) {
+  const { t } = useTranslation("admin");
   const queryClient = useQueryClient();
 
   const { data: res, isLoading } = useQuery({
@@ -136,9 +140,9 @@ function MembersSubSection({ orgId }: { orgId: string }) {
 
   return (
     <div className="space-y-2 border-t border-border pt-4">
-      <h3 className="text-sm font-medium">Members ({members.length})</h3>
+      <h3 className="text-sm font-medium">{t("members.heading", { count: members.length })}</h3>
       {members.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No members.</p>
+        <p className="text-sm text-muted-foreground">{t("members.empty")}</p>
       ) : (
         <ul className="space-y-1">
           {members.map((m) => (
@@ -155,21 +159,21 @@ function MembersSubSection({ orgId }: { orgId: string }) {
                       onChange={(e) => setNewRole(e.target.value)}
                       className="rounded border border-input bg-background px-1 py-0.5 text-xs"
                     >
-                      <option value="member">member</option>
-                      <option value="admin">admin</option>
-                      <option value="owner">owner</option>
+                      <option value="member">{t("roles.member")}</option>
+                      <option value="admin">{t("roles.admin")}</option>
+                      <option value="owner">{t("roles.owner")}</option>
                     </select>
                     <button
                       onClick={() => changeRole.mutate(m.userId!)}
                       className="text-primary hover:underline"
                     >
-                      Save
+                      {t("members.save")}
                     </button>
                     <button
                       onClick={() => setEditingUser(null)}
                       className="text-muted-foreground hover:underline"
                     >
-                      Cancel
+                      {t("members.cancel")}
                     </button>
                   </div>
                 ) : (
@@ -180,7 +184,7 @@ function MembersSubSection({ orgId }: { orgId: string }) {
                     }}
                     className="rounded-full bg-muted px-2 py-0.5 hover:bg-muted/80"
                   >
-                    {m.role}
+                    {m.role ? t(`roles.${m.role}`) : m.role}
                   </button>
                 )}
               </div>
@@ -188,7 +192,7 @@ function MembersSubSection({ orgId }: { orgId: string }) {
                 onClick={() => removeMember.mutate(m.userId!)}
                 disabled={removeMember.isPending}
                 className="text-muted-foreground hover:text-destructive disabled:opacity-50"
-                title="Remove member"
+                title={t("members.remove")}
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -201,6 +205,7 @@ function MembersSubSection({ orgId }: { orgId: string }) {
 }
 
 function InvitesSubSection({ orgId }: { orgId: string }) {
+  const { t } = useTranslation("admin");
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
@@ -232,7 +237,7 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
     <div className="space-y-2 border-t border-border pt-4">
       <div className="flex items-center gap-2">
         <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-        <h3 className="text-sm font-medium">Invites</h3>
+        <h3 className="text-sm font-medium">{t("invites.heading")}</h3>
       </div>
 
       {invites.length > 0 && (
@@ -244,16 +249,20 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
             >
               <div className="flex items-center gap-2">
                 <span>{inv.email}</span>
-                <span className="rounded-full bg-muted px-2 py-0.5">{inv.role}</span>
+                <span className="rounded-full bg-muted px-2 py-0.5">
+                  {inv.role ? t(`roles.${inv.role}`) : inv.role}
+                </span>
                 <span className="text-muted-foreground">
-                  expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "-"}
+                  {t("invites.expires", {
+                    date: inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "-",
+                  })}
                 </span>
               </div>
               <button
                 onClick={() => revokeInvite.mutate(inv.id!)}
                 disabled={revokeInvite.isPending}
                 className="text-muted-foreground hover:text-destructive disabled:opacity-50"
-                title="Revoke invite"
+                title={t("invites.revoke")}
               >
                 <Trash2 className="h-3 w-3" />
               </button>
@@ -267,7 +276,7 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email address"
+          placeholder={t("invites.emailPlaceholder")}
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
         <select
@@ -275,8 +284,8 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
           onChange={(e) => setInviteRole(e.target.value)}
           className="rounded-md border border-input bg-background px-2 py-2 text-sm"
         >
-          <option value="member">member</option>
-          <option value="admin">admin</option>
+          <option value="member">{t("roles.member")}</option>
+          <option value="admin">{t("roles.admin")}</option>
         </select>
         <button
           onClick={() => createInvite.mutate()}
@@ -284,7 +293,7 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
           className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           <UserPlus className="h-3.5 w-3.5" />
-          Invite
+          {t("invites.invite")}
         </button>
       </div>
     </div>
@@ -296,6 +305,7 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
 // ============================================================================
 
 function BackupsSection() {
+  const { t } = useTranslation("admin");
   const { data: res, isLoading, refetch } = useQuery({
     queryKey: getGetAdminBackupsQueryKey(),
     queryFn: () => getAdminBackups(),
@@ -306,12 +316,12 @@ function BackupsSection() {
   return (
     <section className="space-y-3 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Backups</h2>
+        <h2 className="font-semibold">{t("backups.heading")}</h2>
         <button
           onClick={() => refetch()}
           disabled={isLoading}
           className="rounded-md border border-input p-1 text-muted-foreground hover:text-foreground disabled:opacity-50"
-          title="Refresh"
+          title={t("backups.refresh")}
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </button>
@@ -320,7 +330,7 @@ function BackupsSection() {
       {isLoading ? (
         <div className="h-16 animate-pulse rounded bg-muted" />
       ) : backups.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No backups found.</p>
+        <p className="text-sm text-muted-foreground">{t("backups.empty")}</p>
       ) : (
         <ul className="space-y-1">
           {backups.map((b, i) => (

@@ -1,0 +1,48 @@
+{
+  "passwordChange": {
+    "title": "Master-Passwort ändern",
+    "mismatch": "Passwörter stimmen nicht überein",
+    "tooShort": "Das neue Passwort muss mindestens 10 Zeichen lang sein",
+    "decryptPrivateFailed": "Aktueller privater Schlüssel konnte nicht entschlüsselt werden - melden Sie sich erneut an",
+    "decryptIdentityFailed": "Aktueller Identitätsschlüssel konnte nicht entschlüsselt werden - melden Sie sich erneut an",
+    "currentIncorrect": "Das aktuelle Passwort ist falsch",
+    "failed": "Passwortänderung fehlgeschlagen",
+    "currentLabel": "Aktuelles Passwort",
+    "newLabel": "Neues Passwort",
+    "confirmLabel": "Neues Passwort bestätigen",
+    "changing": "Passwort wird geändert...",
+    "submit": "Passwort ändern"
+  },
+  "totp": {
+    "setupFailed": "TOTP-Einrichtung fehlgeschlagen",
+    "invalidCode": "Ungültiger Code - überprüfen Sie Ihre Authenticator-App",
+    "verifyFailed": "Überprüfung fehlgeschlagen",
+    "enableTitle": "Zwei-Faktor-Authentifizierung aktivieren",
+    "enableIntro": "Fügen Sie eine zusätzliche Sicherheitsebene hinzu. Sie benötigen eine Authenticator-App wie Google Authenticator oder Authy.",
+    "settingUp": "Wird eingerichtet...",
+    "beginSetup": "Einrichtung beginnen",
+    "scanTitle": "QR-Code scannen",
+    "scanIntro": "Scannen Sie diesen QR-Code mit Ihrer Authenticator-App oder geben Sie den geheimen Schlüssel manuell ein.",
+    "manualKey": "Schlüssel zur manuellen Eingabe",
+    "verificationCode": "Bestätigungscode",
+    "verifying": "Wird überprüft...",
+    "enable": "2FA aktivieren"
+  },
+  "stepUp": {
+    "bioFailed": "Touch-ID-Überprüfung fehlgeschlagen",
+    "incorrectPassword": "Falsches Passwort",
+    "verifyFailed": "Überprüfung fehlgeschlagen",
+    "title": "Identität bestätigen",
+    "requiresMasterPassword": "Diese Aktion erfordert Ihr Master-Passwort.",
+    "confirmWithTouchId": "Mit Touch ID bestätigen",
+    "orMasterPassword": "oder Master-Passwort",
+    "masterPasswordPlaceholder": "Master-Passwort",
+    "verifying": "Wird überprüft...",
+    "confirm": "Bestätigen"
+  },
+  "recoveryDownload": {
+    "qrCode": "QR-Code",
+    "download": "Wiederherstellungs-Kit herunterladen",
+    "hint": "Druckbare HTML-Datei mit Ihrem Wiederherstellungsschlüssel und QR-Code. Bewahren Sie sie offline an einem sicheren Ort auf."
+  }
+}

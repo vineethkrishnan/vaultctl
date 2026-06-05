@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
@@ -28,6 +29,7 @@ const PRESET_FOLDERS = [
 ];
 
 export function FolderList() {
+  const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const queryClient = useQueryClient();
 
@@ -55,7 +57,7 @@ export function FolderList() {
           const name = await decryptName(vaultId, f.encryptedName);
           results.push({ ...f, decryptedName: name });
         } catch {
-          results.push({ ...f, decryptedName: "[error]" });
+          results.push({ ...f, decryptedName: t("vault:folders.decryptError") });
         }
       }
       if (!cancelled) setDecryptedFolders(results);
@@ -108,7 +110,7 @@ export function FolderList() {
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent/50"
         >
           <Plus className="h-3.5 w-3.5" />
-          New Folder
+          {t("vault:folders.newFolder")}
         </button>
       </div>
     );
@@ -118,12 +120,12 @@ export function FolderList() {
     <div className="space-y-0.5">
       <div className="mb-1 flex items-center justify-between px-2">
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Folders
+          {t("vault:folders.heading")}
         </span>
         <button
           onClick={() => setCreating(true)}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-          title="New folder"
+          title={t("vault:folders.newFolderTitle")}
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -144,7 +146,7 @@ export function FolderList() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               autoFocus
-              placeholder="Folder name"
+              placeholder={t("vault:folders.namePlaceholder")}
               className="w-full bg-transparent text-sm outline-none"
             />
             <button type="submit" className="text-primary">
@@ -232,7 +234,7 @@ export function FolderList() {
               </button>
               <button
                 onClick={() => {
-                  if (confirm(`Delete folder "${f.decryptedName}"?`)) {
+                  if (confirm(t("vault:folders.deleteConfirm", { name: f.decryptedName }))) {
                     deleteMutation.mutate(f.id);
                   }
                 }}

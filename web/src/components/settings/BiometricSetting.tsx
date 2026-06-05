@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Fingerprint, Check } from "lucide-react";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
@@ -21,6 +22,7 @@ import {
  * the unlock material behind the platform authenticator.
  */
 export function BiometricSetting() {
+  const { t } = useTranslation(["settings", "common"]);
   const [available, setAvailable] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
@@ -41,11 +43,11 @@ export function BiometricSetting() {
     setError(null);
     const email = sessionStorage.getItem("vaultctl_email") ?? "";
     if (!email) {
-      setError("Sign in again before enabling Touch ID");
+      setError(t("biometric.signInAgain"));
       return;
     }
     if (!password) {
-      setError("Enter your master password");
+      setError(t("biometric.enterMasterPassword"));
       return;
     }
     setBusy(true);
@@ -81,9 +83,9 @@ export function BiometricSetting() {
         setPassword("");
         setError(null);
       } else if (err instanceof ApiRequestError && err.error.code === "INVALID_CREDENTIALS") {
-        setError("Incorrect master password");
+        setError(t("biometric.incorrectPassword"));
       } else {
-        setError(err instanceof Error ? err.message : "Could not enable Touch ID");
+        setError(err instanceof Error ? err.message : t("biometric.enableFailed"));
       }
     } finally {
       setBusy(false);
@@ -103,19 +105,19 @@ export function BiometricSetting() {
         <span className="min-w-0">
           <span className="flex items-center gap-1.5 text-sm font-medium">
             <Fingerprint className="h-3.5 w-3.5 text-brand" />
-            Unlock with Touch ID
+            {t("biometric.title")}
             {enrolled && (
               <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
-                <Check className="h-3 w-3" /> Enabled
+                <Check className="h-3 w-3" /> {t("biometric.enabled")}
               </span>
             )}
           </span>
           <span className="block text-xs text-muted-foreground">
             {enrolled
-              ? "Used for unlock and identity confirmation on this device."
+              ? t("biometric.descriptionEnrolled")
               : unsupported
-                ? "This browser can't unlock with biometrics: its authenticator doesn't support the secure key (PRF) vaultctl needs. Unlock with your master password instead, or try a desktop browser."
-                : "Skip the master password on this device after one verification."}
+                ? t("biometric.descriptionUnsupported")
+                : t("biometric.descriptionAvailable")}
           </span>
         </span>
         {enrolled ? (
@@ -123,18 +125,18 @@ export function BiometricSetting() {
             onClick={disable}
             className="shrink-0 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            Disable
+            {t("biometric.disable")}
           </button>
         ) : unsupported ? (
           <span className="shrink-0 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground/60">
-            Not available
+            {t("biometric.notAvailable")}
           </span>
         ) : (
           <button
             onClick={() => setEnrolling((v) => !v)}
             className="shrink-0 rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            {enrolling ? "Cancel" : "Enable"}
+            {enrolling ? t("common:actions.cancel") : t("biometric.enable")}
           </button>
         )}
       </div>
@@ -150,7 +152,7 @@ export function BiometricSetting() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Master password"
+            placeholder={t("biometric.masterPasswordPlaceholder")}
             autoComplete="current-password"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
           />
@@ -159,7 +161,7 @@ export function BiometricSetting() {
             disabled={busy}
             className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {busy ? "Registering..." : "Confirm and register Touch ID"}
+            {busy ? t("biometric.registering") : t("biometric.confirmAndRegister")}
           </button>
         </div>
       )}

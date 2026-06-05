@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost, apiDelete, ApiRequestError } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { decryptName } from "@/lib/key-holder";
-import { ITEM_TYPE_ICONS, ITEM_TYPE_LABELS } from "@/components/vault/ItemList";
+import { ITEM_TYPE_ICONS } from "@/components/vault/ItemList";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { StepUpModal } from "@/components/auth/StepUpModal";
 import type { ItemResponse } from "@/shared/types/api";
@@ -17,6 +18,7 @@ interface DecryptedItem extends ItemResponse {
 }
 
 export function VaultTrashPage() {
+  const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
   const queryClient = useQueryClient();
 
@@ -40,7 +42,7 @@ export function VaultTrashPage() {
           const name = await decryptName(vaultId, item.encryptedName);
           results.push({ ...item, decryptedName: name });
         } catch {
-          results.push({ ...item, decryptedName: "[decryption failed]" });
+          results.push({ ...item, decryptedName: t("vault:trash.decryptionFailed") });
         }
       }
       if (!cancelled) setDecryptedItems(results);
@@ -90,7 +92,7 @@ export function VaultTrashPage() {
         return;
       }
       setPurgeError(
-        err instanceof Error ? err.message : "Could not delete the item",
+        err instanceof Error ? err.message : t("vault:trash.deleteError"),
       );
     }
   }
@@ -98,7 +100,7 @@ export function VaultTrashPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-3xl space-y-3">
-        <h1 className="mb-4 text-xl font-bold">Trash</h1>
+        <h1 className="mb-4 text-xl font-bold">{t("vault:trash.title")}</h1>
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="h-14 animate-pulse rounded-md bg-muted" />
         ))}
@@ -119,7 +121,7 @@ export function VaultTrashPage() {
 
       {!decryptedItems.length ? (
         <p className="py-12 text-center text-sm text-muted-foreground">
-          Trash is empty
+          {t("vault:trash.empty")}
         </p>
       ) : (
         <div className="space-y-1">
@@ -136,20 +138,20 @@ export function VaultTrashPage() {
                     {item.decryptedName}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {ITEM_TYPE_LABELS[item.itemType] ?? item.itemType}
+                    {t(`vault:itemTypes.${item.itemType}`)}
                   </div>
                 </div>
                 <button
                   onClick={() => restoreMutation.mutate(item.id)}
                   className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
-                  title="Restore"
+                  title={t("vault:trash.restore")}
                 >
                   <RotateCcw className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setPendingPurge(item)}
                   className="rounded-md p-1.5 text-muted-foreground hover:text-destructive"
-                  title="Delete permanently"
+                  title={t("vault:trash.deletePermanently")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -161,13 +163,15 @@ export function VaultTrashPage() {
 
       <ConfirmDialog
         open={!!pendingPurge}
-        title="Delete permanently"
+        title={t("vault:trash.purgeConfirm.title")}
         message={
           pendingPurge
-            ? `Permanently delete "${pendingPurge.decryptedName}"? This cannot be undone, and you will be asked for your master password.`
+            ? t("vault:trash.purgeConfirm.message", {
+                name: pendingPurge.decryptedName,
+              })
             : ""
         }
-        confirmLabel="Delete forever"
+        confirmLabel={t("vault:trash.purgeConfirm.confirmLabel")}
         destructive
         busy={purgeMutation.isPending}
         onConfirm={() => {

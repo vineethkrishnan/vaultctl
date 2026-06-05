@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
 import {
@@ -26,6 +27,7 @@ interface Props {
  * 6. Re-init key custody with new credentials
  */
 export function PasswordChangeForm({ onComplete }: Props) {
+  const { t } = useTranslation(["security", "common"]);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,11 +39,11 @@ export function PasswordChangeForm({ onComplete }: Props) {
     setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("passwordChange.mismatch"));
       return;
     }
     if (newPassword.length < 10) {
-      setError("New password must be at least 10 characters");
+      setError(t("passwordChange.tooShort"));
       return;
     }
 
@@ -65,10 +67,10 @@ export function PasswordChangeForm({ onComplete }: Props) {
 
       // Re-encrypt private keys: decrypt from b64 blob via worker, re-encrypt with new key
       const privKeyBytes = await workerDecrypt("__privkey__", loginRes).catch(() => {
-        throw new Error("Could not decrypt current private key - try logging in again");
+        throw new Error(t("passwordChange.decryptPrivateFailed"));
       });
       const idPrivKeyBytes = await workerDecrypt("__idprivkey__", loginIdRes).catch(() => {
-        throw new Error("Could not decrypt current identity key - try logging in again");
+        throw new Error(t("passwordChange.decryptIdentityFailed"));
       });
 
       const newEncPriv = await aesGcmEncrypt(newStretchedKey, privKeyBytes);
@@ -98,14 +100,14 @@ export function PasswordChangeForm({ onComplete }: Props) {
     } catch (err) {
       if (err instanceof ApiRequestError) {
         if (err.error.code === "INVALID_CREDENTIALS") {
-          setError("Current password is incorrect");
+          setError(t("passwordChange.currentIncorrect"));
         } else {
           setError(err.error.message);
         }
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Password change failed");
+        setError(t("passwordChange.failed"));
       }
     } finally {
       setLoading(false);
@@ -114,14 +116,14 @@ export function PasswordChangeForm({ onComplete }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <h3 className="font-semibold">Change Master Password</h3>
+      <h3 className="font-semibold">{t("passwordChange.title")}</h3>
 
       {error && (
         <div className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</div>
       )}
 
       <div className="space-y-1">
-        <label className="text-sm font-medium">Current Password</label>
+        <label className="text-sm font-medium">{t("passwordChange.currentLabel")}</label>
         <input
           type="password"
           value={oldPassword}
@@ -133,7 +135,7 @@ export function PasswordChangeForm({ onComplete }: Props) {
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium">New Password</label>
+        <label className="text-sm font-medium">{t("passwordChange.newLabel")}</label>
         <input
           type="password"
           value={newPassword}
@@ -146,7 +148,7 @@ export function PasswordChangeForm({ onComplete }: Props) {
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium">Confirm New Password</label>
+        <label className="text-sm font-medium">{t("passwordChange.confirmLabel")}</label>
         <input
           type="password"
           value={confirmPassword}
@@ -162,7 +164,7 @@ export function PasswordChangeForm({ onComplete }: Props) {
         disabled={loading || !oldPassword || !newPassword || !confirmPassword}
         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
-        {loading ? "Changing password..." : "Change Password"}
+        {loading ? t("passwordChange.changing") : t("passwordChange.submit")}
       </button>
     </form>
   );

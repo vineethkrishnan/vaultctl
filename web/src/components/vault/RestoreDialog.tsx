@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useRef, useState } from "react";
+import { useTranslation, Trans } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Upload, FileText, Check, AlertTriangle, Shield } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { fromBase64 } from "@/shared/crypto";
@@ -34,6 +36,7 @@ import { postImport } from "@/api/import-export/import-export";
  * return 404 and are surfaced as per-group failures.
  */
 export function RestoreDialog() {
+  const { t } = useTranslation(["vault", "common"]);
   const userId = useAuthStore((s) => s.userId);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,13 +59,13 @@ export function RestoreDialog() {
     setVerified(null);
 
     if (!userId) {
-      setError("Not signed in");
+      setError(t("vault:restore.notSignedIn"));
       return;
     }
 
     const identityPubB64 = sessionStorage.getItem("vaultctl_id_pubkey");
     if (!identityPubB64) {
-      setError("Identity public key unavailable - sign in again and retry");
+      setError(t("vault:restore.identityKeyUnavailable"));
       return;
     }
 
@@ -70,7 +73,7 @@ export function RestoreDialog() {
     try {
       bytes = new Uint8Array(await file.arrayBuffer());
     } catch {
-      setError("Could not read the selected file");
+      setError(t("vault:restore.readFailed"));
       return;
     }
 
@@ -82,7 +85,7 @@ export function RestoreDialog() {
       );
       setVerified(body);
     } catch (err) {
-      setError(describeEnvelopeError(err));
+      setError(describeEnvelopeError(err, t));
     }
   }
 
@@ -109,11 +112,11 @@ export function RestoreDialog() {
         if (res.status === 200 && res.data) {
           restoredByVault[vaultId] = res.data.importedCount ?? group.length;
         } else {
-          failedByVault[vaultId] = `server returned ${res.status}`;
+          failedByVault[vaultId] = t("vault:restore.serverReturned", { status: res.status });
         }
       } catch (err) {
         failedByVault[vaultId] =
-          err instanceof Error ? err.message : "unknown error";
+          err instanceof Error ? err.message : t("vault:restore.errors.unknown");
       }
     }
 
@@ -131,21 +134,17 @@ export function RestoreDialog() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Upload className="h-5 w-5 text-muted-foreground" />
-        <h2 className="text-lg font-semibold">Restore encrypted backup</h2>
+        <h2 className="text-lg font-semibold">{t("vault:restore.heading")}</h2>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Upload a vaultctl encrypted backup file (from the Export section
-        above). Signature is verified against your identity key before any
-        data is sent to the server. Items are restored into their original
-        vaults - vaults that no longer exist on this account are skipped.
+        {t("vault:restore.description")}
       </p>
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
         <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         <div>
-          Tampered, cross-account, or foreign-format files are rejected
-          before any network call.
+          {t("vault:restore.tamperNote")}
         </div>
       </div>
 
@@ -163,7 +162,7 @@ export function RestoreDialog() {
           className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border px-4 py-6 text-sm text-muted-foreground hover:border-primary hover:text-foreground"
         >
           <FileText className="h-4 w-4" />
-          Select backup file
+          {t("vault:restore.selectFile")}
         </button>
       )}
 
@@ -179,12 +178,17 @@ export function RestoreDialog() {
           <div className="rounded-md border border-border p-3 text-sm">
             <div className="flex items-center gap-2 text-green-500">
               <Check className="h-4 w-4" />
-              <span className="font-medium">Signature verified</span>
+              <span className="font-medium">{t("vault:restore.signatureVerified")}</span>
             </div>
             <ul className="mt-2 space-y-0.5 text-muted-foreground">
-              <li>Created: {verified.createdAt}</li>
-              <li>{verified.items.length} items across {countVaults(verified.items)} vaults</li>
-              <li>{verified.folders.length} folders</li>
+              <li>{t("vault:restore.created", { date: verified.createdAt })}</li>
+              <li>
+                {t("vault:restore.itemsAcrossVaults", {
+                  items: verified.items.length,
+                  vaults: countVaults(verified.items),
+                })}
+              </li>
+              <li>{t("vault:restore.foldersCount", { count: verified.folders.length })}</li>
             </ul>
           </div>
 
@@ -194,13 +198,13 @@ export function RestoreDialog() {
               disabled={restoring}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {restoring ? "Restoring..." : "Restore"}
+              {restoring ? t("vault:restore.restoring") : t("vault:restore.restore")}
             </button>
             <button
               onClick={reset}
               className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
             >
-              Cancel
+              {t("common:actions.cancel")}
             </button>
           </div>
         </div>
@@ -215,8 +219,12 @@ export function RestoreDialog() {
             >
               <Check className="h-4 w-4" />
               <span>
-                Vault <code className="font-mono">{short(vaultId)}</code>:{" "}
-                <strong>{count}</strong> items restored
+                <Trans
+                  t={t}
+                  i18nKey="vault:restore.vaultRestored"
+                  values={{ vaultId: short(vaultId), count }}
+                  components={{ 1: <code className="font-mono" />, 3: <strong /> }}
+                />
               </span>
             </div>
           ))}
@@ -227,8 +235,12 @@ export function RestoreDialog() {
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                Vault <code className="font-mono">{short(vaultId)}</code>:{" "}
-                {reason}
+                <Trans
+                  t={t}
+                  i18nKey="vault:restore.vaultFailed"
+                  values={{ vaultId: short(vaultId), reason }}
+                  components={{ 1: <code className="font-mono" /> }}
+                />
               </span>
             </div>
           ))}
@@ -236,7 +248,7 @@ export function RestoreDialog() {
             onClick={reset}
             className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            Restore another
+            {t("vault:restore.restoreAnother")}
           </button>
         </div>
       )}
@@ -264,18 +276,18 @@ function short(id: string): string {
   return id.length <= 8 ? id : `${id.slice(0, 8)}...`;
 }
 
-function describeEnvelopeError(err: unknown): string {
+function describeEnvelopeError(err: unknown, t: TFunction): string {
   if (err instanceof EnvelopeSignatureError) {
-    return "Signature verification failed - the file was modified or corrupted. Do NOT trust its contents.";
+    return t("vault:restore.errors.signature");
   }
   if (err instanceof EnvelopeUserMismatchError) {
-    return "This backup belongs to a different account and cannot be restored here.";
+    return t("vault:restore.errors.userMismatch");
   }
   if (err instanceof EnvelopeVersionError) {
-    return `${err.message}. Upgrade vaultctl to a newer version.`;
+    return t("vault:restore.errors.version", { message: err.message });
   }
   if (err instanceof EnvelopeError) {
     return err.message;
   }
-  return err instanceof Error ? err.message : "Unknown error";
+  return err instanceof Error ? err.message : t("vault:restore.errors.unknown");
 }

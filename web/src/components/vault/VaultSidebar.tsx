@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { apiGet } from "@/lib/api-client";
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function VaultSidebar({ open = false, onClose }: Props) {
+  const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
 
   const { data: vaults } = useQuery({
@@ -42,7 +44,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close menu"
+          aria-label={t("vault:sidebar.closeMenu")}
           className="ml-auto rounded-md p-1 text-muted-foreground hover:bg-accent/60 hover:text-foreground md:hidden"
         >
           <X className="h-5 w-5" />
@@ -52,7 +54,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
       {/* Vault selector */}
       <div className="border-b border-border px-3 py-3">
         <div className="px-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Vaults
+          {t("vault:sidebar.vaults")}
         </div>
         <div className="mt-1.5 space-y-0.5">
           {vaults?.map((v) => (
@@ -79,7 +81,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
             activeOptions={{ exact: true }}
           >
             <FolderClosed className="h-4 w-4" />
-            All Items
+            {t("vault:sidebar.allItems")}
           </Link>
           <Link
             to="/vault/$vaultId"
@@ -88,7 +90,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
             className={navLink}
           >
             <Star className="h-4 w-4" />
-            Favorites
+            {t("vault:sidebar.favorites")}
           </Link>
           <Link
             to="/vault/$vaultId/trash"
@@ -96,7 +98,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
             className={navLink}
           >
             <Trash2 className="h-4 w-4" />
-            Trash
+            {t("vault:sidebar.trash")}
           </Link>
 
           {/* Folders */}
@@ -111,7 +113,7 @@ export function VaultSidebar({ open = false, onClose }: Props) {
               className="row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-brand hover:bg-brand/10 hover:translate-x-0.5"
             >
               <Plus className="h-4 w-4" />
-              New Item
+              {t("vault:sidebar.newItem")}
             </Link>
           </div>
         </nav>

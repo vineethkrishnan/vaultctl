@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, QrCode } from "lucide-react";
 import { drawQRToCanvas } from "@/components/ui/QRCode";
 
@@ -13,6 +14,7 @@ interface RecoveryKitDownloadProps {
  * code of the recovery key. Uses the in-house QR encoder (no external deps).
  */
 export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
+  const { t } = useTranslation("security");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrReady, setQrReady] = useState(false);
 
@@ -41,7 +43,7 @@ export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
       {/* QR code */}
       <div className="flex items-center gap-2">
         <QrCode className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">QR Code</span>
+        <span className="text-sm font-medium">{t("recoveryDownload.qrCode")}</span>
       </div>
       <div className="flex justify-center rounded-md border border-border bg-white p-4">
         <canvas ref={canvasRef} width={200} height={200} />
@@ -54,11 +56,10 @@ export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {
         className="flex w-full items-center justify-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
       >
         <Download className="h-4 w-4" />
-        Download Recovery Kit
+        {t("recoveryDownload.download")}
       </button>
       <p className="text-xs text-muted-foreground text-center">
-        Printable HTML file with your recovery key and QR code.
-        Store in a safe place offline.
+        {t("recoveryDownload.hint")}
       </p>
     </div>
   );

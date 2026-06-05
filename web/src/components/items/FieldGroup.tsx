@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
 
@@ -23,6 +24,7 @@ export function Field({
   readOnly,
   copyable,
 }: FieldProps) {
+  const { t } = useTranslation(["vault", "common"]);
   const [revealed, setRevealed] = useState(false);
   const { copy } = useClipboard();
   const isSecret = type === "password";
@@ -63,7 +65,7 @@ export function Field({
             type="button"
             onClick={() => setRevealed(!revealed)}
             className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
-            title={revealed ? "Hide" : "Reveal"}
+            title={revealed ? t("vault:fields.hide") : t("vault:fields.reveal")}
           >
             {revealed ? (
               <EyeOff className="h-4 w-4" />
@@ -77,7 +79,7 @@ export function Field({
             type="button"
             onClick={() => copy(value)}
             className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
-            title="Copy"
+            title={t("vault:fields.copy")}
           >
             <Copy className="h-4 w-4" />
           </button>

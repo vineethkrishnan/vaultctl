@@ -9,6 +9,14 @@
   "whatsNew": {
     "title": "Neuerungen",
     "viewRelease": "Versionshinweise ansehen",
-    "updatedTo": "Aktualisiert auf v{{version}}"
+    "updatedTo": "Aktualisiert auf v{{version}}",
+    "updateAvailable": "Update verfügbar",
+    "versionSuffix": " - v{{version}}",
+    "close": "Schließen",
+    "viewFullRelease": "Vollständige Versionshinweise ansehen",
+    "remindLater": "Später erinnern",
+    "gotIt": "Verstanden",
+    "done": "Fertig",
+    "noNotes": "Keine Versionshinweise."
   }
 }

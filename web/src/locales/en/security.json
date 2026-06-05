@@ -1,0 +1,48 @@
+{
+  "passwordChange": {
+    "title": "Change Master Password",
+    "mismatch": "Passwords do not match",
+    "tooShort": "New password must be at least 10 characters",
+    "decryptPrivateFailed": "Could not decrypt current private key - try logging in again",
+    "decryptIdentityFailed": "Could not decrypt current identity key - try logging in again",
+    "currentIncorrect": "Current password is incorrect",
+    "failed": "Password change failed",
+    "currentLabel": "Current Password",
+    "newLabel": "New Password",
+    "confirmLabel": "Confirm New Password",
+    "changing": "Changing password...",
+    "submit": "Change Password"
+  },
+  "totp": {
+    "setupFailed": "Failed to setup TOTP",
+    "invalidCode": "Invalid code - check your authenticator app",
+    "verifyFailed": "Verification failed",
+    "enableTitle": "Enable Two-Factor Authentication",
+    "enableIntro": "Add an extra layer of security. You'll need an authenticator app like Google Authenticator or Authy.",
+    "settingUp": "Setting up...",
+    "beginSetup": "Begin Setup",
+    "scanTitle": "Scan QR Code",
+    "scanIntro": "Scan this QR code with your authenticator app, or enter the secret key manually.",
+    "manualKey": "Manual entry key",
+    "verificationCode": "Verification code",
+    "verifying": "Verifying...",
+    "enable": "Enable 2FA"
+  },
+  "stepUp": {
+    "bioFailed": "Touch ID verification failed",
+    "incorrectPassword": "Incorrect password",
+    "verifyFailed": "Verification failed",
+    "title": "Confirm Identity",
+    "requiresMasterPassword": "This action requires your master password.",
+    "confirmWithTouchId": "Confirm with Touch ID",
+    "orMasterPassword": "or master password",
+    "masterPasswordPlaceholder": "Master password",
+    "verifying": "Verifying...",
+    "confirm": "Confirm"
+  },
+  "recoveryDownload": {
+    "qrCode": "QR Code",
+    "download": "Download Recovery Kit",
+    "hint": "Printable HTML file with your recovery key and QR code. Store in a safe place offline."
+  }
+}

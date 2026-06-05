@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api-client";
 import { BrandMark } from "@/components/BrandMark";
@@ -24,6 +25,7 @@ function shortCommit(commit: string | undefined): string {
 }
 
 export function AboutPanel() {
+  const { t } = useTranslation("settings");
   const { data: config } = useQuery({
     queryKey: ["server-config"],
     queryFn: () => apiGet<ServerConfig>("/api/v1/config"),
@@ -31,12 +33,12 @@ export function AboutPanel() {
   });
 
   const rows: { label: string; value: string }[] = [
-    { label: "Version", value: config?.appVersion || "unknown" },
-    { label: "Commit", value: shortCommit(config?.commit) },
-    { label: "Runtime", value: config?.goVersion || "unknown" },
-    { label: "Build", value: "Single Go binary with embedded web UI" },
-    { label: "License", value: "AGPL-3.0-or-later" },
-    { label: "Maintained by", value: "Vineeth N K" },
+    { label: t("about.version"), value: config?.appVersion || t("about.unknown") },
+    { label: t("about.commit"), value: shortCommit(config?.commit) },
+    { label: t("about.runtime"), value: config?.goVersion || t("about.unknown") },
+    { label: t("about.build"), value: t("about.buildValue") },
+    { label: t("about.license"), value: "AGPL-3.0-or-later" },
+    { label: t("about.maintainedBy"), value: t("about.maintainer") },
   ];
 
   return (
@@ -48,11 +50,10 @@ export function AboutPanel() {
         </div>
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            A zero-knowledge, self-hosted password vault.
+            {t("about.tagline")}
           </p>
           <p className="mx-auto max-w-xs text-[11px] leading-relaxed text-muted-foreground">
-            All cryptography runs in your browser. The server only ever stores
-            encrypted data.
+            {t("about.subtitle")}
           </p>
         </div>
       </div>
@@ -79,7 +80,7 @@ export function AboutPanel() {
           className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-brand"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          Documentation
+          {t("about.documentation")}
         </a>
         <a
           href={REPO_URL}
@@ -88,7 +89,7 @@ export function AboutPanel() {
           className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-brand"
         >
           <Github className="h-3.5 w-3.5" />
-          Source
+          {t("about.source")}
         </a>
         <a
           href={LICENSE_URL}
@@ -97,7 +98,7 @@ export function AboutPanel() {
           className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-brand"
         >
           <Scale className="h-3.5 w-3.5" />
-          License
+          {t("about.licenseLink")}
         </a>
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
