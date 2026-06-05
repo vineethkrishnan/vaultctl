@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState, useEffect, useCallback, type CSSProperties, type FormEvent } from "react";
+import { useTranslation, Trans } from "react-i18next";
+import type { TFunction } from "i18next";
+import { changeLanguage, currentLanguage, LANGUAGE_NAMES, SUPPORTED_LANGUAGES, type Language } from "./i18n";
 import {
   Search,
   Copy,
@@ -181,6 +184,7 @@ async function decryptForVault(vaultId: string, blobB64: string): Promise<Uint8A
 }
 
 export function Popup() {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("loading");
   const [serverUrl, setServerUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -370,26 +374,24 @@ export function Popup() {
     setError(null);
     const base = serverUrl.trim().replace(/\/$/, "");
     if (!/^https?:\/\//i.test(base)) {
-      setError("Enter the full server URL, including http:// or https://");
+      setError(t("connect.errors.invalidUrl"));
       return;
     }
     setLoading(true);
     try {
       const health = await api<{ status?: string }>(base, "/api/v1/health");
       if (typeof health?.status !== "string") {
-        setError(`${base} doesn't look like a vaultctl server.`);
+        setError(t("connect.errors.notVaultctl", { server: base }));
         return;
       }
       if (health.status !== "ok") {
-        setError(
-          "The server is reachable but reporting a problem. You may not be able to sign in until it recovers.",
-        );
+        setError(t("connect.errors.serverUnhealthy"));
       }
       await bg({ type: "setServerUrl", url: base });
       setServerUrl(base);
       setPhase("email");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't reach that server.");
+      setError(err instanceof Error ? err.message : t("connect.errors.unreachable"));
     } finally {
       setLoading(false);
     }
@@ -435,7 +437,7 @@ export function Popup() {
       setPhase("list");
       await loadItems(first.id);
     } else {
-      setError("No vaults on this account yet - create one in the web vault.");
+      setError(t("vault.noVaults"));
       setPhase("list");
     }
   }
@@ -462,11 +464,11 @@ export function Popup() {
         // password form.
         await clearBiometric();
         setBiometricEnrolled(false);
-        setError("Master password changed - sign in once to re-enable Touch ID");
+        setError(t("biometric.errors.masterPasswordChanged"));
       } else if (code === "RATE_LIMITED") {
-        setError("Too many attempts - wait a few minutes and try again");
+        setError(t("biometric.errors.rateLimited"));
       } else {
-        setError(err instanceof Error ? err.message : "Touch ID unlock failed");
+        setError(err instanceof Error ? err.message : t("biometric.errors.unlockFailed"));
       }
     } finally {
       setBiometricBusy(false);
@@ -490,7 +492,7 @@ export function Popup() {
       }
       setPhase("password");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(err instanceof Error ? err.message : t("email.connectionFailed"));
     } finally {
       setLoading(false);
     }
@@ -523,9 +525,9 @@ export function Popup() {
       await completeLogin(res, stretchedKey, email);
     } catch (err) {
       const code = (err as { code?: string })?.code;
-      if (code === "INVALID_CREDENTIALS") setError("Invalid email or password");
-      else if (code === "ACCOUNT_LOCKED") setError("Account locked - too many attempts");
-      else setError(err instanceof Error ? err.message : "Login failed");
+      if (code === "INVALID_CREDENTIALS") setError(t("password.errors.invalidCredentials"));
+      else if (code === "ACCOUNT_LOCKED") setError(t("password.errors.accountLocked"));
+      else setError(err instanceof Error ? err.message : t("password.errors.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -556,10 +558,10 @@ export function Popup() {
 
   function copyPassword(item: DecryptedItem) {
     if (!item.password) {
-      setError("Could not decrypt password");
+      setError(t("vault.errors.decryptPassword"));
       return;
     }
-    copyText(item.password, "password");
+    copyText(item.password, t("common:password"));
   }
 
   async function handleSaveCapture(captureId: string) {
@@ -568,7 +570,7 @@ export function Popup() {
       id: captureId,
     });
     if (!res?.ok) {
-      setError(res?.error || "Could not save this login to the vault");
+      setError(res?.error || t("notifications.saveError"));
       return;
     }
     setCaptures((existing) => existing.filter((c) => c.id !== captureId));
@@ -666,11 +668,11 @@ export function Popup() {
               ) : (
                 <Fingerprint className="h-4 w-4" />
               )}
-              Unlock with Touch ID
+              {t("biometric.unlockButton")}
             </button>
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
-              or use your master password
+              {t("biometric.orMasterPassword")}
               <span className="h-px flex-1 bg-border" />
             </div>
           </div>
@@ -679,15 +681,15 @@ export function Popup() {
         {phase === "connect" && (
           <form onSubmit={handleConnect} className="w-full space-y-3">
             <p className="text-sm text-muted-foreground text-center">
-              Connect to your vault server to get started.
+              {t("connect.intro")}
             </p>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Server URL</label>
+              <label className="text-xs font-medium text-muted-foreground">{t("connect.serverUrlLabel")}</label>
               <input
                 type="url"
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
-                placeholder="https://vault.example.com"
+                placeholder={t("connect.serverUrlPlaceholder")}
                 className="w-full rounded-lg border border-border bg-card/50 px-3 py-2 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
               />
             </div>
@@ -697,19 +699,19 @@ export function Popup() {
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90 disabled:opacity-50 disabled:hover:translate-y-0"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loading ? "Checking server..." : "Continue"}
+              {loading ? t("connect.checking") : t("common:continue")}
             </button>
           </form>
         )}
 
         {phase === "email" && (
           <form onSubmit={handlePrelogin} className="w-full space-y-3">
-            <p className="text-sm text-muted-foreground text-center">Sign in to your vault.</p>
+            <p className="text-sm text-muted-foreground text-center">{t("email.intro")}</p>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t("email.placeholder")}
               autoFocus
               autoComplete="email"
               className="w-full rounded-lg border border-border bg-card/50 px-3 py-2 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
@@ -721,21 +723,21 @@ export function Popup() {
                 onChange={(e) => setRemember(e.target.checked)}
                 className="accent-brand"
               />
-              Remember me on this device
+              {t("email.rememberMe")}
             </label>
             <button
               type="submit"
               disabled={loading || !email}
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90 disabled:opacity-50 disabled:hover:translate-y-0"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common:continue")}
             </button>
             <button
               type="button"
               onClick={() => setPhase("connect")}
               className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
             >
-              Change server ({safeHostname(serverUrl)})
+              {t("email.changeServer", { host: safeHostname(serverUrl) })}
             </button>
           </form>
         )}
@@ -743,13 +745,17 @@ export function Popup() {
         {phase === "password" && (
           <form onSubmit={handleLogin} className="w-full space-y-3">
             <p className="text-sm text-muted-foreground text-center">
-              Master password for <strong className="text-foreground">{email}</strong>
+              <Trans
+                i18nKey="password.intro"
+                values={{ email }}
+                components={{ strong: <strong className="text-foreground" /> }}
+              />
             </p>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Master password"
+              placeholder={t("password.placeholder")}
               autoFocus
               autoComplete="current-password"
               className="w-full rounded-lg border border-border bg-card/50 px-3 py-2 text-sm outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/20"
@@ -762,10 +768,10 @@ export function Popup() {
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Deriving keys...
+                  {t("password.deriving")}
                 </>
               ) : (
-                "Unlock"
+                t("password.unlock")
               )}
             </button>
             <button
@@ -777,7 +783,7 @@ export function Popup() {
               }}
               className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
             >
-              Use a different account
+              {t("password.useDifferentAccount")}
             </button>
           </form>
         )}
@@ -791,18 +797,18 @@ export function Popup() {
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
             >
               <BookOpen className="h-3.5 w-3.5" />
-              Documentation
+              {t("common:documentation")}
             </a>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
             >
               <Mail className="h-3.5 w-3.5" />
-              Support
+              {t("common:support")}
             </a>
           </div>
           <p className="flex items-center justify-center gap-1 text-center text-[11px] text-muted-foreground">
-            Crafted by team
+            {t("footer.craftedBy")}
             <a
               href={VINELABS_URL}
               target="_blank"
@@ -835,8 +841,8 @@ export function Popup() {
         <BrandMark className="text-2xl text-brand" />
         <span className="flex-1 truncate text-sm font-semibold tracking-tight">
           {tab === "vault"
-            ? vaults.find((v) => v.id === activeVaultId)?.name ?? "Vault"
-            : TAB_TITLE[tab]}
+            ? vaults.find((v) => v.id === activeVaultId)?.name ?? t("vault.fallbackName")
+            : t(`tabTitles.${tab}`)}
         </span>
       </div>
 
@@ -853,7 +859,7 @@ export function Popup() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search vault..."
+            placeholder={t("vault.searchPlaceholder")}
             autoFocus
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -864,7 +870,7 @@ export function Popup() {
       <div className="px-2 pb-2">
         {filtered.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
-            {items.length === 0 ? "No items in this vault" : "No matches"}
+            {items.length === 0 ? t("vault.noItems") : t("vault.noMatches")}
           </div>
         ) : (
           filtered.map((item) => (
@@ -884,9 +890,9 @@ export function Popup() {
               <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100">
                 {item.username && (
                   <button
-                    onClick={() => copyText(item.username, "username")}
+                    onClick={() => copyText(item.username, t("common:username"))}
                     className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                    title="Copy username"
+                    title={t("vault.copyUsername")}
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
@@ -895,7 +901,7 @@ export function Popup() {
                   <button
                     onClick={() => copyPassword(item)}
                     className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                    title="Copy password"
+                    title={t("vault.copyPassword")}
                   >
                     <KeyRound className="h-3.5 w-3.5" />
                   </button>
@@ -904,7 +910,7 @@ export function Popup() {
                   <button
                     onClick={() => window.open(item.uri, "_blank")}
                     className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                    title="Open site"
+                    title={t("vault.openSite")}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                   </button>
@@ -947,13 +953,13 @@ export function Popup() {
       {copied && (
         <div className="flex items-center gap-1.5 border-t border-border px-3 py-1.5 text-xs text-brand">
           <Check className="h-3.5 w-3.5" />
-          Copied {copied} - clipboard clears in 30s
+          {t("status.copied", { label: copied })}
         </div>
       )}
 
       {/* Bottom navigation */}
       <nav className="grid shrink-0 grid-cols-5 border-t border-border bg-card/60">
-        {NAV_TABS.map(({ id, label, Icon }) => (
+        {NAV_TABS.map(({ id, labelKey, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -969,7 +975,7 @@ export function Popup() {
                 </span>
               )}
             </span>
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </nav>
@@ -977,20 +983,12 @@ export function Popup() {
   );
 }
 
-const TAB_TITLE: Record<TabId, string> = {
-  vault: "Vault",
-  generator: "Generator",
-  send: "Send",
-  notifications: "Notifications",
-  settings: "Settings",
-};
-
-const NAV_TABS: { id: TabId; label: string; Icon: typeof Wallet }[] = [
-  { id: "vault", label: "Vault", Icon: Wallet },
-  { id: "generator", label: "Generator", Icon: Wand2 },
-  { id: "send", label: "Send", Icon: SendIcon },
-  { id: "notifications", label: "Alerts", Icon: Bell },
-  { id: "settings", label: "Settings", Icon: SettingsIcon },
+const NAV_TABS: { id: TabId; labelKey: string; Icon: typeof Wallet }[] = [
+  { id: "vault", labelKey: "tabs.vault", Icon: Wallet },
+  { id: "generator", labelKey: "tabs.generator", Icon: Wand2 },
+  { id: "send", labelKey: "tabs.send", Icon: SendIcon },
+  { id: "notifications", labelKey: "tabs.alerts", Icon: Bell },
+  { id: "settings", labelKey: "tabs.settings", Icon: SettingsIcon },
 ];
 
 // ── Generator tab ──────────────────────────────────────────────────────────
@@ -1018,14 +1016,15 @@ function genWith(cfg: ExtSettings): string {
   return Array.from(arr, (v) => charset[v % charset.length]).join("");
 }
 
-function relativeAge(ts: number): string {
+function relativeAge(ts: number, t: TFunction): string {
   const mins = Math.max(0, Math.round((Date.now() - ts) / 60_000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.round(mins / 60)}h ago`;
+  if (mins < 1) return t("generator.justNow");
+  if (mins < 60) return t("generator.minutesAgo", { count: mins });
+  return t("generator.hoursAgo", { count: Math.round(mins / 60) });
 }
 
 function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
+  const { t } = useTranslation();
   const [cfg, setCfg] = useState<ExtSettings | null>(null);
   const [value, setValue] = useState("");
   const [history, setHistory] = useState<GenEntry[]>([]);
@@ -1063,7 +1062,7 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
 
   function copyOnly(pw: string) {
     navigator.clipboard.writeText(pw).then(() => {
-      onCopied("password");
+      onCopied(t("common:password"));
       setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30_000);
     });
   }
@@ -1074,7 +1073,7 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
   }
 
   if (!cfg) {
-    return <div className="p-3 text-sm text-muted-foreground">Loading...</div>;
+    return <div className="p-3 text-sm text-muted-foreground">{t("common:loading")}</div>;
   }
 
   const toggle = (label: string, on: boolean, key: keyof ExtSettings) => (
@@ -1100,14 +1099,14 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
         <button
           onClick={() => setValue(genWith(cfg))}
           className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          title="Regenerate"
+          title={t("generator.regenerate")}
         >
           <RefreshCw className="h-4 w-4" />
         </button>
         <button
           onClick={copyCurrent}
           className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          title="Copy"
+          title={t("common:copy")}
         >
           <Copy className="h-4 w-4" />
         </button>
@@ -1115,7 +1114,7 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Length</span>
+          <span className="text-muted-foreground">{t("generator.length")}</span>
           <span className="font-mono">{cfg.genLength}</span>
         </div>
         <input
@@ -1139,14 +1138,14 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
         onClick={copyCurrent}
         className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
       >
-        Copy password
+        {t("generator.copyPassword")}
       </button>
 
       {/* Recent generated passwords (kept in memory, cleared on lock) */}
       <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Recent ({history.length})
+            {t("generator.recent", { count: history.length })}
           </span>
           {history.length > 0 && (
             <button
@@ -1155,13 +1154,13 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
               }
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              Clear
+              {t("common:clear")}
             </button>
           )}
         </div>
         {history.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Generated passwords you copy or fill appear here.
+            {t("generator.empty")}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -1171,12 +1170,12 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
                   {h.password}
                 </code>
                 <span className="shrink-0 text-[10px] text-muted-foreground">
-                  {relativeAge(h.createdAt)}
+                  {relativeAge(h.createdAt, t)}
                 </span>
                 <button
                   onClick={() => copyOnly(h.password)}
                   className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
-                  title="Copy"
+                  title={t("common:copy")}
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>
@@ -1186,7 +1185,7 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
         )}
         <div className="flex items-center justify-between gap-2 pt-1 text-xs">
           <label className="flex items-center gap-1.5 text-muted-foreground">
-            Keep
+            {t("generator.keep")}
             <input
               type="number"
               min={1}
@@ -1197,16 +1196,16 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
             />
           </label>
           <label className="flex items-center gap-1.5 text-muted-foreground">
-            Expire
+            {t("generator.expire")}
             <select
               value={cfg.historyTtlMin}
               onChange={(e) => update({ historyTtlMin: Number(e.target.value) })}
               className="rounded-md border border-border bg-card px-1.5 py-0.5"
             >
-              <option value={15}>15m</option>
-              <option value={60}>1h</option>
-              <option value={240}>4h</option>
-              <option value={1440}>24h</option>
+              <option value={15}>{t("generator.expireOptions.15m")}</option>
+              <option value={60}>{t("generator.expireOptions.1h")}</option>
+              <option value={240}>{t("generator.expireOptions.4h")}</option>
+              <option value={1440}>{t("generator.expireOptions.24h")}</option>
             </select>
           </label>
         </div>
@@ -1217,15 +1216,15 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
 
 // ── Send tab (not yet supported server-side) ────────────────────────────────
 function SendTab() {
+  const { t } = useTranslation();
   return (
     <div className="animate-fade-in flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
         <SendIcon className="h-6 w-6" />
       </span>
-      <p className="text-sm font-medium">Send isn&apos;t available yet</p>
+      <p className="text-sm font-medium">{t("send.title")}</p>
       <p className="text-xs text-muted-foreground">
-        Ephemeral encrypted sharing needs server support that vaultctl doesn&apos;t have yet.
-        It&apos;ll show up here once the backend lands.
+        {t("send.body")}
       </p>
     </div>
   );
@@ -1233,7 +1232,9 @@ function SendTab() {
 
 // ── Notifications tab ────────────────────────────────────────────────────
 function UpdateAlert({ info }: { info: UpdateInfo }) {
+  const { t } = useTranslation();
   const current = browser.runtime.getManifest().version;
+  const hasSeverity = info.severity && info.severity !== "none";
   return (
     <div className="rounded-lg border border-brand/30 bg-brand/10 p-3">
       <div className="flex items-start gap-2.5">
@@ -1242,12 +1243,15 @@ function UpdateAlert({ info }: { info: UpdateInfo }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold">
-            vaultctl v{info.latestVersion} is available
-            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""}
+            {hasSeverity
+              ? t("update.availableWithSeverity", {
+                  version: info.latestVersion,
+                  severity: info.severity,
+                })
+              : t("update.available", { version: info.latestVersion })}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            You&apos;re on v{current}. Your browser updates the extension
-            automatically.
+            {t("update.autoUpdateNote", { current })}
           </div>
           {info.releaseUrl && (
             <a
@@ -1256,7 +1260,7 @@ function UpdateAlert({ info }: { info: UpdateInfo }) {
               rel="noopener noreferrer"
               className="mt-1 inline-flex items-center gap-0.5 text-[11px] text-brand hover:underline"
             >
-              Release notes <ExternalLink className="h-3 w-3" />
+              {t("update.releaseNotes")} <ExternalLink className="h-3 w-3" />
             </a>
           )}
         </div>
@@ -1282,6 +1286,7 @@ function NotificationsTab({
   onMarkAllRead: () => void;
   onClearAll: () => void;
 }) {
+  const { t } = useTranslation();
   const unread = captures.reduce((n, c) => (c.read ? n : n + 1), 0);
 
   if (captures.length === 0) {
@@ -1297,10 +1302,9 @@ function NotificationsTab({
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
           <Bell className="h-6 w-6" />
         </span>
-        <p className="text-sm font-medium">No notifications</p>
+        <p className="text-sm font-medium">{t("notifications.title")}</p>
         <p className="text-xs text-muted-foreground">
-          When the extension catches a login you haven&apos;t saved yet, it
-          shows up here. Nothing to review right now.
+          {t("notifications.body")}
         </p>
       </div>
     );
@@ -1311,7 +1315,7 @@ function NotificationsTab({
       {update && <UpdateAlert info={update} />}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {unread > 0 ? `${unread} unread` : "All caught up"}
+          {unread > 0 ? t("notifications.unread", { count: unread }) : t("notifications.allCaughtUp")}
         </span>
         <div className="flex items-center gap-3 text-xs">
           {unread > 0 && (
@@ -1320,7 +1324,7 @@ function NotificationsTab({
               className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
             >
               <CheckCheck className="h-3.5 w-3.5" />
-              Mark all read
+              {t("notifications.markAllRead")}
             </button>
           )}
           <button
@@ -1328,7 +1332,7 @@ function NotificationsTab({
             className="flex items-center gap-1 text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Clear all
+            {t("common:clearAll")}
           </button>
         </div>
       </div>
@@ -1352,10 +1356,13 @@ function NotificationsTab({
             </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-medium">
-                Save login for {safeHostname(capture.url)}?
+                {t("notifications.savePrompt", { host: safeHostname(capture.url) })}
               </div>
               <div className="truncate text-[11px] text-muted-foreground">
-                {capture.username || "(no username)"} ({relativeAge(capture.capturedAt)})
+                {t("notifications.captureMeta", {
+                  username: capture.username || t("notifications.noUsername"),
+                  age: relativeAge(capture.capturedAt, t),
+                })}
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
@@ -1366,14 +1373,14 @@ function NotificationsTab({
                 }}
                 className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
               >
-                Save
+                {t("common:save")}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDismiss(capture.id);
                 }}
-                title="Dismiss"
+                title={t("common:dismiss")}
                 className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <X className="h-3.5 w-3.5" />
@@ -1417,6 +1424,7 @@ function BiometricSetting({
   enrolled: boolean;
   onChange: (enrolled: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [enrolling, setEnrolling] = useState(false);
   const [enrollEmail, setEnrollEmail] = useState(accountEmail);
   const [enrollPassword, setEnrollPassword] = useState("");
@@ -1430,7 +1438,7 @@ function BiometricSetting({
   async function beginEnroll() {
     setLocalError(null);
     if (!enrollEmail || !enrollPassword) {
-      setLocalError("Enter your email and master password");
+      setLocalError(t("settings.biometricErrors.missingFields"));
       return;
     }
     setBusy(true);
@@ -1468,9 +1476,9 @@ function BiometricSetting({
       onChange(true);
     } catch (err) {
       const code = (err as { code?: string })?.code;
-      if (code === "INVALID_CREDENTIALS") setLocalError("Invalid email or password");
-      else if (code === "RATE_LIMITED") setLocalError("Too many attempts - try again later");
-      else setLocalError(err instanceof Error ? err.message : "Could not enable Touch ID");
+      if (code === "INVALID_CREDENTIALS") setLocalError(t("settings.biometricErrors.invalidCredentials"));
+      else if (code === "RATE_LIMITED") setLocalError(t("settings.biometricErrors.rateLimited"));
+      else setLocalError(err instanceof Error ? err.message : t("settings.biometricErrors.enableFailed"));
     } finally {
       setBusy(false);
     }
@@ -1486,18 +1494,18 @@ function BiometricSetting({
   return (
     <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Security
+        {t("settings.security")}
       </div>
       <div className="flex items-start justify-between gap-3">
         <span className="min-w-0">
           <span className="flex items-center gap-1.5 text-sm">
             <Fingerprint className="h-3.5 w-3.5 text-brand" />
-            Unlock with Touch ID
+            {t("settings.biometricUnlock")}
           </span>
           <span className="block text-[11px] text-muted-foreground">
             {enrolled
-              ? "Stored behind your device biometric on this browser."
-              : "Skip the master password on this device after one sign-in."}
+              ? t("settings.biometricEnrolledHint")
+              : t("settings.biometricSetupHint")}
           </span>
         </span>
         {enrolled ? (
@@ -1506,7 +1514,7 @@ function BiometricSetting({
             onClick={disable}
             className="shrink-0 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/60"
           >
-            Disable
+            {t("common:disable")}
           </button>
         ) : (
           <button
@@ -1514,7 +1522,7 @@ function BiometricSetting({
             onClick={() => setEnrolling((v) => !v)}
             className="shrink-0 rounded-md border border-brand/40 bg-brand/10 px-2 py-1 text-xs text-brand hover:bg-brand/15"
           >
-            {enrolling ? "Cancel" : "Enable"}
+            {enrolling ? t("common:cancel") : t("common:enable")}
           </button>
         )}
       </div>
@@ -1530,7 +1538,7 @@ function BiometricSetting({
             type="email"
             value={enrollEmail}
             onChange={(e) => setEnrollEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder={t("email.placeholder")}
             autoComplete="email"
             className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs outline-none focus:border-brand/60"
           />
@@ -1538,7 +1546,7 @@ function BiometricSetting({
             type="password"
             value={enrollPassword}
             onChange={(e) => setEnrollPassword(e.target.value)}
-            placeholder="Master password"
+            placeholder={t("password.placeholder")}
             autoComplete="current-password"
             className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-xs outline-none focus:border-brand/60"
           />
@@ -1548,7 +1556,7 @@ function BiometricSetting({
             disabled={busy}
             className="w-full flex items-center justify-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Confirm and register Touch ID"}
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("settings.biometricConfirm")}
           </button>
         </div>
       )}
@@ -1571,7 +1579,14 @@ function SettingsTab({
   biometricEnrolled: boolean;
   onBiometricChange: (enrolled: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<ExtSettings | null>(null);
+  const [lang, setLang] = useState<Language>(currentLanguage());
+
+  async function handleLanguageChange(next: Language) {
+    setLang(next);
+    await changeLanguage(next);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -1594,44 +1609,44 @@ function SettingsTab({
   return (
     <div className="animate-fade-in space-y-3 p-3">
       <div className="rounded-lg border border-border bg-card/50 p-3">
-        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Server</div>
-        <div className="mt-1 truncate text-sm">{safeHostname(serverUrl) || "not set"}</div>
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("settings.server")}</div>
+        <div className="mt-1 truncate text-sm">{safeHostname(serverUrl) || t("settings.notSet")}</div>
       </div>
 
       {settings && (
         <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Autofill &amp; saving
+            {t("settings.autofillSaving")}
           </div>
           <Toggle
-            label="Show field icon"
-            hint="Inline icon inside login fields to fill"
+            label={t("settings.fieldIcon")}
+            hint={t("settings.fieldIconHint")}
             checked={settings.fieldIcon}
             onChange={(v) => update({ fieldIcon: v })}
           />
           <Toggle
-            label="Autofill on page load"
-            hint="Fill matching logins automatically, no click"
+            label={t("settings.autofill")}
+            hint={t("settings.autofillHint")}
             checked={settings.autofill}
             onChange={(v) => update({ autofill: v })}
           />
           <Toggle
-            label="Offer to save / update"
-            hint="Prompt after a login submit"
+            label={t("settings.savePromptLabel")}
+            hint={t("settings.savePromptHint")}
             checked={settings.savePrompt}
             onChange={(v) => update({ savePrompt: v })}
           />
           <Toggle
-            label="Suggest strong passwords"
-            hint="Offer a generated password on signup fields"
+            label={t("settings.suggestPassword")}
+            hint={t("settings.suggestPasswordHint")}
             checked={settings.suggestPassword}
             onChange={(v) => update({ suggestPassword: v })}
           />
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">
-              <span className="block text-sm">Prompt timeout</span>
+              <span className="block text-sm">{t("settings.promptTimeout")}</span>
               <span className="block text-[11px] text-muted-foreground">
-                How long the save/update prompt stays before it fades
+                {t("settings.promptTimeoutHint")}
               </span>
             </span>
             <select
@@ -1647,9 +1662,9 @@ function SettingsTab({
           </label>
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">
-              <span className="block text-sm">Auto-lock</span>
+              <span className="block text-sm">{t("settings.autoLock")}</span>
               <span className="block text-[11px] text-muted-foreground">
-                Lock after this much inactivity. Closing the browser always locks.
+                {t("settings.autoLockHint")}
               </span>
             </span>
             <select
@@ -1657,19 +1672,19 @@ function SettingsTab({
               onChange={(e) => update({ autoLockMin: Number(e.target.value) })}
               className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
             >
-              <option value={1}>1 min</option>
-              <option value={5}>5 min</option>
-              <option value={15}>15 min</option>
-              <option value={30}>30 min</option>
-              <option value={60}>1 hour</option>
-              <option value={0}>Until I close the browser</option>
+              <option value={1}>{t("settings.autoLockOptions.1min")}</option>
+              <option value={5}>{t("settings.autoLockOptions.5min")}</option>
+              <option value={15}>{t("settings.autoLockOptions.15min")}</option>
+              <option value={30}>{t("settings.autoLockOptions.30min")}</option>
+              <option value={60}>{t("settings.autoLockOptions.1hour")}</option>
+              <option value={0}>{t("settings.autoLockOptions.untilClose")}</option>
             </select>
           </label>
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">
-              <span className="block text-sm">Update alerts</span>
+              <span className="block text-sm">{t("settings.updateAlerts")}</span>
               <span className="block text-[11px] text-muted-foreground">
-                When a newer vaultctl release raises a notice in Alerts
+                {t("settings.updateAlertsHint")}
               </span>
             </span>
             <select
@@ -1679,10 +1694,30 @@ function SettingsTab({
               }
               className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
             >
-              <option value="all">All updates</option>
-              <option value="minor">Minor &amp; major</option>
-              <option value="major">Major only</option>
-              <option value="off">Off</option>
+              <option value="all">{t("settings.updateNotifyOptions.all")}</option>
+              <option value="minor">{t("settings.updateNotifyOptions.minor")}</option>
+              <option value="major">{t("settings.updateNotifyOptions.major")}</option>
+              <option value="off">{t("settings.updateNotifyOptions.off")}</option>
+            </select>
+          </label>
+
+          <label className="flex items-center justify-between gap-3 pt-1">
+            <span className="min-w-0">
+              <span className="block text-sm">{t("settings.language")}</span>
+              <span className="block text-[11px] text-muted-foreground">
+                {t("settings.languageHint")}
+              </span>
+            </span>
+            <select
+              value={lang}
+              onChange={(e) => void handleLanguageChange(e.target.value as Language)}
+              className="shrink-0 rounded-md border border-border bg-card px-2 py-1 text-xs"
+            >
+              {SUPPORTED_LANGUAGES.map((code) => (
+                <option key={code} value={code}>
+                  {LANGUAGE_NAMES[code]}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -1701,14 +1736,14 @@ function SettingsTab({
         className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
       >
         <ExternalLink className="h-4 w-4 text-muted-foreground" />
-        Open web vault
+        {t("settings.openWebVault")}
       </button>
       <button
         onClick={onLock}
         className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
       >
         <Lock className="h-4 w-4 text-muted-foreground" />
-        Lock vault
+        {t("settings.lockVault")}
       </button>
       <UpdateCard />
       <AboutCard />
@@ -1733,6 +1768,7 @@ const WHATSNEW_KEY = "vaultctl_whatsnew_version";
 // to this extension's version, and shows a one-time "what's new" after the
 // browser auto-updates the extension (recorded by background onInstalled).
 function UpdateCard() {
+  const { t } = useTranslation();
   const current = browser.runtime.getManifest().version;
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
@@ -1770,11 +1806,11 @@ function UpdateCard() {
         <div className="rounded-md border border-brand/30 bg-brand/10 p-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-brand">
-              Updated to v{whatsNew}
+              {t("update.updatedTo", { version: whatsNew })}
             </span>
             <button
               onClick={dismissWhatsNew}
-              aria-label="Dismiss"
+              aria-label={t("common:dismiss")}
               className="text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" />
@@ -1789,37 +1825,45 @@ function UpdateCard() {
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium">Updates</span>
+        <span className="text-xs font-medium">{t("update.heading")}</span>
         <button
           onClick={() => void check()}
           disabled={checking}
           className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           <RefreshCw className={`h-3 w-3 ${checking ? "animate-spin" : ""}`} />
-          Check
+          {t("update.check")}
         </button>
       </div>
 
       {info && !info.enabled && (
         <p className="text-[11px] text-muted-foreground">
-          Update checking is off on this server.
+          {t("update.checkingOff")}
         </p>
       )}
 
       {info && info.enabled && !info.updateAvailable && (
         <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Check className="h-3 w-3 text-brand" /> You're on the latest version (v
-          {current}).
+          <Check className="h-3 w-3 text-brand" /> {t("update.onLatest", { current })}
         </p>
       )}
 
       {info && info.updateAvailable && (
         <div className="space-y-1.5">
           <p className="text-[11px]">
-            <span className="font-medium text-brand">v{info.latestVersion}</span> is
-            available
-            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""} - you're
-            on v{current}. Your browser updates the extension automatically.
+            <Trans
+              i18nKey={
+                info.severity && info.severity !== "none"
+                  ? "update.cardLineSeverity"
+                  : "update.cardLine"
+              }
+              values={{
+                version: info.latestVersion,
+                severity: info.severity,
+                current,
+              }}
+              components={{ version: <span className="font-medium text-brand" /> }}
+            />
           </p>
           <div className="flex items-center gap-2">
             {notes && (
@@ -1827,7 +1871,7 @@ function UpdateCard() {
                 onClick={() => setShowNotes((v) => !v)}
                 className="text-[11px] text-brand hover:underline"
               >
-                {showNotes ? "Hide" : "What's new"}
+                {showNotes ? t("update.hide") : t("update.whatsNew")}
               </button>
             )}
             {info.releaseUrl && (
@@ -1837,7 +1881,7 @@ function UpdateCard() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground"
               >
-                Release <ExternalLink className="h-3 w-3" />
+                {t("update.release")} <ExternalLink className="h-3 w-3" />
               </a>
             )}
           </div>
@@ -1853,6 +1897,7 @@ function UpdateCard() {
 }
 
 function AboutCard() {
+  const { t } = useTranslation();
   const version = browser.runtime.getManifest().version;
   return (
     <div className="space-y-2.5 rounded-lg border border-border bg-card/50 p-3">
@@ -1861,20 +1906,20 @@ function AboutCard() {
         <BrandMark variant="wordmark" className="block text-lg" />
       </div>
       <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
-        Zero-knowledge password vault. Encryption keys never leave this device.
+        {t("about.tagline")}
       </p>
 
       <dl className="space-y-1 border-t border-border pt-2 text-[11px]">
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">Version</dt>
+          <dt className="text-muted-foreground">{t("about.version")}</dt>
           <dd className="font-mono">{version}</dd>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">Maintained by</dt>
+          <dt className="text-muted-foreground">{t("about.maintainedBy")}</dt>
           <dd>Vineeth N K</dd>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">Crafted from</dt>
+          <dt className="text-muted-foreground">{t("about.craftedFrom")}</dt>
           <dd>
             <a
               href={VINELABS_URL}
@@ -1896,14 +1941,14 @@ function AboutCard() {
           className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          Documentation
+          {t("common:documentation")}
         </a>
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
           className="inline-flex items-center gap-1 text-muted-foreground hover:text-brand"
         >
           <Mail className="h-3.5 w-3.5" />
-          Support
+          {t("common:support")}
         </a>
       </div>
     </div>

@@ -1,0 +1,18 @@
+{
+  "appName": "VaultCTL",
+  "vault": "Vault",
+  "continue": "Continue",
+  "cancel": "Cancel",
+  "save": "Save",
+  "enable": "Enable",
+  "disable": "Disable",
+  "clear": "Clear",
+  "clearAll": "Clear all",
+  "dismiss": "Dismiss",
+  "loading": "Loading...",
+  "copy": "Copy",
+  "documentation": "Documentation",
+  "support": "Support",
+  "username": "username",
+  "password": "password"
+}

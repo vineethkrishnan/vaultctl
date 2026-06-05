@@ -1,0 +1,179 @@
+{
+  "_note": "Maschinell erstellte Übersetzung - Überprüfung durch Muttersprachler ausstehend. Siehe README.md.",
+  "connect": {
+    "intro": "Verbinden Sie sich mit Ihrem Tresor-Server, um zu beginnen.",
+    "serverUrlLabel": "Server-URL",
+    "serverUrlPlaceholder": "https://tresor.beispiel.de",
+    "checking": "Server wird geprüft...",
+    "errors": {
+      "invalidUrl": "Geben Sie die vollständige Server-URL ein, einschließlich http:// oder https://",
+      "notVaultctl": "{{server}} scheint kein vaultctl-Server zu sein.",
+      "serverUnhealthy": "Der Server ist erreichbar, meldet aber ein Problem. Eine Anmeldung ist möglicherweise erst nach der Wiederherstellung möglich.",
+      "unreachable": "Dieser Server konnte nicht erreicht werden."
+    }
+  },
+  "email": {
+    "intro": "Melden Sie sich an Ihrem Tresor an.",
+    "placeholder": "sie@beispiel.de",
+    "rememberMe": "Auf diesem Gerät merken",
+    "changeServer": "Server ändern ({{host}})",
+    "connectionFailed": "Verbindung fehlgeschlagen"
+  },
+  "password": {
+    "intro": "Master-Passwort für <strong>{{email}}</strong>",
+    "placeholder": "Master-Passwort",
+    "deriving": "Schlüssel werden abgeleitet...",
+    "unlock": "Entsperren",
+    "useDifferentAccount": "Anderes Konto verwenden",
+    "errors": {
+      "invalidCredentials": "Ungültige E-Mail-Adresse oder ungültiges Passwort",
+      "accountLocked": "Konto gesperrt - zu viele Versuche",
+      "loginFailed": "Anmeldung fehlgeschlagen"
+    }
+  },
+  "biometric": {
+    "unlockButton": "Mit Touch ID entsperren",
+    "orMasterPassword": "oder verwenden Sie Ihr Master-Passwort",
+    "errors": {
+      "masterPasswordChanged": "Master-Passwort geändert - melden Sie sich einmal an, um Touch ID erneut zu aktivieren",
+      "rateLimited": "Zu viele Versuche - warten Sie einige Minuten und versuchen Sie es erneut",
+      "unlockFailed": "Entsperren mit Touch ID fehlgeschlagen"
+    }
+  },
+  "footer": {
+    "craftedBy": "Erstellt vom Team"
+  },
+  "vault": {
+    "fallbackName": "Tresor",
+    "searchPlaceholder": "Tresor durchsuchen...",
+    "noItems": "Keine Einträge in diesem Tresor",
+    "noMatches": "Keine Treffer",
+    "copyUsername": "Benutzername kopieren",
+    "copyPassword": "Passwort kopieren",
+    "openSite": "Website öffnen",
+    "noVaults": "Auf diesem Konto gibt es noch keine Tresore - erstellen Sie einen im Web-Tresor.",
+    "errors": {
+      "decryptPassword": "Passwort konnte nicht entschlüsselt werden"
+    }
+  },
+  "status": {
+    "copied": "{{label}} kopiert - Zwischenablage wird in 30s geleert"
+  },
+  "tabs": {
+    "vault": "Tresor",
+    "generator": "Generator",
+    "send": "Senden",
+    "alerts": "Hinweise",
+    "settings": "Einstellungen"
+  },
+  "tabTitles": {
+    "vault": "Tresor",
+    "generator": "Generator",
+    "send": "Senden",
+    "notifications": "Benachrichtigungen",
+    "settings": "Einstellungen"
+  },
+  "generator": {
+    "length": "Länge",
+    "regenerate": "Neu generieren",
+    "copyPassword": "Passwort kopieren",
+    "recent": "Zuletzt ({{count}})",
+    "empty": "Generierte Passwörter, die Sie kopieren oder ausfüllen, erscheinen hier.",
+    "keep": "Behalten",
+    "expire": "Ablauf",
+    "justNow": "gerade eben",
+    "minutesAgo": "vor {{count}}m",
+    "hoursAgo": "vor {{count}}h",
+    "expireOptions": {
+      "15m": "15m",
+      "1h": "1h",
+      "4h": "4h",
+      "24h": "24h"
+    }
+  },
+  "send": {
+    "title": "Senden ist noch nicht verfügbar",
+    "body": "Verschlüsseltes Teilen auf Zeit benötigt eine Server-Unterstützung, die vaultctl noch nicht bietet. Es erscheint hier, sobald das Backend verfügbar ist."
+  },
+  "notifications": {
+    "title": "Keine Benachrichtigungen",
+    "body": "Wenn die Erweiterung eine noch nicht gespeicherte Anmeldung erkennt, erscheint sie hier. Derzeit gibt es nichts zu prüfen.",
+    "unread": "{{count}} ungelesen",
+    "allCaughtUp": "Alles erledigt",
+    "markAllRead": "Alle als gelesen markieren",
+    "savePrompt": "Zugangsdaten für {{host}} speichern?",
+    "noUsername": "(kein Benutzername)",
+    "captureMeta": "{{username}} ({{age}})",
+    "saveError": "Diese Zugangsdaten konnten nicht im Tresor gespeichert werden"
+  },
+  "update": {
+    "available": "vaultctl v{{version}} ist verfügbar",
+    "availableWithSeverity": "vaultctl v{{version}} ist verfügbar ({{severity}})",
+    "autoUpdateNote": "Sie nutzen v{{current}}. Ihr Browser aktualisiert die Erweiterung automatisch.",
+    "releaseNotes": "Versionshinweise",
+    "release": "Version",
+    "heading": "Updates",
+    "check": "Prüfen",
+    "checkingOff": "Die Update-Prüfung ist auf diesem Server deaktiviert.",
+    "onLatest": "Sie nutzen die neueste Version (v{{current}}).",
+    "cardLine": "<version>v{{version}}</version> ist verfügbar - Sie nutzen v{{current}}. Ihr Browser aktualisiert die Erweiterung automatisch.",
+    "cardLineSeverity": "<version>v{{version}}</version> ist verfügbar ({{severity}}) - Sie nutzen v{{current}}. Ihr Browser aktualisiert die Erweiterung automatisch.",
+    "whatsNew": "Neuigkeiten",
+    "hide": "Ausblenden",
+    "updatedTo": "Aktualisiert auf v{{version}}"
+  },
+  "settings": {
+    "server": "Server",
+    "notSet": "nicht festgelegt",
+    "autofillSaving": "Automatisches Ausfüllen & Speichern",
+    "fieldIcon": "Feld-Symbol anzeigen",
+    "fieldIconHint": "Inline-Symbol in Anmeldefeldern zum Ausfüllen",
+    "autofill": "Beim Laden der Seite automatisch ausfüllen",
+    "autofillHint": "Passende Zugangsdaten automatisch ausfüllen, ohne Klick",
+    "savePromptLabel": "Speichern / Aktualisieren anbieten",
+    "savePromptHint": "Nachfragen nach dem Absenden einer Anmeldung",
+    "suggestPassword": "Starke Passwörter vorschlagen",
+    "suggestPasswordHint": "Ein generiertes Passwort in Registrierungsfeldern anbieten",
+    "promptTimeout": "Anzeigedauer der Nachfrage",
+    "promptTimeoutHint": "Wie lange die Speichern-/Aktualisieren-Nachfrage angezeigt bleibt, bevor sie ausgeblendet wird",
+    "autoLock": "Automatische Sperre",
+    "autoLockHint": "Nach dieser Inaktivität sperren. Das Schließen des Browsers sperrt immer.",
+    "updateAlerts": "Update-Hinweise",
+    "updateAlertsHint": "Wenn eine neuere vaultctl-Version einen Hinweis unter Hinweise auslöst",
+    "language": "Sprache",
+    "languageHint": "Anzeigesprache der Erweiterung",
+    "openWebVault": "Web-Tresor öffnen",
+    "lockVault": "Tresor sperren",
+    "autoLockOptions": {
+      "1min": "1 Min.",
+      "5min": "5 Min.",
+      "15min": "15 Min.",
+      "30min": "30 Min.",
+      "1hour": "1 Stunde",
+      "untilClose": "Bis ich den Browser schließe"
+    },
+    "updateNotifyOptions": {
+      "all": "Alle Updates",
+      "minor": "Klein & groß",
+      "major": "Nur große",
+      "off": "Aus"
+    },
+    "security": "Sicherheit",
+    "biometricUnlock": "Mit Touch ID entsperren",
+    "biometricEnrolledHint": "Hinter Ihrer Geräte-Biometrie in diesem Browser gespeichert.",
+    "biometricSetupHint": "Master-Passwort auf diesem Gerät nach einer Anmeldung überspringen.",
+    "biometricConfirm": "Bestätigen und Touch ID registrieren",
+    "biometricErrors": {
+      "missingFields": "Geben Sie Ihre E-Mail-Adresse und Ihr Master-Passwort ein",
+      "invalidCredentials": "Ungültige E-Mail-Adresse oder ungültiges Passwort",
+      "rateLimited": "Zu viele Versuche - versuchen Sie es später erneut",
+      "enableFailed": "Touch ID konnte nicht aktiviert werden"
+    }
+  },
+  "about": {
+    "tagline": "Zero-Knowledge-Passworttresor. Verschlüsselungsschlüssel verlassen niemals dieses Gerät.",
+    "version": "Version",
+    "maintainedBy": "Betreut von",
+    "craftedFrom": "Erstellt von"
+  }
+}
