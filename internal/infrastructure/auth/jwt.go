@@ -31,7 +31,7 @@ type secureKey struct {
 }
 
 // JWTConfig drives the JWTService. Current is the key that signs NEW
-// tokens; Next (optional) is accepted during verification but never signs —
+// tokens; Next (optional) is accepted during verification but never signs -
 // see H8 rotation procedure.
 type JWTConfig struct {
 	Current   JWTKey

@@ -7,7 +7,7 @@
 //   - vaultctl migrate up   Apply embedded database migrations
 //   - vaultctl backup       Create a PostgreSQL dump
 //   - vaultctl healthcheck  Probe /api/v1/health (used by container HEALTHCHECK)
-//   - vaultctl <client>     Client commands (login, get, list, create, …) — M6 needed
+//   - vaultctl <client>     Client commands (login, get, list, create, ...) - M6 needed
 //
 // The first admin user is bootstrapped via the register flow: on a fresh
 // install (zero users), the first POST /auth/register is promoted to owner.
@@ -70,6 +70,13 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 	}
 
 	sched := scheduler.New(adapters.items, adapters.sess, adapters.clock, cfg.TrashRetentionDays)
+	if deps.Update != nil && deps.Update.Checker != nil {
+		checker := deps.Update.Checker
+		sched.EnableUpdateRefresh(func(ctx context.Context) error {
+			_, err := checker.Latest(ctx)
+			return err
+		})
+	}
 	if adapters.backupRun != nil {
 		runBackup := adapters.backupRun
 		sched.EnableBackups(adapters.backupDests, func(ctx context.Context, destinationID string) error {
@@ -86,7 +93,7 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 		schedCtx := sched.Stop()
 		<-schedCtx.Done()
 		adapters.pool.Close()
-		// Wipe every live LockedBuffer — this is the normal-exit path.
+		// Wipe every live LockedBuffer - this is the normal-exit path.
 		// Signal exits are covered by secure.Init's handler.
 		adapters.hmac.Close()
 		adapters.jwt.Close()

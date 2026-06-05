@@ -159,7 +159,7 @@ export function BiometricSetting() {
             disabled={busy}
             className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {busy ? "Registering…" : "Confirm and register Touch ID"}
+            {busy ? "Registering..." : "Confirm and register Touch ID"}
           </button>
         </div>
       )}

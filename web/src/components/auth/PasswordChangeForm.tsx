@@ -65,10 +65,10 @@ export function PasswordChangeForm({ onComplete }: Props) {
 
       // Re-encrypt private keys: decrypt from b64 blob via worker, re-encrypt with new key
       const privKeyBytes = await workerDecrypt("__privkey__", loginRes).catch(() => {
-        throw new Error("Could not decrypt current private key — try logging in again");
+        throw new Error("Could not decrypt current private key - try logging in again");
       });
       const idPrivKeyBytes = await workerDecrypt("__idprivkey__", loginIdRes).catch(() => {
-        throw new Error("Could not decrypt current identity key — try logging in again");
+        throw new Error("Could not decrypt current identity key - try logging in again");
       });
 
       const newEncPriv = await aesGcmEncrypt(newStretchedKey, privKeyBytes);

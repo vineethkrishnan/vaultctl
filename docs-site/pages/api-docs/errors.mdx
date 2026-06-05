@@ -26,7 +26,7 @@ All API errors follow a consistent JSON format.
 
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
-| `INVALID` | 400 | Request validation failed — missing or malformed field |
+| `INVALID` | 400 | Request validation failed - missing or malformed field |
 | `WEAK_MASTER_PASSWORD` | 400 | Master password does not meet strength requirements |
 | `REGISTRATION_DISABLED` | 400 | Open registration is disabled on this server |
 | `INVITE_REQUIRED` | 400 | Invite token is required (server registration mode is `invite`) |
@@ -42,7 +42,7 @@ All API errors follow a consistent JSON format.
 | `STEP_UP_REQUIRED` | 403 | Operation requires a step-up access token |
 | `NOT_FOUND` | 404 | Resource does not exist or is not accessible |
 | `CONFLICT` | 409 | Resource already exists (e.g., duplicate email) |
-| `ACCOUNT_LOCKED` | 423 | Too many failed login attempts — account temporarily locked |
+| `ACCOUNT_LOCKED` | 423 | Too many failed login attempts - account temporarily locked |
 | `RATE_LIMITED` | 429 | Request rate limit exceeded |
 | `INTERNAL` | 500 | Unexpected server error |
 
@@ -78,7 +78,7 @@ curl -X POST https://vault.example.com/api/v1/auth/register \
 ```
 
 <Callout type="info">
-  The error message is intentionally vague — it does not reveal whether the email exists or the password was wrong.
+  The error message is intentionally vague - it does not reveal whether the email exists or the password was wrong.
 </Callout>
 
 ### Account Locked

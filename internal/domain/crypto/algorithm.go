@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 // Package crypto holds domain-level crypto value objects. It describes what
-// a ciphertext blob, symmetric key, and identity key ARE — it does NOT
+// a ciphertext blob, symmetric key, and identity key ARE - it does NOT
 // perform any cryptographic operation. Actual encrypt/decrypt lives in
 // internal/infrastructure/crypto, behind a port defined in application.
 //
@@ -23,16 +23,16 @@ const V1 BlobVersion = 0x01
 type AlgID byte
 
 const (
-	// AlgAES256GCM — 96-bit nonce, 128-bit tag. Used for item data/name,
+	// AlgAES256GCM - 96-bit nonce, 128-bit tag. Used for item data/name,
 	// folder names, encrypted_private_key, encrypted_identity_private_key,
 	// totp_secret, encrypted_password_hint.
 	AlgAES256GCM AlgID = 0x01
 
-	// AlgRSAOAEPSHA256 — RSA-OAEP-SHA256-2048. Used for encrypted_vault_key
+	// AlgRSAOAEPSHA256 - RSA-OAEP-SHA256-2048. Used for encrypted_vault_key
 	// in SHARED vaults.
 	AlgRSAOAEPSHA256 AlgID = 0x02
 
-	// AlgAES256KW — AES Key Wrap (NIST SP 800-38F). Used for
+	// AlgAES256KW - AES Key Wrap (NIST SP 800-38F). Used for
 	// encrypted_vault_key in PERSONAL vaults (M4).
 	AlgAES256KW AlgID = 0x03
 )
@@ -47,7 +47,7 @@ func (a AlgID) IsValid() bool {
 	}
 }
 
-// String returns a stable human name — used in errors, audit logs, and
+// String returns a stable human name - used in errors, audit logs, and
 // depguard reasons. NEVER depend on this string in binary protocols.
 func (a AlgID) String() string {
 	switch a {

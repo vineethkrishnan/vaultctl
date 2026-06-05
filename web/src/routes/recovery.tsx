@@ -38,7 +38,7 @@ interface ResetResponse {
  * Forgot-password recovery. The user proves possession of their recovery key
  * by decrypting the recovery-wrapped private keys client-side, then re-wraps
  * them under a brand-new master password. The server never sees the recovery
- * key or any plaintext key — only the re-encrypted blobs and the new auth hash.
+ * key or any plaintext key - only the re-encrypted blobs and the new auth hash.
  */
 export function RecoveryPage() {
   const navigate = useNavigate();

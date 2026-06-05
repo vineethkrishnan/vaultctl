@@ -34,7 +34,7 @@ See the [Blob Wire Format](/knowledge-base/blob-format) page for byte-level layo
 | AES-256-KW | `0x03` | none | 8 bytes | Vault key wrapping for personal vaults |
 
 <Callout type="info">
-  RSA-OAEP ciphertext is inherently authenticated by the OAEP padding scheme — no separate nonce or tag is needed. AES Key Wrap (RFC 3394) includes an 8-byte integrity check value appended to the ciphertext.
+  RSA-OAEP ciphertext is inherently authenticated by the OAEP padding scheme - no separate nonce or tag is needed. AES Key Wrap (RFC 3394) includes an 8-byte integrity check value appended to the ciphertext.
 </Callout>
 
 ## Name Padding
@@ -83,7 +83,7 @@ The server never stores the auth hash directly. It applies a second round of Arg
 | Memory | 19 MB |
 | Parallelism | 1 |
 
-This means a database leak does not reveal auth hashes — an attacker must crack two layers of Argon2id.
+This means a database leak does not reveal auth hashes - an attacker must crack two layers of Argon2id.
 
 ## AAD Binding
 
@@ -104,5 +104,5 @@ If an attacker copies ciphertext from one item to another, decryption fails beca
 All nonces are generated using `crypto.getRandomValues()` in the browser (backed by the OS CSPRNG). Each encryption operation uses a fresh random nonce.
 
 <Callout type="warning">
-  Nonce reuse with AES-GCM is catastrophic — it breaks both confidentiality and authenticity. vaultctl generates a new 96-bit random nonce for every encryption, giving a collision probability below 2^-32 after 2^32 encryptions per key.
+  Nonce reuse with AES-GCM is catastrophic - it breaks both confidentiality and authenticity. vaultctl generates a new 96-bit random nonce for every encryption, giving a collision probability below 2^-32 after 2^32 encryptions per key.
 </Callout>

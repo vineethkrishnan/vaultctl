@@ -115,7 +115,7 @@ func httpPut(path string, body any, session *Session) ([]byte, error) {
 	return do(http.MethodPut, path, body, session)
 }
 
-// Delete issues DELETE {path} — body is optional.
+// Delete issues DELETE {path} - body is optional.
 func httpDelete(path string, body any, session *Session) ([]byte, error) {
 	return do(http.MethodDelete, path, body, session)
 }

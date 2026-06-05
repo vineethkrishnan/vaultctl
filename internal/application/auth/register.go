@@ -14,11 +14,11 @@ import (
 )
 
 // RegisterInput carries the client-generated material required to stand up
-// a brand-new user. All cryptographic operations happened on the client —
+// a brand-new user. All cryptographic operations happened on the client -
 // the server only persists the resulting blobs.
 //
 // Security-review wiring:
-//   - Separate identity keypair (C1) — identity_public_key + signature.
+//   - Separate identity keypair (C1) - identity_public_key + signature.
 //   - Server receives the CLIENT-COMPUTED authHash, never the master pw.
 //   - All encrypted blobs are pre-validated against PRD §9.9 (C5).
 type RegisterInput struct {
@@ -34,13 +34,13 @@ type RegisterInput struct {
 	IdentityPublicKey           crypto.PublicKey
 	// RecoveryWrappedPrivateKey / RecoveryWrappedIdentityPrivateKey are the
 	// private keys wrapped under the random recovery key (wire-format blob
-	// bytes). Optional — empty when the client did not enroll a recovery kit.
+	// bytes). Optional - empty when the client did not enroll a recovery kit.
 	RecoveryWrappedPrivateKey         []byte
 	RecoveryWrappedIdentityPrivateKey []byte
 	// MasterPasswordPreflight is the client-side plaintext master password
 	// supplied PURELY so the server can reject weak passwords before
 	// issuing a user row. It is NOT persisted, logged, or transmitted
-	// anywhere — the caller's handler strips it from logs (C4).
+	// anywhere - the caller's handler strips it from logs (C4).
 	MasterPasswordPreflight string
 	// InviteToken is required when RegistrationMode is "invite".
 	// The server redeems it before creating the user.
@@ -77,7 +77,7 @@ type Register struct {
 	Hasher           ports.AuthHasher
 	Clock            ports.Clock
 	IDs              ports.IDGenerator
-	Encrypter        ports.DataEncrypter // optional — for password hint encryption (H4)
+	Encrypter        ports.DataEncrypter // optional - for password hint encryption (H4)
 	Policy           user.MasterPasswordPolicy
 	DefaultRole      user.Role
 	RegistrationMode string        // "open", "invite", "disabled"
@@ -96,7 +96,7 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		return RegisterOutput{}, err
 	}
 
-	// Cheap guards first — reject trivially bad input before expensive work
+	// Cheap guards first - reject trivially bad input before expensive work
 	if len(in.AuthHash) == 0 {
 		return RegisterOutput{}, domain.NewInvalid("auth_hash", "required")
 	}
@@ -164,7 +164,7 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 	// registration doesn't burn the invite token.
 	if inviteIDToMark != "" {
 		if err := uc.RedeemInvite.MarkUsed(ctx, inviteIDToMark); err != nil {
-			// User was created but invite mark failed. Log and continue —
+			// User was created but invite mark failed. Log and continue -
 			// the user account is valid; worst case the invite can be
 			// reused (idempotent, not a security issue).
 			_ = err
@@ -206,7 +206,7 @@ func (uc *Register) consumeInvite(ctx context.Context, in RegisterInput) (string
 	if uc.RedeemInvite == nil {
 		return "", fmt.Errorf("%w: RedeemInvite use case not wired", ErrInviteRequired)
 	}
-	// Validate the invite without consuming it — we mark it used only after
+	// Validate the invite without consuming it - we mark it used only after
 	// user creation succeeds (avoids burning tokens on failure).
 	redeemed, err := uc.RedeemInvite.Execute(ctx, RedeemInviteInput{Token: in.InviteToken})
 	if err != nil {
@@ -219,7 +219,7 @@ func (uc *Register) consumeInvite(ctx context.Context, in RegisterInput) (string
 }
 
 // isFirstUser reports whether the users table is empty. A nil UserRepository
-// is treated as "not first" (defensive — should never happen in wiring).
+// is treated as "not first" (defensive - should never happen in wiring).
 func (uc *Register) isFirstUser(ctx context.Context) (bool, error) {
 	if uc.Users == nil {
 		return false, nil

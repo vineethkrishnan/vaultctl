@@ -68,7 +68,7 @@ func (t ItemType) String() string { return string(t) }
 // enforced client-side at item-save time, and is surfaced to CLIs / UIs to
 // drive form validation.
 //
-// Fields stored INSIDE the encrypted payload only — the server never sees
+// Fields stored INSIDE the encrypted payload only - the server never sees
 // these; this list is the contract between crypto module and UI layer.
 func (t ItemType) RequiredFields() []string {
 	switch t {

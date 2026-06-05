@@ -72,7 +72,7 @@ func (uc *ShareVault) Execute(ctx context.Context, in ShareVaultInput) error {
 }
 
 // RemoveMemberInput soft-deletes a membership and signals the client-driven
-// rekey (C2 — unconditional: ANY removal or role downgrade triggers rekey).
+// rekey (C2 - unconditional: ANY removal or role downgrade triggers rekey).
 type RemoveMemberInput struct {
 	Caller     user.ID
 	VaultID    domainvault.ID
@@ -82,7 +82,7 @@ type RemoveMemberInput struct {
 // RemoveMemberOutput tells the admin client which items need re-encryption.
 type RemoveMemberOutput struct {
 	RemainingMembers []domainvault.Member
-	// RekeyRequired is always true (C2) — kept as a boolean for clarity at
+	// RekeyRequired is always true (C2) - kept as a boolean for clarity at
 	// the handler layer.
 	RekeyRequired bool
 }

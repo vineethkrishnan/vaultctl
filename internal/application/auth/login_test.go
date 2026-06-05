@@ -187,7 +187,7 @@ func TestLogin_RefreshGenFailure(t *testing.T) {
 	}
 }
 
-// C4: authHash should never leak — demonstrate that it's not attached to
+// C4: authHash should never leak - demonstrate that it's not attached to
 // any output the use case returns. We verify the invariant by inspecting
 // the LoginOutput (has no authHash field by design).
 func TestLogin_AuthHashNotInOutput_C4(t *testing.T) {

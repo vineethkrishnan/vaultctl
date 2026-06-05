@@ -20,8 +20,8 @@ func newUnlockCmd() *cobra.Command {
 		Long: `Re-prompt for the master password, re-derive the stretched key, and
 validate it against the cached encrypted private key.
 
-On the CLI this is a single-shot check — the stretched key cannot survive
-across processes — but it is useful for catching "did I remember my master
+On the CLI this is a single-shot check - the stretched key cannot survive
+across processes - but it is useful for catching "did I remember my master
 password?" without running a destructive command.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			session, err := LoadSession()
@@ -74,7 +74,7 @@ password?" without running a destructive command.`,
 			if isJSON(cmd) {
 				return printJSON(cmd, map[string]string{"status": "unlocked"})
 			}
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Master password verified — vault unlocked for this process.")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Master password verified - vault unlocked for this process.")
 			return nil
 		},
 	}

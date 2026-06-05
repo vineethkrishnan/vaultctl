@@ -9,7 +9,7 @@ import (
 
 // BlobStore is opaque, content-agnostic storage for encrypted attachment
 // bytes. The server only ever stores ciphertext, so the store needs no
-// knowledge of structure — just durable put/get/delete of an opaque key.
+// knowledge of structure - just durable put/get/delete of an opaque key.
 //
 // Keys are server-generated and opaque; implementations MUST reject keys that
 // could escape their namespace (path traversal). This interface keeps the

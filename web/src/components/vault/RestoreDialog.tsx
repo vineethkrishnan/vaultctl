@@ -25,7 +25,7 @@ import { postImport } from "@/api/import-export/import-export";
  *
  * The envelope items carry vault-level ciphertext that was sealed with
  * whichever vault's key they came from. They MUST be re-imported to the
- * SAME vault ID to decrypt later — the /import endpoint itself enforces
+ * SAME vault ID to decrypt later - the /import endpoint itself enforces
  * this by taking a vaultId and binding items to it.
  *
  * In the interest of not re-inventing cross-vault key management in this
@@ -62,7 +62,7 @@ export function RestoreDialog() {
 
     const identityPubB64 = sessionStorage.getItem("vaultctl_id_pubkey");
     if (!identityPubB64) {
-      setError("Identity public key unavailable — sign in again and retry");
+      setError("Identity public key unavailable - sign in again and retry");
       return;
     }
 
@@ -138,7 +138,7 @@ export function RestoreDialog() {
         Upload a vaultctl encrypted backup file (from the Export section
         above). Signature is verified against your identity key before any
         data is sent to the server. Items are restored into their original
-        vaults — vaults that no longer exist on this account are skipped.
+        vaults - vaults that no longer exist on this account are skipped.
       </p>
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
@@ -194,7 +194,7 @@ export function RestoreDialog() {
               disabled={restoring}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {restoring ? "Restoring…" : "Restore"}
+              {restoring ? "Restoring..." : "Restore"}
             </button>
             <button
               onClick={reset}
@@ -261,12 +261,12 @@ function countVaults(items: ExportEnvelopeItem[]): number {
 }
 
 function short(id: string): string {
-  return id.length <= 8 ? id : `${id.slice(0, 8)}…`;
+  return id.length <= 8 ? id : `${id.slice(0, 8)}...`;
 }
 
 function describeEnvelopeError(err: unknown): string {
   if (err instanceof EnvelopeSignatureError) {
-    return "Signature verification failed — the file was modified or corrupted. Do NOT trust its contents.";
+    return "Signature verification failed - the file was modified or corrupted. Do NOT trust its contents.";
   }
   if (err instanceof EnvelopeUserMismatchError) {
     return "This backup belongs to a different account and cannot be restored here.";

@@ -64,7 +64,7 @@ export function parseCSV(text: string): string[][] {
 
 /**
  * Parse a single CSV line into cells. Kept for parity with the original
- * ImportDialog parseCSVRow helper — does NOT handle embedded newlines. Prefer
+ * ImportDialog parseCSVRow helper - does NOT handle embedded newlines. Prefer
  * parseCSV for full documents.
  */
 export function parseCSVRow(line: string): string[] {
@@ -94,7 +94,7 @@ export function parseCSVRow(line: string): string[] {
   return result;
 }
 
-/** Serialize a single value for CSV output — quotes if required. */
+/** Serialize a single value for CSV output - quotes if required. */
 export function csvEscape(value: string): string {
   if (value.includes(",") || value.includes('"') || value.includes("\n") || value.includes("\r")) {
     return `"${value.replace(/"/g, '""')}"`;

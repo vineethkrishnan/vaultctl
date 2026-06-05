@@ -5,7 +5,7 @@
 // Every key here mirrors the VAULTCTL_ prefix enumerated in prd.md §11.1.
 // Values that are load-bearing for security (data-encryption key, server peppers,
 // JWT secrets, SSL mode) have NO defaults and MUST be supplied explicitly in
-// production (VAULTCTL_ENV=production) — fail-closed by construction.
+// production (VAULTCTL_ENV=production) - fail-closed by construction.
 package config
 
 import (
@@ -49,7 +49,7 @@ type Config struct {
 	DBSSLInsecureOK bool `env:"VAULTCTL_DB_SSL_INSECURE_OK" envDefault:"false"`
 
 	// ===========================================================================
-	// JWT signing keys — dual-key rotation (H8)
+	// JWT signing keys - dual-key rotation (H8)
 	// ===========================================================================
 	JWTSecretCurrent string        `env:"VAULTCTL_JWT_SECRET_CURRENT"`
 	JWTSecretNext    string        `env:"VAULTCTL_JWT_SECRET_NEXT"`
@@ -92,11 +92,18 @@ type Config struct {
 	// Update check
 	// ===========================================================================
 	// When enabled, the server periodically queries the GitHub Releases API of
-	// UpdateRepo (one outbound call per cache window, server-side only — clients
-	// never phone home) and exposes the result via GET /api/v1/updates.
+	// UpdateRepo (one outbound call per cache window, server-side only - clients
+	// never phone home) and exposes the result via GET /api/v1/updates. The
+	// scheduler also refreshes this cache on the same interval so a new release
+	// is detected within one window even without client traffic.
 	UpdateCheckEnabled  bool          `env:"VAULTCTL_UPDATE_CHECK_ENABLED" envDefault:"true"`
 	UpdateRepo          string        `env:"VAULTCTL_UPDATE_REPO" envDefault:"vineethkrishnan/vaultctl"`
-	UpdateCheckInterval time.Duration `env:"VAULTCTL_UPDATE_CHECK_INTERVAL" envDefault:"6h"`
+	UpdateCheckInterval time.Duration `env:"VAULTCTL_UPDATE_CHECK_INTERVAL" envDefault:"15m"`
+	// UpdateRolloutDelay withholds the update alert from clients until this long
+	// after a release's publish time (staged rollout). 0 reveals immediately
+	// once detected; e.g. 48h gives a buffer to pull or patch a bad release
+	// before customers are prompted.
+	UpdateRolloutDelay time.Duration `env:"VAULTCTL_UPDATE_ROLLOUT_DELAY" envDefault:"0"`
 
 	// ===========================================================================
 	// Retention

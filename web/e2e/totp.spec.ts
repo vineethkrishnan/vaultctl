@@ -43,7 +43,7 @@ test.describe.serial("TOTP setup", () => {
 
     await expect(page.getByRole("heading", { name: "Scan QR Code" })).toBeVisible();
     // The otpauth URL and the secret both render. getByText would match
-    // both because the URL contains the secret — use exact match for the
+    // both because the URL contains the secret - use exact match for the
     // secret so we target only the manual-entry code block.
     await expect(page.getByText("JBSWY3DPEHPK3PXP", { exact: true })).toBeVisible();
   });
@@ -59,7 +59,7 @@ test.describe.serial("TOTP setup", () => {
     await page.getByRole("button", { name: "Begin Setup" }).click();
     await expect(page.getByRole("heading", { name: "Scan QR Code" })).toBeVisible();
 
-    // Enter a fake 6-digit code — the mock accepts any value.
+    // Enter a fake 6-digit code - the mock accepts any value.
     await page.getByLabel("Verification code").fill("123456");
 
     const enableResponse = page.waitForResponse(

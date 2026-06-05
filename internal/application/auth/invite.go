@@ -114,7 +114,7 @@ type RedeemInviteOutput struct {
 }
 
 // RedeemInvite validates an invite token and returns its details. The invite
-// is NOT marked as used until MarkUsed is called — this allows the caller
+// is NOT marked as used until MarkUsed is called - this allows the caller
 // to perform dependent operations (e.g. user creation) before consuming
 // the invite, avoiding TOCTOU races that burn tokens on failure.
 type RedeemInvite struct {
@@ -181,7 +181,7 @@ func (uc *RevokeInvite) Execute(ctx context.Context, in RevokeInviteInput) error
 		return err
 	}
 
-	// Already revoked — idempotent success
+	// Already revoked - idempotent success
 	if inv.RevokedAt != nil {
 		return nil
 	}

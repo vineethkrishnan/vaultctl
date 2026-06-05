@@ -11,7 +11,7 @@ const thisDir = dirname(fileURLToPath(import.meta.url));
 const sharedCryptoDir = resolve(thisDir, "../web/src/shared/crypto");
 // hash-wasm is declared as a dep of extension/package.json but the shared
 // crypto module lives outside extension/, so the bundler cannot walk
-// node_modules from the importer — alias it explicitly.
+// node_modules from the importer - alias it explicitly.
 const hashWasmEntry = resolve(
   thisDir,
   "node_modules/hash-wasm/dist/index.esm.js",

@@ -13,7 +13,7 @@ import (
 type SessionID string
 
 // RefreshTokenHash is the HMAC-SHA256 of the refresh token under the server
-// pepper (C3). The raw refresh token NEVER lives in the domain or DB — it
+// pepper (C3). The raw refresh token NEVER lives in the domain or DB - it
 // exists only in transit and in the client's Web Worker scope (M9).
 //
 // We model it as a fixed-length byte slice wrapper so that repositories can

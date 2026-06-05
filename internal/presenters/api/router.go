@@ -3,7 +3,7 @@
 package api
 
 import (
-	"encoding/json"
+	"context"
 	"io/fs"
 	"net"
 	"net/http"
@@ -49,6 +49,14 @@ type Dependencies struct {
 	Version            string
 	Commit             string
 	GoVersion          string
+	DB                 Pinger
+}
+
+// Pinger is the readiness probe the health endpoint uses to confirm the vault's
+// backing store is reachable. *pgxpool.Pool satisfies it; the composition root
+// (wire.go) binds the concrete pool so this package stays free of infra imports.
+type Pinger interface {
+	Ping(ctx context.Context) error
 }
 
 // NewRouter assembles the chi router with the full middleware stack and
@@ -74,7 +82,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/health", healthHandler)
+		r.Get("/health", healthHandler(deps.DB))
 		r.Get("/config", configHandler(deps))
 
 		// ===== Auth (unauthenticated) =====
@@ -92,7 +100,7 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Post("/auth/recovery/verify", deps.Auth.HandleVerifyRecoveryKey)
 			r.Post("/auth/recovery/reset", deps.Auth.HandleResetViaRecovery)
 
-			// Invite redemption is public — new users redeem before registering
+			// Invite redemption is public - new users redeem before registering
 			r.Post("/auth/invites/redeem", deps.Invite.HandleRedeemInvite)
 		})
 
@@ -106,14 +114,14 @@ func NewRouter(deps Dependencies) http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(requireAuth)
 
-			// Step-up auth — rate-limited to prevent brute-force re-auth
+			// Step-up auth - rate-limited to prevent brute-force re-auth
 			if deps.RateLimiter != nil {
 				r.With(deps.RateLimiter.PerIP).Post("/auth/step-up", deps.Auth.HandleStepUp)
 			} else {
 				r.Post("/auth/step-up", deps.Auth.HandleStepUp)
 			}
 
-			// TOTP 2FA management — rate-limited
+			// TOTP 2FA management - rate-limited
 			totpMw := []func(http.Handler) http.Handler{requireStepUp}
 			if deps.RateLimiter != nil {
 				totpMw = append(totpMw, deps.RateLimiter.PerIP)
@@ -161,7 +169,7 @@ func NewRouter(deps Dependencies) http.Handler {
 				// Organization member public key
 				r.Get("/members/{userId}/pubkey", deps.User.HandleGetMemberPublicKey)
 
-				// Invite management (admin only) — scoped to the org
+				// Invite management (admin only) - scoped to the org
 				r.With(requireAdmin).Post("/invites", deps.Invite.HandleCreateInvite)
 				r.With(requireAdmin).Get("/invites", deps.Invite.HandleListInvites)
 				r.With(requireAdmin).Delete("/invites/{inviteId}", deps.Invite.HandleRevokeInvite)
@@ -171,7 +179,7 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.With(requireAdmin).Post("/admin/backup", deps.Admin.HandleBackup)
 			r.With(requireAdmin).Get("/admin/backups", deps.Admin.HandleListBackups)
 
-			// Data export (step-up required — sensitive data)
+			// Data export (step-up required - sensitive data)
 			r.With(requireStepUp).Get("/export", deps.Export.HandleExport)
 
 			// Data import
@@ -193,7 +201,7 @@ func NewRouter(deps Dependencies) http.Handler {
 						r.Post("/run", deps.Backup.HandleRunNow)
 						r.Get("/runs", deps.Backup.HandleListRuns)
 						r.Get("/artifacts", deps.Backup.HandleListArtifacts)
-						// Restore returns the (client-encrypted) export payload —
+						// Restore returns the (client-encrypted) export payload -
 						// sensitive, so step-up is required as with /export.
 						r.With(requireStepUp).Get("/restore", deps.Backup.HandleRestore)
 					})
@@ -306,17 +314,43 @@ func serveIndex(w http.ResponseWriter, body []byte) {
 	_, _ = w.Write(body)
 }
 
-// healthHandler returns server health status.
+// healthHandler returns server and vault (database) health.
 // @Summary Health check
-// @Description Returns server health status
+// @Description Reports liveness and pings the database. Returns 503 when the database is unreachable.
 // @Tags System
 // @Produce json
-// @Success 200 {object} map[string]string
+// @Success 200 {object} map[string]any
+// @Failure 503 {object} map[string]any
 // @Router /health [get]
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+func healthHandler(db Pinger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		databaseStatus := "ok"
+		if db != nil {
+			if err := db.Ping(ctx); err != nil {
+				databaseStatus = "down"
+			}
+		}
+
+		if databaseStatus != "ok" {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"status": "degraded",
+				"checks": map[string]string{"database": databaseStatus},
+				"error": map[string]string{
+					"code":    "DB_UNAVAILABLE",
+					"message": "The server is running but its database is unavailable.",
+				},
+			})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status": "ok",
+			"checks": map[string]string{"database": databaseStatus},
+		})
+	}
 }
 
 // configHandler returns public server configuration.

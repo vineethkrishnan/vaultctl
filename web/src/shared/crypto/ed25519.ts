@@ -5,8 +5,8 @@
  * browsers as of 2024).
  *
  * Used for:
- *   - C1: identity keypair — signs the RSA public key
- *   - H1: wrap_signature — binds (vault_id || user_id || encrypted_vault_key)
+ *   - C1: identity keypair - signs the RSA public key
+ *   - H1: wrap_signature - binds (vault_id || user_id || encrypted_vault_key)
  */
 
 import { ED25519_SIGNATURE_SIZE } from "./algorithm.js";

@@ -199,7 +199,7 @@ func TestRegister_FirstUserBypass_InviteMode(t *testing.T) {
 	t.Parallel()
 	uc, _ := newRegisterEmptyRepo()
 	uc.RegistrationMode = RegistrationModeInvite
-	// No InviteToken supplied, no RedeemInvite wired — neither should matter.
+	// No InviteToken supplied, no RedeemInvite wired - neither should matter.
 	in := validRegisterInput(t)
 	in.InviteToken = ""
 
@@ -226,7 +226,7 @@ func TestRegister_FirstUserBypass_DisabledMode(t *testing.T) {
 	}
 }
 
-// Once any user exists, the bypass is gone — invite mode without a token
+// Once any user exists, the bypass is gone - invite mode without a token
 // must fail, and disabled mode must fail.
 func TestRegister_BypassExpiresAfterFirstUser_InviteMode(t *testing.T) {
 	t.Parallel()

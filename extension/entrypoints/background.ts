@@ -248,7 +248,7 @@ async function syncBadge(): Promise<void> {
       await browser.action.setBadgeBackgroundColor({ color: "#2563eb" });
     }
   } catch {
-    // swallow — badge API optional across browsers
+    // swallow - badge API optional across browsers
   }
 }
 
@@ -602,7 +602,7 @@ async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
 }
 
 // ===========================================================================
-// Update check — compares THIS extension's version against the latest release
+// Update check - compares THIS extension's version against the latest release
 // the server reports (GET /api/v1/updates), so "update available" reflects the
 // installed extension, not the server.
 // ===========================================================================
@@ -891,7 +891,7 @@ export default defineBackground(() => {
             }
 
             // -----------------------------------------------------------
-            // Crypto ops — exposed for the popup
+            // Crypto ops - exposed for the popup
             // -----------------------------------------------------------
             case "encryptForVault": {
               const vaultId = message.vaultId as string;
@@ -912,7 +912,7 @@ export default defineBackground(() => {
               const vaultKey = getVaultKey(vaultId);
               const parsedBlob = parseBlob(fromBase64(blobBase64));
               const plaintextBytes = await aesGcmDecrypt(vaultKey, parsedBlob);
-              // runtime.sendMessage JSON-serializes, which drops ArrayBuffers —
+              // runtime.sendMessage JSON-serializes, which drops ArrayBuffers -
               // return base64 and let the caller decode.
               sendResponse({ ok: true, plaintextB64: toBase64(plaintextBytes) });
               return;
@@ -1132,7 +1132,7 @@ export default defineBackground(() => {
             }
 
             // -----------------------------------------------------------
-            // WebAuthn relay (v1 observer — see webauthn-relay.ts)
+            // WebAuthn relay (v1 observer - see webauthn-relay.ts)
             // -----------------------------------------------------------
             case "webauthnObserved": {
               devLog(
@@ -1177,7 +1177,7 @@ export default defineBackground(() => {
                 ok: true,
                 settings,
                 // Never ship the password itself until an explicit fill is
-                // requested — only its length, so the picker shows a dot mask.
+                // requested - only its length, so the picker shows a dot mask.
                 matches: matches.map((m) => ({
                   vaultId: m.vaultId,
                   itemId: m.itemId,

@@ -62,7 +62,7 @@ func TestPrelogin_UnknownUser_FakeSalt_H2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
-	// Determinism — two lookups of the same unknown email must produce the
+	// Determinism - two lookups of the same unknown email must produce the
 	// SAME fake salt.
 	b, _ := uc.Execute(context.Background(), PreloginInput{Email: "ghost@example.com"})
 	if !bytes.Equal(a.Salt, b.Salt) {

@@ -20,7 +20,7 @@ import type { ImportFormat } from "./types.js";
 export interface DetectInput {
   name: string;
   type?: string;
-  /** First 4KB of the file decoded as text — parsers use this to sniff CSV headers. */
+  /** First 4KB of the file decoded as text - parsers use this to sniff CSV headers. */
   sample: string;
 }
 
@@ -37,7 +37,7 @@ export function detectFromInput(input: DetectInput): ImportFormat | null {
 
   if (name.endsWith(".xml")) return "keepass-xml";
 
-  // CSV-based formats — disambiguate via the header row.
+  // CSV-based formats - disambiguate via the header row.
   if (name.endsWith(".csv") || input.type === "text/csv") {
     const header = firstLine(input.sample).toLowerCase();
     if (header.includes("login_uri") || header.includes("login_username")) {
@@ -49,7 +49,7 @@ export function detectFromInput(input: DetectInput): ImportFormat | null {
     if (header.startsWith("title,") || header.includes("otpauth")) {
       return "onepassword-csv";
     }
-    // Fall back to Bitwarden — the historical default.
+    // Fall back to Bitwarden - the historical default.
     return "bitwarden-csv";
   }
 

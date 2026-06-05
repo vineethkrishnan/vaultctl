@@ -28,7 +28,7 @@ func newLoginCmd() *cobra.Command {
 					return printJSON(cmd, map[string]string{"status": "api-key-mode"})
 				}
 				_ = session
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "VAULTCTL_API_KEY detected — using API-key auth (no password prompt).")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "VAULTCTL_API_KEY detected - using API-key auth (no password prompt).")
 				return nil
 			}
 
@@ -50,7 +50,7 @@ func newLoginCmd() *cobra.Command {
 				return err
 			}
 
-			// Step 1: prelogin — fetches salt + KDF params.
+			// Step 1: prelogin - fetches salt + KDF params.
 			preloginRaw, err := httpGet("/auth/prelogin?email="+urlQueryEscape(email), nil)
 			if err != nil {
 				return err
@@ -164,7 +164,7 @@ func newLoginCmd() *cobra.Command {
 // one-liner. Only called with user-supplied emails which are already shell
 // escaped.
 func urlQueryEscape(s string) string {
-	// Minimal safe encoding — vaultctl emails are RFC 5322 compliant and
+	// Minimal safe encoding - vaultctl emails are RFC 5322 compliant and
 	// never contain '#', '?' or '&' without upstream validation already
 	// rejecting them, but we do encode '+' defensively.
 	out := make([]byte, 0, len(s))

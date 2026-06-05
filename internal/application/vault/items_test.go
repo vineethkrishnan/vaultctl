@@ -119,7 +119,7 @@ func TestGetItem_HappyPath(t *testing.T) {
 // called out in architecture §13.2 and M3 AC. User B is an active member
 // of vault V-B; user A's item I-A exists in vault V-A (user B has no
 // access to V-A). User B tries to read I-A by passing (V-B, I-A) as the
-// URL path. The handler MUST return ErrNotFound — not "forbidden", not a
+// URL path. The handler MUST return ErrNotFound - not "forbidden", not a
 // leak of item existence.
 func TestGetItem_CrossVaultIDOR_H11(t *testing.T) {
 	t.Parallel()
@@ -137,7 +137,7 @@ func TestGetItem_CrossVaultIDOR_H11(t *testing.T) {
 	uc := &GetItem{Vaults: repo, Items: items}
 
 	// B injects (V-B, I-A). Since B IS a member of V-B, the authz check
-	// passes — but the item's vault_id is V-A, so the repo's
+	// passes - but the item's vault_id is V-A, so the repo's
 	// WHERE id=:id AND vault_id=:vaultId returns nothing.
 	_, err := uc.Execute(context.Background(), GetItemInput{Caller: "B", VaultID: "V-B", ItemID: "I-A"})
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -154,7 +154,7 @@ func TestGetItem_CrossVaultIDOR_H11(t *testing.T) {
 }
 
 func TestGetItem_NonMember_IsNotFoundLike(t *testing.T) {
-	// Non-members should get the authz error BEFORE the repo lookup — but
+	// Non-members should get the authz error BEFORE the repo lookup - but
 	// the presenter maps ErrNotMember + ErrNotFound identically (404).
 	t.Parallel()
 	repo := newFakeVaultRepo()

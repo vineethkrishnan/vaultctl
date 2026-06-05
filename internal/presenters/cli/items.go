@@ -40,7 +40,7 @@ type ItemData struct {
 }
 
 // decryptItemName opens the padded name blob and returns the plaintext
-// string. The vault key is used as the AEAD key and no AAD is bound — this
+// string. The vault key is used as the AEAD key and no AAD is bound - this
 // matches the TS encryption path in web/src/shared/crypto.
 func decryptItemName(vaultKey []byte, encrypted string) (string, error) {
 	raw, err := base64.StdEncoding.DecodeString(encrypted)
@@ -93,10 +93,10 @@ func decryptItemData(vaultKey []byte, encrypted string) (ItemData, error) {
 	return data, nil
 }
 
-// encryptItemData is the inverse — JSON-encodes data then seals it.
+// encryptItemData is the inverse - JSON-encodes data then seals it.
 func encryptItemData(vaultKey []byte, data ItemData) (string, error) {
-	// The intermediate JSON carries cleartext fields (Password, TOTP, …)
-	// on purpose — it is about to be sealed under the vault key on the
+	// The intermediate JSON carries cleartext fields (Password, TOTP, ...)
+	// on purpose - it is about to be sealed under the vault key on the
 	// next line. gosec G117 flags the marshal because the struct has
 	// "Password" in it, but this buffer never leaves the function.
 	raw, err := json.Marshal(data) //nolint:gosec // G117: cleartext is re-sealed before return

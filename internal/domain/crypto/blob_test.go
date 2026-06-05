@@ -145,7 +145,7 @@ func TestEncryptedBlob_Validate_DirectAlgMismatch(t *testing.T) {
 
 func TestParseBlob_BareHeader_RSA(t *testing.T) {
 	// RSA blob has no nonce + no tag; a bare header (no ciphertext) is a
-	// valid wire shape but Validate() should still accept it — ciphertext
+	// valid wire shape but Validate() should still accept it - ciphertext
 	// length is not bounded for RSA.
 	t.Parallel()
 	raw := []byte{byte(V1), byte(AlgRSAOAEPSHA256)}
@@ -165,6 +165,6 @@ func TestEncryptedBlob_Bytes_Immutable(t *testing.T) {
 	raw1[0] = 0xFF // mutate caller's copy
 	raw2 := b.Bytes()
 	if raw2[0] != byte(V1) {
-		t.Fatalf("Bytes() returned a shared slice — mutation leaked")
+		t.Fatalf("Bytes() returned a shared slice - mutation leaked")
 	}
 }

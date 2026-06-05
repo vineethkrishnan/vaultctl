@@ -57,7 +57,7 @@ export async function aesKeyWrap(
   const keyToWrapCK = await crypto.subtle.importKey(
     "raw",
     buf(keyToWrap),
-    { name: "AES-GCM" }, // Algorithm doesn't matter for export — we just need a CryptoKey
+    { name: "AES-GCM" }, // Algorithm doesn't matter for export - we just need a CryptoKey
     true, // extractable so wrapKey can access raw bytes
     ["encrypt"],
   );
@@ -110,7 +110,7 @@ export async function aesKeyUnwrap(
     buf(wrapped),
     cryptoWrappingKey,
     "AES-KW",
-    { name: "AES-GCM" }, // Algorithm for the unwrapped key — doesn't affect raw bytes
+    { name: "AES-GCM" }, // Algorithm for the unwrapped key - doesn't affect raw bytes
     true,
     ["encrypt"],
   );

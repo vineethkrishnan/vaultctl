@@ -44,7 +44,7 @@ Offset  Size      Field
 
 ### RSA-OAEP-SHA256 (`alg_id = 0x02`)
 
-Used for wrapping vault keys in shared vaults. No separate nonce or tag — the OAEP padding provides built-in authentication.
+Used for wrapping vault keys in shared vaults. No separate nonce or tag - the OAEP padding provides built-in authentication.
 
 ```
 Offset  Size      Field
@@ -87,7 +87,7 @@ For a 256-bit (32-byte) vault key, the wrapped output is 40 bytes (32 + 8 ICV):
 ```
 
 <Callout type="info">
-  AES Key Wrap does not use a nonce — it is deterministic. The 8-byte integrity check value (ICV) at the end of the wrapped output serves as an authentication tag. If any bit is tampered with, unwrapping fails.
+  AES Key Wrap does not use a nonce - it is deterministic. The 8-byte integrity check value (ICV) at the end of the wrapped output serves as an authentication tag. If any bit is tampered with, unwrapping fails.
 </Callout>
 
 ## Parsing Pseudocode

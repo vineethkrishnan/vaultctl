@@ -12,7 +12,7 @@ import (
 )
 
 // VaultRepository persists Vault + VaultMember rows. IsActiveMember is the
-// bedrock authorization primitive — every use case calls it before any item
+// bedrock authorization primitive - every use case calls it before any item
 // or folder operation.
 type VaultRepository interface {
 	// Create inserts a Vault row plus the creator's initial membership.
@@ -67,7 +67,7 @@ type ItemRepository interface {
 
 	// Get loads an item IF AND ONLY IF its vault_id matches vaultID (H11).
 	// Returns ErrNotFound both for "no such item" and for "item exists but
-	// belongs to a different vault" — these cases are indistinguishable to
+	// belongs to a different vault" - these cases are indistinguishable to
 	// the caller by design.
 	Get(ctx context.Context, vaultID vault.ID, itemID vault.ItemID) (vault.Item, error)
 
@@ -106,7 +106,7 @@ type ItemRepository interface {
 }
 
 // ItemListOptions filters the active-items list. Only server-visible fields
-// may be filtered — everything encrypted is opaque to the server.
+// may be filtered - everything encrypted is opaque to the server.
 type ItemListOptions struct {
 	FolderID      *vault.FolderID
 	ItemType      *vault.ItemType

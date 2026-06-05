@@ -117,27 +117,54 @@ function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
   return browser.runtime.sendMessage(message) as Promise<T>;
 }
 
+function apiError(message: string, code: string): Error & { code: string } {
+  const err = new Error(message) as Error & { code: string };
+  err.code = code;
+  return err;
+}
+
 async function api<T>(
   serverUrl: string,
   path: string,
   opts: { method?: string; token?: string; body?: unknown } = {},
 ): Promise<T> {
-  const res = await fetch(`${serverUrl.replace(/\/$/, "")}${path}`, {
-    method: opts.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  const base = serverUrl.replace(/\/$/, "");
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, {
+      method: opts.method ?? "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+  } catch {
+    // fetch rejects with a bare TypeError ("Failed to fetch" / "Load failed" /
+    // "NetworkError ...") for DNS, connection-refused, TLS and CORS failures -
+    // none of which are legible to a user. Map them all to one clear message.
+    throw apiError(
+      `Can't reach the server at ${base}. Check the address is correct and that the server is running.`,
+      "NETWORK_ERROR",
+    );
+  }
+
   const text = await res.text();
-  const json = text ? JSON.parse(text) : {};
+  let json: { error?: { code?: string; message?: string } } = {};
+  if (text) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw apiError(
+        `${base} returned an unexpected response. Make sure the URL points to a vaultctl server.`,
+        "BAD_RESPONSE",
+      );
+    }
+  }
   if (!res.ok) {
-    const code = json?.error?.code as string | undefined;
-    const msg = (json?.error?.message as string | undefined) ?? `HTTP ${res.status}`;
-    const err = new Error(msg) as Error & { code?: string };
-    err.code = code;
-    throw err;
+    const code = json?.error?.code;
+    const msg = json?.error?.message ?? `Server error (HTTP ${res.status}).`;
+    throw apiError(msg, code ?? `HTTP_${res.status}`);
   }
   return json as T;
 }
@@ -340,8 +367,32 @@ export function Popup() {
 
   async function handleConnect(e: FormEvent) {
     e.preventDefault();
-    await bg({ type: "setServerUrl", url: serverUrl });
-    setPhase("email");
+    setError(null);
+    const base = serverUrl.trim().replace(/\/$/, "");
+    if (!/^https?:\/\//i.test(base)) {
+      setError("Enter the full server URL, including http:// or https://");
+      return;
+    }
+    setLoading(true);
+    try {
+      const health = await api<{ status?: string }>(base, "/api/v1/health");
+      if (typeof health?.status !== "string") {
+        setError(`${base} doesn't look like a vaultctl server.`);
+        return;
+      }
+      if (health.status !== "ok") {
+        setError(
+          "The server is reachable but reporting a problem. You may not be able to sign in until it recovers.",
+        );
+      }
+      await bg({ type: "setServerUrl", url: base });
+      setServerUrl(base);
+      setPhase("email");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't reach that server.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Shared tail for every unlock path (password or biometric): hand the keys to
@@ -547,7 +598,7 @@ export function Popup() {
     try {
       await bg({ type: "markCaptureRead", id: captureId });
     } catch {
-      // best effort — the badge reconciles on next popup open
+      // best effort - the badge reconciles on next popup open
     }
   }
 
@@ -642,10 +693,11 @@ export function Popup() {
             </div>
             <button
               type="submit"
-              disabled={!serverUrl}
+              disabled={!serverUrl || loading}
               className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90 disabled:opacity-50 disabled:hover:translate-y-0"
             >
-              Continue
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? "Checking server..." : "Continue"}
             </button>
           </form>
         )}
@@ -1766,7 +1818,7 @@ function UpdateCard() {
           <p className="text-[11px]">
             <span className="font-medium text-brand">v{info.latestVersion}</span> is
             available
-            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""} — you're
+            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""} - you're
             on v{current}. Your browser updates the extension automatically.
           </p>
           <div className="flex items-center gap-2">

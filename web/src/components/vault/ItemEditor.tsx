@@ -45,7 +45,7 @@ export function ItemEditor({ vaultId, itemId }: Props) {
   const [saving, setSaving] = useState(false);
   const [repromptPending, setRepromptPending] = useState(false);
 
-  // Decrypt item on load — gate on reprompt
+  // Decrypt item on load - gate on reprompt
   useEffect(() => {
     if (!item) return;
 
@@ -252,7 +252,7 @@ function TypeFields({
   data: Record<string, unknown>;
   onChange: (d: Record<string, unknown>) => void;
 }) {
-  // Cast through unknown to the specific type — the schema parser guarantees shape
+  // Cast through unknown to the specific type - the schema parser guarantees shape
   switch (itemType) {
     case "login":
       return <LoginFields data={data as never} onChange={onChange as never} />;

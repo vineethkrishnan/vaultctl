@@ -18,7 +18,7 @@ interface Props {
 }
 
 /**
- * Step-up modal — re-verifies master password and obtains a fresh JWT
+ * Step-up modal - re-verifies master password and obtains a fresh JWT
  * with step-up claim. Called when an API returns 403 STEP_UP_REQUIRED.
  */
 export function StepUpModal({ open, onSuccess, onCancel }: Props) {

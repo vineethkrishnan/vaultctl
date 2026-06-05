@@ -16,7 +16,7 @@ import (
 // that the cross-cutting audit.Writer facade can be the only caller.
 type AuditLogRepository interface {
 	// Write persists one audit entry. Errors MUST be logged and swallowed
-	// by the caller — an audit write is never allowed to take down a
+	// by the caller - an audit write is never allowed to take down a
 	// business request.
 	Write(ctx context.Context, entry auditlog.Entry) error
 }
@@ -49,7 +49,7 @@ type NotificationStateRepository interface {
 //
 // Methods marked "raw" carry opaque infrastructure-layer identifiers (e.g.
 // auth_hash_fingerprint) that the domain treats as black-box handles. All
-// timestamps are authoritative — the repository is responsible for
+// timestamps are authoritative - the repository is responsible for
 // serialising them consistently.
 type UserRepository interface {
 	// Create inserts a new user row with its server-hashed authHash.
@@ -163,7 +163,7 @@ type OrganizationRepository interface {
 	GetMembership(ctx context.Context, orgID organization.ID, userID user.ID) (organization.Membership, error)
 
 	// RemoveMember hard-deletes a member from the org (C2). Shared vault
-	// memberships within the org must be revoked separately — see the
+	// memberships within the org must be revoked separately - see the
 	// RemoveOrgMember use case for the full flow.
 	RemoveMember(ctx context.Context, orgID organization.ID, userID user.ID) error
 }

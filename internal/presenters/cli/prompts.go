@@ -33,7 +33,7 @@ func promptPassword(title string) (string, error) {
 	return pw, nil
 }
 
-// promptString is the plain text equivalent — used for the email field on
+// promptString is the plain text equivalent - used for the email field on
 // `vaultctl login` when the user didn't pass --email.
 func promptString(title string, validate func(string) error) (string, error) {
 	var value string

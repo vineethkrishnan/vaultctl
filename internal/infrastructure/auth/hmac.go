@@ -12,7 +12,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/secure"
 )
 
-// ErrEmptyPepper indicates a misconfigured HMAC pepper — either the server
+// ErrEmptyPepper indicates a misconfigured HMAC pepper - either the server
 // pepper or the enumeration pepper. Fail fast at startup.
 var ErrEmptyPepper = errors.New("auth: HMAC pepper is empty")
 
@@ -29,7 +29,7 @@ type HMACService struct {
 }
 
 // NewHMACService builds an HMACService. Both peppers are required and MUST
-// be non-empty in production — the Config layer enforces this at load time,
+// be non-empty in production - the Config layer enforces this at load time,
 // but we defensively check again here.
 func NewHMACService(serverPepper, enumerationPepper string) (*HMACService, error) {
 	if strings.TrimSpace(serverPepper) == "" {

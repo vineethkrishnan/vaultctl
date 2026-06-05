@@ -103,7 +103,7 @@ func unwrapVaultKey(vaultMeta SessionVault, rsaPriv *rsa.PrivateKey, stretchedKe
 	case domaincrypto.AlgRSAOAEPSHA256:
 		return clientcrypto.RSAOAEPDecrypt(rsaPriv, blob)
 	case domaincrypto.AlgAES256GCM:
-		// Personal vault — key was wrapped with stretchedKey using AEAD.
+		// Personal vault - key was wrapped with stretchedKey using AEAD.
 		return clientcrypto.Decrypt(stretchedKey, blob, nil)
 	case domaincrypto.AlgAES256KW:
 		return clientcrypto.AESKeyUnwrap(stretchedKey, blob)

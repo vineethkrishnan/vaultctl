@@ -95,7 +95,7 @@ export default defineContentScript({
       const passwordInput = inputs.find((i) => i.type === "password") ?? null;
       let usernameInput: HTMLInputElement | null = null;
       // The username is almost always the field immediately before the
-      // password — search backwards from it, skipping 2FA/OTP fields.
+      // password - search backwards from it, skipping 2FA/OTP fields.
       if (passwordInput) {
         const pwIndex = inputs.indexOf(passwordInput);
         for (let i = pwIndex - 1; i >= 0; i--) {
@@ -136,7 +136,7 @@ export default defineContentScript({
     // Every username/password field of a matching login form carries a
     // permanently-visible vaultctl emblem (not just on hover/focus), so the
     // user always knows the extension is offering credentials here. Focusing
-    // the field — or clicking the emblem — opens the suggestion picker.
+    // the field - or clicking the emblem - opens the suggestion picker.
     let activeForm: HTMLFormElement | null = null;
     let activeInput: HTMLInputElement | null = null;
     const fieldIcons = new Map<HTMLInputElement, HTMLButtonElement>();
@@ -308,7 +308,7 @@ export default defineContentScript({
       const menu = document.createElement("div");
       menu.style.cssText = `position:fixed;left:${r.left}px;${vertical};min-width:${Math.max(240, r.width)}px;max-width:min(360px,90vw);max-height:${maxHeight}px;overflow-y:auto;overscroll-behavior:contain;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;z-index:2147483647;`;
       // All matches are for the current site, so the page's own favicon labels
-      // every row (same-origin lookup — no third-party favicon service, which
+      // every row (same-origin lookup - no third-party favicon service, which
       // would leak the visited host).
       const faviconUrl = pageFaviconUrl();
       for (const m of matches) {
@@ -701,7 +701,7 @@ export default defineContentScript({
 
         if (!settings.savePrompt) return;
         if (!queued?.ok || queued.skipped || !queued.id) return;
-        // If the page already navigated, this toast won't render here — the
+        // If the page already navigated, this toast won't render here - the
         // capture is queued and getPendingPrompt re-opens it on the next load.
         showSavePrompt({
           id: queued.id,
@@ -739,7 +739,7 @@ export default defineContentScript({
 
     // Remember the email/username on ANY form submit, captured at document
     // level. A multi-step login's first step is an email-only form (no password
-    // field), so findLoginForms ignores it and focusout alone is unreliable —
+    // field), so findLoginForms ignores it and focusout alone is unreliable -
     // pressing Enter submits without ever blurring the field. This catches that
     // step's email (Enter or click) right before the SPA swaps in the password
     // step, so the password step can be saved/matched with its real email.

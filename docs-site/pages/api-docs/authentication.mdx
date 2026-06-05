@@ -50,7 +50,7 @@ POST /auth/register
 | `identityPublicKey` | string | Base64-encoded Ed25519 public key |
 | `inviteToken` | string | Raw invite token (required when server registration mode is `invite`) |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -100,7 +100,7 @@ Retrieve KDF parameters for a given email. Used by the client to derive the auth
 GET /auth/prelogin?email=alice@example.com
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -141,7 +141,7 @@ POST /auth/login
 }
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -200,7 +200,7 @@ POST /auth/refresh
 }
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -236,7 +236,7 @@ POST /auth/logout
 }
 ```
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 
@@ -268,7 +268,7 @@ POST /auth/step-up
 }
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -314,7 +314,7 @@ POST /auth/password/change
 }
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {

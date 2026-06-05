@@ -63,7 +63,7 @@ interface DecryptedItem extends ItemResponse {
   uri?: string;
 }
 
-// Deterministic gradient per item name — gives each row a scannable identity.
+// Deterministic gradient per item name - gives each row a scannable identity.
 function avatarStyle(name: string): CSSProperties {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
@@ -141,7 +141,7 @@ export function ItemList() {
             password = raw.password || undefined;
             uri = raw.uri || undefined;
           } catch {
-            // data unavailable — row still shows name + type
+            // data unavailable - row still shows name + type
           }
         }
         results.push({ ...item, decryptedName, username, password, uri });

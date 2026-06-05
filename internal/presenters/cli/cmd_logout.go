@@ -31,11 +31,11 @@ func newLogoutCmd() *cobra.Command {
 				if isJSON(cmd) {
 					return printJSON(cmd, map[string]string{"status": "api-key-mode"})
 				}
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "API-key mode — no session to revoke.")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "API-key mode - no session to revoke.")
 				return nil
 			}
 
-			// Best-effort server revocation — never block logout on a
+			// Best-effort server revocation - never block logout on a
 			// server error because the operator's goal is "get me out".
 			if session.RefreshToken != "" {
 				if _, err := httpPost("/auth/logout", map[string]string{"refreshToken": session.RefreshToken}, session); err != nil {

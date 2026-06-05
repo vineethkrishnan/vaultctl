@@ -423,7 +423,10 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			Clock: a.clock,
 		},
 	}
-	updateHandlers := &api.UpdateHandlers{Enabled: cfg.UpdateCheckEnabled}
+	updateHandlers := &api.UpdateHandlers{
+		Enabled:      cfg.UpdateCheckEnabled,
+		RolloutDelay: cfg.UpdateRolloutDelay,
+	}
 	if cfg.UpdateCheckEnabled {
 		updateHandlers.Checker = &updatecheck.Checker{
 			Repo: cfg.UpdateRepo,
@@ -460,6 +463,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		CORSAllowedOrigins: cfg.CORSAllowedOrigins,
 		RegistrationMode:   cfg.RegistrationMode,
 		Env:                string(cfg.Env),
+		DB:                 a.pool,
 	}, nil
 }
 

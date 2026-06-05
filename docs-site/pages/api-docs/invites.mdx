@@ -30,7 +30,7 @@ POST /invites
 | `role` | string | yes | Role to assign: `admin` or `member` |
 | `expiresIn` | string | no | Duration string (e.g. `24h`, `72h`). Defaults to server setting |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -84,7 +84,7 @@ GET /invites?orgId=<org-uuid>
 |-----------|------|----------|-------------|
 | `orgId` | string | yes | Organization ID to list invites for |
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 [
@@ -131,7 +131,7 @@ DELETE /invites/:inviteId
 
 **Requires:** JWT access token with `admin` or `owner` role.
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 
@@ -171,7 +171,7 @@ This endpoint is **public** (no JWT required).
 |-------|------|----------|-------------|
 | `token` | string | yes | The raw invite token received from admin |
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {

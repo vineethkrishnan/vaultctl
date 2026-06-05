@@ -74,7 +74,7 @@ test.describe("Authentication flows", () => {
       page.getByRole("button", { name: "Create Account" }),
     ).toBeDisabled();
 
-    // Fill only some fields — still disabled
+    // Fill only some fields - still disabled
     await page.getByLabel("Email").fill("new@example.com");
     await expect(
       page.getByRole("button", { name: "Create Account" }),

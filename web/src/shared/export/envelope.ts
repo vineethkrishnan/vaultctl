@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Export envelope — Ed25519-signed wrapper over a vaultctl export payload
+ * Export envelope - Ed25519-signed wrapper over a vaultctl export payload
  * (architecture.md §M9, PRD hardening item M6).
  *
  * Shape on disk:
@@ -9,19 +9,19 @@
  *     "version":      1,
  *     "created_at":   "2026-04-11T14:03:00Z",
  *     "user_id":      "uuid",
- *     "items":        [ {id, encrypted_data, encrypted_name, item_type, folder_id}, … ],
+ *     "items":        [ {id, encrypted_data, encrypted_name, item_type, folder_id}, ... ],
  *     "envelope_mac": "<base64-ed25519-sig-over-canonical-body>"
  *   }
  *
  * The signature covers the canonicalized body object
  *     { version, created_at, user_id, items }
- * — the same bytes both sides will hash and compare.
+ * - the same bytes both sides will hash and compare.
  *
  * Signing happens ONLY in the client's Web Worker scope, because the server
  * is zero-knowledge and has no access to the user's identity private key.
  * Verification happens on import, BEFORE any item is decrypted or posted.
- * Any failure — signature mismatch, truncated JSON, wrong user_id, bad
- * version — MUST fail-closed and reject the entire import batch.
+ * Any failure - signature mismatch, truncated JSON, wrong user_id, bad
+ * version - MUST fail-closed and reject the entire import batch.
  */
 
 import {
@@ -133,7 +133,7 @@ export type IdentitySigner = (message: Uint8Array) => Promise<Uint8Array>;
 
 /**
  * Build a signed export envelope from raw body data + a signer function.
- * This is the production path — the web app passes a signer backed by the
+ * This is the production path - the web app passes a signer backed by the
  * Web Worker (the worker holds the identity private key; only the
  * signature bytes cross the thread boundary).
  */
@@ -155,7 +155,7 @@ export async function buildSignedEnvelopeWithSigner(
     envelopeMac: toBase64(signature),
   };
 
-  // The on-wire envelope does NOT need to be canonical — only the body
+  // The on-wire envelope does NOT need to be canonical - only the body
   // being signed must be. We emit a pretty-printed form so human audit is
   // cheap, and re-parse sorts into the canonical form on import anyway.
   return new TextEncoder().encode(JSON.stringify(envelope, null, 2) + "\n");
@@ -181,7 +181,7 @@ export async function buildSignedEnvelope(
 /**
  * Parse + verify an envelope in one pass. Returns the body on success,
  * throws on ANY failure. Callers must pass the expected user's raw 32-byte
- * Ed25519 public key AND the expected user ID — the latter guards against
+ * Ed25519 public key AND the expected user ID - the latter guards against
  * cross-account replay where a valid envelope from user A is imported by
  * user B.
  */

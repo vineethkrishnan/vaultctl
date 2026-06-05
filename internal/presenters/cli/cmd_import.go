@@ -17,8 +17,8 @@ func newImportCmd() *cobra.Command {
 		Use:   "import <file>",
 		Short: "Import items from a password manager export",
 		Long: `Import items from a CSV export file. Supported formats:
-  bitwarden   — Bitwarden CSV export (default)
-  lastpass    — LastPass CSV export
+  bitwarden   - Bitwarden CSV export (default)
+  lastpass    - LastPass CSV export
 
 All data is encrypted client-side before being sent to the server.`,
 		Args: cobra.ExactArgs(1),

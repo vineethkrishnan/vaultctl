@@ -6,7 +6,7 @@ import { Callout } from 'nextra/components'
 
 If you saved your **recovery kit** during registration, you can use it to regain access to your vault. The recovery key decrypts your RSA private key, which in turn unlocks all your vault keys.
 
-If you lost both your master password and your recovery kit, **your data is permanently lost**. This is by design — no one (not even a server administrator) can recover your data without one of these two secrets.
+If you lost both your master password and your recovery kit, **your data is permanently lost**. This is by design - no one (not even a server administrator) can recover your data without one of these two secrets.
 
 <Callout type="warning">
   Store your recovery kit in a physically secure location (e.g., a safe or safety deposit box). Do not store it digitally alongside your vault backup.
@@ -14,7 +14,7 @@ If you lost both your master password and your recovery kit, **your data is perm
 
 ## Can the server read my passwords?
 
-**No.** vaultctl uses a zero-knowledge architecture. All encryption and decryption happens in your browser. The server only stores ciphertext encrypted with AES-256-GCM. Without your master password (or recovery key), the server cannot decrypt anything — not your passwords, not your notes, not your item names.
+**No.** vaultctl uses a zero-knowledge architecture. All encryption and decryption happens in your browser. The server only stores ciphertext encrypted with AES-256-GCM. Without your master password (or recovery key), the server cannot decrypt anything - not your passwords, not your notes, not your item names.
 
 See [Zero-Knowledge Design](/knowledge-base/zero-knowledge) for details on what the server can and cannot see.
 
@@ -29,7 +29,7 @@ vaultctl and Bitwarden share similar zero-knowledge principles, but differ in ke
 | | vaultctl | Bitwarden |
 |--|----------|-----------|
 | **Hosting** | Self-hosted only (Docker or binary) | Cloud-hosted or self-hosted |
-| **Cloud dependency** | None — runs on your infrastructure | Official cloud option; self-hosted requires Bitwarden license |
+| **Cloud dependency** | None - runs on your infrastructure | Official cloud option; self-hosted requires Bitwarden license |
 | **Key hierarchy** | RSA-4096 + Ed25519 + AES-256-GCM + AES-KW | RSA-2048 + AES-256-CBC + HMAC |
 | **Sharing verification** | Ed25519 signed key wraps + safety numbers | Trust on first use |
 | **Codebase** | Go backend, React frontend | C# backend, Angular frontend |
@@ -53,11 +53,11 @@ vaultctl server
 
 You will need to provide your own PostgreSQL instance and TLS termination (reverse proxy). The `--no-docker` installer prompts for the database connection.
 
-## The browser extension shows two password lists — why?
+## The browser extension shows two password lists - why?
 
-If you see the vaultctl suggestion **and** a second dark "Manage passwords…" dropdown on the same field, the second one is **Chrome's own built-in password manager** showing logins you also saved in Chrome.
+If you see the vaultctl suggestion **and** a second dark "Manage passwords..." dropdown on the same field, the second one is **Chrome's own built-in password manager** showing logins you also saved in Chrome.
 
-That dropdown is part of the browser, not a web page, so it is painted on top of everything and **no extension can hide it** — `autocomplete="off"` (which vaultctl already sets) suppresses Chrome's address-autofill list but not its saved-password popup. To see only vaultctl:
+That dropdown is part of the browser, not a web page, so it is painted on top of everything and **no extension can hide it** - `autocomplete="off"` (which vaultctl already sets) suppresses Chrome's address-autofill list but not its saved-password popup. To see only vaultctl:
 
 1. Open `chrome://settings/passwords` (Google Password Manager → Settings).
 2. Turn off **Offer to save passwords** and **Sign in automatically**.
@@ -70,10 +70,10 @@ After that, only the vaultctl suggestion appears. This is the same trade-off eve
 If the vaultctl server becomes unreachable:
 
 - **You cannot sync** new changes or access data from new devices.
-- **No data is lost** — all encrypted data persists in the PostgreSQL database.
+- **No data is lost** - all encrypted data persists in the PostgreSQL database.
 - **Cached data** in your browser or extension may still be available for read-only access (depending on the client implementation).
 
-Once the server is restored, everything resumes normally. The server is stateless beyond the database — restarting it has no side effects.
+Once the server is restored, everything resumes normally. The server is stateless beyond the database - restarting it has no side effects.
 
 ## Can I migrate from another password manager?
 

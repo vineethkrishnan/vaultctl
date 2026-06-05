@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * Key custody facade — delegates to the crypto Web Worker (M9).
+ * Key custody facade - delegates to the crypto Web Worker (M9).
  *
  * The Worker holds all decrypted key material in an isolated scope. This
  * module provides the same async API that the rest of the app consumes.
  *
  * For the registration flow (where the Worker isn't yet initialized and we
  * need to generate keys in the main thread), crypto operations are imported
- * directly from shared/crypto — those calls don't go through this module.
+ * directly from shared/crypto - those calls don't go through this module.
  */
 
 import {
@@ -31,7 +31,7 @@ export interface InitParams {
   vaults: VaultMembership[];
 }
 
-/** Initialize key custody after login — delegates to Worker. */
+/** Initialize key custody after login - delegates to Worker. */
 export async function initKeys(params: InitParams): Promise<void> {
   await workerInit({
     stretchedKey: params.stretchedKey,

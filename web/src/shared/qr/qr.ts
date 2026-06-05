@@ -4,8 +4,8 @@
  * Minimal, dependency-free QR Code encoder (ISO/IEC 18004).
  *
  * Built in-house on purpose: this is a credential manager, so we do not pull a
- * third-party QR library into the client bundle. Scope is intentionally small —
- * byte mode only, versions 1..10, all four EC levels — which is more than enough
+ * third-party QR library into the client bundle. Scope is intentionally small -
+ * byte mode only, versions 1..10, all four EC levels - which is more than enough
  * for a recovery key (~54 bytes) or an otpauth:// URL (~120 bytes).
  *
  * encodeQR(text) returns a square matrix of booleans (true = dark module),
@@ -236,7 +236,7 @@ function placeFunctionPatterns(modules: Grid, isFunc: Grid, version: number): vo
 }
 
 // (x, y) coordinates of the 15 format-info modules per copy, plus the dark
-// module. ISO/IEC 18004 §8.9 — note these are (col, row), placed as [y][x].
+// module. ISO/IEC 18004 §8.9 - note these are (col, row), placed as [y][x].
 function formatCells(size: number): [number, number][] {
   const cells: [number, number][] = [];
   for (let i = 0; i <= 5; i++) cells.push([8, i]);

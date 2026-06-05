@@ -92,7 +92,7 @@ test.describe.serial("Trash lifecycle", () => {
     await expect(page.getByText("First Trashed")).toBeHidden({ timeout: 10_000 });
   });
 
-  // TODO: Empty trash UI does not exist yet — no global "Empty trash" button
+  // TODO: Empty trash UI does not exist yet - no global "Empty trash" button
   // in VaultTrashPage. Verify the route mock contract instead.
   test("empty trash route contract returns 204 for DELETE /vaults/:id/trash", async ({
     page,

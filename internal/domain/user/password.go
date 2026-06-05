@@ -39,7 +39,7 @@ func DefaultPolicy() MasterPasswordPolicy {
 var ErrWeakMasterPassword = errors.New("user: master password too weak")
 
 // ValidateMasterPassword returns nil if the supplied password meets the
-// policy. The raw password is NOT stored — this function MUST be called on
+// policy. The raw password is NOT stored - this function MUST be called on
 // the client's pre-Argon2 input (server never sees the master password, per
 // zero-knowledge model). The call exists so the application layer can reject
 // weak passwords at the proof-of-work boundary before issuing the long KDF.
@@ -103,12 +103,12 @@ func ToDomainError(err error) error {
 	return err
 }
 
-// defaultCommonSet is an illustrative set — M2 replaces this with the top-
+// defaultCommonSet is an illustrative set - M2 replaces this with the top-
 // 10k list loaded from an embedded asset. We seed with the worst offenders
 // so tests and dev environments have a working blocklist on day one.
 func defaultCommonSet() map[string]struct{} {
 	// NOTE: values are LOWER-CASED, whole-string matches only. We do not
-	// perform leet-speak normalisation in v1 — the common-list substitute
+	// perform leet-speak normalisation in v1 - the common-list substitute
 	// from M2 will handle that properly.
 	common := []string{
 		"password", "password1", "password123", "p@ssw0rd",

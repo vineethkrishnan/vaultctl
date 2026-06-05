@@ -71,7 +71,7 @@ func (f *StoreFactory) For(ctx context.Context, dest dombackup.Destination) (por
 		}
 		// Pin the path under the server-configured base, keyed by the
 		// server-generated user and destination IDs. A user-supplied directory
-		// is never honored — it would be an arbitrary server-side write.
+		// is never honored - it would be an arbitrary server-side write.
 		dir := filepath.Join(f.LocalBaseDir, dest.UserID, dest.ID)
 		return NewLocalStore(dir)
 	case dombackup.ProviderWebDAV:

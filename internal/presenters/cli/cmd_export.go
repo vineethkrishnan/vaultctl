@@ -17,7 +17,7 @@ func newExportCmd() *cobra.Command {
 		Use:   "export",
 		Short: "Export all items as an encrypted JSON backup",
 		Long: `Export all accessible vault items to a JSON file. Item data remains
-encrypted — the export is safe to store on disk but useless without
+encrypted - the export is safe to store on disk but useless without
 the master password. If --out is omitted, output goes to stdout.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			session, err := LoadSession()

@@ -12,7 +12,7 @@ All encryption and decryption happens **in your browser**. The server receives o
 - Your encryption keys
 - Your plaintext passwords, notes, or any item data
 
-The server is a "dumb store" — it persists encrypted blobs, enforces access control on those blobs, and facilitates sync. It cannot interpret what it stores.
+The server is a "dumb store" - it persists encrypted blobs, enforces access control on those blobs, and facilitates sync. It cannot interpret what it stores.
 
 ## What the Server Cannot Do
 
@@ -20,7 +20,7 @@ The server is a "dumb store" — it persists encrypted blobs, enforces access co
 |--------|---------|
 | Read your passwords or notes | Item data is AES-256-GCM encrypted; the server never has the vault key |
 | Know your master password | Only a derived auth hash reaches the server, then re-hashed with Argon2id |
-| Brute-force your vault offline | Requires cracking Argon2id (client) + Argon2id (server) — two layers of memory-hard KDF |
+| Brute-force your vault offline | Requires cracking Argon2id (client) + Argon2id (server) - two layers of memory-hard KDF |
 | Know the length of item/folder names | Names are PKCS#7 padded to 32-byte boundaries before encryption |
 | Decrypt shared vault keys | Vault keys are RSA-OAEP wrapped per-member; the server has no private keys |
 | Forge vault key wraps | Each wrap is Ed25519-signed by the sender; the server cannot produce valid signatures |
@@ -41,7 +41,7 @@ The server does have access to certain metadata necessary for operation:
 | Ciphertext sizes | Visible from blob sizes (names are padded to mitigate this) |
 
 <Callout type="info">
-  Vault names are currently stored in plaintext. This is a deliberate trade-off — it allows the server to return vault lists without requiring client-side decryption of every vault name during initial sync. A future version may encrypt vault names.
+  Vault names are currently stored in plaintext. This is a deliberate trade-off - it allows the server to return vault lists without requiring client-side decryption of every vault name during initial sync. A future version may encrypt vault names.
 </Callout>
 
 ## Trust Model
@@ -62,8 +62,8 @@ What happens under different compromise scenarios:
 
 ## Design Principles
 
-1. **Encrypt before transmit** — Data is encrypted in the browser before any network request.
-2. **Minimal metadata** — The server stores only what is strictly necessary for sync and access control.
-3. **Key separation** — Auth hash (for login) and stretched key (for encryption) are derived from the same master password via different HKDF info strings, so compromising one does not reveal the other.
-4. **Forward secrecy on sharing** — Removing a member from a shared vault triggers a rekey, generating a new vault key and re-wrapping for remaining members.
-5. **Verifiable identity** — Ed25519 identity keys sign RSA public keys and vault key wraps, enabling out-of-band safety number verification.
+1. **Encrypt before transmit** - Data is encrypted in the browser before any network request.
+2. **Minimal metadata** - The server stores only what is strictly necessary for sync and access control.
+3. **Key separation** - Auth hash (for login) and stretched key (for encryption) are derived from the same master password via different HKDF info strings, so compromising one does not reveal the other.
+4. **Forward secrecy on sharing** - Removing a member from a shared vault triggers a rekey, generating a new vault key and re-wrapping for remaining members.
+5. **Verifiable identity** - Ed25519 identity keys sign RSA public keys and vault key wraps, enabling out-of-band safety number verification.
