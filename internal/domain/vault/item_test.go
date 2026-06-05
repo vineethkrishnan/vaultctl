@@ -80,7 +80,7 @@ func TestItem_IDOR_BelongsToVault(t *testing.T) {
 		t.Fatalf("same vault id should match (H11)")
 	}
 	if it.BelongsToVault(ID("v2")) {
-		t.Fatalf("different vault id MUST NOT match — IDOR guard broken (H11)")
+		t.Fatalf("different vault id MUST NOT match - IDOR guard broken (H11)")
 	}
 }
 

@@ -25,9 +25,9 @@ func TestPruneOldBackups(t *testing.T) {
 	}{
 		{"vaultctl-20260101-000000.dump", old, true},
 		{"vaultctl-20260401-000000.dump", fresh, false},
-		{".env", old, false},               // unrelated — retention must NOT touch it
-		{"unrelated.txt", old, false},      // foreign file — leave alone
-		{"vaultctl-stray.txt", old, false}, // wrong suffix — leave alone
+		{".env", old, false},               // unrelated - retention must NOT touch it
+		{"unrelated.txt", old, false},      // foreign file - leave alone
+		{"vaultctl-stray.txt", old, false}, // wrong suffix - leave alone
 	}
 
 	for _, f := range fixtures {

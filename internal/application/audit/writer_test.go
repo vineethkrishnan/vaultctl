@@ -145,7 +145,7 @@ func TestWriter_VaultMemberRemoved_WritesPairedRows(t *testing.T) {
 }
 
 // ===========================================================================
-// Action surface — exercises every single-row method
+// Action surface - exercises every single-row method
 // ===========================================================================
 
 func TestWriter_SingleRowActions(t *testing.T) {
@@ -191,7 +191,7 @@ func TestWriter_SingleRowActions(t *testing.T) {
 }
 
 // ===========================================================================
-// Error handling — audit writes never propagate to the caller
+// Error handling - audit writes never propagate to the caller
 // ===========================================================================
 
 func TestWriter_SwallowsRepoErrors(t *testing.T) {
@@ -201,13 +201,13 @@ func TestWriter_SwallowsRepoErrors(t *testing.T) {
 		Clock:  ports.RealClock(),
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
-	// Must not panic, must not return — just quietly log.
+	// Must not panic, must not return - just quietly log.
 	w.LoginSuccess(context.Background(), "u-1", "ip", "ua")
 }
 
 func TestWriter_NilSafe(t *testing.T) {
 	var w *Writer
-	// A nil Writer must be a no-op — tests that don't want audit must
+	// A nil Writer must be a no-op - tests that don't want audit must
 	// not have to mock anything.
 	w.LoginSuccess(context.Background(), "u-1", "ip", "ua")
 }

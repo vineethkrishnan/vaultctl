@@ -3,25 +3,25 @@
 /**
  * 1Password 1PUX importer.
  *
- * A .1pux file is a ZIP bundle containing (among other things) export.data —
+ * A .1pux file is a ZIP bundle containing (among other things) export.data -
  * a JSON document with this rough shape:
  *
  *   {
  *     "accounts": [
  *       {
- *         "attrs": { "name": "…" },
+ *         "attrs": { "name": "..." },
  *         "vaults": [
  *           {
- *             "attrs": { "name": "…" },
+ *             "attrs": { "name": "..." },
  *             "items": [
  *               {
- *                 "overview": { "title": "…", "url": "…" },
+ *                 "overview": { "title": "...", "url": "..." },
  *                 "details": {
- *                   "loginFields": [ { "designation": "username|password", "value": "…" } ],
- *                   "notesPlain": "…",
- *                   "sections": [ { "fields": [ { "title": "…", "value": { "string": "…" } } ] } ]
+ *                   "loginFields": [ { "designation": "username|password", "value": "..." } ],
+ *                   "notesPlain": "...",
+ *                   "sections": [ { "fields": [ { "title": "...", "value": { "string": "..." } } ] } ]
  *                 },
- *                 "categoryUuid": "001" (login) | "003" (secure note) | …
+ *                 "categoryUuid": "001" (login) | "003" (secure note) | ...
  *               }
  *             ]
  *           }
@@ -218,7 +218,7 @@ function mapItem(item: OnePasswordItem): ParsedItem | null {
     };
   }
 
-  // Unknown category — degrade to secure note with notesPlain as content.
+  // Unknown category - degrade to secure note with notesPlain as content.
   const notes = item.details?.notesPlain ?? "";
   if (notes.length === 0 && title.length === 0) return null;
   return {

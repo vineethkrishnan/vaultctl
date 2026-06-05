@@ -598,7 +598,7 @@ export function Popup() {
     try {
       await bg({ type: "markCaptureRead", id: captureId });
     } catch {
-      // best effort — the badge reconciles on next popup open
+      // best effort - the badge reconciles on next popup open
     }
   }
 
@@ -1818,7 +1818,7 @@ function UpdateCard() {
           <p className="text-[11px]">
             <span className="font-medium text-brand">v{info.latestVersion}</span> is
             available
-            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""} — you're
+            {info.severity && info.severity !== "none" ? ` (${info.severity})` : ""} - you're
             on v{current}. Your browser updates the extension automatically.
           </p>
           <div className="flex items-center gap-2">

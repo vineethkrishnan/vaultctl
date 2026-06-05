@@ -2,7 +2,7 @@
 
 // Package notifications builds the in-app notification feed from the audit log
 // and tracks per-user read/clear state. There is no separate notification
-// store — the feed is a curated, human-readable projection of audit_logs.
+// store - the feed is a curated, human-readable projection of audit_logs.
 package notifications
 
 import (

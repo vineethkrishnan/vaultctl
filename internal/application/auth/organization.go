@@ -124,7 +124,7 @@ func (uc *UpdateOrgMemberRole) Execute(ctx context.Context, in UpdateOrgMemberRo
 }
 
 // ===========================================================================
-// RemoveOrgMember  —  C2 unconditional vault rekey trigger
+// RemoveOrgMember  -  C2 unconditional vault rekey trigger
 // ===========================================================================
 
 // RemoveOrgMemberInput identifies the caller, org, and target member.
@@ -154,7 +154,7 @@ type RemoveOrgMember struct {
 // Execute revokes vault memberships, then the org membership.
 //
 // Order matters: vault memberships are soft-deleted first so that a crash
-// between the two writes leaves the target without access to the vaults —
+// between the two writes leaves the target without access to the vaults -
 // which is the safer failure mode for a "remove" operation.
 func (uc *RemoveOrgMember) Execute(ctx context.Context, in RemoveOrgMemberInput) (RemoveOrgMemberOutput, error) {
 	if in.OrgID.IsZero() {

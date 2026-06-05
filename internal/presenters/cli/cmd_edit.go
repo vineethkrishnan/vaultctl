@@ -82,7 +82,7 @@ func newEditCmd() *cobra.Command {
 			// editor comes from $EDITOR / --editor; tmpPath is a path
 			// returned by os.CreateTemp under a directory we control.
 			// gosec G702 flags any exec.Command with a variable path, and
-			// G304 flags any ReadFile with a variable path — both false
+			// G304 flags any ReadFile with a variable path - both false
 			// positives for an editor-based edit flow where the whole
 			// point is to hand a user-chosen program a file we produced.
 			edit := exec.Command(editor, filepath.Clean(tmpPath)) //nolint:gosec // G702: editor + temp path are intentional

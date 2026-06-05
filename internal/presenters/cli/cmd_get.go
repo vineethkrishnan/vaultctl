@@ -60,7 +60,7 @@ func newGetCmd() *cobra.Command {
 				})
 			}
 
-			// Field-scoped output — ideal for scripting (pipe into `xclip`).
+			// Field-scoped output - ideal for scripting (pipe into `xclip`).
 			if field != "" {
 				value, err := pickField(data, field)
 				if err != nil {
@@ -96,7 +96,7 @@ func newGetCmd() *cobra.Command {
 	return cmd
 }
 
-// pickField extracts one field by name — used by `--field`.
+// pickField extracts one field by name - used by `--field`.
 func pickField(data ItemData, name string) (string, error) {
 	switch name {
 	case "password":

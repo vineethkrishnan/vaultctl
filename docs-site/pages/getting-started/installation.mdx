@@ -15,15 +15,15 @@ curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash
 1. Checks for Docker and the Compose plugin (installs Docker if missing, starts the daemon)
 2. Downloads the vaultctl source into your chosen install directory
 3. Asks how to deploy:
-   - **Full stack** — Caddy auto-TLS + vaultctl + Postgres (prompts for a public domain)
-   - **Simple** — vaultctl + Postgres bound to `127.0.0.1:PORT` (prompts for the port; front it with your own reverse proxy)
+   - **Full stack** - Caddy auto-TLS + vaultctl + Postgres (prompts for a public domain)
+   - **Simple** - vaultctl + Postgres bound to `127.0.0.1:PORT` (prompts for the port; front it with your own reverse proxy)
 4. Generates cryptographic secrets (JWT, peppers, data-encryption key) and writes `.env`
 5. Pulls the vaultctl + PostgreSQL images and starts all services
 6. Applies database migrations automatically
 7. Waits for the health check and prints your vault URL
 
 <Callout type="info">
-  The installer is fully interactive — it reads every prompt from your terminal, so it works even when piped through `curl ... | bash`. Each prompt has a sensible default.
+  The installer is fully interactive - it reads every prompt from your terminal, so it works even when piped through `curl ... | bash`. Each prompt has a sensible default.
 </Callout>
 
 <Callout type="warning">
@@ -31,7 +31,7 @@ curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash
 </Callout>
 
 <Callout type="info">
-  **Unattended installs:** export any of these before running to skip the matching prompt — `VAULTCTL_INSTALL_DIR`, `VAULTCTL_MODE` (`1` full / `2` simple), `VAULTCTL_DOMAIN`, `VAULTCTL_HOST_PORT`, `VAULTCTL_AUTO_INSTALL_DOCKER=y`, `VAULTCTL_AUTO_START=y`, `VAULTCTL_OVERWRITE_ENV=y`.
+  **Unattended installs:** export any of these before running to skip the matching prompt - `VAULTCTL_INSTALL_DIR`, `VAULTCTL_MODE` (`1` full / `2` simple), `VAULTCTL_DOMAIN`, `VAULTCTL_HOST_PORT`, `VAULTCTL_AUTO_INSTALL_DOCKER=y`, `VAULTCTL_AUTO_START=y`, `VAULTCTL_OVERWRITE_ENV=y`.
 </Callout>
 
 ---
@@ -93,7 +93,7 @@ Two compose variants are provided in the repository.
 
 <Tabs items={['Full Stack (with TLS)', 'Simple (BYO Proxy)']}>
   <Tabs.Tab>
-### Full Stack — Caddy + vaultctl + PostgreSQL
+### Full Stack - Caddy + vaultctl + PostgreSQL
 
 Includes Caddy for automatic HTTPS via Let's Encrypt.
 
@@ -157,7 +157,7 @@ curl https://vault.yourdomain.com/api/v1/health
   </Tabs.Tab>
 
   <Tabs.Tab>
-### Simple — vaultctl + PostgreSQL (no Caddy)
+### Simple - vaultctl + PostgreSQL (no Caddy)
 
 Use when you already have a reverse proxy (nginx, Traefik, Cloudflare Tunnel, Tailscale, etc.).
 The API is exposed on `127.0.0.1` only.
@@ -215,7 +215,7 @@ Point your reverse proxy at `127.0.0.1:8080` (or your `VAULTCTL_HOST_PORT`). See
 Pre-built binaries are available on [GitHub Releases](https://github.com/vineethkrishnan/vaultctl/releases/latest) for all major platforms. Each release includes SHA-256 checksums signed with cosign and per-archive SBOMs.
 
 <Callout type="info">
-  The quickest binary install is the installer's `--no-docker` mode — it picks the right asset, verifies the checksum, generates secrets, writes `config.env`, and offers to run migrations:
+  The quickest binary install is the installer's `--no-docker` mode - it picks the right asset, verifies the checksum, generates secrets, writes `config.env`, and offers to run migrations:
   ```bash
   curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash -s -- --no-docker
   ```
@@ -243,7 +243,7 @@ VERSION=$(curl -fsSL https://api.github.com/repos/vineethkrishnan/vaultctl/relea
 # Apple Silicon (M1/M2/M3/M4)
 curl -L "https://github.com/vineethkrishnan/vaultctl/releases/download/${VERSION}/vaultctl_${VERSION#v}_darwin_arm64.tar.gz" | tar xz
 
-# Intel — swap darwin_arm64 for darwin_amd64
+# Intel - swap darwin_arm64 for darwin_amd64
 
 sudo mv vaultctl /usr/local/bin/
 ```
@@ -353,7 +353,7 @@ spec:
 Create a Secret with all required environment variables. See the [Configuration](/help-center/configuration) page for the complete list.
 
 <Callout type="info">
-  You can use either `ghcr.io/vineethkrishnan/vaultctl` or `vineethnkrishnan/vaultctl` (Docker Hub) — both are identical multi-arch images.
+  You can use either `ghcr.io/vineethkrishnan/vaultctl` or `vineethnkrishnan/vaultctl` (Docker Hub) - both are identical multi-arch images.
 </Callout>
 
 ---

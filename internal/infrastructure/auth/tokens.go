@@ -10,7 +10,7 @@ import (
 )
 
 // RefreshTokenBytes is the raw entropy length of refresh tokens. 32 bytes
-// = 256 bits — matches the hash output size so attackers can't amplify
+// = 256 bits - matches the hash output size so attackers can't amplify
 // short tokens via birthday search.
 const RefreshTokenBytes = 32
 
@@ -35,7 +35,7 @@ func NewTokenGenerator() *TokenGenerator { return &TokenGenerator{} }
 var ErrTokenRead = errors.New("tokens: rand.Read failed")
 
 // RefreshToken returns a URL-safe base64 string carrying 256 bits of
-// entropy. The raw token is returned to the caller — it MUST NOT be
+// entropy. The raw token is returned to the caller - it MUST NOT be
 // stored; callers persist hmac_sha256(server_pepper, token) instead (C3).
 func (g *TokenGenerator) RefreshToken() (string, error) {
 	return generate(RefreshTokenBytes)

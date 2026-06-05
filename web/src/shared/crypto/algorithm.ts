@@ -2,7 +2,7 @@
 
 /**
  * Algorithm identifiers and constants mirroring the Go domain/crypto package.
- * This is the single source of truth for the TS client — any change here
+ * This is the single source of truth for the TS client - any change here
  * MUST match the Go side or interop tests will break.
  */
 

@@ -33,7 +33,7 @@
   --color-input: #26262b;
   --color-ring: #2dd4bf;
 
-  /* Restrained brand accent (teal) — used for active states, links, focus. */
+  /* Restrained brand accent (teal) - used for active states, links, focus. */
   --color-brand: #2dd4bf;
   --color-brand-foreground: #042f2a;
 
@@ -81,7 +81,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Subtle atmospheric backdrop — layered radial glows, very low intensity. */
+/* Subtle atmospheric backdrop - layered radial glows, very low intensity. */
 .app-backdrop {
   position: relative;
   background:

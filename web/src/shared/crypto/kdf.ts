@@ -5,8 +5,8 @@
  *
  * Flow (architecture §6.1):
  *   1. Argon2id(password, salt, params) → masterKey (32B)
- *   2. HKDF-SHA256(masterKey, info="auth") → authHash (32B) — sent to server
- *   3. HKDF-SHA256(masterKey, info="enc")  → stretchedKey (32B) — local encryption
+ *   2. HKDF-SHA256(masterKey, info="auth") → authHash (32B) - sent to server
+ *   3. HKDF-SHA256(masterKey, info="enc")  → stretchedKey (32B) - local encryption
  *   4. Zero masterKey
  */
 

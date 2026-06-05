@@ -53,7 +53,7 @@ func containsIP(nets []*net.IPNet, ip net.IP) bool {
 // hop is NOT trusted is the real client. If trusted is empty or no XFF is
 // present, the peer is returned verbatim.
 //
-// This is the spoof-resistant alternative to chi's deprecated RealIP —
+// This is the spoof-resistant alternative to chi's deprecated RealIP -
 // a client setting X-Forwarded-For directly cannot bypass it because the
 // peer (their own connection) must itself be in the trust list before any
 // XFF value is honoured.
@@ -83,7 +83,7 @@ func resolveClientIP(remoteAddr, xff string, trusted []*net.IPNet) string {
 			return entry
 		}
 	}
-	// Every XFF hop is trusted — fall through to the leftmost entry.
+	// Every XFF hop is trusted - fall through to the leftmost entry.
 	return strings.TrimSpace(parts[0])
 }
 
@@ -92,7 +92,7 @@ func resolveClientIP(remoteAddr, xff string, trusted []*net.IPNet) string {
 // Replaces chi's middleware.RealIP, which trusts X-Forwarded-For
 // unconditionally (GHSA-3fxj-6jh8-hvhx et al).
 //
-// Downstream code — rate limiter, audit log, ClientIP — can read
+// Downstream code - rate limiter, audit log, ClientIP - can read
 // r.RemoteAddr as the single source of truth.
 func RealIP(trusted []*net.IPNet) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -149,7 +149,7 @@ func AnonymiseIP(raw string) string {
 
 // ClientIP returns the anonymised client IP for r. It reads r.RemoteAddr,
 // which the RealIP middleware has rewritten to the trusted-proxy-validated
-// peer — so audit logs and rate limiting share one IP source.
+// peer - so audit logs and rate limiting share one IP source.
 func ClientIP(r *http.Request) string {
 	if r == nil {
 		return ""

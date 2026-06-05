@@ -15,7 +15,7 @@ Docs: [vaultctl.vinelabs.de](https://vaultctl.vinelabs.de)
 git clone https://github.com/vineethkrishnan/vaultctl.git
 cd vaultctl
 cp .env.example .env
-# fill in every secret — server fail-closes if any prod secret is empty.
+# fill in every secret - server fail-closes if any prod secret is empty.
 # generate values with: openssl rand -base64 32   (or 64 for JWT secrets)
 
 docker compose up -d                              # starts caddy + vaultctl + postgres
@@ -56,7 +56,7 @@ Load `extension/.output/chrome-mv3` via `chrome://extensions` -> Developer mode 
 
 ## Development
 
-Toolchain: Go 1.22+, Node 22+, Docker (with `docker compose`), and GNU `make`. The `make` targets below are thin wrappers around `go build` / `npm` / `golangci-lint` / `gosec` / `govulncheck` — install any tool the target needs that you don't already have.
+Toolchain: Go 1.22+, Node 22+, Docker (with `docker compose`), and GNU `make`. The `make` targets below are thin wrappers around `go build` / `npm` / `golangci-lint` / `gosec` / `govulncheck` - install any tool the target needs that you don't already have.
 
 ```bash
 make web-build          # build the SPA (embedded into the Go binary)
@@ -93,7 +93,7 @@ vaultctl publishes four layers of supply-chain evidence. For credential-vault us
 
 ```
 cmd/server/                   # binary entry: server, migrate, backup, admin, client cmds
-internal/domain/              # core types and invariants — no I/O
+internal/domain/              # core types and invariants - no I/O
 internal/application/         # use cases composed from ports
 internal/infrastructure/      # postgres, JWT, crypto adapters
 internal/presenters/api/      # chi router, handlers, middleware

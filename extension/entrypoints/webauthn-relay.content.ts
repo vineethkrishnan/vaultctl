@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * WebAuthn relay — v1 observer stub.
+ * WebAuthn relay - v1 observer stub.
  *
  * Runs at document_start in the MAIN world so it can monkey-patch
  * `navigator.credentials.create` and `navigator.credentials.get` before
@@ -9,7 +9,7 @@
  *
  * v1 behaviour: observe the call, dispatch a CustomEvent with the options,
  * and PROXY through to the real browser WebAuthn API unchanged. We do not
- * yet handle the credential ourselves — that is a v1.1 item once the relay
+ * yet handle the credential ourselves - that is a v1.1 item once the relay
  * channel and passkey storage have been designed. The acceptance bar for
  * this milestone is "the interceptor is reached and observed".
  *
@@ -93,6 +93,6 @@ function dispatchRelayEvent(
       }),
     );
   } catch {
-    // swallow — some pages freeze CustomEvent; non-fatal for the stub
+    // swallow - some pages freeze CustomEvent; non-fatal for the stub
   }
 }

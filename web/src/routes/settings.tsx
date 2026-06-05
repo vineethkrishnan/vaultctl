@@ -109,7 +109,7 @@ export function SettingsPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">Email: </span>
-                <span>{sessionStorage.getItem("vaultctl_email") ?? "—"}</span>
+                <span>{sessionStorage.getItem("vaultctl_email") ?? "-"}</span>
               </div>
             </div>
           </section>

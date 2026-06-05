@@ -6,7 +6,7 @@
  * The legacy 1Password CSV exporter writes logins with columns roughly:
  *   Title, Website, Username, Password, OTPAuth, Notes
  *
- * Real-world exports have varied over the years — this parser looks up cells
+ * Real-world exports have varied over the years - this parser looks up cells
  * by a case-insensitive header name so reorderings and capitalisation
  * differences don't break it. Rows with no username/password AND a populated
  * Notes column are treated as secure notes.

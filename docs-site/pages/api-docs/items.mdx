@@ -20,7 +20,7 @@ GET /vaults/:vaultId/items
 | `folderId` | UUID | Filter by folder. Use `none` for items not in any folder |
 | `favorites` | boolean | `true` to return only favorited items |
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -102,7 +102,7 @@ POST /vaults/:vaultId/items
 | `favorite` | boolean | no | Mark as favorite (default: `false`) |
 | `reprompt` | boolean | no | Require master password re-entry before revealing (default: `false`) |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -143,7 +143,7 @@ Retrieve a single item by ID.
 GET /vaults/:vaultId/items/:itemId
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -189,7 +189,7 @@ PUT /vaults/:vaultId/items/:itemId
 }
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 Returns the full updated item (same shape as Get Item).
 
@@ -216,7 +216,7 @@ Move an item to the trash. The item is not permanently deleted and can be restor
 DELETE /vaults/:vaultId/items/:itemId
 ```
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 
@@ -237,7 +237,7 @@ Retrieve all trashed items in a vault.
 GET /vaults/:vaultId/trash
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {
@@ -276,7 +276,7 @@ Restore a trashed item back to the vault.
 POST /vaults/:vaultId/trash/:itemId/restore
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 Returns the restored item (same shape as Get Item).
 
@@ -299,7 +299,7 @@ DELETE /vaults/:vaultId/trash/:itemId
 
 **Requires:** JWT access token with `step_up` claim.
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 
@@ -331,7 +331,7 @@ DELETE /vaults/:vaultId/trash
 
 **Requires:** JWT access token with `step_up` claim.
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {

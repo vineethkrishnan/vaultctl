@@ -10,7 +10,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/domain/auditlog"
 )
 
-// AuditRepo implements ports.AuditLogRepository. One INSERT per call —
+// AuditRepo implements ports.AuditLogRepository. One INSERT per call -
 // the audit layer is deliberately single-table and allocation-light.
 type AuditRepo struct{ Pool *Pool }
 

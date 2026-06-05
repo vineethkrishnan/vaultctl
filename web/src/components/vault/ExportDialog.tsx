@@ -16,7 +16,7 @@ import { getExport } from "@/api/import-export/import-export";
  * Ed25519-signed envelope using the user's identity key held inside the
  * Web Worker, and triggers a browser download.
  *
- * The resulting file is useless to anyone without the master password —
+ * The resulting file is useless to anyone without the master password -
  * every item body is still encrypted with its source vault's key. The
  * envelope signature only guarantees integrity and authorship.
  */
@@ -88,7 +88,7 @@ export function ExportDialog() {
 
       <p className="text-sm text-muted-foreground">
         Download an encrypted, signed backup of every vault you can access.
-        The file is useless without your master password — item contents
+        The file is useless without your master password - item contents
         stay encrypted. Re-importing on the same account restores any items
         you later delete.
       </p>
@@ -108,7 +108,7 @@ export function ExportDialog() {
         className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         <Download className="h-4 w-4" />
-        {busy ? "Building backup…" : "Download encrypted backup"}
+        {busy ? "Building backup..." : "Download encrypted backup"}
       </button>
 
       {error && (

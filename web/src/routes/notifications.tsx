@@ -177,12 +177,12 @@ export function NotificationsPage() {
 
       {isLoading ? (
         <div className="rounded-lg border border-border p-8 text-center text-sm text-muted-foreground">
-          Loading…
+          Loading...
         </div>
       ) : items.length === 0 ? (
         updateVisible ? null : (
           <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">
-            You're all caught up — no recent activity.
+            You're all caught up - no recent activity.
           </div>
         )
       ) : (

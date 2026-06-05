@@ -4,9 +4,9 @@
 //
 // Scope delivered in M10:
 //   - Root + version + help
-//   - `vaultctl server` — starts the API server
-//   - `vaultctl backup` — trigger a backup (delegates to M12)
-//   - Stubs for login/logout/get/list/create — these need the TS crypto
+//   - `vaultctl server` - starts the API server
+//   - `vaultctl backup` - trigger a backup (delegates to M12)
+//   - Stubs for login/logout/get/list/create - these need the TS crypto
 //     module (M6) for actual master-password-to-authHash derivation, so
 //     they're skeleton commands that document the expected UX.
 //
@@ -32,13 +32,13 @@ var (
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "vaultctl",
-		Short:         "vaultctl — self-hosted zero-knowledge credential vault",
+		Short:         "vaultctl - self-hosted zero-knowledge credential vault",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       fmt.Sprintf("%s (%s)", Version, Commit),
 	}
 
-	// Global --json flag — every client command honours it via isJSON().
+	// Global --json flag - every client command honours it via isJSON().
 	root.PersistentFlags().Bool("json", false, "Emit JSON output instead of tables")
 
 	root.AddCommand(newServerCmd(), newHealthCheckCmd(), newBackupCmd(), newMigrateCmd())

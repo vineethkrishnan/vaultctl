@@ -18,7 +18,7 @@ import (
 var _ ports.BackupStore = (*WebDAVStore)(nil)
 
 // WebDAVStore writes artifacts to a WebDAV collection (Nextcloud, ownCloud,
-// Apache mod_dav, and many self-hosted clouds). Credential-based, no OAuth —
+// Apache mod_dav, and many self-hosted clouds). Credential-based, no OAuth -
 // this is the "any other cloud of your choice" answer, and the bridge for
 // stores without a public API.
 type WebDAVStore struct {

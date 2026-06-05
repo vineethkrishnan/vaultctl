@@ -17,7 +17,7 @@ import (
 
 // CreateItemInput is the payload to insert a new item. EncryptedData and
 // EncryptedName MUST already carry v1|AES-256-GCM headers (client does the
-// encryption — see PRD §9.9/C5).
+// encryption - see PRD §9.9/C5).
 type CreateItemInput struct {
 	Caller        user.ID
 	VaultID       domainvault.ID
@@ -301,7 +301,7 @@ func (uc *ListTrash) Execute(ctx context.Context, in ListTrashInput) ([]domainva
 }
 
 // PurgeExpiredTrash is the cron-driven cleanup. No authorization check is
-// required — this runs as the cron user, not as any tenant.
+// required - this runs as the cron user, not as any tenant.
 type PurgeExpiredTrash struct {
 	Items         ports.ItemRepository
 	Clock         ports.Clock

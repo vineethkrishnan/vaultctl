@@ -2,7 +2,7 @@
 
 // Package crypto hosts infrastructure crypto adapters. Unlike the
 // internal/domain/crypto package (which only carries value objects), this
-// package DOES perform cryptographic operations — and is therefore the only
+// package DOES perform cryptographic operations - and is therefore the only
 // place in the codebase that imports crypto/aes, crypto/cipher, etc.
 //
 // Scope (M2):
@@ -32,7 +32,7 @@ var ErrBadDataKey = errors.New("crypto: data encryption key must be 32 bytes (ba
 
 // ErrDecryptFailed is returned when AEAD decryption fails under both
 // current and next keys. We do NOT distinguish "wrong key" from "tampered
-// ciphertext" — both are attacker-equivalent outcomes.
+// ciphertext" - both are attacker-equivalent outcomes.
 var ErrDecryptFailed = errors.New("crypto: decrypt failed")
 
 // ServerAEAD encrypts/decrypts server-side secrets with AES-256-GCM.
@@ -44,7 +44,7 @@ type ServerAEAD struct {
 
 // NewServerAEAD builds the adapter from one or two base64-encoded 32-byte
 // keys. `current` is REQUIRED; `next` is optional and enables dual-key
-// rotation (decrypt-with-either, re-encrypt-with-new, retire-old — H5).
+// rotation (decrypt-with-either, re-encrypt-with-new, retire-old - H5).
 func NewServerAEAD(currentB64, nextB64 string) (*ServerAEAD, error) {
 	curr, err := buildAEAD(currentB64)
 	if err != nil {
@@ -62,7 +62,7 @@ func NewServerAEAD(currentB64, nextB64 string) (*ServerAEAD, error) {
 }
 
 // Encrypt produces a versioned AES-256-GCM blob for plaintext. `aad` is
-// additional-authenticated-data bound to the ciphertext — callers pass a
+// additional-authenticated-data bound to the ciphertext - callers pass a
 // stable domain tag (e.g. the user ID + field name) so an attacker cannot
 // cut-and-paste ciphertexts between rows.
 func (a *ServerAEAD) Encrypt(plaintext, aad []byte) (domaincrypto.EncryptedBlob, error) {
@@ -113,7 +113,7 @@ func (a *ServerAEAD) Decrypt(blob domaincrypto.EncryptedBlob, aad []byte) ([]byt
 // buildAEAD decodes the env-supplied base64 key into a memguard Secret,
 // initialises the AES-256-GCM cipher while the Secret is open, then
 // destroys the Secret. Residual key material remains inside the cipher's
-// internal block state (unavoidable — Go's crypto/aes copies the key
+// internal block state (unavoidable - Go's crypto/aes copies the key
 // during NewCipher), but the raw decoded bytes no longer sit on the heap.
 func buildAEAD(b64 string) (cipher.AEAD, error) {
 	keyBytes, err := decodeKey(b64)

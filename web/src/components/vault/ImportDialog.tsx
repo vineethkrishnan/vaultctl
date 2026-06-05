@@ -140,7 +140,7 @@ export function ImportDialog() {
                 onChange={(event) => setSelectedVaultId(event.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="">Select a vault…</option>
+                <option value="">Select a vault...</option>
                 {vaults.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name ?? v.id}

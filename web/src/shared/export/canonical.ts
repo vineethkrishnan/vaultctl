@@ -6,12 +6,12 @@
  * The Ed25519 signature over an export envelope must be reproducible on the
  * importer side, so we need a byte-identical serialization regardless of map
  * iteration order or host runtime. This module implements a small subset of
- * RFC 8785 JCS — enough for the export payload shape, no more:
+ * RFC 8785 JCS - enough for the export payload shape, no more:
  *
  *   - Object keys are serialized in lexicographic (UTF-16) order.
  *   - Arrays preserve their source order.
  *   - Strings are JSON-escaped per RFC 8259.
- *   - Numbers MUST be finite integers or fractional decimals — vaultctl
+ *   - Numbers MUST be finite integers or fractional decimals - vaultctl
  *     exports never carry NaN/Infinity, so we reject them explicitly.
  *   - `null` is serialized as "null".
  *   - `undefined` keys are dropped (matching JSON.stringify semantics).

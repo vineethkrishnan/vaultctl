@@ -53,7 +53,7 @@ func (l *RateLimiter) PerIP(next http.Handler) http.Handler {
 }
 
 // AuthAttempt is the per-email limiter for auth endpoints. It enforces both
-// the IP bucket AND the per-email bucket (H3 — either breach fails).
+// the IP bucket AND the per-email bucket (H3 - either breach fails).
 // The email is extracted via the `extract` function so handlers can pass
 // either a request-body read or header read.
 func (l *RateLimiter) AuthAttempt(extract func(*http.Request) string) func(http.Handler) http.Handler {
@@ -67,7 +67,7 @@ func (l *RateLimiter) AuthAttempt(extract func(*http.Request) string) func(http.
 			email := strings.ToLower(strings.TrimSpace(extract(r)))
 			// Per-email throttling counts ONLY failed credential attempts, so
 			// signing in legitimately from several clients (web, extension,
-			// Touch ID re-login) never trips it — only repeated wrong-password
+			// Touch ID re-login) never trips it - only repeated wrong-password
 			// guesses do. A successful attempt clears the counter outright.
 			if email != "" && l.overLimit(l.perEmail, email, l.PerEmailLimit) {
 				writeErr(w, http.StatusTooManyRequests, "RATE_LIMITED", "per-email rate limit")
@@ -158,7 +158,7 @@ func (l *RateLimiter) hit(m map[string]*bucket, key string, limit int, window ti
 }
 
 // clientIP returns the validated client IP for rate-limit bucketing.
-// r.RemoteAddr is the single source of truth — the RealIP middleware
+// r.RemoteAddr is the single source of truth - the RealIP middleware
 // upstream has already resolved it against the trusted-proxy list, so
 // X-Forwarded-For cannot be spoofed past this point.
 func clientIP(r *http.Request) string {

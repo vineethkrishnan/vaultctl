@@ -58,7 +58,7 @@ test.describe.serial("Vault CRUD lifecycle", () => {
     const response = await itemCreated;
     expect(response.status()).toBe(201);
 
-    // After creation we navigate to detail — verify via the header input value.
+    // After creation we navigate to detail - verify via the header input value.
     await expect(page).toHaveURL(/\/vault\/vault-1\/items\/item-/, { timeout: 10_000 });
     await expect(page.getByPlaceholder("Item name")).toHaveValue("GitHub");
   });

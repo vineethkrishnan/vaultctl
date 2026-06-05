@@ -61,7 +61,7 @@ type User struct {
 	Name  string
 
 	KDFParams KDFParams
-	// Salt is the per-user Argon2id salt (public — returned from prelogin).
+	// Salt is the per-user Argon2id salt (public - returned from prelogin).
 	// It lives on the aggregate because prelogin needs it alongside KDFParams.
 	Salt []byte
 
@@ -80,7 +80,7 @@ type User struct {
 	RecoveryWrappedIdentityPrivateKey []byte
 
 	// EncryptedPasswordHint is a server-encrypted (H4/AES-256-GCM) hint that
-	// helps the user remember their master password. Optional — nil means no
+	// helps the user remember their master password. Optional - nil means no
 	// hint was set during registration.
 	EncryptedPasswordHint []byte
 

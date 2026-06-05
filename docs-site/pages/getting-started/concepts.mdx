@@ -25,7 +25,7 @@ Master Password + Salt
         └── HKDF(info="enc")  → Stretched Key → encrypts your private keys locally
 ```
 
-The **auth hash** proves you know the password without revealing it. The **stretched key** encrypts your RSA and Ed25519 private keys — it never leaves your browser.
+The **auth hash** proves you know the password without revealing it. The **stretched key** encrypts your RSA and Ed25519 private keys - it never leaves your browser.
 
 ## Vault Keys
 
@@ -34,7 +34,7 @@ Each vault has its own 256-bit symmetric key:
 - **Personal vaults**: Key wrapped with AES Key Wrap using your stretched key
 - **Shared vaults**: Key wrapped with each member's RSA public key
 
-Removing a member triggers a **rekey** — a new vault key is generated and re-wrapped for remaining members.
+Removing a member triggers a **rekey** - a new vault key is generated and re-wrapped for remaining members.
 
 ## Item Encryption
 
@@ -52,7 +52,7 @@ Both use random 96-bit nonces. The server sees only ciphertext.
 Each user has an Ed25519 identity keypair:
 - **Signs** the RSA public key (proves key ownership)
 - **Signs vault key wraps** during sharing (prevents MITM)
-- Produces a **safety number** — a 60-digit fingerprint for out-of-band verification
+- Produces a **safety number** - a 60-digit fingerprint for out-of-band verification
 
 ## Recovery Kit
 
@@ -64,4 +64,4 @@ At registration, a random recovery key is generated. Your RSA private key is enc
 
 ## Web Worker Key Custody
 
-In the browser, all decrypted keys live in a **Web Worker** — an isolated execution context. Keys never cross to the main thread. The Worker auto-locks after 15 minutes of inactivity, zeroing all key material in memory.
+In the browser, all decrypted keys live in a **Web Worker** - an isolated execution context. Keys never cross to the main thread. The Worker auto-locks after 15 minutes of inactivity, zeroing all key material in memory.

@@ -50,7 +50,7 @@ test.describe.serial("Lock / unlock", () => {
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    // Navigate directly to /lock — the v1 lock is effectively re-login.
+    // Navigate directly to /lock - the v1 lock is effectively re-login.
     await page.goto("/lock");
     await expect(page.getByRole("heading", { name: "Vault Locked" })).toBeVisible();
 

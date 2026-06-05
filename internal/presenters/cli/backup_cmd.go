@@ -69,7 +69,7 @@ func newBackupCmd() *cobra.Command {
 			if cfg.BackupRetentionDays > 0 {
 				pruned, err := pruneOldBackups(output, cfg.BackupRetentionDays, time.Now())
 				if err != nil {
-					// Don't fail the backup run on cleanup errors —
+					// Don't fail the backup run on cleanup errors -
 					// the dump itself is already safe on disk.
 					cmd.PrintErrf("warning: retention cleanup failed: %v\n", err)
 				} else if pruned > 0 {
@@ -150,7 +150,7 @@ func writeTempPgpass(host string, port int, dbname, user, password string) (stri
 
 // writeBackupAuditEntry opens a short-lived pool, writes a single
 // backup.run audit row, and closes. Any failure is logged and swallowed
-// — an audit miss must never fail the backup operation itself.
+// - an audit miss must never fail the backup operation itself.
 func writeBackupAuditEntry(ctx context.Context, cfg *config.Config) {
 	pool, err := postgres.Connect(ctx, cfg)
 	if err != nil {
@@ -177,7 +177,7 @@ func assertKeySeparation(dir string) error {
 	for _, e := range entries {
 		name := e.Name()
 		if strings.HasPrefix(name, ".env") {
-			return fmt.Errorf("refusing to back up: %s contains %q — per M2, server keys MUST NOT live alongside DB backups", dir, name)
+			return fmt.Errorf("refusing to back up: %s contains %q - per M2, server keys MUST NOT live alongside DB backups", dir, name)
 		}
 	}
 	return nil

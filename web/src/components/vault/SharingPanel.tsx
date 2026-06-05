@@ -13,7 +13,7 @@ import { useGetVaults } from "@/api/vaults/vaults";
 import { useAuthStore } from "@/lib/auth-store";
 
 /**
- * SharingPanel — vault member management (M8).
+ * SharingPanel - vault member management (M8).
  *
  * Lists current vault members and allows adding/removing members for
  * shared vaults. Personal vaults show a prompt to convert to shared.
@@ -61,11 +61,11 @@ export function SharingPanel() {
     mutationFn: async () => {
       // The full sharing flow requires fetching the recipient's public key,
       // wrapping the vault key, and signing it. For now, this sends the
-      // request — the server validates the crypto contract.
+      // request - the server validates the crypto contract.
       return postVaultsVaultIdMembers(vaultId, {
         recipientUserId: recipientId,
         role,
-        encryptedVaultKey: "", // placeholder — real implementation requires key wrapping
+        encryptedVaultKey: "", // placeholder - real implementation requires key wrapping
         wrapSignature: "",
       });
     },

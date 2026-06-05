@@ -86,7 +86,7 @@ func TestMember_IsActive_RemoveImmutable(t *testing.T) {
 	now := time.Now()
 	removed := m.Remove(now)
 	if !m.IsActive() {
-		t.Fatalf("original member mutated — should be immutable")
+		t.Fatalf("original member mutated - should be immutable")
 	}
 	if removed.IsActive() {
 		t.Fatalf("removed member should not be active")

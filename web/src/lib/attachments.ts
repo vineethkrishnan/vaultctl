@@ -7,7 +7,7 @@
  * AES-256-GCM under that file key; the file key and the filename are then
  * wrapped under the vault key (via the crypto Worker). The server only ever
  * stores ciphertext plus the wrapped key material, so it never sees plaintext
- * file contents or names — the same zero-knowledge model as item data.
+ * file contents or names - the same zero-knowledge model as item data.
  */
 
 import { aesGcmEncryptToBytes, aesGcmDecryptFromBytes, buf, zero } from "@/shared/crypto";

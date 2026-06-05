@@ -21,7 +21,7 @@ var ErrNotFound = errors.New("domain: not found")
 // exists (duplicate email, duplicate membership row, etc.).
 var ErrConflict = errors.New("domain: conflict")
 
-// ErrForbidden marks an authorization failure — caller is authenticated but
+// ErrForbidden marks an authorization failure - caller is authenticated but
 // lacks the permission to perform the action.
 var ErrForbidden = errors.New("domain: forbidden")
 

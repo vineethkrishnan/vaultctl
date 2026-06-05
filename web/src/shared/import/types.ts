@@ -21,7 +21,7 @@ export type ImportFormat =
   | "keepass-xml";
 
 // ===========================================================================
-// ParsedItem — the common shape produced by every parser
+// ParsedItem - the common shape produced by every parser
 // ===========================================================================
 
 /**
@@ -60,7 +60,7 @@ export const parsedItemArraySchema = z.array(parsedItemSchema);
 export interface Importer {
   id: ImportFormat;
   label: string;
-  /** Value for <input accept="…"> on the file input. */
+  /** Value for <input accept="..."> on the file input. */
   accept: string;
   /** Parse raw file bytes (or text) into ParsedItem[]. */
   parse(input: File | string | Uint8Array): Promise<ParsedItem[]>;

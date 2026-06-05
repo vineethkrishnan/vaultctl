@@ -41,7 +41,7 @@ export type WorkerRequest =
     }
   | {
       // signIdentity: sign arbitrary bytes with the loaded Ed25519 identity
-      // private key. Used by the M9 export envelope flow — the private key
+      // private key. Used by the M9 export envelope flow - the private key
       // never leaves this worker; the main thread receives only the raw
       // signature bytes.
       op: "signIdentity";

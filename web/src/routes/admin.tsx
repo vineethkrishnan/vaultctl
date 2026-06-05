@@ -23,7 +23,7 @@ import {
 import type { OrgMemberResponse, InviteResponse, BackupInfoDTO } from "@/api/model";
 
 /**
- * Admin panel — org management, invite management, backup listing.
+ * Admin panel - org management, invite management, backup listing.
  * Only accessible to admin-role users.
  */
 export function AdminPage() {
@@ -246,7 +246,7 @@ function InvitesSubSection({ orgId }: { orgId: string }) {
                 <span>{inv.email}</span>
                 <span className="rounded-full bg-muted px-2 py-0.5">{inv.role}</span>
                 <span className="text-muted-foreground">
-                  expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "—"}
+                  expires {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "-"}
                 </span>
               </div>
               <button
@@ -331,7 +331,7 @@ function BackupsSection() {
               <span className="font-mono">{b.filename}</span>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <span>{formatBytes(b.size ?? 0)}</span>
-                <span>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "—"}</span>
+                <span>{b.createdAt ? new Date(b.createdAt).toLocaleString() : "-"}</span>
               </div>
             </li>
           ))}

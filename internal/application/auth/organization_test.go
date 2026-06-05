@@ -17,7 +17,7 @@ import (
 )
 
 // ===========================================================================
-// fakeOrgRepo — minimal in-memory OrganizationRepository for M8 C2 tests.
+// fakeOrgRepo - minimal in-memory OrganizationRepository for M8 C2 tests.
 // Single-org scope is intentional: RemoveOrgMember only needs to cascade
 // within one organisation and the fake mirrors that surface area exactly.
 // ===========================================================================
@@ -111,7 +111,7 @@ func (r *fakeOrgRepo) RemoveMember(_ context.Context, orgID organization.ID, use
 }
 
 // ===========================================================================
-// cascadeVaultRepo — enough of VaultRepository to exercise RemoveOrgMember.
+// cascadeVaultRepo - enough of VaultRepository to exercise RemoveOrgMember.
 // It tracks per-user membership + vault metadata so ListForUser and
 // RemoveMember behave realistically.
 // ===========================================================================
@@ -328,7 +328,7 @@ func TestRemoveOrgMember_CascadesAcrossAllSharedVaults(t *testing.T) {
 	if _, ok, _ := vaults.IsActiveMember(ctx, "X", "VP"); !ok {
 		t.Fatalf("X's personal vault membership should NOT have been removed")
 	}
-	// admin still intact on V1/V2 — only the target cascades.
+	// admin still intact on V1/V2 - only the target cascades.
 	if _, ok, _ := vaults.IsActiveMember(ctx, "admin", "V1"); !ok {
 		t.Fatalf("admin should still be a V1 member")
 	}
@@ -343,7 +343,7 @@ func TestRemoveOrgMember_CascadesAcrossAllSharedVaults(t *testing.T) {
 	}
 }
 
-// TestRemoveOrgMember_RefusesSelfRemoval mirrors the vault-level guard —
+// TestRemoveOrgMember_RefusesSelfRemoval mirrors the vault-level guard -
 // no admin can remove themselves; ownership must be transferred first.
 func TestRemoveOrgMember_RefusesSelfRemoval(t *testing.T) {
 	t.Parallel()

@@ -27,7 +27,7 @@ const config: DocsThemeConfig = {
           <a href="https://github.com/vineethkrishnan/vaultctl/releases" target="_blank" rel="noopener" style={{ color: "inherit", textDecoration: "none", opacity: 0.7 }}>Releases</a>
         </div>
         <span style={{ fontSize: 13, opacity: 0.5 }}>
-          {new Date().getFullYear()} © vaultctl — Zero-knowledge password vault
+          {new Date().getFullYear()} © vaultctl - Zero-knowledge password vault
         </span>
       </div>
     ),
@@ -35,13 +35,13 @@ const config: DocsThemeConfig = {
   head: (
     <>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta name="description" content="vaultctl — Zero-knowledge, self-hosted password vault" />
+      <meta name="description" content="vaultctl - Zero-knowledge, self-hosted password vault" />
       <meta name="og:title" content="vaultctl Documentation" />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     </>
   ),
   useNextSeoProps() {
-    return { titleTemplate: "%s — vaultctl docs" };
+    return { titleTemplate: "%s - vaultctl docs" };
   },
   sidebar: {
     defaultMenuCollapseLevel: 1,

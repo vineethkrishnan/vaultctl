@@ -210,7 +210,7 @@ type AdminHandlers struct {
 // @Description Backup requires pg_dump (shell access) and is not suitable for HTTP API. Use the CLI instead.
 // @Tags Admin
 // @Security BearerAuth
-// @Failure 501 {object} ErrorBody "Not implemented — use CLI"
+// @Failure 501 {object} ErrorBody "Not implemented - use CLI"
 // @Router /admin/backup [post]
 func (h *AdminHandlers) HandleBackup(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusNotImplemented, map[string]string{

@@ -9,7 +9,7 @@ interface RecoveryKitDownloadProps {
 }
 
 /**
- * RecoveryKitDownload — offers a printable HTML download and a scannable QR
+ * RecoveryKitDownload - offers a printable HTML download and a scannable QR
  * code of the recovery key. Uses the in-house QR encoder (no external deps).
  */
 export function RecoveryKitDownload({ recoveryKey }: RecoveryKitDownloadProps) {

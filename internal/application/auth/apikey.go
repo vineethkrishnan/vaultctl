@@ -35,7 +35,7 @@ type CreateAPIKeyInput struct {
 	ExpiresIn *time.Duration // nil = never expires
 }
 
-// CreateAPIKeyOutput is returned exactly once — the raw key is never stored.
+// CreateAPIKeyOutput is returned exactly once - the raw key is never stored.
 type CreateAPIKeyOutput struct {
 	KeyID     string
 	Name      string
@@ -196,7 +196,7 @@ func (uc *ValidateAPIKey) Execute(ctx context.Context, in ValidateAPIKeyInput) (
 		return ValidateAPIKeyOutput{}, ErrAPIKeyExpired
 	}
 
-	// Best-effort last_used_at touch — don't fail the request if it errors.
+	// Best-effort last_used_at touch - don't fail the request if it errors.
 	_ = uc.APIKeys.UpdateLastUsed(ctx, key.ID, now)
 
 	return ValidateAPIKeyOutput{

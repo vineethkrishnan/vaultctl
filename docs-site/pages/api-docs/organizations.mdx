@@ -24,7 +24,7 @@ POST /orgs
 |-------|------|----------|-------------|
 | `name` | string | yes | Organization display name |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -66,7 +66,7 @@ List all members of an organization.
 GET /orgs/:orgId/members
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 [
@@ -121,7 +121,7 @@ PUT /orgs/:orgId/members/:userId
 |-------|------|----------|-------------|
 | `role` | string | yes | New role: `owner`, `admin`, or `member` |
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 
@@ -150,7 +150,7 @@ Retrieve a member's public keys for encrypting shared vault keys.
 GET /orgs/:orgId/members/:userId/pubkey
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 {

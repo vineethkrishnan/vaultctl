@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * Reprompt dialog — requires master password re-entry before revealing
+ * Reprompt dialog - requires master password re-entry before revealing
  * secrets on items with reprompt=true.
  *
  * Verification runs in the Web Worker: re-derives stretchedKey from the

@@ -17,7 +17,7 @@ const (
 
 // SymmetricKey is a DOMAIN-LEVEL opaque handle to 32 raw bytes. Callers may
 // hold it as a value, compare it against another, and zero it. It exposes no
-// crypto primitives — that's infrastructure's job.
+// crypto primitives - that's infrastructure's job.
 //
 // SECURITY: the underlying bytes are the secret itself. Do NOT log, do NOT
 // format with %v, do NOT put inside error messages. Use the String() method

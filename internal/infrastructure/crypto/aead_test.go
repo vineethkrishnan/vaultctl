@@ -77,7 +77,7 @@ func TestServerAEAD_TamperDetected(t *testing.T) {
 	aead, _ := NewServerAEAD(randKeyB64(t), "")
 	blob, _ := aead.Encrypt([]byte("secret payload"), nil)
 
-	// Flip one byte in the ciphertext — tag must catch it.
+	// Flip one byte in the ciphertext - tag must catch it.
 	if len(blob.Ciphertext) == 0 {
 		t.Fatalf("no ciphertext to tamper")
 	}
@@ -113,7 +113,7 @@ func TestServerAEAD_DualKeyRotation(t *testing.T) {
 		t.Fatalf("rotation plaintext wrong: %q", pt)
 	}
 
-	// And NEW encryptions use the NEW key — the old-only service cannot
+	// And NEW encryptions use the NEW key - the old-only service cannot
 	// open them.
 	newBlob, _ := postAEAD.Encrypt([]byte("new"), []byte("aad"))
 	if _, err := preAEAD.Decrypt(newBlob, []byte("aad")); !errors.Is(err, ErrDecryptFailed) {

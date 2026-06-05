@@ -4,7 +4,7 @@
  * RSA-OAEP-SHA256-2048 via Web Crypto API.
  *
  * Used for encrypting vault keys in SHARED vaults (alg=0x02).
- * Key format: SPKI (public), PKCS#8 (private) — standard Web Crypto exports.
+ * Key format: SPKI (public), PKCS#8 (private) - standard Web Crypto exports.
  */
 
 import { AlgID, BLOB_VERSION, RSA_MODULUS_LENGTH } from "./algorithm.js";
@@ -76,7 +76,7 @@ export async function importRSAPrivateKey(
  * Encrypt a vault key with an RSA-OAEP public key.
  * Returns an EncryptedBlob with alg=RSA_OAEP_SHA256.
  *
- * RSA-OAEP has no separate nonce or tag — the ciphertext is self-contained.
+ * RSA-OAEP has no separate nonce or tag - the ciphertext is self-contained.
  */
 export async function rsaOaepEncrypt(
   publicKey: CryptoKey,

@@ -276,7 +276,7 @@ func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	// Only audit when an actual session was revoked — a miss is a
+	// Only audit when an actual session was revoked - a miss is a
 	// silent idempotent no-op and not a security-interesting event.
 	if out.SessionID != "" {
 		h.Audit.Logout(r.Context(), string(out.UserID), string(out.SessionID), middleware.ClientIP(r), r.UserAgent())
@@ -639,7 +639,7 @@ func (h *AuthHandlers) HandleRotateRecoveryKey(w http.ResponseWriter, r *http.Re
 
 // auditLoginFailure resolves the user ID for a failed login attempt
 // (via email lookup) and emits the appropriate audit row. Raw emails
-// are NEVER stored — only the resolved user ID, or NULL for unknown
+// are NEVER stored - only the resolved user ID, or NULL for unknown
 // emails. Any error from the user lookup is treated as "unknown email"
 // to avoid leaking enumeration signals into the audit log.
 func (h *AuthHandlers) auditLoginFailure(r *http.Request, email, ip, userAgent string) {

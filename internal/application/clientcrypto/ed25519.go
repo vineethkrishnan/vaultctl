@@ -17,7 +17,7 @@ import (
 type Ed25519KeyPair struct {
 	PublicKey       ed25519.PublicKey  // 32 raw bytes
 	PrivateKeyPKCS8 []byte             // PKCS#8 DER
-	PrivateKey      ed25519.PrivateKey // 64-byte seed||pub expansion — zeroise after use
+	PrivateKey      ed25519.PrivateKey // 64-byte seed||pub expansion - zeroise after use
 }
 
 // GenerateEd25519KeyPair returns a freshly generated identity key pair. The

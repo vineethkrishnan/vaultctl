@@ -26,7 +26,7 @@ POST /api-keys
 | `name` | string | yes | Descriptive name for the key |
 | `expiresIn` | string | no | Duration string (e.g. `30d`, `90d`, `1y`). Omit for no expiry |
 
-### Response — `201 Created`
+### Response - `201 Created`
 
 ```json
 {
@@ -73,7 +73,7 @@ List all API keys for the authenticated user. Raw key values are not returned.
 GET /api-keys
 ```
 
-### Response — `200 OK`
+### Response - `200 OK`
 
 ```json
 [
@@ -114,7 +114,7 @@ Permanently delete an API key. Any requests using this key will immediately fail
 DELETE /api-keys/:id
 ```
 
-### Response — `204 No Content`
+### Response - `204 No Content`
 
 No response body.
 

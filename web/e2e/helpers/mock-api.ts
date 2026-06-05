@@ -4,7 +4,7 @@ import { type Page } from "@playwright/test";
 
 /**
  * Mocks the vaultctl API endpoints for E2E tests.
- * Uses Playwright route interception — no real backend needed.
+ * Uses Playwright route interception - no real backend needed.
  */
 
 // Fake prelogin response with minimal KDF params for fast test derivation
@@ -15,7 +15,7 @@ const PRELOGIN_RESPONSE = {
   parallelism: 1,
 };
 
-// Fake login response — encrypted keys are garbage (we can't decrypt them
+// Fake login response - encrypted keys are garbage (we can't decrypt them
 // without real keygen, but the UI flow still exercises navigation + state)
 const LOGIN_RESPONSE = {
   userId: "test-user-id",

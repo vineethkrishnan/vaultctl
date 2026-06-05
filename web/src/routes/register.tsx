@@ -97,7 +97,7 @@ export function RegisterPage() {
       const encVaultKey = await aesKeyWrap(stretchedKey, vaultKey);
 
       // Build wrap signature: Ed25519(idPriv, vaultId || userId || encVaultKey)
-      // At registration time we don't have IDs yet — server will assign them.
+      // At registration time we don't have IDs yet - server will assign them.
       // We use placeholder bytes; the server-side can re-verify after ID assignment.
       // For v1, the wrap signature at registration uses the serialized encVaultKey blob.
       const encVaultKeyBytes = serializeBlob(encVaultKey);
@@ -131,7 +131,7 @@ export function RegisterPage() {
         identityPublicKey: toBase64(ed25519Kp.publicKey),
       });
 
-      // Register returns {userId, role} only — exchange for tokens before
+      // Register returns {userId, role} only - exchange for tokens before
       // any authenticated call (vault create, etc.).
       const loginRes = await apiPost<LoginResponse>("/api/v1/auth/login", {
         email,
@@ -182,12 +182,12 @@ export function RegisterPage() {
         if (err.error.code === "CONFLICT") {
           setError("An account with this email already exists");
         } else if (err.error.code === "WEAK_MASTER_PASSWORD") {
-          setError("Password is too weak — try a longer passphrase");
+          setError("Password is too weak - try a longer passphrase");
         } else {
           setError(err.error.message);
         }
       } else {
-        setError("Registration failed — check your connection");
+        setError("Registration failed - check your connection");
       }
     }
   }

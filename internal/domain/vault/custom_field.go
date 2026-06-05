@@ -8,7 +8,7 @@ import (
 )
 
 // CustomFieldType enumerates the field shapes a user can define on any item.
-// Values are stored INSIDE the encrypted payload — the server NEVER sees
+// Values are stored INSIDE the encrypted payload - the server NEVER sees
 // them. The domain holds the enum so that import parsers and client UIs
 // share one source of truth.
 type CustomFieldType string
