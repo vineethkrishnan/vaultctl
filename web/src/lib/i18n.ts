@@ -11,6 +11,22 @@ import LanguageDetector from "i18next-browser-languagedetector";
 export const SUPPORTED_LANGUAGES = ["en", "de"] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
+// Every namespace, kept in its own per-page JSON file. They are preloaded at
+// startup rather than suspended on first use: the bundles are tiny, and
+// suspending route components mid-navigation reparents the router and fires
+// queries with undefined params. Add new namespaces here.
+const ALL_NAMESPACES = [
+  "common",
+  "auth",
+  "account",
+  "system",
+  "settings",
+  "security",
+  "vault",
+  "notifications",
+  "admin",
+] as const;
+
 export const LANGUAGE_NAMES: Record<Language, string> = {
   en: "English",
   de: "Deutsch",
@@ -25,14 +41,17 @@ const dynamicBackend: BackendModule = {
     import(`../locales/${language}/${namespace}.json`).then((mod) => mod.default),
 };
 
-void i18n
+// i18nReady resolves once i18next is initialized and every namespace for the
+// active language is loaded. main.tsx awaits it before rendering so the app
+// never suspends for translations.
+export const i18nReady: Promise<unknown> = i18n
   .use(dynamicBackend)
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     fallbackLng: "en",
     supportedLngs: [...SUPPORTED_LANGUAGES],
-    ns: ["common"],
+    ns: [...ALL_NAMESPACES],
     defaultNS: "common",
     load: "languageOnly",
     detection: {
@@ -41,7 +60,7 @@ void i18n
       caches: ["localStorage"],
     },
     interpolation: { escapeValue: false },
-    react: { useSuspense: true },
+    react: { useSuspense: false },
   });
 
 export function changeLanguage(lng: Language): Promise<unknown> {
