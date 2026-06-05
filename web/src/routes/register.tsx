@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useState } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { apiPost, ApiRequestError } from "@/lib/api-client";
 import {
@@ -30,6 +31,7 @@ type Step = "form" | "processing" | "recovery" | "done";
 const DEFAULT_FOLDERS = ["Personal", "Work", "Temporary"];
 
 export function RegisterPage() {
+  const { t } = useTranslation("auth");
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [step, setStep] = useState<Step>("form");
@@ -50,11 +52,11 @@ export function RegisterPage() {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("errors.passwordsMismatch"));
       return;
     }
     if (password.length < 10) {
-      setError("Password must be at least 10 characters");
+      setError(t("errors.passwordTooShort"));
       return;
     }
 
@@ -180,14 +182,14 @@ export function RegisterPage() {
       setStep("form");
       if (err instanceof ApiRequestError) {
         if (err.error.code === "CONFLICT") {
-          setError("An account with this email already exists");
+          setError(t("errors.emailExists"));
         } else if (err.error.code === "WEAK_MASTER_PASSWORD") {
-          setError("Password is too weak - try a longer passphrase");
+          setError(t("errors.weakPassword"));
         } else {
           setError(err.error.message);
         }
       } else {
-        setError("Registration failed - check your connection");
+        setError(t("errors.registrationFailed"));
       }
     }
   }
@@ -196,9 +198,9 @@ export function RegisterPage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="space-y-4 text-center">
-          <div className="text-lg font-medium">Creating your account...</div>
+          <div className="text-lg font-medium">{t("register.processingTitle")}</div>
           <p className="text-sm text-muted-foreground">
-            Generating encryption keys. This may take a few seconds.
+            {t("register.processingSubtitle")}
           </p>
         </div>
       </div>
@@ -210,18 +212,12 @@ export function RegisterPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md space-y-6 p-6">
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold">Recovery Kit</h1>
-            <p className="text-sm text-muted-foreground">
-              Save this recovery key somewhere safe and private. With it you can
-              reset your master password and keep all your vault data. It will
-              not be shown again.
-            </p>
+            <h1 className="text-2xl font-bold">{t("recoveryKit.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("recoveryKit.intro")}</p>
           </div>
 
           <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-            If you lose this key <strong>and</strong> forget your master password,
-            your vault is gone for good. vaultctl is zero-knowledge &mdash; no one,
-            not even an administrator, can recover it. There is no other way back in.
+            <Trans t={t} i18nKey="recoveryKit.warning" components={{ 1: <strong /> }} />
           </div>
 
           <div className="rounded-md border border-border bg-card p-4 font-mono text-sm break-all select-all">
@@ -239,7 +235,7 @@ export function RegisterPage() {
               className="mt-1"
             />
             <label htmlFor="recovery-confirm" className="text-sm">
-              I have safely stored my recovery key
+              {t("recoveryKit.confirm")}
             </label>
           </div>
 
@@ -248,7 +244,7 @@ export function RegisterPage() {
             disabled={!recoveryConfirmed}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            Continue to Login
+            {t("recoveryKit.continue")}
           </button>
         </div>
       </div>
@@ -259,10 +255,8 @@ export function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm space-y-6 p-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Create Account</h1>
-          <p className="text-sm text-muted-foreground">
-            Set up your zero-knowledge vault
-          </p>
+          <h1 className="text-2xl font-bold">{t("register.title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("register.subtitle")}</p>
         </div>
 
         {error && (
@@ -274,7 +268,7 @@ export function RegisterPage() {
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="reg-email" className="text-sm font-medium">
-              Email
+              {t("register.emailLabel")}
             </label>
             <input
               id="reg-email"
@@ -289,7 +283,7 @@ export function RegisterPage() {
 
           <div className="space-y-2">
             <label htmlFor="reg-name" className="text-sm font-medium">
-              Name
+              {t("register.nameLabel")}
             </label>
             <input
               id="reg-name"
@@ -304,7 +298,7 @@ export function RegisterPage() {
 
           <div className="space-y-2">
             <label htmlFor="reg-password" className="text-sm font-medium">
-              Master Password
+              {t("register.masterPassword")}
             </label>
             <input
               id="reg-password"
@@ -320,7 +314,7 @@ export function RegisterPage() {
 
           <div className="space-y-2">
             <label htmlFor="reg-confirm" className="text-sm font-medium">
-              Confirm Password
+              {t("register.confirmPassword")}
             </label>
             <input
               id="reg-confirm"
@@ -338,14 +332,14 @@ export function RegisterPage() {
             disabled={!email || !name || !password || !confirmPassword}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            Create Account
+            {t("register.submit")}
           </button>
         </form>
 
         <div className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("register.haveAccount")}{" "}
           <Link to="/login" className="text-primary underline">
-            Log in
+            {t("register.logIn")}
           </Link>
         </div>
       </div>
