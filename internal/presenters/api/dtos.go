@@ -445,6 +445,17 @@ type VerifyEmailRequest struct {
 	Code string `json:"code"`
 }
 
+// EmailPreferencesResponse reports a user's email-digest preference.
+type EmailPreferencesResponse struct {
+	DigestFrequency string `json:"digestFrequency"`
+}
+
+// UpdateEmailPreferencesRequest sets the digest frequency
+// (off|daily|weekly|monthly|quarterly|yearly).
+type UpdateEmailPreferencesRequest struct {
+	DigestFrequency string `json:"digestFrequency"`
+}
+
 type UpdateProfileRequest struct {
 	Name string `json:"name"`
 }

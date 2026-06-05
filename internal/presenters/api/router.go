@@ -167,6 +167,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Get("/users/me/sessions", deps.User.HandleListSessions)
 			r.Delete("/users/me/sessions/{id}", deps.User.HandleRevokeSession)
 
+			// Email-digest preferences (only when a mailer is wired)
+			if deps.User.Digest != nil {
+				r.Get("/users/me/email-preferences", deps.User.HandleGetEmailPreferences)
+				r.Put("/users/me/email-preferences", deps.User.HandleUpdateEmailPreferences)
+			}
+
 			// Organizations (admin only)
 			r.With(requireAdmin).Post("/orgs", deps.Org.HandleCreateOrg)
 			r.Route("/orgs/{id}", func(r chi.Router) {

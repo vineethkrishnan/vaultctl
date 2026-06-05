@@ -96,6 +96,42 @@ func (s *Service) SendLoginAlert(ctx context.Context, to, reason, deviceLabel, i
 	return s.Mailer.Send(ctx, ports.Email{To: to, Subject: "New sign-in to your vaultctl account", Text: text, HTML: htmlBody})
 }
 
+// SendDigest emails an activity summary for the given period (e.g. "weekly").
+func (s *Service) SendDigest(ctx context.Context, to, period string, a ports.DigestActivity) error {
+	lines := []string{
+		fmt.Sprintf("Sign-ins: %d", a.Logins),
+		fmt.Sprintf("New devices or networks: %d", a.NewDevices),
+		fmt.Sprintf("Items added: %d", a.ItemsAdded),
+	}
+	outro := []string{}
+	if a.StaleLogins > 0 {
+		outro = append(outro, fmt.Sprintf("%d login%s haven't been updated in over a year. Consider rotating those passwords.", a.StaleLogins, plural(a.StaleLogins)))
+	}
+	outro = append(outro, "You can change how often you receive this in vaultctl settings.")
+
+	c := content{
+		heading:  "Your vaultctl " + period + " digest",
+		intro:    append([]string{"Here's what happened on your account:"}, lines...),
+		ctaLabel: "Open vaultctl",
+		ctaURL:   s.BaseURL,
+		outro:    outro,
+	}
+	text, htmlBody := s.render(c)
+	return s.Mailer.Send(ctx, ports.Email{
+		To:      to,
+		Subject: "Your vaultctl " + period + " digest",
+		Text:    text,
+		HTML:    htmlBody,
+	})
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
 func humanizeDuration(d time.Duration) string {
 	if d >= time.Hour && d%time.Hour == 0 {
 		h := int(d / time.Hour)

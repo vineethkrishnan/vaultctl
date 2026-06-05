@@ -77,6 +77,10 @@ func runServer(ctx context.Context, cfg *config.Config, _ string) (http.Handler,
 			return err
 		})
 	}
+	if adapters.digestService != nil {
+		digestSvc := adapters.digestService
+		sched.EnableDigests(digestSvc.RunDue)
+	}
 	if adapters.backupRun != nil {
 		runBackup := adapters.backupRun
 		sched.EnableBackups(adapters.backupDests, func(ctx context.Context, destinationID string) error {

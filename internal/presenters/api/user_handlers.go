@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
+	"github.com/vineethkrishnan/vaultctl/internal/application/digest"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
 	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
@@ -19,8 +20,55 @@ type UserHandlers struct {
 	Users    ports.UserRepository
 	Sessions ports.SessionStore
 
+	// Digest serves email-digest preferences. Nil when no mailer is wired.
+	Digest *digest.Service
+
 	// Audit is the cross-cutting audit-log writer (M13).
 	Audit *audit.Writer
+}
+
+// HandleGetEmailPreferences returns the caller's email-digest preference.
+// @Summary Get email preferences
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} EmailPreferencesResponse
+// @Router /users/me/email-preferences [get]
+func (h *UserHandlers) HandleGetEmailPreferences(w http.ResponseWriter, r *http.Request) {
+	freq, err := h.Digest.Frequency(r.Context(), middleware.CallerID(r.Context()))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq)})
+}
+
+// HandleUpdateEmailPreferences sets the caller's digest frequency.
+// @Summary Update email preferences
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body UpdateEmailPreferencesRequest true "Preference"
+// @Success 200 {object} EmailPreferencesResponse
+// @Failure 400 {object} ErrorBody
+// @Router /users/me/email-preferences [put]
+func (h *UserHandlers) HandleUpdateEmailPreferences(w http.ResponseWriter, r *http.Request) {
+	var req UpdateEmailPreferencesRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	freq := digest.Frequency(req.DigestFrequency)
+	if !freq.Valid() {
+		writeError(w, r, domain.NewInvalid("digestFrequency", "must be off, daily, weekly, monthly, quarterly or yearly"))
+		return
+	}
+	if err := h.Digest.SetFrequency(r.Context(), middleware.CallerID(r.Context()), freq); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq)})
 }
 
 // HandleGetProfile returns the authenticated user's profile.

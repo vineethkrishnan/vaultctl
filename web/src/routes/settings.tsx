@@ -14,6 +14,7 @@ import { BiometricSetting } from "@/components/settings/BiometricSetting";
 import { RecoveryKitSetting } from "@/components/settings/RecoveryKitSetting";
 import { AboutPanel } from "@/components/settings/AboutPanel";
 import { UpdatePanel } from "@/components/settings/UpdatePanel";
+import { EmailDigestSetting } from "@/components/settings/EmailDigestSetting";
 import {
   Settings,
   Shield,
@@ -114,6 +115,8 @@ export function SettingsPage() {
             </div>
           </section>
         )}
+
+        {tab === "profile" && <EmailDigestSetting />}
 
         {tab === "security" && (
           <section className="space-y-4 rounded-lg border border-border p-4">

@@ -15,6 +15,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/application/audit"
 	"github.com/vineethkrishnan/vaultctl/internal/application/auth"
 	appbackup "github.com/vineethkrishnan/vaultctl/internal/application/backup"
+	"github.com/vineethkrishnan/vaultctl/internal/application/digest"
 	"github.com/vineethkrishnan/vaultctl/internal/application/email"
 	"github.com/vineethkrishnan/vaultctl/internal/application/notifications"
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
@@ -36,21 +37,24 @@ import (
 // adapters bundles every concrete adapter so main.go can wire handlers in
 // one shot.
 type adapters struct {
-	pool        *postgres.Pool
-	users       *postgres.UserRepo
-	sess        *postgres.SessionStore
-	vaults      *postgres.VaultRepo
-	items       *postgres.ItemRepo
-	folders     *postgres.FolderRepo
-	apikeys     *postgres.APIKeyRepo
-	invites     *postgres.InviteRepo
-	orgs        *postgres.OrgRepo
-	audit       *postgres.AuditRepo
-	notifState  *postgres.NotificationStateRepo
-	attach      *postgres.AttachmentRepo
-	emailVerif  *postgres.EmailVerificationRepo
-	knownLogins *postgres.KnownLoginRepo
-	blobs       ports.BlobStore // nil when the blob store is unavailable
+	pool           *postgres.Pool
+	users          *postgres.UserRepo
+	sess           *postgres.SessionStore
+	vaults         *postgres.VaultRepo
+	items          *postgres.ItemRepo
+	folders        *postgres.FolderRepo
+	apikeys        *postgres.APIKeyRepo
+	invites        *postgres.InviteRepo
+	orgs           *postgres.OrgRepo
+	audit          *postgres.AuditRepo
+	notifState     *postgres.NotificationStateRepo
+	attach         *postgres.AttachmentRepo
+	emailVerif     *postgres.EmailVerificationRepo
+	knownLogins    *postgres.KnownLoginRepo
+	digestPrefs    *postgres.DigestPrefsRepo
+	digestActivity *postgres.DigestActivityRepo
+	digestService  *digest.Service // set in buildHandlers, read by main for the scheduler
+	blobs          ports.BlobStore // nil when the blob store is unavailable
 
 	backupDests     *postgres.BackupDestinationRepo // nil when backup sync is off
 	backupRuns      *postgres.BackupRunRepo
@@ -114,28 +118,30 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 	}
 
 	a := &adapters{
-		pool:        pool,
-		users:       &postgres.UserRepo{Pool: pool},
-		sess:        &postgres.SessionStore{Pool: pool},
-		vaults:      &postgres.VaultRepo{Pool: pool},
-		items:       &postgres.ItemRepo{Pool: pool},
-		folders:     &postgres.FolderRepo{Pool: pool},
-		apikeys:     &postgres.APIKeyRepo{Pool: pool},
-		invites:     &postgres.InviteRepo{Pool: pool},
-		orgs:        &postgres.OrgRepo{Pool: pool},
-		audit:       &postgres.AuditRepo{Pool: pool},
-		notifState:  &postgres.NotificationStateRepo{Pool: pool},
-		attach:      &postgres.AttachmentRepo{Pool: pool},
-		emailVerif:  &postgres.EmailVerificationRepo{Pool: pool},
-		knownLogins: &postgres.KnownLoginRepo{Pool: pool},
-		hasher:      infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
-		hmac:        hmac,
-		jwt:         jwt,
-		tokens:      infraauth.NewTokenGenerator(),
-		totp:        infraauth.NewTOTPProvider(),
-		aead:        aead,
-		clock:       clock,
-		ids:         uuidGen{},
+		pool:           pool,
+		users:          &postgres.UserRepo{Pool: pool},
+		sess:           &postgres.SessionStore{Pool: pool},
+		vaults:         &postgres.VaultRepo{Pool: pool},
+		items:          &postgres.ItemRepo{Pool: pool},
+		folders:        &postgres.FolderRepo{Pool: pool},
+		apikeys:        &postgres.APIKeyRepo{Pool: pool},
+		invites:        &postgres.InviteRepo{Pool: pool},
+		orgs:           &postgres.OrgRepo{Pool: pool},
+		audit:          &postgres.AuditRepo{Pool: pool},
+		notifState:     &postgres.NotificationStateRepo{Pool: pool},
+		attach:         &postgres.AttachmentRepo{Pool: pool},
+		emailVerif:     &postgres.EmailVerificationRepo{Pool: pool},
+		knownLogins:    &postgres.KnownLoginRepo{Pool: pool},
+		digestPrefs:    &postgres.DigestPrefsRepo{Pool: pool},
+		digestActivity: &postgres.DigestActivityRepo{Pool: pool},
+		hasher:         infraauth.NewArgon2Hasher(infraauth.DefaultServerArgon2Params()),
+		hmac:           hmac,
+		jwt:            jwt,
+		tokens:         infraauth.NewTokenGenerator(),
+		totp:           infraauth.NewTOTPProvider(),
+		aead:           aead,
+		clock:          clock,
+		ids:            uuidGen{},
 		mailer: mailer.New(mailer.Config{
 			Host:     cfg.SMTPHost,
 			Port:     cfg.SMTPPort,
@@ -279,6 +285,12 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 				Known: a.knownLogins, HMAC: a.hmac, Clock: a.clock, Sender: emailComposer,
 			}
 		}
+		a.digestService = &digest.Service{
+			Prefs:    a.digestPrefs,
+			Activity: a.digestActivity,
+			Sender:   emailComposer,
+			Clock:    a.clock,
+		}
 	}
 
 	authHandlers := &api.AuthHandlers{
@@ -337,6 +349,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	userHandlers := &api.UserHandlers{
 		Users:    a.users,
 		Sessions: a.sess,
+		Digest:   a.digestService,
 		Audit:    auditWriter,
 	}
 

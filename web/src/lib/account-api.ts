@@ -5,7 +5,7 @@
 // flows use the raw fetch helpers (like system-api.ts) until the client is
 // regenerated against the updated swagger.
 
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 
 export interface AccountStatus {
   id: string;
@@ -37,3 +37,21 @@ export function graceDaysLeft(createdAt: string, now: Date = new Date()): number
   const elapsedDays = (now.getTime() - created) / 86_400_000;
   return Math.max(0, Math.ceil(VerificationGraceDays - elapsedDays));
 }
+
+export type DigestFrequency =
+  | "off"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly";
+
+export const emailPrefsQueryKey = ["account", "email-preferences"] as const;
+
+export const getEmailPreferences = () =>
+  apiGet<{ digestFrequency: DigestFrequency }>("/api/v1/users/me/email-preferences");
+
+export const setDigestFrequency = (digestFrequency: DigestFrequency) =>
+  apiPut<{ digestFrequency: DigestFrequency }>("/api/v1/users/me/email-preferences", {
+    digestFrequency,
+  });
