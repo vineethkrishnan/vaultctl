@@ -92,11 +92,18 @@ type Config struct {
 	// Update check
 	// ===========================================================================
 	// When enabled, the server periodically queries the GitHub Releases API of
-	// UpdateRepo (one outbound call per cache window, server-side only — clients
-	// never phone home) and exposes the result via GET /api/v1/updates.
+	// UpdateRepo (one outbound call per cache window, server-side only - clients
+	// never phone home) and exposes the result via GET /api/v1/updates. The
+	// scheduler also refreshes this cache on the same interval so a new release
+	// is detected within one window even without client traffic.
 	UpdateCheckEnabled  bool          `env:"VAULTCTL_UPDATE_CHECK_ENABLED" envDefault:"true"`
 	UpdateRepo          string        `env:"VAULTCTL_UPDATE_REPO" envDefault:"vineethkrishnan/vaultctl"`
-	UpdateCheckInterval time.Duration `env:"VAULTCTL_UPDATE_CHECK_INTERVAL" envDefault:"6h"`
+	UpdateCheckInterval time.Duration `env:"VAULTCTL_UPDATE_CHECK_INTERVAL" envDefault:"15m"`
+	// UpdateRolloutDelay withholds the update alert from clients until this long
+	// after a release's publish time (staged rollout). 0 reveals immediately
+	// once detected; e.g. 48h gives a buffer to pull or patch a bad release
+	// before customers are prompted.
+	UpdateRolloutDelay time.Duration `env:"VAULTCTL_UPDATE_ROLLOUT_DELAY" envDefault:"0"`
 
 	// ===========================================================================
 	// Retention

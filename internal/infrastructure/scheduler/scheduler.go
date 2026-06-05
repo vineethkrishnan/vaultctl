@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	trashPurgeSchedule   = "0 3 * * *"    // daily at 3 AM
-	sessionPurgeSchedule = "0 * * * *"    // every hour
-	backupSchedule       = "*/15 * * * *" // every 15 minutes: scan for due backups
-	jobTimeout           = 30 * time.Second
-	backupJobTimeout     = 10 * time.Minute
+	trashPurgeSchedule    = "0 3 * * *"    // daily at 3 AM
+	sessionPurgeSchedule  = "0 * * * *"    // every hour
+	backupSchedule        = "*/15 * * * *" // every 15 minutes: scan for due backups
+	updateRefreshSchedule = "*/15 * * * *" // every 15 minutes: refresh the release cache
+	jobTimeout            = 30 * time.Second
+	backupJobTimeout      = 10 * time.Minute
 )
 
 // Scheduler runs periodic maintenance tasks.
@@ -32,6 +33,17 @@ type Scheduler struct {
 	// closure so the scheduler stays dependent only on ports.
 	backupDests ports.BackupDestinationRepository
 	runBackup   func(ctx context.Context, destinationID string) error
+
+	// Optional release-cache refresh, enabled via EnableUpdateRefresh. A closure
+	// so the scheduler doesn't depend on the updatecheck package.
+	refreshUpdate func(ctx context.Context) error
+}
+
+// EnableUpdateRefresh wires periodic refresh of the update-check cache so a new
+// release is detected within one interval even without client traffic. No-op
+// unless called before Start.
+func (s *Scheduler) EnableUpdateRefresh(refresh func(ctx context.Context) error) {
+	s.refreshUpdate = refresh
 }
 
 // EnableBackups wires the due-backup scan into the scheduler. run executes one
@@ -65,6 +77,12 @@ func (s *Scheduler) Start() {
 		if _, err := s.cron.AddFunc(backupSchedule, s.runDueBackups); err != nil {
 			slog.Error("scheduler.register_backups.failed", slog.String("err", err.Error()))
 		}
+	}
+	if s.refreshUpdate != nil {
+		if _, err := s.cron.AddFunc(updateRefreshSchedule, s.refreshUpdateCheck); err != nil {
+			slog.Error("scheduler.register_update_refresh.failed", slog.String("err", err.Error()))
+		}
+		go s.refreshUpdateCheck() // warm the cache on boot rather than waiting a full interval
 	}
 
 	s.cron.Start()
@@ -111,6 +129,15 @@ func (s *Scheduler) runDueBackups() {
 	}
 	if ran > 0 {
 		slog.Info("scheduler.backups.done", slog.Int("ran", ran))
+	}
+}
+
+func (s *Scheduler) refreshUpdateCheck() {
+	ctx, cancel := context.WithTimeout(context.Background(), jobTimeout)
+	defer cancel()
+
+	if err := s.refreshUpdate(ctx); err != nil {
+		slog.Warn("scheduler.update_refresh.failed", slog.String("err", err.Error()))
 	}
 }
 

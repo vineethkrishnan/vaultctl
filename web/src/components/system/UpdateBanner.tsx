@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowUpCircle, X } from "lucide-react";
 import {
-  getUpdateStatus,
-  getNotifyLevel,
-  severityPassesLevel,
   snoozeUpdate,
-  isUpdateSnoozed,
   getLastSeenVersion,
   setLastSeenVersion,
 } from "@/lib/system-api";
+import { useUpdateNotification } from "@/hooks/use-update-notification";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
 
 function parseable(v?: string): boolean {
@@ -19,12 +15,7 @@ function parseable(v?: string): boolean {
 }
 
 export function UpdateBanner() {
-  const { data } = useQuery({
-    queryKey: ["system", "updates"],
-    queryFn: getUpdateStatus,
-    staleTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  const { status: data, show } = useUpdateNotification();
 
   const [dismissed, setDismissed] = useState(false);
   const [modal, setModal] = useState<"available" | "whatsnew" | null>(null);
@@ -43,12 +34,7 @@ export function UpdateBanner() {
     }
   }, [data]);
 
-  const showBanner =
-    !!data &&
-    data.updateAvailable &&
-    !dismissed &&
-    !isUpdateSnoozed() &&
-    severityPassesLevel(data.severity, getNotifyLevel());
+  const showBanner = show && !dismissed;
 
   return (
     <>
