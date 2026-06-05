@@ -49,6 +49,10 @@ interface CapturedLogin {
   password: string;
   capturedAt: number;
   read: boolean;
+  // How many times the in-page save toast has been re-opened on a fresh page
+  // load after the submit. Bounds re-prompting so a redirect re-shows the toast
+  // without it reappearing on every later navigation.
+  reprompts?: number;
 }
 
 interface IncomingMessage {
@@ -65,6 +69,12 @@ type SendResponse = (response: unknown) => void;
 const AUTO_LOCK_MS = 15 * 60 * 1000;
 const CAPTURE_TTL_MS = 10 * 60 * 1000;
 const CAPTURE_MAX = 10;
+// A submit that redirects tears down the content script before the save toast
+// can be acted on. Within this window after the submit, the next page load
+// re-opens the toast so the user still gets a chance to save on the page they
+// land on; REOPEN_MAX bounds it so it does not nag on later navigation.
+const PROMPT_REOPEN_MS = 60 * 1000;
+const REOPEN_MAX = 2;
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -294,12 +304,18 @@ function getVaultKey(vaultId: string): Uint8Array {
 // Settings (persisted in storage.local; configurable from the popup)
 // ===========================================================================
 
+// Which update severities raise the in-popup "update available" alert. Mirrors
+// the web client's NotifyLevel (vaultctl_update_notify_level). Default "all"
+// means: with no preference set, the update is shown.
+type UpdateNotifyLevel = "all" | "minor" | "major" | "off";
+
 interface ExtSettings {
   autofill: boolean; // fill credentials on page load without a click
   fieldIcon: boolean; // show the inline vaultctl icon inside login fields
   savePrompt: boolean; // offer to save/update after a login submit
   toastMs: number; // auto-dismiss timeout for toasts (ms)
   suggestPassword: boolean; // suggest a strong password on new-password fields
+  updateNotify: UpdateNotifyLevel; // which update severities raise the alert
   genLength: number;
   genLower: boolean;
   genUpper: boolean;
@@ -316,6 +332,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   savePrompt: true,
   toastMs: 8000,
   suggestPassword: true,
+  updateNotify: "all",
   genLength: 20,
   genLower: true,
   genUpper: true,
@@ -919,12 +936,14 @@ export default defineBackground(() => {
               }
               // Don't queue a capture for a credential already stored exactly
               // as-is; only new or changed logins are worth offering to save.
+              let action: "add" | "update" | undefined;
               if (unlocked) {
                 const decision = await decideSave(url, username, password);
                 if (decision.action === "none") {
                   sendResponse({ ok: true, skipped: true });
                   return;
                 }
+                action = decision.action;
               }
               const capture: CapturedLogin = {
                 id: makeCaptureId(),
@@ -939,7 +958,7 @@ export default defineBackground(() => {
                 capturedLogins.shift();
               }
               await showCaptureNotification(capture.url, capture.username);
-              sendResponse({ ok: true, id: capture.id });
+              sendResponse({ ok: true, id: capture.id, action, username });
               return;
             }
 
@@ -958,6 +977,53 @@ export default defineBackground(() => {
                   capturedAt: capture.capturedAt,
                   read: capture.read,
                 })),
+              });
+              return;
+            }
+
+            case "getPendingPrompt": {
+              // Re-open the save toast on the page the user lands on after a
+              // redirect: return the freshest unsaved capture for this host that
+              // is still inside the redirect window and hasn't been exhausted.
+              pruneStaleCaptures();
+              if (!unlocked) {
+                sendResponse({ ok: true });
+                return;
+              }
+              const host = safeHostname(String(message.host ?? ""));
+              const now = Date.now();
+              const candidate = [...capturedLogins]
+                .reverse()
+                .find(
+                  (c) =>
+                    !c.read &&
+                    (c.reprompts ?? 0) < REOPEN_MAX &&
+                    now - c.capturedAt <= PROMPT_REOPEN_MS &&
+                    safeHostname(c.url) === host,
+                );
+              if (!candidate) {
+                sendResponse({ ok: true });
+                return;
+              }
+              const decision = await decideSave(
+                candidate.url,
+                candidate.username,
+                candidate.password,
+              );
+              if (decision.action === "none") {
+                sendResponse({ ok: true });
+                return;
+              }
+              candidate.reprompts = (candidate.reprompts ?? 0) + 1;
+              await persistCaptures();
+              sendResponse({
+                ok: true,
+                prompt: {
+                  id: candidate.id,
+                  action: decision.action,
+                  host,
+                  username: candidate.username,
+                },
               });
               return;
             }
@@ -1196,34 +1262,6 @@ export default defineBackground(() => {
                 String(message.password ?? ""),
               );
               sendResponse({ ok: true, ...decision });
-              return;
-            }
-
-            case "commitSave": {
-              const action = String(message.action ?? "");
-              try {
-                if (action === "add") {
-                  await createLogin(
-                    String(message.host ?? ""),
-                    String(message.username ?? ""),
-                    String(message.password ?? ""),
-                    String(message.uri ?? ""),
-                  );
-                } else if (action === "update") {
-                  await updateLogin(
-                    String(message.vaultId ?? ""),
-                    String(message.itemId ?? ""),
-                    String(message.username ?? ""),
-                    String(message.password ?? ""),
-                  );
-                }
-                sendResponse({ ok: true });
-              } catch (err) {
-                sendResponse({
-                  ok: false,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              }
               return;
             }
 
