@@ -404,6 +404,32 @@ async function getSettings(): Promise<ExtSettings> {
 }
 
 // ===========================================================================
+// Active vault (the default save target + the vault the popup list shows).
+// Persisted in storage.local so the choice survives popup close and worker
+// recycle; falls back to the first unlocked vault when unset or stale.
+// ===========================================================================
+
+const ACTIVE_VAULT_KEY = "vaultctl_active_vault";
+
+function firstVaultId(): string | undefined {
+  return [...vaultKeys.keys()][0];
+}
+
+async function getActiveVaultId(): Promise<string | undefined> {
+  const fallback = firstVaultId();
+  const stored = await browser.storage.local.get(ACTIVE_VAULT_KEY);
+  const saved = stored[ACTIVE_VAULT_KEY] as string | undefined;
+  if (saved && vaultKeys.has(saved)) return saved;
+  return fallback;
+}
+
+async function setActiveVaultId(vaultId: string): Promise<boolean> {
+  if (!vaultKeys.has(vaultId)) return false;
+  await browser.storage.local.set({ [ACTIVE_VAULT_KEY]: vaultId });
+  return true;
+}
+
+// ===========================================================================
 // Authenticated API access + item encryption (mirrors the web client)
 // ===========================================================================
 
@@ -623,8 +649,12 @@ async function createLogin(
   username: string,
   password: string,
   uri: string,
+  targetVaultId?: string,
 ): Promise<void> {
-  const vaultId = [...vaultKeys.keys()][0];
+  const vaultId =
+    targetVaultId && vaultKeys.has(targetVaultId)
+      ? targetVaultId
+      : (await getActiveVaultId());
   if (!vaultId) throw new Error("no vault available");
   const body = {
     itemType: "login",
@@ -856,12 +886,24 @@ export default defineBackground(() => {
               sendResponse({
                 isUnlocked: unlocked,
                 accessToken,
+                activeVaultId: await getActiveVaultId(),
                 vaults: [...vaultMeta.entries()].map(([id, meta]) => ({
                   id,
                   name: meta.name,
                   type: meta.type,
                 })),
               });
+              return;
+            }
+
+            case "getActiveVault": {
+              sendResponse({ ok: true, vaultId: await getActiveVaultId() });
+              return;
+            }
+
+            case "setActiveVault": {
+              const ok = await setActiveVaultId(String(message.vaultId ?? ""));
+              sendResponse({ ok, vaultId: await getActiveVaultId() });
               return;
             }
 
@@ -1083,11 +1125,16 @@ export default defineBackground(() => {
                   capture.password,
                 );
                 if (decision.action === "add") {
+                  const targetVaultId =
+                    typeof message.vaultId === "string"
+                      ? message.vaultId
+                      : undefined;
                   await createLogin(
                     safeHostname(capture.url),
                     capture.username,
                     capture.password,
                     capture.url,
+                    targetVaultId,
                   );
                 } else if (decision.action === "update") {
                   await updateLogin(
@@ -1204,6 +1251,7 @@ export default defineBackground(() => {
                   itemId: m.itemId,
                   name: m.name,
                   username: m.username,
+                  vaultName: vaultMeta.get(m.vaultId)?.name ?? "",
                   passwordLength: MASK_DOT_COUNT,
                 })),
               });

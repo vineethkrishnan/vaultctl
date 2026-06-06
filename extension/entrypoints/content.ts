@@ -20,6 +20,7 @@ interface CredMatch {
   itemId: string;
   name: string;
   username: string;
+  vaultName?: string;
   passwordLength?: number;
 }
 interface ExtSettings {
@@ -353,6 +354,10 @@ export default defineContentScript({
       // every row (same-origin lookup - no third-party favicon service, which
       // would leak the visited host).
       const faviconUrl = pageFaviconUrl();
+      // Only label rows with their vault when the matches span more than one
+      // vault, so the user can tell which vault each credential lives in.
+      const showVaultName =
+        new Set(matches.map((m) => m.vaultId)).size > 1;
       for (const m of matches) {
         const row = document.createElement("button");
         row.type = "button";
@@ -386,6 +391,14 @@ export default defineContentScript({
           "font-size:12px;letter-spacing:1px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:clip;";
         text.append(primary, secondary);
         row.append(icon, text);
+
+        if (showVaultName && m.vaultName) {
+          const badge = document.createElement("span");
+          badge.textContent = m.vaultName;
+          badge.style.cssText =
+            "flex:none;margin-left:auto;padding:2px 7px;border-radius:999px;background:#1f1f23;color:#a1a1aa;font-size:11px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          row.appendChild(badge);
+        }
 
         row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
         row.addEventListener(

@@ -52,8 +52,11 @@
     "copyPassword": "Passwort kopieren",
     "openSite": "Website öffnen",
     "noVaults": "Auf diesem Konto gibt es noch keine Tresore - erstellen Sie einen im Web-Tresor.",
+    "switchVault": "Tresor wechseln",
+    "sharedOption": "{{name}} (geteilt)",
     "errors": {
-      "decryptPassword": "Passwort konnte nicht entschlüsselt werden"
+      "decryptPassword": "Passwort konnte nicht entschlüsselt werden",
+      "switchFailed": "Dieser Tresor konnte nicht geladen werden"
     }
   },
   "status": {
@@ -104,6 +107,7 @@
     "savePrompt": "Zugangsdaten für {{host}} speichern?",
     "noUsername": "(kein Benutzername)",
     "captureMeta": "{{username}} ({{age}})",
+    "saveTo": "Speichern in",
     "saveError": "Diese Zugangsdaten konnten nicht im Tresor gespeichert werden"
   },
   "update": {
