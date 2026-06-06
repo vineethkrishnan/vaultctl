@@ -35,6 +35,7 @@ export function ImportDialog() {
   const [format, setFormat] = useState<ImportFormat>(DEFAULT_FORMAT);
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
   const [importing, setImporting] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +78,7 @@ export function ImportDialog() {
     mutationFn: async () => {
       let success = 0;
       let failed = 0;
+      setImportedCount(0);
 
       for (const item of parsedItems) {
         try {
@@ -96,6 +98,7 @@ export function ImportDialog() {
         } catch {
           failed++;
         }
+        setImportedCount((done) => done + 1);
       }
       return { success, failed };
     },
@@ -228,7 +231,10 @@ export function ImportDialog() {
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {importing
-                ? t("vault:import.importingProgress", { count: importMutation.variables ?? 0 })
+                ? t("vault:import.importingProgress", {
+                    done: importedCount,
+                    total: parsedItems.length,
+                  })
                 : t("vault:import.importAll")}
             </button>
             <button
@@ -244,7 +250,7 @@ export function ImportDialog() {
       {result && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
-            <Check className="h-4 w-4 text-green-500" />
+            <Check className="h-4 w-4 text-success" />
             <span>
               <Trans
                 t={t}

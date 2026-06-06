@@ -26,6 +26,7 @@ export function Field({
 }: FieldProps) {
   const { t } = useTranslation(["vault", "common"]);
   const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { copy } = useClipboard();
   const isSecret = type === "password";
   const inputId = useId();
@@ -64,6 +65,8 @@ export function Field({
           <button
             type="button"
             onClick={() => setRevealed(!revealed)}
+            aria-pressed={revealed}
+            aria-label={revealed ? t("vault:fields.hide") : t("vault:fields.reveal")}
             className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
             title={revealed ? t("vault:fields.hide") : t("vault:fields.reveal")}
           >
@@ -77,7 +80,13 @@ export function Field({
         {copyable && value && (
           <button
             type="button"
-            onClick={() => copy(value)}
+            onClick={() => {
+              void copy(value).then(() => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1800);
+              });
+            }}
+            aria-label={copied ? t("vault:fields.copied") : t("vault:fields.copy")}
             className="shrink-0 rounded-md border border-input p-2 text-muted-foreground hover:text-foreground"
             title={t("vault:fields.copy")}
           >
@@ -85,6 +94,9 @@ export function Field({
           </button>
         )}
       </div>
+      <span className="sr-only" role="status" aria-live="polite">
+        {copied ? t("vault:fields.copied") : ""}
+      </span>
     </div>
   );
 }

@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth-store";
+import {
+  LOCK_TIMEOUT_STORAGE_KEY,
+  LOCK_TIMEOUT_CHANGED_EVENT,
+} from "@/hooks/use-auto-lock";
 import { SafetyNumber } from "@/components/vault/SafetyNumber";
 import { TOTPSetup } from "@/components/auth/TOTPSetup";
 import { PasswordChangeForm } from "@/components/auth/PasswordChangeForm";
@@ -30,22 +34,22 @@ import {
 } from "lucide-react";
 
 const LOCK_OPTIONS = [
-  { label: "1 minute", value: 60_000 },
-  { label: "5 minutes", value: 300_000 },
-  { label: "15 minutes", value: 900_000 },
-  { label: "30 minutes", value: 1_800_000 },
-  { label: "1 hour", value: 3_600_000 },
-  { label: "Never", value: 0 },
+  { labelKey: "lockOptions.min1", value: 60_000 },
+  { labelKey: "lockOptions.min5", value: 300_000 },
+  { labelKey: "lockOptions.min15", value: 900_000 },
+  { labelKey: "lockOptions.min30", value: 1_800_000 },
+  { labelKey: "lockOptions.hour1", value: 3_600_000 },
+  { labelKey: "lockOptions.never", value: 0 },
 ];
 
 type TabId = "profile" | "security" | "sessions" | "data" | "about";
 
-const TABS: { id: TabId; label: string; icon: typeof User }[] = [
-  { id: "profile", label: "Profile", icon: User },
-  { id: "security", label: "Security", icon: Shield },
-  { id: "sessions", label: "Sessions", icon: Monitor },
-  { id: "data", label: "Data", icon: Database },
-  { id: "about", label: "About", icon: Info },
+const TABS: { id: TabId; labelKey: string; icon: typeof User }[] = [
+  { id: "profile", labelKey: "tabs.profile", icon: User },
+  { id: "security", labelKey: "tabs.security", icon: Shield },
+  { id: "sessions", labelKey: "tabs.sessions", icon: Monitor },
+  { id: "data", labelKey: "tabs.data", icon: Database },
+  { id: "about", labelKey: "tabs.about", icon: Info },
 ];
 
 export function SettingsPage() {
@@ -56,7 +60,7 @@ export function SettingsPage() {
   const [tab, setTab] = useState<TabId>("profile");
 
   const [lockTimeout, setLockTimeout] = useState(() => {
-    const stored = localStorage.getItem("vaultctl_lock_timeout");
+    const stored = localStorage.getItem(LOCK_TIMEOUT_STORAGE_KEY);
     return stored ? Number(stored) : 900_000;
   });
 
@@ -67,7 +71,9 @@ export function SettingsPage() {
 
   function handleLockTimeoutChange(value: number) {
     setLockTimeout(value);
-    localStorage.setItem("vaultctl_lock_timeout", String(value));
+    localStorage.setItem(LOCK_TIMEOUT_STORAGE_KEY, String(value));
+    // Let the live auto-lock hook pick up the new value without a reload.
+    window.dispatchEvent(new Event(LOCK_TIMEOUT_CHANGED_EVENT));
   }
 
   return (
@@ -79,13 +85,13 @@ export function SettingsPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 overflow-x-auto border-b border-border">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
+        {TABS.map((tabDef) => {
+          const Icon = tabDef.icon;
+          const active = tab === tabDef.id;
           return (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tabDef.id}
+              onClick={() => setTab(tabDef.id)}
               className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
                 active
                   ? "border-brand text-foreground"
@@ -93,7 +99,7 @@ export function SettingsPage() {
               }`}
             >
               <Icon className="h-4 w-4" />
-              {t.label}
+              {t(tabDef.labelKey)}
             </button>
           );
         })}
@@ -102,17 +108,13 @@ export function SettingsPage() {
       <div key={tab} className="animate-fade-up space-y-6">
         {tab === "profile" && (
           <section className="space-y-3 rounded-lg border border-border p-4">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-semibold">Profile</h2>
-            </div>
             <div className="space-y-1 text-sm">
               <div>
-                <span className="text-muted-foreground">User ID: </span>
+                <span className="text-muted-foreground">{t("profile.userId")} </span>
                 <span className="font-mono">{userId}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Email: </span>
+                <span className="text-muted-foreground">{t("profile.email")} </span>
                 <span>{sessionStorage.getItem("vaultctl_email") ?? "-"}</span>
               </div>
             </div>
@@ -126,14 +128,14 @@ export function SettingsPage() {
           <section className="space-y-4 rounded-lg border border-border p-4">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />
-              <h2 className="font-semibold">Security</h2>
+              <h2 className="font-semibold">{t("security.heading")}</h2>
             </div>
 
             {/* Auto-lock */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                <label className="text-sm font-medium">Auto-lock timeout</label>
+                <label className="text-sm font-medium">{t("security.autoLockTimeout")}</label>
               </div>
               <select
                 value={lockTimeout}
@@ -142,7 +144,7 @@ export function SettingsPage() {
               >
                 {LOCK_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </option>
                 ))}
               </select>
@@ -153,11 +155,11 @@ export function SettingsPage() {
               <div className="flex items-center gap-2">
                 <Key className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-sm font-medium">
-                  Two-Factor Authentication
+                  {t("security.twoFactor")}
                 </span>
                 {totpEnabled && (
-                  <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
-                    <Check className="h-3 w-3" /> Enabled
+                  <span className="flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
+                    <Check className="h-3 w-3" /> {t("security.twoFactorEnabled")}
                   </span>
                 )}
               </div>
@@ -175,7 +177,9 @@ export function SettingsPage() {
                   disabled={totpEnabled}
                   className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
-                  {totpEnabled ? "2FA is enabled" : "Enable 2FA"}
+                  {totpEnabled
+                    ? t("security.twoFactorIsEnabled")
+                    : t("security.enable2fa")}
                 </button>
               )}
             </div>
@@ -195,11 +199,11 @@ export function SettingsPage() {
                     onClick={() => setShowPasswordChange(true)}
                     className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
                   >
-                    Change Master Password
+                    {t("security.changeMasterPassword")}
                   </button>
                   {passwordChanged && (
-                    <span className="ml-2 text-sm text-green-500">
-                      Password changed
+                    <span className="ml-2 text-sm text-success">
+                      {t("security.passwordChanged")}
                     </span>
                   )}
                 </div>
@@ -250,7 +254,7 @@ export function SettingsPage() {
             <section className="rounded-lg border border-border p-4">
               <div className="flex items-center gap-2">
                 <Info className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">Updates</h2>
+                <h2 className="font-semibold">{t("updates.heading")}</h2>
               </div>
               <UpdatePanel />
             </section>

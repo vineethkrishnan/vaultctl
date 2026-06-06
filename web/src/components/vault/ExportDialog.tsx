@@ -116,7 +116,7 @@ export function ExportDialog() {
       )}
 
       {done && (
-        <div className="flex items-center gap-2 text-sm text-green-500">
+        <div className="flex items-center gap-2 text-sm text-success">
           <Check className="h-4 w-4" />
           <span>
             <Trans

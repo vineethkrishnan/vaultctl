@@ -1,5 +1,38 @@
 {
   "title": "Einstellungen",
+  "tabs": {
+    "profile": "Profil",
+    "security": "Sicherheit",
+    "sessions": "Sitzungen",
+    "data": "Daten",
+    "about": "Über"
+  },
+  "profile": {
+    "heading": "Profil",
+    "userId": "Benutzer-ID:",
+    "email": "E-Mail:"
+  },
+  "security": {
+    "heading": "Sicherheit",
+    "autoLockTimeout": "Zeitlimit für automatische Sperre",
+    "twoFactor": "Zwei-Faktor-Authentifizierung",
+    "twoFactorEnabled": "Aktiviert",
+    "enable2fa": "2FA aktivieren",
+    "twoFactorIsEnabled": "2FA ist aktiviert",
+    "changeMasterPassword": "Master-Passwort ändern",
+    "passwordChanged": "Passwort geändert"
+  },
+  "lockOptions": {
+    "min1": "1 Minute",
+    "min5": "5 Minuten",
+    "min15": "15 Minuten",
+    "min30": "30 Minuten",
+    "hour1": "1 Stunde",
+    "never": "Nie"
+  },
+  "updates": {
+    "heading": "Updates"
+  },
   "language": {
     "title": "Sprache",
     "description": "Wählen Sie die Sprache für die vaultctl-Oberfläche.",
@@ -45,6 +78,10 @@
     "backUpNow": "Jetzt sichern",
     "edit": "Bearbeiten",
     "deleteDestination": "Ziel löschen",
+    "deleteConfirm": {
+      "title": "Ziel löschen",
+      "message": "Das Sicherungsziel \"{{label}}\" löschen? An diesem Ziel gespeicherte Sicherungen werden nicht entfernt, aber es werden hier keine weiteren Sicherungen ausgeführt."
+    },
     "localWarning": "Eine lokale Kopie liegt auf der Festplatte des Servers. Ein Festplattenausfall führt zum Verlust - kombinieren Sie es mit einem externen Ziel für echte Dauerhaftigkeit.",
     "backupsAndRestore": "Sicherungen & Wiederherstellung",
     "restoreFailed": "Wiederherstellung fehlgeschlagen",

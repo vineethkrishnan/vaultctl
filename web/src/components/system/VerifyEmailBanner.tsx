@@ -159,7 +159,7 @@ function VerifyEmailDialog({
           </div>
         )}
         {resent && !error && (
-          <div className="mb-3 rounded-lg bg-emerald-500/10 p-2.5 text-xs text-emerald-600">
+          <div className="mb-3 rounded-lg bg-success/10 p-2.5 text-xs text-success">
             {t("verify.resent")}
           </div>
         )}

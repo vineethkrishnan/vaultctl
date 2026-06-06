@@ -42,7 +42,7 @@ export function UpdatePanel() {
             {data?.updateAvailable ? (
               <ArrowUpCircle className="h-3.5 w-3.5 text-brand" />
             ) : (
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
             )}
             {t("update.title")}
           </span>

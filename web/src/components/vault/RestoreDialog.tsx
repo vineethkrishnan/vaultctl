@@ -176,7 +176,7 @@ export function RestoreDialog() {
       {verified && !result && (
         <div className="space-y-3">
           <div className="rounded-md border border-border p-3 text-sm">
-            <div className="flex items-center gap-2 text-green-500">
+            <div className="flex items-center gap-2 text-success">
               <Check className="h-4 w-4" />
               <span className="font-medium">{t("vault:restore.signatureVerified")}</span>
             </div>
@@ -215,7 +215,7 @@ export function RestoreDialog() {
           {Object.entries(result.restoredByVault).map(([vaultId, count]) => (
             <div
               key={vaultId}
-              className="flex items-center gap-2 text-sm text-green-500"
+              className="flex items-center gap-2 text-sm text-success"
             >
               <Check className="h-4 w-4" />
               <span>

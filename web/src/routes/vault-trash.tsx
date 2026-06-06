@@ -110,7 +110,7 @@ export function VaultTrashPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 text-xl font-bold">Trash</h1>
+      <h1 className="mb-4 text-xl font-bold">{t("vault:trash.title")}</h1>
 
       {purgeError && (
         <div className="mb-3 flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">

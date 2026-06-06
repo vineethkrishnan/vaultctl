@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { Bell, Sun, Moon, Lock } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
@@ -13,6 +14,7 @@ import { useUpdateNotification } from "@/hooks/use-update-notification";
 // theme toggle, and lock. Shared by the desktop sidebar footer and the mobile
 // top bar, so these stay immediately reachable everywhere.
 export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useTranslation("common");
   const { theme, toggleTheme } = useTheme();
   const { data: notifications } = useQuery({
     queryKey: ["system", "notifications"],
@@ -37,7 +39,11 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
         to="/notifications"
         onClick={onNavigate}
         className={btn}
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={
+          unread > 0
+            ? t("chrome.notificationsUnread", { count: unread })
+            : t("chrome.notifications")
+        }
       >
         <Bell className="h-5 w-5" />
         {unread > 0 && (
@@ -46,10 +52,10 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
           </span>
         )}
       </Link>
-      <button onClick={toggleTheme} className={btn} aria-label="Toggle theme">
+      <button onClick={toggleTheme} className={btn} aria-label={t("chrome.toggleTheme")}>
         {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </button>
-      <button onClick={lockVault} className={btn} aria-label="Lock vault">
+      <button onClick={lockVault} className={btn} aria-label={t("chrome.lockVault")}>
         <Lock className="h-5 w-5" />
       </button>
     </div>

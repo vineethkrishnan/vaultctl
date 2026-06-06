@@ -45,6 +45,10 @@ export function ItemEditor({ vaultId, itemId }: Props) {
   const [decrypted, setDecrypted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [repromptPending, setRepromptPending] = useState(false);
+  // When the name can't be decrypted, the field is locked to an error message:
+  // editing + saving would re-encrypt the placeholder and clobber the real name.
+  const [nameDecryptFailed, setNameDecryptFailed] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
 
   // Decrypt item on load - gate on reprompt
   useEffect(() => {
@@ -60,7 +64,10 @@ export function ItemEditor({ vaultId, itemId }: Props) {
           setFavorite(item!.favorite);
         }
       } catch {
-        if (!cancelled) setName(t("vault:editor.decryptionFailed"));
+        if (!cancelled) {
+          setName(t("vault:editor.decryptionFailed"));
+          setNameDecryptFailed(true);
+        }
       }
 
       // If reprompt, wait for password confirmation before decrypting data
@@ -126,8 +133,21 @@ export function ItemEditor({ vaultId, itemId }: Props) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.items.detail(vaultId, itemId),
       });
+      setShowSaved(true);
     },
   });
+
+  // Time-box the "Saved" confirmation and clear it the moment the user edits
+  // again, so a stale "Saved" never lingers next to unsaved changes.
+  useEffect(() => {
+    if (!showSaved) return;
+    const handle = window.setTimeout(() => setShowSaved(false), 2500);
+    return () => window.clearTimeout(handle);
+  }, [showSaved]);
+
+  useEffect(() => {
+    setShowSaved(false);
+  }, [name, itemData]);
 
   const trashMutation = useMutation({
     mutationFn: () =>
@@ -181,11 +201,19 @@ export function ItemEditor({ vaultId, itemId }: Props) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-transparent text-xl font-bold outline-none placeholder:text-muted-foreground"
+            readOnly={nameDecryptFailed}
+            aria-invalid={nameDecryptFailed}
+            className={`w-full bg-transparent text-xl font-bold outline-none placeholder:text-muted-foreground ${
+              nameDecryptFailed ? "text-destructive" : ""
+            }`}
             placeholder={t("vault:editor.namePlaceholder")}
           />
           <span className="text-xs text-muted-foreground">
-            {item?.itemType ? t(`vault:itemTypes.${item.itemType}`) : ""}
+            {nameDecryptFailed
+              ? t("vault:editor.decryptErrorHint")
+              : item?.itemType
+                ? t(`vault:itemTypes.${item.itemType}`)
+                : ""}
           </span>
         </div>
         <button
@@ -223,13 +251,18 @@ export function ItemEditor({ vaultId, itemId }: Props) {
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || nameDecryptFailed}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {saving ? t("vault:editor.saving") : t("common:actions.save")}
         </button>
-        {updateMutation.isSuccess && (
-          <span className="self-center text-sm text-muted-foreground">
+        {nameDecryptFailed && (
+          <span className="self-center text-sm text-destructive">
+            {t("vault:editor.saveDisabledDecryptFailed")}
+          </span>
+        )}
+        {showSaved && (
+          <span className="self-center text-sm text-success">
             {t("vault:editor.saved")}
           </span>
         )}

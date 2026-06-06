@@ -7,6 +7,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { decryptName, encryptName } from "@/lib/key-holder";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import type { FolderResponse } from "@/shared/types/api";
 import { FolderClosed, Plus, Pencil, Trash2, Check, X } from "lucide-react";
 
@@ -45,6 +46,7 @@ export function FolderList() {
   const [editName, setEditName] = useState("");
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<DecryptedFolder | null>(null);
 
   useEffect(() => {
     if (!folders) return;
@@ -233,11 +235,7 @@ export function FolderList() {
                 <Pencil className="h-3 w-3" />
               </button>
               <button
-                onClick={() => {
-                  if (confirm(t("vault:folders.deleteConfirm", { name: f.decryptedName }))) {
-                    deleteMutation.mutate(f.id);
-                  }
-                }}
+                onClick={() => setPendingDelete(f)}
                 className="rounded p-0.5 text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="h-3 w-3" />
@@ -246,6 +244,25 @@ export function FolderList() {
           )}
         </div>
       ))}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={t("vault:folders.deleteConfirmTitle")}
+        message={
+          pendingDelete
+            ? t("vault:folders.deleteConfirm", { name: pendingDelete.decryptedName })
+            : ""
+        }
+        confirmLabel={t("common:actions.delete")}
+        destructive
+        busy={deleteMutation.isPending}
+        onConfirm={() => {
+          const target = pendingDelete;
+          setPendingDelete(null);
+          if (target) deleteMutation.mutate(target.id);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

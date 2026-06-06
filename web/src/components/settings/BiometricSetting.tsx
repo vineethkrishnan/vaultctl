@@ -107,7 +107,7 @@ export function BiometricSetting() {
             <Fingerprint className="h-3.5 w-3.5 text-brand" />
             {t("biometric.title")}
             {enrolled && (
-              <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs text-green-500">
+              <span className="flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
                 <Check className="h-3 w-3" /> {t("biometric.enabled")}
               </span>
             )}

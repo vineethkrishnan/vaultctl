@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Settings, LogOut, ChevronUp } from "lucide-react";
@@ -41,8 +42,11 @@ interface Props {
 }
 
 export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstItemRef = useRef<HTMLAnchorElement>(null);
 
   const { data } = useQuery({
     queryKey: ["users", "me"],
@@ -51,7 +55,7 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
   });
   const email = data?.email || sessionStorage.getItem("vaultctl_email") || "";
   const name = data?.name || "";
-  const display = name || email || "Account";
+  const display = name || email || t("profileMenu.account");
   const seed = email || name || "vaultctl";
 
   useEffect(() => {
@@ -59,8 +63,22 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    firstItemRef.current?.focus();
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
+
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) triggerRef.current?.focus();
+    wasOpen.current = open;
   }, [open]);
 
   async function handleLogout() {
@@ -78,9 +96,10 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         className={`flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left hover:bg-accent/60 ${compact ? "justify-center" : ""}`}
-        aria-label="Account menu"
+        aria-label={t("profileMenu.accountMenu")}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -108,6 +127,7 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
           } ${compact ? "" : "left-0"}`}
         >
           <Link
+            ref={firstItemRef}
             to="/settings"
             role="menuitem"
             onClick={() => {
@@ -117,7 +137,7 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
             className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           >
             <Settings className="h-4 w-4" />
-            Settings
+            {t("profileMenu.settings")}
           </Link>
           <button
             role="menuitem"
@@ -125,7 +145,7 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
             className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
-            Log Out
+            {t("profileMenu.logOut")}
           </button>
         </div>
       )}

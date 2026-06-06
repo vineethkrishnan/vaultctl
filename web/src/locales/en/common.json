@@ -11,5 +11,19 @@
     "working": "Working..."
   },
   "loading": "Loading...",
-  "language": "Language"
+  "language": "Language",
+  "chrome": {
+    "skipToContent": "Skip to content",
+    "openMenu": "Open menu",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications, {{count}} unread",
+    "toggleTheme": "Toggle theme",
+    "lockVault": "Lock vault"
+  },
+  "profileMenu": {
+    "account": "Account",
+    "accountMenu": "Account menu",
+    "settings": "Settings",
+    "logOut": "Log Out"
+  }
 }

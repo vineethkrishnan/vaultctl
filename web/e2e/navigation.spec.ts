@@ -8,20 +8,19 @@ test.describe("Navigation and routing", () => {
     await mockApi(page);
   });
 
-  test("lock page renders password input and logout option", async ({
+  test("lock page shows the session-locked screen with a sign-in action", async ({
     page,
   }) => {
     await page.goto("/lock");
     await expect(
-      page.getByRole("heading", { name: "Vault Locked" }),
+      page.getByRole("heading", { name: "Session Locked" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Master Password")).toBeVisible();
-    await expect(page.getByText("Log out instead")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in again" })).toBeVisible();
   });
 
-  test("lock page logout redirects to login", async ({ page }) => {
+  test("lock page sign-in-again redirects to login", async ({ page }) => {
     await page.goto("/lock");
-    await page.getByText("Log out instead").click();
+    await page.getByRole("button", { name: "Sign in again" }).click();
     await expect(page).toHaveURL(/\/login/);
   });
 

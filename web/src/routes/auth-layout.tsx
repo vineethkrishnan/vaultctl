@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
 import { VaultSidebar } from "@/components/vault/VaultSidebar";
@@ -12,9 +13,10 @@ import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useCryptoWorker } from "@/hooks/use-crypto-worker";
 
 export function AuthLayout() {
+  const { t } = useTranslation("common");
   // Wire Worker locked event → auth store
   useCryptoWorker();
-  // Auto-lock on inactivity (15 min default)
+  // Auto-lock on inactivity (timeout read from the user's settings).
   useAutoLock();
 
   // Re-key the content on navigation so each view eases in.
@@ -32,7 +34,7 @@ export function AuthLayout() {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
-        Skip to content
+        {t("chrome.skipToContent")}
       </a>
 
       {/* Mobile drawer backdrop */}
@@ -52,7 +54,7 @@ export function AuthLayout() {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            aria-label="Open menu"
+            aria-label={t("chrome.openMenu")}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           >
             <Menu className="h-5 w-5" />
