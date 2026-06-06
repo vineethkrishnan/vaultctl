@@ -9,12 +9,15 @@ import { apiGet } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { decryptData, decryptName } from "@/lib/key-holder";
 import { sha256 } from "@/shared/crypto";
+import { useServerFeatures } from "@/hooks/use-server-features";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   analyzeHealth,
   type HealthInput,
   type HealthItemRef,
   type HealthReport,
 } from "@/shared/health/analyze";
+import { breachCountForPassword } from "@/shared/health/hibp";
 import type { ItemResponse, VaultResponse } from "@/shared/types/api";
 import {
   ShieldCheck,
@@ -24,7 +27,18 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  Globe,
 } from "lucide-react";
+
+interface BreachHit extends HealthItemRef {
+  count: number;
+}
+
+type BreachState =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "done"; hits: BreachHit[]; checked: number }
+  | { status: "error" };
 
 const decoder = new TextDecoder();
 
@@ -75,6 +89,7 @@ async function collectLoginItems(
 
 export function HealthPage() {
   const { t } = useTranslation(["health", "common"]);
+  const features = useServerFeatures();
 
   const { data: vaults } = useQuery({
     queryKey: queryKeys.vaults.list(),
@@ -83,6 +98,7 @@ export function HealthPage() {
 
   const [report, setReport] = useState<HealthReport | null>(null);
   const [scanning, setScanning] = useState(true);
+  const [loginItems, setLoginItems] = useState<HealthInput[]>([]);
 
   useEffect(() => {
     if (!vaults) return;
@@ -106,6 +122,7 @@ export function HealthPage() {
       );
       if (!cancelled) {
         setReport(next);
+        setLoginItems(items);
         setScanning(false);
       }
     }
@@ -212,10 +229,141 @@ export function HealthPage() {
             </div>
           )}
 
+          {features.hibp && <BreachCheck items={loginItems} />}
+
           <p className="text-xs text-muted-foreground">{t("health:privacyNote")}</p>
         </>
       )}
     </div>
+  );
+}
+
+function BreachCheck({ items }: { items: HealthInput[] }) {
+  const { t } = useTranslation(["health", "common"]);
+  const [state, setState] = useState<BreachState>({ status: "idle" });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const withPassword = useMemo(
+    () => items.filter((item) => item.password),
+    [items],
+  );
+
+  async function runCheck() {
+    setConfirmOpen(false);
+    setState({ status: "checking" });
+
+    // One range request per distinct password keeps the outbound calls minimal
+    // and avoids re-querying reused passwords.
+    const countByPassword = new Map<string, number>();
+    try {
+      for (const password of new Set(withPassword.map((item) => item.password))) {
+        countByPassword.set(password, await breachCountForPassword(password));
+      }
+    } catch {
+      setState({ status: "error" });
+      return;
+    }
+
+    const hits: BreachHit[] = [];
+    for (const item of withPassword) {
+      const count = countByPassword.get(item.password) ?? 0;
+      if (count > 0) {
+        hits.push({
+          id: item.id,
+          vaultId: item.vaultId,
+          name: item.name,
+          username: item.username,
+          count,
+        });
+      }
+    }
+    hits.sort((a, b) => b.count - a.count);
+    setState({ status: "done", hits, checked: withPassword.length });
+  }
+
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-card/40 p-4">
+      <div className="flex items-start gap-3">
+        <Globe className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold">{t("health:breach.title")}</div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {t("health:breach.description")}
+          </p>
+        </div>
+      </div>
+
+      {state.status === "idle" && (
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          disabled={withPassword.length === 0}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          {t("health:breach.check")}
+        </button>
+      )}
+
+      {state.status === "checking" && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("health:breach.checking")}
+        </div>
+      )}
+
+      {state.status === "error" && (
+        <div className="space-y-2">
+          <div className="rounded-md bg-destructive/10 p-2.5 text-xs text-destructive">
+            {t("health:breach.error")}
+          </div>
+          <button
+            type="button"
+            onClick={() => setState({ status: "idle" })}
+            className="rounded-md border border-input px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            {t("health:breach.retry")}
+          </button>
+        </div>
+      )}
+
+      {state.status === "done" && (
+        <div className="space-y-2">
+          {state.hits.length === 0 ? (
+            <div className="flex items-center gap-2 text-sm">
+              <ShieldCheck className="h-4 w-4 text-green-500" />
+              <span>{t("health:breach.clear", { count: state.checked })}</span>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
+                <ShieldAlert className="h-4 w-4" />
+                {t("health:breach.found", { count: state.hits.length })}
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border/60">
+                {state.hits.map((hit) => (
+                  <ItemRow
+                    key={hit.id}
+                    item={hit}
+                    badge={t("health:breach.count", { count: hit.count })}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">{t("health:breach.privacyNote")}</p>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={t("health:breach.confirmTitle")}
+        message={t("health:breach.confirmMessage")}
+        confirmLabel={t("health:breach.check")}
+        onConfirm={() => void runCheck()}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </section>
   );
 }
 

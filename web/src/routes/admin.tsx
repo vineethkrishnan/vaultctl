@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldAlert, Building2, UserPlus, Mail, Trash2, RefreshCw } from "lucide-react";
+import { ShieldAlert, Building2, UserPlus, Mail, Trash2, RefreshCw, ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   postOrgs,
@@ -22,6 +22,7 @@ import {
   getGetAdminBackupsQueryKey,
 } from "@/api/admin/admin";
 import type { OrgMemberResponse, InviteResponse, BackupInfoDTO } from "@/api/model";
+import { getMyOrgs, myOrgsQueryKey, type MyOrg } from "@/lib/orgs";
 
 /**
  * Admin panel - org management, invite management, backup listing.
@@ -48,8 +49,14 @@ export function AdminPage() {
 
 function OrgSection() {
   const { t } = useTranslation("admin");
+  const queryClient = useQueryClient();
   const [orgName, setOrgName] = useState("");
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
+
+  const { data: orgs, isLoading } = useQuery({
+    queryKey: myOrgsQueryKey,
+    queryFn: getMyOrgs,
+  });
 
   const createOrg = useMutation({
     mutationFn: () => postOrgs({ name: orgName } as any),
@@ -57,9 +64,12 @@ function OrgSection() {
       if (res.status === 201) {
         setActiveOrgId((res.data as any).id);
         setOrgName("");
+        queryClient.invalidateQueries({ queryKey: myOrgsQueryKey });
       }
     },
   });
+
+  const activeOrg = orgs?.find((org) => org.id === activeOrgId) ?? null;
 
   return (
     <section className="space-y-4 rounded-lg border border-border p-4">
@@ -86,23 +96,70 @@ function OrgSection() {
         </button>
       </div>
 
-      {/* Org ID input for managing existing org */}
+      {/* Selectable list of the caller's organizations */}
       <div className="space-y-2 border-t border-border pt-4">
         <label className="text-sm font-medium">{t("orgs.manageLabel")}</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={activeOrgId ?? ""}
-            onChange={(e) => setActiveOrgId(e.target.value || null)}
-            placeholder={t("orgs.orgIdPlaceholder")}
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-          />
-        </div>
+        {isLoading ? (
+          <div className="h-12 animate-pulse rounded bg-muted" />
+        ) : !orgs || orgs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("orgs.empty")}</p>
+        ) : (
+          <ul className="space-y-1">
+            {orgs.map((org) => (
+              <OrgRow
+                key={org.id}
+                org={org}
+                selected={org.id === activeOrgId}
+                onSelect={() =>
+                  setActiveOrgId((current) => (current === org.id ? null : org.id))
+                }
+              />
+            ))}
+          </ul>
+        )}
       </div>
 
-      {activeOrgId && <MembersSubSection orgId={activeOrgId} />}
-      {activeOrgId && <InvitesSubSection orgId={activeOrgId} />}
+      {activeOrg && <MembersSubSection orgId={activeOrg.id} />}
+      {activeOrg && <InvitesSubSection orgId={activeOrg.id} />}
     </section>
+  );
+}
+
+function OrgRow({
+  org,
+  selected,
+  onSelect,
+}: {
+  org: MyOrg;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const { t } = useTranslation("admin");
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className={`flex w-full items-center justify-between gap-2 rounded-md border p-2.5 text-left text-sm transition-colors ${
+          selected
+            ? "border-primary bg-primary/5"
+            : "border-border hover:bg-accent/50"
+        }`}
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-medium">{org.name}</span>
+          <span className="block text-xs text-muted-foreground">
+            {org.role ? t(`roles.${org.role}`) : org.role}
+          </span>
+        </span>
+        <ChevronRight
+          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+            selected ? "rotate-90" : ""
+          }`}
+        />
+      </button>
+    </li>
   );
 }
 
@@ -150,8 +207,16 @@ function MembersSubSection({ orgId }: { orgId: string }) {
               key={m.userId}
               className="flex items-center justify-between rounded-md border border-border p-2 text-xs"
             >
-              <div className="flex items-center gap-2">
-                <span className="font-mono">{m.userId}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="min-w-0">
+                  <span className="block font-medium">{t("members.memberLabel")}</span>
+                  <span
+                    className="block truncate font-mono text-[0.65rem] text-muted-foreground"
+                    title={m.userId}
+                  >
+                    {t("members.userIdLabel", { id: m.userId })}
+                  </span>
+                </span>
                 {editingUser === m.userId ? (
                   <div className="flex items-center gap-1">
                     <select

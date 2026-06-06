@@ -1,0 +1,29 @@
+{
+  "title": "Get started",
+  "subtitle": "A few quick steps to secure your vault. You can come back to these any time.",
+  "progress": "{{done}} of {{total}} done",
+  "dismiss": "Dismiss",
+  "markDone": "Mark as done",
+  "done": "Done",
+  "recovery": {
+    "title": "Save your recovery kit",
+    "description": "Your recovery key is the only way back into your vault if you forget your master password. Download and store it somewhere safe.",
+    "action": "Open recovery kit"
+  },
+  "twofa": {
+    "title": "Enable two-factor authentication",
+    "description": "Add a second factor so a stolen password alone can't unlock your account.",
+    "action": "Set up 2FA"
+  },
+  "extension": {
+    "title": "Install the browser extension",
+    "description": "Autofill and capture logins right where you browse.",
+    "action": "Get the extension"
+  },
+  "firstItem": {
+    "title": "Add your first item",
+    "description": "Create a login by hand, or import from another password manager.",
+    "addAction": "Add an item",
+    "importAction": "Import"
+  }
+}

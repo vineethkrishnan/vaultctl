@@ -22,3 +22,4 @@ Reviewed namespaces (tick when a native pass is done):
 - [ ] vault.json
 - [ ] notifications.json
 - [ ] admin.json
+- [ ] onboarding.json

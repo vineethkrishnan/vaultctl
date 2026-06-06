@@ -27,6 +27,7 @@ const ALL_NAMESPACES = [
   "admin",
   "health",
   "activity",
+  "onboarding",
 ] as const;
 
 export const LANGUAGE_NAMES: Record<Language, string> = {
