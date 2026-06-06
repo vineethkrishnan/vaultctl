@@ -21,6 +21,7 @@ var (
 	ErrVerificationExpired   = errors.New("auth: verification code expired")
 	ErrVerificationAttempts  = errors.New("auth: too many verification attempts")
 	ErrVerificationInvalid   = errors.New("auth: invalid verification code")
+	ErrResendTooSoon         = errors.New("auth: verification code resent too recently")
 )
 
 // VerificationEmailSender delivers the one-time code. *email.Service satisfies
@@ -37,19 +38,36 @@ type SendEmailVerification struct {
 	Clock         ports.Clock
 	Sender        VerificationEmailSender
 	CodeTTL       time.Duration
+	// ResendCooldown is the minimum gap between sends. A resend inside this
+	// window of a still-live code is rejected so it cannot reset the attempt
+	// counter or mail-bomb the inbox. Zero disables the cooldown.
+	ResendCooldown time.Duration
 }
 
 // Execute issues and emails a code for the user. A nil Sender (no mailer wired)
-// is a no-op so a mail-less deployment doesn't error on register.
+// is a no-op so a mail-less deployment doesn't error on register. A resend
+// inside the cooldown window of a live code returns ErrResendTooSoon without
+// re-issuing, so the existing code's attempt budget is preserved.
 func (uc *SendEmailVerification) Execute(ctx context.Context, userID user.ID, to string) error {
 	if uc.Sender == nil {
 		return nil
+	}
+	now := uc.Clock.Now()
+	if uc.ResendCooldown > 0 {
+		existing, err := uc.Verifications.Get(ctx, userID)
+		switch {
+		case errors.Is(err, domain.ErrNotFound):
+			// No live code: fall through and issue one.
+		case err != nil:
+			return err
+		case !existing.Expired(now) && now.Sub(existing.CreatedAt) < uc.ResendCooldown:
+			return ErrResendTooSoon
+		}
 	}
 	code, err := generateOTP()
 	if err != nil {
 		return fmt.Errorf("generate code: %w", err)
 	}
-	now := uc.Clock.Now()
 	rec := user.EmailVerification{
 		UserID:    userID,
 		CodeHash:  uc.HMAC.HashString(code),
@@ -60,6 +78,12 @@ func (uc *SendEmailVerification) Execute(ctx context.Context, userID user.ID, to
 		return fmt.Errorf("store verification: %w", err)
 	}
 	return uc.Sender.SendVerificationCode(ctx, to, code, uc.ttl())
+}
+
+// ClearCode removes any pending verification code for a user, used when the
+// account is already verified so a stale code can't be replayed.
+func (uc *SendEmailVerification) ClearCode(ctx context.Context, userID user.ID) error {
+	return uc.Verifications.Delete(ctx, userID)
 }
 
 func (uc *SendEmailVerification) ttl() time.Duration {
@@ -78,35 +102,30 @@ type VerifyEmail struct {
 }
 
 // Execute checks the supplied code. It is idempotent: verifying an
-// already-verified account returns nil. Wrong codes increment the attempt
-// counter; expired or exhausted codes are cleared and reported.
+// already-verified account returns nil. Each call atomically consumes one
+// attempt against a live code, so concurrent guesses cannot overspend the
+// budget; expired or exhausted codes are reported (and an expired one cleared).
 func (uc *VerifyEmail) Execute(ctx context.Context, userID user.ID, code string) error {
 	u, err := uc.Users.FindByID(ctx, userID)
 	if err != nil {
 		return err
 	}
 	if u.EmailVerified {
+		// Clear any code that lingered (e.g. a resend that raced a verify) so a
+		// verified account never keeps a live OTP row.
+		_ = uc.Verifications.Delete(ctx, userID)
 		return nil
 	}
 
-	rec, err := uc.Verifications.Get(ctx, userID)
-	if errors.Is(err, domain.ErrNotFound) {
-		return ErrNoVerificationPending
-	}
+	now := uc.Clock.Now()
+	codeHash, ok, err := uc.Verifications.RegisterAttempt(ctx, userID, user.MaxVerificationAttempts, now)
 	if err != nil {
 		return err
 	}
-
-	now := uc.Clock.Now()
-	if rec.Expired(now) {
-		_ = uc.Verifications.Delete(ctx, userID)
-		return ErrVerificationExpired
+	if !ok {
+		return uc.classifyNoAttempt(ctx, userID, now)
 	}
-	if rec.Exhausted() {
-		return ErrVerificationAttempts
-	}
-	if !uc.HMAC.Equal(rec.CodeHash, uc.HMAC.HashString(code)) {
-		_ = uc.Verifications.IncrementAttempts(ctx, userID)
+	if !uc.HMAC.Equal(codeHash, uc.HMAC.HashString(code)) {
 		return ErrVerificationInvalid
 	}
 
@@ -115,6 +134,23 @@ func (uc *VerifyEmail) Execute(ctx context.Context, userID user.ID, code string)
 	}
 	_ = uc.Verifications.Delete(ctx, userID)
 	return nil
+}
+
+// classifyNoAttempt explains why no attempt could be registered: no pending
+// code, an expired one (cleared here), or an exhausted budget.
+func (uc *VerifyEmail) classifyNoAttempt(ctx context.Context, userID user.ID, now time.Time) error {
+	rec, err := uc.Verifications.Get(ctx, userID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return ErrNoVerificationPending
+	}
+	if err != nil {
+		return err
+	}
+	if rec.Expired(now) {
+		_ = uc.Verifications.Delete(ctx, userID)
+		return ErrVerificationExpired
+	}
+	return ErrVerificationAttempts
 }
 
 // generateOTP returns a uniform 6-digit numeric code.

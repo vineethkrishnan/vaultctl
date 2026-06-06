@@ -156,6 +156,11 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, RegisterResponse{UserID: string(out.UserID), Role: string(out.Role)})
 }
 
+// maxVerificationCodeLength caps the accepted OTP length. The code is a 6-digit
+// number; the slack tolerates future format changes without admitting a body
+// large enough to waste hashing work.
+const maxVerificationCodeLength = 12
+
 // HandleVerifyEmail confirms the authenticated user's email with a one-time code.
 // @Summary Verify email
 // @Description Confirms the caller's email address using the emailed one-time code.
@@ -176,6 +181,12 @@ func (h *AuthHandlers) HandleVerifyEmail(w http.ResponseWriter, r *http.Request)
 	}
 	if req.Code == "" {
 		writeError(w, r, domain.NewInvalid("code", "required"))
+		return
+	}
+	// The code is a short numeric OTP; reject anything implausibly long before
+	// it reaches the HMAC so an oversized body can't burn hashing work.
+	if len(req.Code) > maxVerificationCodeLength {
+		writeError(w, r, domain.NewInvalid("code", "that code is incorrect"))
 		return
 	}
 	if err := h.VerifyEmail.Execute(r.Context(), middleware.CallerID(r.Context()), req.Code); err != nil {
@@ -202,6 +213,8 @@ func (h *AuthHandlers) HandleResendVerification(w http.ResponseWriter, r *http.R
 		return
 	}
 	if u.EmailVerified {
+		// Drop any code that outlived verification so it can't be replayed.
+		_ = h.SendVerification.ClearCode(r.Context(), callerID)
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -300,9 +313,9 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// (the response returns first) while keeping its values - not bare Background.
 	if h.NotifyLogin != nil {
 		alertCtx := context.WithoutCancel(r.Context())
-		userID, email := out.UserID, req.Email
+		userID, email, deviceName := out.UserID, req.Email, req.DeviceName
 		go func() {
-			if e := h.NotifyLogin.Execute(alertCtx, userID, email, userAgent, ip); e != nil {
+			if e := h.NotifyLogin.Execute(alertCtx, userID, email, deviceName, userAgent, ip); e != nil {
 				slog.WarnContext(alertCtx, "login.alert.failed", slog.String("err", e.Error())) //nolint:gosec // G706: slog quotes the field; err is an internal send failure, not attacker-controlled output
 			}
 		}()

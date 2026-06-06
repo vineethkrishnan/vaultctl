@@ -106,3 +106,38 @@ func TestLogMailer(t *testing.T) {
 		t.Errorf("LogMailer.Send: %v", err)
 	}
 }
+
+// TestSMTPSend_RejectsHeaderInjection checks that Send refuses a malformed
+// recipient or a CRLF in the recipient/subject BEFORE any network call, so the
+// header-injection sink is closed regardless of where the recipient came from.
+func TestSMTPSend_RejectsHeaderInjection(t *testing.T) {
+	m, ok := New(Config{Host: "smtp.example.com", From: "vaultctl <v@example.com>"}).(*SMTPMailer)
+	if !ok {
+		t.Fatal("expected SMTPMailer")
+	}
+	cases := []struct {
+		name string
+		msg  ports.Email
+	}{
+		{"unparseable recipient", ports.Email{To: "not-an-address", Subject: "s", Text: "t"}},
+		{"crlf in recipient", ports.Email{To: "a@b.com\r\nBcc: evil@x.com", Subject: "s", Text: "t"}},
+		{"crlf in subject", ports.Email{To: "a@b.com", Subject: "s\r\nBcc: evil@x.com", Text: "t"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := m.Send(context.Background(), tc.msg); err == nil {
+				t.Fatal("expected Send to reject the message before dialing")
+			}
+		})
+	}
+}
+
+// TestLogMailer_BodyGate confirms the OTP body is logged only when LogBody is set.
+func TestLogMailer_BodyGate(t *testing.T) {
+	if New(Config{}).(LogMailer).logBody {
+		t.Error("LogBody must default off")
+	}
+	if !New(Config{LogBody: true}).(LogMailer).logBody {
+		t.Error("LogBody true should propagate to LogMailer")
+	}
+}

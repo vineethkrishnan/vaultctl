@@ -22,51 +22,66 @@ type LoginAlertSender interface {
 	SendLoginAlert(ctx context.Context, to, reason, deviceLabel, ipAddress string, when time.Time) error
 }
 
-// NotifyLogin records the login's device + network and, when either is new for
-// the user, sends a single security alert. It never alerts on the user's first
-// recorded login (the signup device) and skips entirely when the user-agent is
-// missing, so it does not fabricate a "new device" it cannot describe.
+// NotifyLogin records the login's device + network and, when new for the user,
+// sends a single security alert. It never alerts on the user's first recorded
+// login (the signup device) and skips entirely when the user-agent is missing,
+// so it does not fabricate a "new device" it cannot describe.
 type NotifyLogin struct {
 	Known  ports.KnownLoginRepository
 	HMAC   ports.HMACer
 	Clock  ports.Clock
 	Sender LoginAlertSender
+	// NewNetworkEnabled controls the new-network alert. Off by default because
+	// the network is a /24-anonymised IP that roams for mobile users; the
+	// new-device alert is always active regardless.
+	NewNetworkEnabled bool
 }
 
 // Execute classifies the login and alerts if warranted. Best-effort: callers
-// run it off the request path and only log failures.
-func (uc *NotifyLogin) Execute(ctx context.Context, userID user.ID, to, userAgent, ipAddress string) error {
+// run it off the request path and only log failures. Novelty is decided from a
+// single atomic upsert so concurrent logins can't double-alert.
+func (uc *NotifyLogin) Execute(ctx context.Context, userID user.ID, to, deviceName, userAgent, ipAddress string) error {
 	if uc.Sender == nil || strings.TrimSpace(userAgent) == "" || to == "" {
 		return nil
 	}
 	label := DescribeUserAgent(userAgent)
-	fingerprint := uc.HMAC.HashString("login-device:" + label)
+	fingerprint := uc.deviceFingerprint(label, deviceName)
 
-	deviceSeen, networkSeen, anySeen, err := uc.Known.Lookup(ctx, userID, fingerprint, ipAddress)
-	if err != nil {
-		return err
-	}
 	now := uc.Clock.Now()
-	if err := uc.Known.Record(ctx, userID, fingerprint, ipAddress, label, now); err != nil {
+	obs, err := uc.Known.Observe(ctx, userID, fingerprint, ipAddress, label, now)
+	if err != nil {
 		return err
 	}
 
 	// First login on record is the device the account was created on - never
 	// alert on it (that would be a false positive on every brand-new account).
-	if !anySeen {
+	if !obs.AnySeen {
+		return nil
+	}
+	// Only the call that actually inserted this row may alert, so a concurrent
+	// racing login on the same (device, network) stays silent.
+	if !obs.Inserted {
 		return nil
 	}
 
 	reason := ""
 	switch {
-	case !deviceSeen:
+	case !obs.DeviceSeen:
 		reason = LoginReasonNewDevice
-	case !networkSeen:
+	case uc.NewNetworkEnabled:
 		reason = LoginReasonNewNetwork
 	default:
 		return nil
 	}
 	return uc.Sender.SendLoginAlert(ctx, to, reason, label, ipAddress, now)
+}
+
+// deviceFingerprint folds the client-provided device name into the HMAC so two
+// distinct devices on the same browser/OS family don't collide on one
+// fingerprint. The name is normalised so trivial whitespace changes are stable.
+func (uc *NotifyLogin) deviceFingerprint(label, deviceName string) []byte {
+	name := strings.ToLower(strings.TrimSpace(deviceName))
+	return uc.HMAC.HashString("login-device:" + label + "\x00" + name)
 }
 
 // DescribeUserAgent reduces a user-agent string to a coarse, stable label like

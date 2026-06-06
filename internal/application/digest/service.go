@@ -50,11 +50,13 @@ func (s *Service) SetFrequency(ctx context.Context, userID user.ID, freq Frequen
 	return s.Prefs.Set(ctx, userID, string(freq), nextRun, now)
 }
 
-// RunDue sends every digest that is due. Per-user failures are logged and
-// skipped so one bad send doesn't stall the rest.
+// RunDue sends every digest that is due. ClaimDue advances the schedule before
+// any send (at-most-once), so a per-user send failure is logged and skipped
+// rather than retried, and a crash never double-sends. One bad send doesn't
+// stall the rest.
 func (s *Service) RunDue(ctx context.Context) error {
 	now := s.Clock.Now()
-	due, err := s.Prefs.ListDue(ctx, now)
+	due, err := s.Prefs.ClaimDue(ctx, now)
 	if err != nil {
 		return err
 	}
@@ -73,20 +75,12 @@ func (s *Service) RunDue(ctx context.Context) error {
 			continue
 		}
 
-		// Don't email "nothing happened"; just reschedule.
-		if !summary.Empty() {
-			if err := s.Sender.SendDigest(ctx, d.Email, freq.Label(), summary); err != nil {
-				slog.WarnContext(ctx, "digest.send.failed", slog.String("user_id", string(d.UserID)), slog.String("err", err.Error()))
-				continue
-			}
+		// Nothing happened: the row is already rescheduled by the claim.
+		if summary.Empty() {
+			continue
 		}
-
-		var nextRun *time.Time
-		if next, ok := freq.NextRun(now); ok {
-			nextRun = &next
-		}
-		if err := s.Prefs.MarkRun(ctx, d.UserID, now, nextRun); err != nil {
-			slog.WarnContext(ctx, "digest.mark_run.failed", slog.String("user_id", string(d.UserID)), slog.String("err", err.Error()))
+		if err := s.Sender.SendDigest(ctx, d.Email, freq.Label(), summary); err != nil {
+			slog.WarnContext(ctx, "digest.send.failed", slog.String("user_id", string(d.UserID)), slog.String("err", err.Error()))
 		}
 	}
 	return nil

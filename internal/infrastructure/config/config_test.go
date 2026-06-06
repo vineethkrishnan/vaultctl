@@ -121,6 +121,39 @@ func TestLoad_RedactFields_ParsedAsSlice(t *testing.T) {
 	}
 }
 
+func TestLoad_RejectsNonHTTPBaseURL(t *testing.T) {
+	for _, bad := range []string{
+		"javascript:alert(1)",
+		"ftp://example.com",
+		"://no-scheme",
+		"https://", // missing host
+	} {
+		t.Run(bad, func(t *testing.T) {
+			setEnv(t, map[string]string{
+				"VAULTCTL_ENV":      "development",
+				"VAULTCTL_BASE_URL": bad,
+			})
+			if _, err := Load(); !errors.Is(err, ErrInvalidConfig) {
+				t.Fatalf("expected ErrInvalidConfig for %q, got %v", bad, err)
+			}
+		})
+	}
+}
+
+func TestLoad_AcceptsHTTPBaseURL(t *testing.T) {
+	for _, ok := range []string{"http://localhost:8080", "https://vault.example.com"} {
+		t.Run(ok, func(t *testing.T) {
+			setEnv(t, map[string]string{
+				"VAULTCTL_ENV":      "development",
+				"VAULTCTL_BASE_URL": ok,
+			})
+			if _, err := Load(); err != nil {
+				t.Fatalf("expected %q to load, got %v", ok, err)
+			}
+		})
+	}
+}
+
 func TestLoad_TrustedProxies_ParsedAsSlice(t *testing.T) {
 	setEnv(t, map[string]string{
 		"VAULTCTL_ENV":             "development",

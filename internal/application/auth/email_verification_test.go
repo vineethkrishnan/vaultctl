@@ -31,11 +31,14 @@ func (m *memVerifs) Get(_ context.Context, id user.ID) (user.EmailVerification, 
 	}
 	return v, nil
 }
-func (m *memVerifs) IncrementAttempts(_ context.Context, id user.ID) error {
-	v := m.rec[id]
+func (m *memVerifs) RegisterAttempt(_ context.Context, id user.ID, maxAttempts int, now time.Time) (codeHash []byte, ok bool, err error) {
+	v, exists := m.rec[id]
+	if !exists || v.Expired(now) || v.Attempts >= maxAttempts {
+		return nil, false, nil
+	}
 	v.Attempts++
 	m.rec[id] = v
-	return nil
+	return v.CodeHash, true, nil
 }
 func (m *memVerifs) Delete(_ context.Context, id user.ID) error {
 	delete(m.rec, id)
@@ -117,5 +120,83 @@ func TestVerifyEmail_Expired(t *testing.T) {
 	verify := &VerifyEmail{Users: repo, Verifications: verifs, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now })}
 	if err := verify.Execute(context.Background(), u.ID, "123456"); !errors.Is(err, ErrVerificationExpired) {
 		t.Fatalf("expected expired, got %v", err)
+	}
+}
+
+func TestVerifyEmail_ExhaustedAfterCap(t *testing.T) {
+	now := time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)
+	repo := newFakeUserRepo()
+	u := seedUser(t, repo, "alice@example.com")
+	verifs := newMemVerifs()
+	verifs.rec[u.ID] = user.EmailVerification{
+		UserID: u.ID, CodeHash: fakeHMAC{}.HashString("123456"),
+		ExpiresAt: now.Add(10 * time.Minute), CreatedAt: now,
+	}
+	verify := &VerifyEmail{Users: repo, Verifications: verifs, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now })}
+
+	// Burn the whole budget with wrong guesses; each consumes exactly one slot.
+	for i := 0; i < user.MaxVerificationAttempts; i++ {
+		if err := verify.Execute(context.Background(), u.ID, "999999"); !errors.Is(err, ErrVerificationInvalid) {
+			t.Fatalf("guess %d: expected invalid, got %v", i, err)
+		}
+	}
+	if verifs.rec[u.ID].Attempts != user.MaxVerificationAttempts {
+		t.Fatalf("attempts = %d, want %d", verifs.rec[u.ID].Attempts, user.MaxVerificationAttempts)
+	}
+	// The next attempt - even the CORRECT code - is rejected as exhausted.
+	if err := verify.Execute(context.Background(), u.ID, "123456"); !errors.Is(err, ErrVerificationAttempts) {
+		t.Fatalf("expected exhausted, got %v", err)
+	}
+}
+
+func TestSendVerification_ResendCooldown(t *testing.T) {
+	now := time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)
+	clock := ports.ClockFunc(func() time.Time { return now })
+	verifs := newMemVerifs()
+	sender := &capturingSender{}
+	send := &SendEmailVerification{
+		Verifications: verifs, HMAC: fakeHMAC{}, Clock: clock, Sender: sender,
+		CodeTTL: 15 * time.Minute, ResendCooldown: 60 * time.Second,
+	}
+	const uid user.ID = "u1"
+
+	// First send issues a code.
+	if err := send.Execute(context.Background(), uid, "a@b.com"); err != nil {
+		t.Fatalf("first send: %v", err)
+	}
+	firstHash := verifs.rec[uid].CodeHash
+	// Simulate one wrong guess having been recorded against the live code.
+	rec := verifs.rec[uid]
+	rec.Attempts = 3
+	verifs.rec[uid] = rec
+
+	// Immediate resend is rejected and must NOT reset attempts or reissue.
+	if err := send.Execute(context.Background(), uid, "a@b.com"); !errors.Is(err, ErrResendTooSoon) {
+		t.Fatalf("expected ErrResendTooSoon, got %v", err)
+	}
+	if verifs.rec[uid].Attempts != 3 {
+		t.Fatalf("cooldown resend reset attempts to %d", verifs.rec[uid].Attempts)
+	}
+	if string(verifs.rec[uid].CodeHash) != string(firstHash) {
+		t.Fatal("cooldown resend reissued the code")
+	}
+}
+
+func TestVerifyEmail_AlreadyVerifiedClearsRow(t *testing.T) {
+	now := time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)
+	repo := newFakeUserRepo()
+	u := seedUser(t, repo, "alice@example.com")
+	repo.byID[u.ID].EmailVerified = true
+	verifs := newMemVerifs()
+	verifs.rec[u.ID] = user.EmailVerification{
+		UserID: u.ID, CodeHash: fakeHMAC{}.HashString("123456"),
+		ExpiresAt: now.Add(10 * time.Minute), CreatedAt: now,
+	}
+	verify := &VerifyEmail{Users: repo, Verifications: verifs, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now })}
+	if err := verify.Execute(context.Background(), u.ID, "123456"); err != nil {
+		t.Fatalf("verify already-verified: %v", err)
+	}
+	if _, ok := verifs.rec[u.ID]; ok {
+		t.Error("lingering verification row not cleared on already-verified short-circuit")
 	}
 }

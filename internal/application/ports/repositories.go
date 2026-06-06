@@ -137,24 +137,41 @@ type EmailVerificationRepository interface {
 	// Get returns the active code for a user, or ErrNotFound when none exists.
 	Get(ctx context.Context, userID user.ID) (user.EmailVerification, error)
 
-	// IncrementAttempts bumps the wrong-guess counter for a user's code.
-	IncrementAttempts(ctx context.Context, userID user.ID) error
+	// RegisterAttempt atomically consumes one verification attempt: it bumps the
+	// counter only while the code is live (not expired at now) and the attempt
+	// budget is not yet exhausted (attempts < maxAttempts), returning the stored
+	// code hash so the caller can compare. ok is false when no row was updated
+	// (no pending code, expired, or budget exhausted); the caller disambiguates
+	// via Get. This is a single statement so concurrent verifies cannot each pass
+	// a stale gate and overspend the budget.
+	RegisterAttempt(ctx context.Context, userID user.ID, maxAttempts int, now time.Time) (codeHash []byte, ok bool, err error)
 
 	// Delete removes a user's code (after success or invalidation).
 	Delete(ctx context.Context, userID user.ID) error
 }
 
+// KnownLoginObservation is the atomic result of recording a login: what the
+// user's history looked like immediately before this login, plus whether THIS
+// (fingerprint, network) row was newly inserted by the same statement.
+type KnownLoginObservation struct {
+	// DeviceSeen is true when the device fingerprint already existed for the
+	// user before this login.
+	DeviceSeen bool
+	// AnySeen is true when the user had any prior login on record (false on the
+	// very first login, which is the signup device).
+	AnySeen bool
+	// Inserted is true only for the call that actually inserted this
+	// (fingerprint, network) row; a concurrent racing login that hit
+	// ON CONFLICT gets false. This makes a new-pair alert at-most-once.
+	Inserted bool
+}
+
 // KnownLoginRepository records the device fingerprints and networks a user has
 // signed in from, so a genuinely new one can raise a single alert.
 type KnownLoginRepository interface {
-	// Lookup reports, for a (fingerprint, network) pair: whether this device
-	// fingerprint has been seen for the user (deviceSeen), whether this exact
-	// pair has been seen (networkSeen), and whether the user has any prior
-	// login on record at all (anySeen, false on the very first login).
-	Lookup(ctx context.Context, userID user.ID, fingerprint []byte, network string) (deviceSeen, networkSeen, anySeen bool, err error)
-
-	// Record upserts the (fingerprint, network) pair, refreshing last_seen_at.
-	Record(ctx context.Context, userID user.ID, fingerprint []byte, network, label string, now time.Time) error
+	// Observe records the login and reports novelty atomically in one statement,
+	// so concurrent logins cannot each read a stale "not seen" and double-alert.
+	Observe(ctx context.Context, userID user.ID, fingerprint []byte, network, label string, now time.Time) (KnownLoginObservation, error)
 }
 
 // InviteRepository persists organisation invite tokens (M11).
