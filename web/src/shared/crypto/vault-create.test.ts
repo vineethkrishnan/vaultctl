@@ -12,7 +12,15 @@ import { aesKeyUnwrap } from "./aes-kw.js";
 import { parseBlob } from "./blob.js";
 import { AlgID } from "./algorithm.js";
 import { fromBase64 } from "./utils.js";
-import { buildSelfVaultKeyWrap } from "./vault-create.js";
+import {
+  generateRSAKeyPair,
+  importRSAPrivateKey,
+  rsaOaepDecrypt,
+} from "./rsa-oaep.js";
+import {
+  buildSelfVaultKeyWrap,
+  buildSelfSharedVaultKeyWrap,
+} from "./vault-create.js";
 
 describe("buildSelfVaultKeyWrap", () => {
   it("AES-KW wraps the vault key so the owner can unwrap it with the stretchedKey", async () => {
@@ -76,5 +84,48 @@ describe("buildSelfVaultKeyWrap", () => {
       fromBase64(wrap.encryptedVaultKey),
     );
     expect(ok).toBe(false);
+  });
+});
+
+describe("buildSelfSharedVaultKeyWrap", () => {
+  it("RSA-OAEP wraps the vault key so the owner can unwrap it with their private key", async () => {
+    const rawVaultKey = crypto.getRandomValues(new Uint8Array(32));
+    const rsa = await generateRSAKeyPair();
+    const identity = await generateEd25519KeyPair();
+    const identityPriv = await importEd25519PrivateKey(identity.privateKey);
+
+    const wrap = await buildSelfSharedVaultKeyWrap({
+      rawVaultKey,
+      ownRsaPublicKey: rsa.publicKey,
+      signWrap: (message) => ed25519Sign(identityPriv, message),
+    });
+
+    const blob = parseBlob(fromBase64(wrap.encryptedVaultKey));
+    expect(blob.alg).toBe(AlgID.RSA_OAEP_SHA256);
+
+    const rsaPriv = await importRSAPrivateKey(rsa.privateKey);
+    const unwrapped = await rsaOaepDecrypt(rsaPriv, blob);
+    expect(Array.from(unwrapped)).toEqual(Array.from(rawVaultKey));
+  });
+
+  it("signs the serialized RSA-OAEP wrap blob with the identity key", async () => {
+    const rawVaultKey = crypto.getRandomValues(new Uint8Array(32));
+    const rsa = await generateRSAKeyPair();
+    const identity = await generateEd25519KeyPair();
+    const identityPriv = await importEd25519PrivateKey(identity.privateKey);
+    const identityPub = await importEd25519PublicKey(identity.publicKey);
+
+    const wrap = await buildSelfSharedVaultKeyWrap({
+      rawVaultKey,
+      ownRsaPublicKey: rsa.publicKey,
+      signWrap: (message) => ed25519Sign(identityPriv, message),
+    });
+
+    const ok = await ed25519Verify(
+      identityPub,
+      fromBase64(wrap.wrapSignature),
+      fromBase64(wrap.encryptedVaultKey),
+    );
+    expect(ok).toBe(true);
   });
 });

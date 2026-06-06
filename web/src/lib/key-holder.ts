@@ -35,6 +35,7 @@ export interface InitParams {
   stretchedKey: Uint8Array;
   encryptedPrivateKey: string; // base64 wire blob
   encryptedIdentityPrivateKey: string; // base64 wire blob
+  publicKey: string; // base64 SPKI - owner's own RSA wrapping key
   vaults: VaultMembership[];
 }
 
@@ -44,6 +45,7 @@ export async function initKeys(params: InitParams): Promise<void> {
     stretchedKey: params.stretchedKey,
     encryptedPrivateKey: params.encryptedPrivateKey,
     encryptedIdentityPrivateKey: params.encryptedIdentityPrivateKey,
+    publicKey: params.publicKey,
     vaults: params.vaults.map((v) => ({
       vaultId: v.vaultId,
       encryptedVaultKey: v.encryptedVaultKey,
@@ -123,8 +125,9 @@ export async function wrapVaultKeyForRecipient(params: {
  */
 export async function createVaultKey(
   handle: string,
+  vaultType: "personal" | "shared" = "personal",
 ): Promise<CreateVaultKeyResult> {
-  return workerCreateVaultKey(handle);
+  return workerCreateVaultKey(handle, vaultType);
 }
 
 /** Bind a buffered new-vault key (by handle) to its server-assigned vault id. */

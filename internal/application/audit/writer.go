@@ -236,6 +236,18 @@ func (w *Writer) VaultCreated(ctx context.Context, userID, vaultID, ip, userAgen
 	})
 }
 
+// VaultDeleted records the irreversible deletion of a whole vault.
+func (w *Writer) VaultDeleted(ctx context.Context, userID, vaultID, ip, userAgent string) {
+	w.write(ctx, auditlog.Entry{
+		UserID:       userID,
+		Action:       auditlog.ActionVaultDeleted,
+		ResourceType: auditlog.ResourceVault,
+		ResourceID:   vaultID,
+		IPAddress:    ip,
+		UserAgent:    userAgent,
+	})
+}
+
 // VaultRekeyed records post-member-removal key rotation.
 func (w *Writer) VaultRekeyed(ctx context.Context, actorID, vaultID, ip, userAgent string) {
 	w.write(ctx, auditlog.Entry{

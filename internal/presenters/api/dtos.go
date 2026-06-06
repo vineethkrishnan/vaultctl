@@ -310,6 +310,7 @@ type TOTPCodeRequest struct {
 type VaultCreateRequest struct {
 	Name              string `json:"name"`
 	Type              string `json:"type"`
+	OrgID             string `json:"orgId,omitempty"`
 	EncryptedVaultKey string `json:"encryptedVaultKey"`
 	WrapSignature     string `json:"wrapSignature"`
 }
@@ -318,6 +319,7 @@ type VaultResponse struct {
 	ID                string `json:"id"`
 	Name              string `json:"name"`
 	Type              string `json:"type"`
+	OrgID             string `json:"orgId,omitempty"`
 	Role              string `json:"role"`
 	EncryptedVaultKey string `json:"encryptedVaultKey"`
 	SenderID          string `json:"senderId"`

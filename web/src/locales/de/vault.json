@@ -63,7 +63,25 @@
     "nameLabel": "Tresorname",
     "namePlaceholder": "z. B. Arbeit",
     "create": "Tresor erstellen",
-    "failed": "Tresor konnte nicht erstellt werden"
+    "failed": "Tresor konnte nicht erstellt werden",
+    "typeLabel": "Tresortyp",
+    "typePersonal": "Persönlich",
+    "typeShared": "Geteilt (Organisation)",
+    "orgLabel": "Organisation",
+    "orgPlaceholder": "Organisation auswählen",
+    "noOrgsHint": "Tritt einer Organisation bei oder erstelle eine, um einen geteilten Tresor anzulegen.",
+    "orgRequired": "Wähle eine Organisation für den geteilten Tresor."
+  },
+  "deleteVault": {
+    "dangerZone": "Gefahrenzone",
+    "description": "Diesen Tresor mit allen Einträgen, Ordnern und Anhängen endgültig löschen. Dies kann nicht rückgängig gemacht werden.",
+    "lastVaultHint": "Dies ist Ihr einziger Tresor. Erstellen Sie zuerst einen weiteren Tresor, bevor Sie diesen löschen.",
+    "action": "Tresor löschen",
+    "title": "Tresor löschen?",
+    "warning": "Dadurch wird \"{{name}}\" mit allem Inhalt endgültig gelöscht - Einträge, Ordner, Anhänge und Mitgliederzugriff. Es gibt keinen Papierkorb für Tresore und keinen Weg zurück.",
+    "typeToConfirm": "Geben Sie {{name}} zur Bestätigung ein",
+    "confirm": "Endgültig löschen",
+    "failed": "Das Löschen des Tresors ist fehlgeschlagen"
   },
   "folders": {
     "heading": "Ordner",

@@ -124,6 +124,7 @@ export async function workerInit(params: {
   stretchedKey: Uint8Array;
   encryptedPrivateKey: string;
   encryptedIdentityPrivateKey: string;
+  publicKey: string;
   vaults: VaultKeyMaterial[];
 }): Promise<void> {
   await waitReady();
@@ -137,6 +138,7 @@ export async function workerInit(params: {
     stretchedKey: skBuffer,
     encryptedPrivateKey: params.encryptedPrivateKey,
     encryptedIdentityPrivateKey: params.encryptedIdentityPrivateKey,
+    publicKey: params.publicKey,
     vaults: params.vaults,
   });
 }
@@ -259,8 +261,9 @@ export interface CreateVaultKeyResult {
  */
 export async function workerCreateVaultKey(
   handle: string,
+  vaultType: "personal" | "shared",
 ): Promise<CreateVaultKeyResult> {
-  const json = await send<string>({ op: "createVaultKey", handle });
+  const json = await send<string>({ op: "createVaultKey", handle, vaultType });
   return JSON.parse(json) as CreateVaultKeyResult;
 }
 

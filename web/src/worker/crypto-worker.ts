@@ -31,6 +31,7 @@ import {
   verifyRecipientPublicKey,
   buildSharePayload,
   buildSelfVaultKeyWrap,
+  buildSelfSharedVaultKeyWrap,
 } from "../shared/crypto/index.js";
 import type {
   WorkerRequest,
@@ -40,6 +41,9 @@ import type {
 // Module-scoped key material
 let stretchedKey: Uint8Array | null = null;
 let rsaPrivateKey: CryptoKey | null = null;
+// Owner's own RSA-OAEP public key (SPKI DER). Held so a shared vault created
+// in-session can wrap its fresh key to the owner without a network round-trip.
+let rsaPublicKey: Uint8Array | null = null;
 const vaultKeys = new Map<string, Uint8Array>();
 // Freshly generated vault keys awaiting their server-assigned vault id (M9
 // create-vault). Buffered under a temporary client handle, then moved into
@@ -67,6 +71,7 @@ function doLock() {
     stretchedKey = null;
   }
   rsaPrivateKey = null;
+  rsaPublicKey = null;
   identityKey.value = null;
   for (const [, key] of vaultKeys) {
     zero(key);
@@ -116,6 +121,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         const rsaPrivBytes = await aesGcmDecrypt(sk, encPrivBlob);
         rsaPrivateKey = await importRSAPrivateKey(rsaPrivBytes);
         zero(rsaPrivBytes);
+        rsaPublicKey = fromBase64(msg.publicKey);
 
         // Decrypt Ed25519 identity private key
         const encIdPrivBlob = parseBlob(fromBase64(msg.encryptedIdentityPrivateKey));
@@ -291,11 +297,28 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
           break;
         }
         const rawVaultKey = crypto.getRandomValues(new Uint8Array(32));
-        const wrap = await buildSelfVaultKeyWrap({
-          rawVaultKey,
-          stretchedKey: sk,
-          signWrap: (message) => ed25519Sign(idKey, message),
-        });
+        let wrap;
+        if (msg.vaultType === "shared") {
+          if (!rsaPublicKey) {
+            respond({
+              op: "error",
+              requestId: msg.requestId,
+              message: "RSA public key not loaded",
+            });
+            break;
+          }
+          wrap = await buildSelfSharedVaultKeyWrap({
+            rawVaultKey,
+            ownRsaPublicKey: rsaPublicKey,
+            signWrap: (message) => ed25519Sign(idKey, message),
+          });
+        } else {
+          wrap = await buildSelfVaultKeyWrap({
+            rawVaultKey,
+            stretchedKey: sk,
+            signWrap: (message) => ed25519Sign(idKey, message),
+          });
+        }
         pendingVaultKeys.set(msg.handle, rawVaultKey);
         respond({
           op: "resultString",

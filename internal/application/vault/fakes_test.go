@@ -112,7 +112,16 @@ func (r *fakeVaultRepo) seedMember(m domainvault.Member) {
 	r.memberships[membershipKey{m.VaultID, m.UserID}] = m.Role
 }
 
-func (r *fakeVaultRepo) Create(_ context.Context, _ domainvault.Vault, _ domainvault.Member) error {
+func (r *fakeVaultRepo) Create(_ context.Context, v domainvault.Vault, m domainvault.Member) error {
+	if err := r.failOps["Create"]; err != nil {
+		return err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.vaults[v.ID] = v
+	cp := m
+	r.members[membershipKey{m.VaultID, m.UserID}] = &cp
+	r.memberships[membershipKey{m.VaultID, m.UserID}] = m.Role
 	return nil
 }
 func (r *fakeVaultRepo) Get(_ context.Context, id domainvault.ID) (domainvault.Vault, error) {
@@ -217,6 +226,80 @@ func (r *fakeVaultRepo) ListSharedByOrgMember(_ context.Context, orgID organizat
 		out = append(out, k.vaultID)
 	}
 	return out, nil
+}
+
+func (r *fakeVaultRepo) Delete(_ context.Context, id domainvault.ID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.vaults[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(r.vaults, id)
+	for k := range r.members {
+		if k.vaultID == id {
+			delete(r.members, k)
+		}
+	}
+	for k := range r.memberships {
+		if k.vaultID == id {
+			delete(r.memberships, k)
+		}
+	}
+	return nil
+}
+
+// ===========================================================================
+// fakeOrgRepo - minimal OrganizationRepository for shared-vault creation tests.
+// Only GetMembership is exercised by CreateVault; the rest satisfy the port.
+// ===========================================================================
+
+type fakeOrgRepo struct {
+	mu      sync.Mutex
+	members map[orgMemberKey]organization.Membership
+}
+
+type orgMemberKey struct {
+	orgID  organization.ID
+	userID user.ID
+}
+
+func newFakeOrgRepo() *fakeOrgRepo {
+	return &fakeOrgRepo{members: map[orgMemberKey]organization.Membership{}}
+}
+
+func (r *fakeOrgRepo) seedMember(m organization.Membership) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.members[orgMemberKey{m.OrgID, m.UserID}] = m
+}
+
+func (r *fakeOrgRepo) GetMembership(_ context.Context, orgID organization.ID, userID user.ID) (organization.Membership, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	m, ok := r.members[orgMemberKey{orgID, userID}]
+	if !ok {
+		return organization.Membership{}, domain.ErrNotFound
+	}
+	return m, nil
+}
+
+func (r *fakeOrgRepo) Create(_ context.Context, _ organization.Organization, _ organization.Membership) error {
+	return nil
+}
+func (r *fakeOrgRepo) GetByID(_ context.Context, _ organization.ID) (organization.Organization, error) {
+	return organization.Organization{}, domain.ErrNotFound
+}
+func (r *fakeOrgRepo) ListMembers(_ context.Context, _ organization.ID) ([]organization.Membership, error) {
+	return nil, nil
+}
+func (r *fakeOrgRepo) ListForUser(_ context.Context, _ user.ID) ([]organization.UserOrg, error) {
+	return nil, nil
+}
+func (r *fakeOrgRepo) UpdateMemberRole(_ context.Context, _ organization.ID, _ user.ID, _ user.Role) error {
+	return nil
+}
+func (r *fakeOrgRepo) RemoveMember(_ context.Context, _ organization.ID, _ user.ID) error {
+	return nil
 }
 
 // ===========================================================================

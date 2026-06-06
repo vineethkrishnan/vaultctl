@@ -247,3 +247,22 @@ func (r *VaultRepo) ListMembers(ctx context.Context, vaultID vault.ID) ([]vault.
 	}
 	return out, rows.Err()
 }
+
+// Delete permanently removes the vault. Memberships carry ON DELETE RESTRICT
+// (M3), so they are hard-deleted first inside the same transaction; folders,
+// items, and attachment rows then cascade with the vaults row.
+func (r *VaultRepo) Delete(ctx context.Context, id vault.ID) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
+
+	if _, err := tx.Exec(ctx, `DELETE FROM vault_members WHERE vault_id = $1`, string(id)); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM vaults WHERE id = $1`, string(id)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

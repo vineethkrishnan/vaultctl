@@ -389,3 +389,4 @@ func (emptyVaultRepo) MemberForUser(_ context.Context, _ vault.ID, _ user.ID) (v
 func (emptyVaultRepo) ListSharedByOrgMember(_ context.Context, _ organization.ID, _ user.ID) ([]vault.ID, error) {
 	return nil, nil
 }
+func (emptyVaultRepo) Delete(_ context.Context, _ vault.ID) error { return nil }

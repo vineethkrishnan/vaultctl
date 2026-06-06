@@ -291,6 +291,10 @@ func NewRouter(deps Dependencies) http.Handler {
 
 				// Vault items
 				r.Route("/vaults/{vaultId}", func(r chi.Router) {
+					// Deleting a whole vault is irreversible, so it demands a
+					// fresh master-password verification on top of the session.
+					r.With(requireStepUp).Delete("/", deps.Vault.HandleDeleteVault)
+
 					r.Get("/items", deps.Vault.HandleListItems)
 					r.Post("/items", deps.Vault.HandleCreateItem)
 					r.Get("/items/{id}", deps.Vault.HandleGetItem)

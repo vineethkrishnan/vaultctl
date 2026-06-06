@@ -55,6 +55,12 @@ type VaultRepository interface {
 	// org where userID is still an active member. Used by the org-level
 	// member removal flow (C2) to build the cascade rekey list.
 	ListSharedByOrgMember(ctx context.Context, orgID organization.ID, userID user.ID) ([]vault.ID, error)
+
+	// Delete permanently removes the vault, its memberships, and (via FK
+	// cascade) its folders, items, and attachment rows in one transaction.
+	// Irreversible - there is no vault-level trash. Membership rows carry
+	// ON DELETE RESTRICT, so they are deleted explicitly first.
+	Delete(ctx context.Context, id vault.ID) error
 }
 
 // ItemRepository persists vault_items rows.

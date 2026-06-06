@@ -63,6 +63,7 @@ export const VaultResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["personal", "shared"]),
+  orgId: z.string().optional(),
   role: z.string(),
   encryptedVaultKey: z.string(),
   senderId: z.string(),

@@ -64,6 +64,7 @@ export {
 export {
   type SelfVaultKeyWrap,
   buildSelfVaultKeyWrap,
+  buildSelfSharedVaultKeyWrap,
 } from "./vault-create.js";
 
 export { deriveKeys } from "./kdf.js";

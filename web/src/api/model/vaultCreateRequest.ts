@@ -9,6 +9,7 @@
 export interface VaultCreateRequest {
   encryptedVaultKey?: string;
   name?: string;
+  orgId?: string;
   type?: string;
   wrapSignature?: string;
 }

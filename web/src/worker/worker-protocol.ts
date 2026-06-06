@@ -22,6 +22,7 @@ export type WorkerRequest =
       stretchedKey: ArrayBuffer;
       encryptedPrivateKey: string;
       encryptedIdentityPrivateKey: string;
+      publicKey: string; // base64 SPKI - owner's own RSA wrapping key (for shared self-wrap)
       vaults: VaultKeyMaterial[];
     }
   | { op: "encrypt"; requestId: string; vaultId: string; plaintext: ArrayBuffer }
@@ -63,15 +64,19 @@ export type WorkerRequest =
       recipientPublicKeySignature: string; // base64 Ed25519(idPriv, publicKey)
     }
   | {
-      // createVaultKey: generate a fresh personal vault key, AES-KW wrap it
-      // under the held stretchedKey, and sign the serialized wrap with the
-      // identity key (mirrors the owner's self-wrap at registration). The raw
-      // key is buffered under `handle` so it can be bound to the server-assigned
-      // vault id once the vault is created. The wrapped blob and signature
-      // (base64) come back; the raw vault key never leaves the worker.
+      // createVaultKey: generate a fresh vault key and self-wrap it. For a
+      // personal vault, AES-KW under the held stretchedKey; for a shared vault,
+      // RSA-OAEP to the owner's own public key (domain Member.Validate requires
+      // RSA-OAEP for shared vaults). Either way the serialized wrap blob is
+      // signed with the identity key (mirrors the owner's self-wrap at
+      // registration). The raw key is buffered under `handle` so it can be bound
+      // to the server-assigned vault id once the vault is created. The wrapped
+      // blob and signature (base64) come back; the raw vault key never leaves
+      // the worker.
       op: "createVaultKey";
       requestId: string;
       handle: string;
+      vaultType: "personal" | "shared";
     }
   | {
       // bindVaultKey: move a buffered new-vault key from its temporary handle
