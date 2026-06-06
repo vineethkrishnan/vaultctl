@@ -25,6 +25,19 @@
       "monthly": "Monthly",
       "quarterly": "Quarterly",
       "yearly": "Yearly"
+    },
+    "time": "Time",
+    "weekday": "Day of week",
+    "dayOfMonth": "Day of month",
+    "month": "Month",
+    "timezone": "Timezone",
+    "defaultHint": "Times are in your selected timezone. The default is 08:00.",
+    "summary": {
+      "daily": "Sent every day at {{time}} ({{timezone}}).",
+      "weekly": "Sent every {{weekday}} at {{time}} ({{timezone}}).",
+      "monthly": "Sent on day {{day}} of each month at {{time}} ({{timezone}}).",
+      "quarterly": "Sent on day {{day}} every three months at {{time}} ({{timezone}}).",
+      "yearly": "Sent every year on {{month}} {{day}} at {{time}} ({{timezone}})."
     }
   }
 }

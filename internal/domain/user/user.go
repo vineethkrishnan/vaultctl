@@ -64,6 +64,10 @@ type User struct {
 	// Defaults to DefaultLocale; always normalised on read/write.
 	Locale string
 
+	// Timezone is the IANA name (e.g. "Europe/Berlin") used to interpret the
+	// user's digest schedule. Defaults to DefaultTimezone.
+	Timezone string
+
 	KDFParams KDFParams
 	// Salt is the per-user Argon2id salt (public - returned from prelogin).
 	// It lives on the aggregate because prelogin needs it alongside KDFParams.
@@ -128,6 +132,19 @@ func NormalizeLocale(locale string) string {
 // IsSupportedLocale reports whether the value is one of the supported locales.
 func IsSupportedLocale(locale string) bool {
 	return locale == LocaleEN || locale == LocaleDE
+}
+
+// DefaultTimezone is used when a user has not chosen a timezone. The digest
+// scheduler interprets schedules in UTC for these users.
+const DefaultTimezone = "UTC"
+
+// NormalizeTimezone returns the timezone if non-empty, otherwise DefaultTimezone.
+// IANA validity is enforced at the API boundary via time.LoadLocation.
+func NormalizeTimezone(timezone string) string {
+	if timezone == "" {
+		return DefaultTimezone
+	}
+	return timezone
 }
 
 // Validate asserts every User invariant.

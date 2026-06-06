@@ -446,21 +446,36 @@ type VerifyEmailRequest struct {
 	Code string `json:"code"`
 }
 
-// EmailPreferencesResponse reports a user's email-digest preference.
+// EmailPreferencesResponse reports a user's email-digest preference. The
+// schedule fields are populated only for the components relevant to the chosen
+// frequency; the rest are null.
 type EmailPreferencesResponse struct {
 	DigestFrequency string `json:"digestFrequency"`
 	LoginAlerts     bool   `json:"loginAlerts"`
 	Locale          string `json:"locale"`
+	Timezone        string `json:"timezone"`
+	SchedHour       *int   `json:"schedHour"`
+	SchedMinute     *int   `json:"schedMinute"`
+	SchedWeekday    *int   `json:"schedWeekday"`
+	SchedDay        *int   `json:"schedDay"`
+	SchedMonth      *int   `json:"schedMonth"`
 }
 
 // UpdateEmailPreferencesRequest sets the digest frequency
-// (off|daily|weekly|monthly|quarterly|yearly), the sign-in alert opt-in, and
-// the transactional-email locale (en|de). Fields are pointers so an omitted
-// field leaves that preference unchanged.
+// (off|daily|weekly|monthly|quarterly|yearly), the sign-in alert opt-in, the
+// transactional-email locale (en|de), the IANA timezone, and the granular
+// schedule. Fields are pointers so an omitted field leaves that preference
+// unchanged. The schedule fields are applied together with digestFrequency.
 type UpdateEmailPreferencesRequest struct {
 	DigestFrequency *string `json:"digestFrequency"`
 	LoginAlerts     *bool   `json:"loginAlerts"`
 	Locale          *string `json:"locale"`
+	Timezone        *string `json:"timezone"`
+	SchedHour       *int    `json:"schedHour"`
+	SchedMinute     *int    `json:"schedMinute"`
+	SchedWeekday    *int    `json:"schedWeekday"`
+	SchedDay        *int    `json:"schedDay"`
+	SchedMonth      *int    `json:"schedMonth"`
 }
 
 type UpdateProfileRequest struct {

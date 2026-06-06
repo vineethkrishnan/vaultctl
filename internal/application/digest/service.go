@@ -28,6 +28,14 @@ type Service struct {
 	Clock    ports.Clock
 }
 
+// Pref is a user's full digest preference, with the persisted schedule mapped to
+// the domain Schedule.
+type Pref struct {
+	Frequency Frequency
+	Schedule  Schedule
+	Timezone  string
+}
+
 // Frequency returns a user's current digest frequency (Off when unset).
 func (s *Service) Frequency(ctx context.Context, userID user.ID) (Frequency, error) {
 	p, err := s.Prefs.Get(ctx, userID)
@@ -40,14 +48,36 @@ func (s *Service) Frequency(ctx context.Context, userID user.ID) (Frequency, err
 	return Frequency(p.Frequency), nil
 }
 
-// SetFrequency validates and stores a user's preference, computing the next run.
-func (s *Service) SetFrequency(ctx context.Context, userID user.ID, freq Frequency) error {
+// Pref returns a user's full digest preference (frequency + schedule).
+func (s *Service) Pref(ctx context.Context, userID user.ID) (Pref, error) {
+	p, err := s.Prefs.Get(ctx, userID)
+	if err != nil {
+		return Pref{}, err
+	}
+	freq := Frequency(p.Frequency)
+	if p.Frequency == "" {
+		freq = Off
+	}
+	return Pref{
+		Frequency: freq,
+		Schedule:  ScheduleFromPorts(p.Schedule),
+		Timezone:  user.NormalizeTimezone(p.Timezone),
+	}, nil
+}
+
+// SetFrequency validates and stores a user's preference, computing the next run
+// from the chosen schedule interpreted in loc (the user's timezone). The
+// timezone itself is persisted by the caller on the users row; loc must match.
+func (s *Service) SetFrequency(ctx context.Context, userID user.ID, freq Frequency, schedule Schedule, loc *time.Location) error {
+	if err := schedule.Validate(freq); err != nil {
+		return err
+	}
 	now := s.Clock.Now()
 	var nextRun *time.Time
-	if next, ok := freq.NextRun(now); ok {
+	if next, ok := freq.NextRun(now, schedule, loc); ok {
 		nextRun = &next
 	}
-	return s.Prefs.Set(ctx, userID, string(freq), nextRun, now)
+	return s.Prefs.Set(ctx, userID, string(freq), schedule.ToPorts(), nextRun, now)
 }
 
 // LoginAlerts reports whether the user receives sign-in alert emails.
@@ -74,6 +104,8 @@ func (s *Service) RunDue(ctx context.Context) error {
 
 	for _, d := range due {
 		freq := Frequency(d.Frequency)
+		s.correctNextRun(ctx, d, freq, now)
+
 		since := now.Add(-freq.Window())
 		if d.LastRunAt != nil && d.LastRunAt.After(since) {
 			since = *d.LastRunAt
@@ -94,4 +126,28 @@ func (s *Service) RunDue(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// correctNextRun overwrites the legacy fixed-interval next_run_at the SQL claim
+// wrote with the schedule-aware value computed in Go. The claim already removed
+// the row from the due set (at-most-once); a write here only refines when the
+// NEXT run lands. Failures are logged, not fatal: the row simply keeps the
+// fixed-interval next run.
+func (s *Service) correctNextRun(ctx context.Context, d ports.DueDigest, freq Frequency, now time.Time) {
+	schedule := ScheduleFromPorts(d.Schedule)
+	if schedule.IsEmpty() {
+		return
+	}
+	loc, err := LoadLocation(d.Timezone)
+	if err != nil {
+		slog.WarnContext(ctx, "digest.timezone.invalid", slog.String("user_id", string(d.UserID)), slog.String("tz", d.Timezone), slog.String("err", err.Error()))
+		return
+	}
+	next, ok := freq.NextRun(now, schedule, loc)
+	if !ok {
+		return
+	}
+	if err := s.Prefs.Reschedule(ctx, d.UserID, &next, now); err != nil {
+		slog.WarnContext(ctx, "digest.reschedule.failed", slog.String("user_id", string(d.UserID)), slog.String("err", err.Error()))
+	}
 }
