@@ -43,30 +43,19 @@ test.describe.serial("Lock / unlock", () => {
     await page.getByRole("button", { name: "Account menu" }).click();
     await page.getByRole("menuitem", { name: "Settings" }).click();
     await expect(page).toHaveURL(/\/lock/, { timeout: 10_000 });
-    await expect(page.getByRole("heading", { name: "Vault Locked" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Session Locked" })).toBeVisible();
   });
 
-  test("unlock form submits password and routes back to login", async ({ page }) => {
+  test("lock screen 'sign in again' routes back to login", async ({ page }) => {
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    // Navigate directly to /lock - the v1 lock is effectively re-login.
+    // The v1 lock is honest re-login: a single action signs out and returns
+    // to /login (no in-place unlock yet).
     await page.goto("/lock");
-    await expect(page.getByRole("heading", { name: "Vault Locked" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Session Locked" })).toBeVisible();
 
-    await page.getByLabel("Master Password").fill("test-master-password-123");
-    await page.getByRole("button", { name: "Unlock" }).click();
-
-    // v1 behavior: unlock triggers logout + redirect to /login.
+    await page.getByRole("button", { name: "Sign in again" }).click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
-  });
-
-  test("lock screen supports immediate logout", async ({ page }) => {
-    await loginViaUI(page);
-    await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
-
-    await page.goto("/lock");
-    await page.getByText("Log out instead").click();
-    await expect(page).toHaveURL(/\/login/);
   });
 });

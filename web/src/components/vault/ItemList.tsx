@@ -168,13 +168,20 @@ export function ItemList() {
   }, [decryptedItems, filter, typeFilter]);
 
   const favoriteMutation = useMutation({
-    mutationFn: (item: DecryptedItem) =>
-      apiPut(`/api/v1/vaults/${vaultId}/items/${item.id}`, {
-        encryptedName: item.encryptedName,
-        encryptedData: item.encryptedData,
-        favorite: !item.favorite,
-        reprompt: item.reprompt,
-      }),
+    // PUT replaces the whole item, so re-fetch the current ciphertext first and
+    // toggle only the favorite flag. Re-submitting the (possibly stale) list
+    // blob would clobber any edit made elsewhere since this list was loaded.
+    mutationFn: async (item: DecryptedItem) => {
+      const fresh = await apiGet<ItemResponse>(
+        `/api/v1/vaults/${vaultId}/items/${item.id}`,
+      );
+      return apiPut(`/api/v1/vaults/${vaultId}/items/${item.id}`, {
+        encryptedName: fresh.encryptedName,
+        encryptedData: fresh.encryptedData,
+        favorite: !fresh.favorite,
+        reprompt: fresh.reprompt,
+      });
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) }),
   });
@@ -435,12 +442,20 @@ function RowMenu({
     document.addEventListener("keydown", onEsc);
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
+    // Move focus into the menu so keyboard users land on the first action.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     return () => {
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onEsc);
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };
+  }, [open]);
+
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) btnRef.current?.focus();
+    wasOpen.current = open;
   }, [open]);
 
   function run(action: () => void) {

@@ -41,6 +41,15 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [open, onCancel]);
+
   // Biometric step-up: recover the master-password proof (authHash) via Touch
   // ID and exchange it for a fresh step-up token, no typing required.
   async function handleBiometric() {
@@ -107,8 +116,18 @@ export function StepUpModal({ open, onSuccess, onCancel }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg"
+      >
         <div className="mb-4 flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">{t("stepUp.title")}</h2>

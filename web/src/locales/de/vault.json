@@ -63,6 +63,7 @@
     "newFolder": "Neuer Ordner",
     "newFolderTitle": "Neuer Ordner",
     "namePlaceholder": "Ordnername",
+    "deleteConfirmTitle": "Ordner löschen",
     "deleteConfirm": "Ordner \"{{name}}\" löschen?",
     "decryptError": "[Fehler]"
   },
@@ -73,7 +74,8 @@
     "newOfType": "Neu: {{type}}",
     "creating": "Wird erstellt...",
     "create": "Eintrag erstellen",
-    "createFailed": "Erstellen fehlgeschlagen"
+    "createFailed": "Erstellen fehlgeschlagen",
+    "untitled": "Ohne Titel"
   },
   "editor": {
     "namePlaceholder": "Eintragsname",
@@ -84,7 +86,9 @@
     "saved": "Gespeichert",
     "saveFailed": "Speichern fehlgeschlagen",
     "unknownType": "Unbekannter Eintragstyp: {{type}}",
-    "decryptionFailed": "[Entschlüsselung fehlgeschlagen]"
+    "decryptionFailed": "[Entschlüsselung fehlgeschlagen]",
+    "decryptErrorHint": "Der Name dieses Eintrags konnte nicht entschlüsselt werden",
+    "saveDisabledDecryptFailed": "Das Speichern ist deaktiviert, um den ursprünglichen Namen zu schützen"
   },
   "trash": {
     "title": "Papierkorb",
@@ -111,7 +115,8 @@
     "regenerate": "Neu generieren",
     "copy": "Kopieren",
     "length": "Länge: {{count}}",
-    "usePassword": "Dieses Passwort verwenden"
+    "usePassword": "Dieses Passwort verwenden",
+    "noClassSelected": "Wählen Sie mindestens einen Zeichensatz aus, um ein Passwort zu generieren."
   },
   "safetyNumber": {
     "label": "Sicherheitsnummer",
@@ -154,7 +159,7 @@
     "importFailed": "Import fehlgeschlagen",
     "itemsFound": "<1>{{count}}</1> Einträge gefunden:",
     "typeCount": "{{count}} {{type}}",
-    "importingProgress": "Wird importiert... ({{count}})",
+    "importingProgress": "Wird importiert... ({{done}}/{{total}})",
     "importAll": "Alle importieren",
     "successCount": "<1>{{count}}</1> Einträge erfolgreich importiert",
     "failedCount": "{{count}} Einträge fehlgeschlagen",
@@ -197,7 +202,9 @@
     "roleMember": "Mitglied",
     "roleAdmin": "Administrator",
     "add": "Hinzufügen",
-    "invited": "{{recipient}} als {{role}} eingeladen"
+    "invited": "{{recipient}} als {{role}} eingeladen",
+    "comingSoonTitle": "Das Hinzufügen von Mitgliedern ist noch nicht verfügbar",
+    "comingSoonNote": "Für die Freigabe eines Tresors muss der Tresorschlüssel für jeden Empfänger verschlüsselt werden. Dieser Schlüsselaustausch wird noch entwickelt, daher ist das Einladen neuer Mitglieder vorübergehend deaktiviert. Vorhandene Mitglieder können weiterhin entfernt werden."
   },
   "attachments": {
     "heading": "Anhänge",
@@ -215,6 +222,7 @@
     "hide": "Ausblenden",
     "show": "Anzeigen",
     "copy": "Kopieren",
+    "copied": "Kopiert",
     "remove": "Entfernen",
     "username": "Benutzername",
     "password": "Passwort",

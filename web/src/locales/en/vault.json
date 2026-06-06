@@ -63,6 +63,7 @@
     "newFolder": "New Folder",
     "newFolderTitle": "New folder",
     "namePlaceholder": "Folder name",
+    "deleteConfirmTitle": "Delete folder",
     "deleteConfirm": "Delete folder \"{{name}}\"?",
     "decryptError": "[error]"
   },
@@ -73,7 +74,8 @@
     "newOfType": "New {{type}}",
     "creating": "Creating...",
     "create": "Create Item",
-    "createFailed": "Failed to create"
+    "createFailed": "Failed to create",
+    "untitled": "Untitled"
   },
   "editor": {
     "namePlaceholder": "Item name",
@@ -84,7 +86,9 @@
     "saved": "Saved",
     "saveFailed": "Save failed",
     "unknownType": "Unknown item type: {{type}}",
-    "decryptionFailed": "[decryption failed]"
+    "decryptionFailed": "[decryption failed]",
+    "decryptErrorHint": "This item's name could not be decrypted",
+    "saveDisabledDecryptFailed": "Saving is disabled to protect the original name"
   },
   "trash": {
     "title": "Trash",
@@ -111,7 +115,8 @@
     "regenerate": "Regenerate",
     "copy": "Copy",
     "length": "Length: {{count}}",
-    "usePassword": "Use This Password"
+    "usePassword": "Use This Password",
+    "noClassSelected": "Select at least one character set to generate a password."
   },
   "safetyNumber": {
     "label": "Safety Number",
@@ -154,7 +159,7 @@
     "importFailed": "Import failed",
     "itemsFound": "<1>{{count}}</1> items found:",
     "typeCount": "{{count}} {{type}}(s)",
-    "importingProgress": "Importing... ({{count}})",
+    "importingProgress": "Importing... ({{done}}/{{total}})",
     "importAll": "Import All",
     "successCount": "<1>{{count}}</1> items imported successfully",
     "failedCount": "{{count}} items failed",
@@ -197,7 +202,9 @@
     "roleMember": "Member",
     "roleAdmin": "Admin",
     "add": "Add",
-    "invited": "Invited {{recipient}} as {{role}}"
+    "invited": "Invited {{recipient}} as {{role}}",
+    "comingSoonTitle": "Adding members is not yet available",
+    "comingSoonNote": "Sharing a vault requires wrapping the vault key for each recipient. That key-exchange step is still being built, so inviting new members is temporarily disabled. Existing members can still be removed."
   },
   "attachments": {
     "heading": "Attachments",
@@ -215,6 +222,7 @@
     "hide": "Hide",
     "show": "Show",
     "copy": "Copy",
+    "copied": "Copied",
     "remove": "Remove",
     "username": "Username",
     "password": "Password",

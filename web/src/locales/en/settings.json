@@ -1,5 +1,38 @@
 {
   "title": "Settings",
+  "tabs": {
+    "profile": "Profile",
+    "security": "Security",
+    "sessions": "Sessions",
+    "data": "Data",
+    "about": "About"
+  },
+  "profile": {
+    "heading": "Profile",
+    "userId": "User ID:",
+    "email": "Email:"
+  },
+  "security": {
+    "heading": "Security",
+    "autoLockTimeout": "Auto-lock timeout",
+    "twoFactor": "Two-Factor Authentication",
+    "twoFactorEnabled": "Enabled",
+    "enable2fa": "Enable 2FA",
+    "twoFactorIsEnabled": "2FA is enabled",
+    "changeMasterPassword": "Change Master Password",
+    "passwordChanged": "Password changed"
+  },
+  "lockOptions": {
+    "min1": "1 minute",
+    "min5": "5 minutes",
+    "min15": "15 minutes",
+    "min30": "30 minutes",
+    "hour1": "1 hour",
+    "never": "Never"
+  },
+  "updates": {
+    "heading": "Updates"
+  },
   "language": {
     "title": "Language",
     "description": "Choose the language for the vaultctl interface.",
@@ -45,6 +78,10 @@
     "backUpNow": "Back up now",
     "edit": "Edit",
     "deleteDestination": "Delete destination",
+    "deleteConfirm": {
+      "title": "Delete destination",
+      "message": "Delete the backup destination \"{{label}}\"? Stored backups at this destination are not removed, but no further backups will run here."
+    },
     "localWarning": "A local copy lives on the server's disk. A disk failure loses it - pair it with an off-box destination for real durability.",
     "backupsAndRestore": "Backups & restore",
     "restoreFailed": "Restore failed",

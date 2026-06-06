@@ -11,5 +11,19 @@
     "working": "Wird ausgeführt..."
   },
   "loading": "Wird geladen...",
-  "language": "Sprache"
+  "language": "Sprache",
+  "chrome": {
+    "skipToContent": "Zum Inhalt springen",
+    "openMenu": "Menü öffnen",
+    "notifications": "Benachrichtigungen",
+    "notificationsUnread": "Benachrichtigungen, {{count}} ungelesen",
+    "toggleTheme": "Design umschalten",
+    "lockVault": "Tresor sperren"
+  },
+  "profileMenu": {
+    "account": "Konto",
+    "accountMenu": "Kontomenü",
+    "settings": "Einstellungen",
+    "logOut": "Abmelden"
+  }
 }

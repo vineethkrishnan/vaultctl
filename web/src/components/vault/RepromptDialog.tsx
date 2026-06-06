@@ -39,6 +39,15 @@ export function RepromptDialog({ open, onConfirm, onCancel }: Props) {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onCancel();
+    }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [open, onCancel]);
+
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -68,8 +77,18 @@ export function RepromptDialog({ open, onConfirm, onCancel }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg"
+      >
         <div className="mb-4 flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-yellow-500" />
           <h2 className="text-lg font-semibold">{t("vault:reprompt.title")}</h2>

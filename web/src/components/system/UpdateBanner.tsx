@@ -28,7 +28,10 @@ export function UpdateBanner() {
   useEffect(() => {
     if (!data || !parseable(data.currentVersion)) return;
     const lastSeen = getLastSeenVersion();
-    if (lastSeen && lastSeen !== data.currentVersion) {
+    // Only interrupt with the auto-opening modal for meaningful releases; let
+    // patch/none updates ride the banner instead of stealing focus mid-task.
+    const isSignificant = data.severity === "major" || data.severity === "minor";
+    if (lastSeen && lastSeen !== data.currentVersion && isSignificant) {
       setModal("whatsnew");
     }
     if (lastSeen !== data.currentVersion) {

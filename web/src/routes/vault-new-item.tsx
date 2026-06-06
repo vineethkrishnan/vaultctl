@@ -53,7 +53,7 @@ export function VaultNewItemPage() {
         vaultId,
         encoder.encode(JSON.stringify(itemData)),
       );
-      const encName = await encryptName(vaultId, name || "Untitled");
+      const encName = await encryptName(vaultId, name || t("vault:newItem.untitled"));
       return apiPost<ItemResponse>(`/api/v1/vaults/${vaultId}/items`, {
         itemType: selectedType,
         encryptedData: encData,
@@ -159,10 +159,12 @@ export function VaultNewItemPage() {
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || createMutation.isPending}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {saving ? t("vault:newItem.creating") : t("vault:newItem.create")}
+            {saving || createMutation.isPending
+              ? t("vault:newItem.creating")
+              : t("vault:newItem.create")}
           </button>
           {createMutation.isError && (
             <span className="self-center text-sm text-destructive">

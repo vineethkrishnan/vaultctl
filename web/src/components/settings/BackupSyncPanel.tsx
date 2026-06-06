@@ -22,6 +22,7 @@ import { apiGet, apiPost, apiPut, apiDelete, ApiRequestError } from "@/lib/api-c
 import { queryKeys } from "@/lib/query-keys";
 import { postImport } from "@/api/import-export/import-export";
 import { StepUpModal } from "@/components/auth/StepUpModal";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // ── Wire types (mirror internal/presenters/api/backup_handlers.go) ──────────
 interface Destination {
@@ -144,7 +145,7 @@ export function BackupSyncPanel() {
         <div
           className={`flex items-center gap-2 rounded-md p-2 text-sm ${
             banner.kind === "ok"
-              ? "bg-green-500/10 text-green-500"
+              ? "bg-success/10 text-success"
               : "bg-destructive/10 text-destructive"
           }`}
         >
@@ -210,11 +211,12 @@ function DestinationCard({
   dest: Destination;
   onChange: () => void;
 }) {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "common"]);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const runNow = useMutation({
     mutationFn: () =>
@@ -279,7 +281,7 @@ function DestinationCard({
                   when: new Date(dest.lastRunAt).toLocaleString(),
                 })}{" "}
                 {dest.lastStatus === "success" ? (
-                  <span className="text-green-500">{t("backup.statusOk")}</span>
+                  <span className="text-success">{t("backup.statusOk")}</span>
                 ) : (
                   <span className="text-destructive">{t("backup.statusFailed")}</span>
                 )}
@@ -310,7 +312,7 @@ function DestinationCard({
             {t("backup.edit")}
           </button>
           <button
-            onClick={() => remove.mutate()}
+            onClick={() => setConfirmingDelete(true)}
             disabled={remove.isPending}
             title={t("backup.deleteDestination")}
             className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-destructive disabled:opacity-50"
@@ -319,6 +321,20 @@ function DestinationCard({
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title={t("backup.deleteConfirm.title")}
+        message={t("backup.deleteConfirm.message", { label: dest.label })}
+        confirmLabel={t("common:actions.delete")}
+        destructive
+        busy={remove.isPending}
+        onConfirm={() => {
+          setConfirmingDelete(false);
+          remove.mutate();
+        }}
+        onCancel={() => setConfirmingDelete(false)}
+      />
 
       {dest.provider === "local" && (
         <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-muted-foreground">
@@ -449,7 +465,7 @@ function DestinationDetail({ destinationId }: { destinationId: string }) {
   return (
     <div className="mt-2 space-y-3 border-t border-border pt-2">
       {restoreState.message && (
-        <div className="flex items-center gap-2 text-xs text-green-500">
+        <div className="flex items-center gap-2 text-xs text-success">
           <Check className="h-3.5 w-3.5" /> {restoreState.message}
         </div>
       )}
@@ -506,7 +522,7 @@ function DestinationDetail({ destinationId }: { destinationId: string }) {
             {(runs?.runs ?? []).slice(0, 5).map((run) => (
               <li key={run.id} className="flex items-center gap-2">
                 {run.status === "success" ? (
-                  <Check className="h-3 w-3 text-green-500" />
+                  <Check className="h-3 w-3 text-success" />
                 ) : (
                   <AlertTriangle className="h-3 w-3 text-destructive" />
                 )}
