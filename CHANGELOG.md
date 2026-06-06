@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.15.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.14.0...v1.15.0) (2026-06-06)
+
+
+### Features
+
+* **api:** config feature flags, login-alert opt-out, and self-audit endpoint ([#203](https://github.com/vineethkrishnan/vaultctl/issues/203)) ([89db344](https://github.com/vineethkrishnan/vaultctl/commit/89db3442b4928e2c8e75823cb00b2da9c4bdc034))
+* **api:** enforce require-2fa, add orgs list and hibp flag ([#207](https://github.com/vineethkrishnan/vaultctl/issues/207)) ([b6f3d6e](https://github.com/vineethkrishnan/vaultctl/commit/b6f3d6e3eda5ee16086edc2af5a7ac1f9a0dac1a))
+* **email:** localize transactional mail (en/de) by user locale ([#209](https://github.com/vineethkrishnan/vaultctl/issues/209)) ([b4c90d2](https://github.com/vineethkrishnan/vaultctl/commit/b4c90d2f2ed6b78db2f4bd9437296aa1f93ebea1))
+* **web:** activity log view and server-feature gating ([#206](https://github.com/vineethkrishnan/vaultctl/issues/206)) ([4aac0c0](https://github.com/vineethkrishnan/vaultctl/commit/4aac0c07500e0cf0d8806e954df6fc31c803cff1))
+* **web:** live totp codes, password health view, and csv export ([#204](https://github.com/vineethkrishnan/vaultctl/issues/204)) ([534b14f](https://github.com/vineethkrishnan/vaultctl/commit/534b14f7833d73a87a8b14e1f19db017ad6c1982))
+* **web:** onboarding checklist, admin org list, and hibp breach check ([#208](https://github.com/vineethkrishnan/vaultctl/issues/208)) ([ac76dc5](https://github.com/vineethkrishnan/vaultctl/commit/ac76dc548d0afb369a4210bff539c9cd0b8c921e))
+* **web:** real vault sharing with recipient key-wrap ([#210](https://github.com/vineethkrishnan/vaultctl/issues/210)) ([a8a08b5](https://github.com/vineethkrishnan/vaultctl/commit/a8a08b58413cb95ec1cacfc54a3f8be474e46e3b))
+
+
+### Bug Fixes
+
+* **email:** harden otp, mailer, digest, and login-alert paths ([#201](https://github.com/vineethkrishnan/vaultctl/issues/201)) ([7cfaf78](https://github.com/vineethkrishnan/vaultctl/commit/7cfaf78cb039fd83d7ae7ee88edef6d1d8b436af))
+* **extension:** validate message senders and harden autofill ([#200](https://github.com/vineethkrishnan/vaultctl/issues/200)) ([bda3a38](https://github.com/vineethkrishnan/vaultctl/commit/bda3a38b215e07a32448db1847ad84feffdb36e6))
+* **web:** repair auto-lock, item-name overwrite, i18n gaps, a11y, and ux polish ([#202](https://github.com/vineethkrishnan/vaultctl/issues/202)) ([9f2ace8](https://github.com/vineethkrishnan/vaultctl/commit/9f2ace83822d35451031b2563f8ebb58e5a099af))
+
 ## [1.14.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.13.0...v1.14.0) (2026-06-05)
 
 
