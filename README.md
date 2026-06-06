@@ -9,6 +9,29 @@ Self-hosted, zero-knowledge password vault. Single Go binary serves the API and 
 
 Docs: [vaultctl.vinelabs.de](https://vaultctl.vinelabs.de)
 
+## Features
+
+- **Zero-knowledge.** Argon2id + AES-256-GCM run client-side; the server only ever stores ciphertext.
+- **Multi-vault + sharing.** Personal and shared vaults, role-based access, RSA-OAEP recipient key-wrap with Ed25519 signature pinning; removing a member rekeys the vault.
+- **Browser extension (MV3).** Autofill and save for logins, plus capture and fill of credit cards and identities; multi-vault switcher and cross-vault autofill.
+- **TOTP codes.** Store 2FA secrets and read live one-time codes in the app.
+- **Password health.** Weak/reused/old detection, with an optional Have I Been Pwned breach check (k-anonymity, client-side, off by default).
+- **Import / export.** Including CSV, alongside the encrypted JSON export.
+- **Encrypted cloud backups.** Per-user scheduled, double-sealed backups to local, S3, WebDAV, Google Drive, Dropbox, or OneDrive.
+- **Email.** Optional SMTP for signup verification, new-device login alerts, and activity digests.
+- **Activity log.** Self-audit trail of security-relevant events.
+- **Admin / orgs.** Organizations, invites, member roles.
+- **i18n.** English and German across the web app and extension.
+- **2FA.** TOTP for every user, with optional server-wide enforcement.
+
+## Configuration
+
+vaultctl is configured entirely through `VAULTCTL_` environment variables (see [`.env.example`](.env.example)). Full references:
+
+- [`docs/setup/configuration.md`](docs/setup/configuration.md) - every env var, defaults, and which are required in production.
+- [`docs/setup/email.md`](docs/setup/email.md) - SMTP setup and what enabling mail turns on.
+- [`docs/setup/backup-sync.md`](docs/setup/backup-sync.md) - encrypted per-user cloud backups and OAuth provider registration.
+
 ## Quick start (self-host)
 
 ```bash
