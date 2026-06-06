@@ -20,10 +20,15 @@ import {
   workerLock,
   workerSignIdentity,
   workerWrapVaultKey,
+  workerCreateVaultKey,
+  workerBindVaultKey,
   workerTerminate,
   workerIsUnlocked,
 } from "@/worker/worker-client";
-import type { WrapVaultKeyResult } from "@/worker/worker-client";
+import type {
+  WrapVaultKeyResult,
+  CreateVaultKeyResult,
+} from "@/worker/worker-client";
 import type { VaultMembership } from "@/shared/types/api";
 
 export interface InitParams {
@@ -107,6 +112,27 @@ export async function wrapVaultKeyForRecipient(params: {
   recipientPublicKeySignature: string;
 }): Promise<WrapVaultKeyResult> {
   return workerWrapVaultKey(params);
+}
+
+/**
+ * Generate a fresh personal vault key for a new vault (M9). The Worker creates
+ * the key, AES-KW wraps it under the held stretchedKey, and signs the wrap with
+ * the identity key - mirroring the owner's self-wrap at registration. Returns
+ * the base64 wrap blob + signature to POST to /vaults; the raw key is buffered
+ * under `handle`. The raw vault key never leaves the Worker.
+ */
+export async function createVaultKey(
+  handle: string,
+): Promise<CreateVaultKeyResult> {
+  return workerCreateVaultKey(handle);
+}
+
+/** Bind a buffered new-vault key (by handle) to its server-assigned vault id. */
+export async function bindVaultKey(
+  handle: string,
+  vaultId: string,
+): Promise<void> {
+  return workerBindVaultKey(handle, vaultId);
 }
 
 /** Lock the vault: zero all key material in the Worker. */

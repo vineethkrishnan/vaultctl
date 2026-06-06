@@ -5,12 +5,20 @@
     "security": "Security",
     "sessions": "Sessions",
     "data": "Data",
+    "updates": "Updates",
     "about": "About"
   },
   "profile": {
     "heading": "Profile",
     "userId": "User ID:",
     "email": "Email:"
+  },
+  "displayName": {
+    "heading": "Display name",
+    "description": "The name shown on your account and in the profile menu.",
+    "label": "Display name",
+    "saved": "Display name saved",
+    "saveFailed": "Could not save display name"
   },
   "security": {
     "heading": "Security",
@@ -31,7 +39,8 @@
     "never": "Never"
   },
   "updates": {
-    "heading": "Updates"
+    "heading": "Updates",
+    "disabled": "Update checking is disabled on this server."
   },
   "language": {
     "title": "Language",

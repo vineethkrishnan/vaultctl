@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
@@ -7,10 +8,11 @@ import { apiGet } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import type { VaultResponse } from "@/shared/types/api";
 import { FolderList } from "@/components/vault/FolderList";
+import { CreateVaultDialog } from "@/components/vault/CreateVaultDialog";
 import { BrandMark } from "@/components/BrandMark";
 import { QuickActions } from "@/components/layout/QuickActions";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
-import { KeyRound, Star, Trash2, FolderClosed, Plus, X, ShieldCheck, Activity } from "lucide-react";
+import { KeyRound, Star, Trash2, FolderClosed, Plus, X } from "lucide-react";
 
 const navLink =
   "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
@@ -21,8 +23,9 @@ interface Props {
 }
 
 export function VaultSidebar({ open = false, onClose }: Props) {
-  const { t } = useTranslation(["vault", "health", "activity", "common"]);
+  const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
+  const [showCreateVault, setShowCreateVault] = useState(false);
 
   const { data: vaults } = useQuery({
     queryKey: queryKeys.vaults.list(),
@@ -53,8 +56,19 @@ export function VaultSidebar({ open = false, onClose }: Props) {
 
       {/* Vault selector */}
       <div className="border-b border-border px-3 py-3">
-        <div className="px-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          {t("vault:sidebar.vaults")}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {t("vault:sidebar.vaults")}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowCreateVault(true)}
+            aria-label={t("vault:createVault.title")}
+            title={t("vault:createVault.title")}
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
         <div className="mt-1.5 space-y-0.5">
           {vaults?.map((v) => (
@@ -70,6 +84,10 @@ export function VaultSidebar({ open = false, onClose }: Props) {
           ))}
         </div>
       </div>
+
+      {showCreateVault && (
+        <CreateVaultDialog onClose={() => setShowCreateVault(false)} />
+      )}
 
       {/* Navigation */}
       {activeVault && (
@@ -99,14 +117,6 @@ export function VaultSidebar({ open = false, onClose }: Props) {
           >
             <Trash2 className="h-4 w-4" />
             {t("vault:sidebar.trash")}
-          </Link>
-          <Link to="/health" className={navLink}>
-            <ShieldCheck className="h-4 w-4" />
-            {t("health:nav")}
-          </Link>
-          <Link to="/activity" className={navLink}>
-            <Activity className="h-4 w-4" />
-            {t("activity:title")}
           </Link>
 
           {/* Folders */}

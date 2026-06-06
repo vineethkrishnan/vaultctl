@@ -58,6 +58,13 @@
     "trash": "Trash",
     "newItem": "New Item"
   },
+  "createVault": {
+    "title": "New vault",
+    "nameLabel": "Vault name",
+    "namePlaceholder": "e.g. Work",
+    "create": "Create vault",
+    "failed": "Could not create the vault"
+  },
   "folders": {
     "heading": "Folders",
     "newFolder": "New Folder",

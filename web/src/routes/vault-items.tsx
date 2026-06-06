@@ -42,7 +42,7 @@ export function VaultItemsPage() {
         </Link>
       </div>
 
-      {vaultId && vaultId !== "none" && (items?.length ?? 0) === 0 && (
+      {vaultId && vaultId !== "none" && items?.length === 0 && (
         <OnboardingChecklist vaultId={vaultId} hasItems={false} />
       )}
 
