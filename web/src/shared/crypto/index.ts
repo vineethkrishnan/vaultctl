@@ -76,4 +76,5 @@ export {
   toBase64,
   fromBase64,
   sha256,
+  sha1,
 } from "./utils.js";

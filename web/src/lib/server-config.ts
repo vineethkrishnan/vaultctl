@@ -16,6 +16,7 @@ export interface ServerFeatures {
   updates: boolean;
   notifications: boolean;
   require2fa: boolean;
+  hibp: boolean;
 }
 
 export interface ServerConfig {
@@ -42,4 +43,5 @@ export const ALL_FEATURES_ON: ServerFeatures = {
   updates: true,
   notifications: true,
   require2fa: false,
+  hibp: true,
 };

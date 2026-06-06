@@ -34,5 +34,22 @@
     "description": "Not updated in over a year. Consider rotating these.",
     "empty": "No stale logins.",
     "age": "{{months}} months old"
+  },
+  "breach": {
+    "title": "Check for breaches",
+    "description": "See whether any of your passwords appear in known data breaches, using HaveIBeenPwned's k-anonymity range API.",
+    "check": "Check for breaches",
+    "checking": "Checking passwords against known breaches...",
+    "error": "The breach check could not be completed. Please try again.",
+    "retry": "Try again",
+    "clear_one": "No breaches found across {{count}} login.",
+    "clear_other": "No breaches found across {{count}} logins.",
+    "found_one": "{{count}} login uses a breached password.",
+    "found_other": "{{count}} logins use breached passwords.",
+    "count_one": "seen {{count}} time",
+    "count_other": "seen {{count}} times",
+    "confirmTitle": "Run the breach check?",
+    "confirmMessage": "This sends only the first five characters of each password's SHA-1 hash directly to api.pwnedpasswords.com. Your passwords and their full hashes never leave this browser, and nothing is sent to the vaultctl server.",
+    "privacyNote": "Only the first five characters of each SHA-1 hash are sent, directly to api.pwnedpasswords.com. Your full passwords and hashes never leave your browser, and the vaultctl server is not involved."
   }
 }

@@ -2,13 +2,26 @@
 
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
+import { apiGet } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import type { ItemResponse } from "@/shared/types/api";
 import { ItemList } from "@/components/vault/ItemList";
 import { SharingPanel } from "@/components/vault/SharingPanel";
+import { OnboardingChecklist } from "@/components/vault/OnboardingChecklist";
 
 export function VaultItemsPage() {
   const { t } = useTranslation(["vault", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId: string };
+
+  // Shares the unfiltered items query key with ItemList, so this only drives
+  // the onboarding checklist's hasItems flag without a second network request.
+  const { data: items } = useQuery({
+    queryKey: [...queryKeys.items.list(vaultId), ""],
+    queryFn: () => apiGet<ItemResponse[]>(`/api/v1/vaults/${vaultId}/items`),
+    enabled: !!vaultId && vaultId !== "none",
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -28,6 +41,10 @@ export function VaultItemsPage() {
           {t("vault:items.newItem")}
         </Link>
       </div>
+
+      {vaultId && vaultId !== "none" && (items?.length ?? 0) === 0 && (
+        <OnboardingChecklist vaultId={vaultId} hasItems={false} />
+      )}
 
       <ItemList />
 

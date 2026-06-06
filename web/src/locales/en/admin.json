@@ -5,11 +5,13 @@
     "newNamePlaceholder": "New organization name",
     "create": "Create",
     "manageLabel": "Manage organization",
-    "orgIdPlaceholder": "Organization ID"
+    "empty": "You don't belong to any organizations yet."
   },
   "members": {
     "heading": "Members ({{count}})",
     "empty": "No members.",
+    "memberLabel": "Member",
+    "userIdLabel": "ID {{id}}",
     "save": "Save",
     "cancel": "Cancel",
     "remove": "Remove member"

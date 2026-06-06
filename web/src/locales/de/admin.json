@@ -5,11 +5,13 @@
     "newNamePlaceholder": "Name der neuen Organisation",
     "create": "Erstellen",
     "manageLabel": "Organisation verwalten",
-    "orgIdPlaceholder": "Organisations-ID"
+    "empty": "Sie gehören noch keiner Organisation an."
   },
   "members": {
     "heading": "Mitglieder ({{count}})",
     "empty": "Keine Mitglieder.",
+    "memberLabel": "Mitglied",
+    "userIdLabel": "ID {{id}}",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "remove": "Mitglied entfernen"

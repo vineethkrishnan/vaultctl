@@ -64,3 +64,13 @@ export async function sha256(data: Uint8Array): Promise<Uint8Array> {
   const hash = await crypto.subtle.digest("SHA-256", buf(data));
   return new Uint8Array(hash);
 }
+
+/**
+ * SHA-1 digest. Only used for the HaveIBeenPwned k-anonymity range API, whose
+ * protocol is defined over SHA-1; never used for any vault crypto. Kept here so
+ * the raw WebCrypto call stays inside the crypto module.
+ */
+export async function sha1(data: Uint8Array): Promise<Uint8Array> {
+  const hash = await crypto.subtle.digest("SHA-1", buf(data));
+  return new Uint8Array(hash);
+}

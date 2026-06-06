@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearch } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
 import { useServerFeatures } from "@/hooks/use-server-features";
 import {
@@ -59,7 +60,11 @@ export function SettingsPage() {
   const features = useServerFeatures();
   const identityPubKey = sessionStorage.getItem("vaultctl_id_pubkey") ?? "";
 
-  const [tab, setTab] = useState<TabId>("profile");
+  const search = useSearch({ strict: false }) as { tab?: string };
+  const initialTab: TabId = TABS.some((tabDef) => tabDef.id === search.tab)
+    ? (search.tab as TabId)
+    : "profile";
+  const [tab, setTab] = useState<TabId>(initialTab);
 
   const [lockTimeout, setLockTimeout] = useState(() => {
     const stored = localStorage.getItem(LOCK_TIMEOUT_STORAGE_KEY);

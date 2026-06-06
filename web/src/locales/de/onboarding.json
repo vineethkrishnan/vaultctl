@@ -1,0 +1,29 @@
+{
+  "title": "Erste Schritte",
+  "subtitle": "Ein paar schnelle Schritte zum Absichern Ihres Tresors. Sie können jederzeit hierher zurückkehren.",
+  "progress": "{{done}} von {{total}} erledigt",
+  "dismiss": "Ausblenden",
+  "markDone": "Als erledigt markieren",
+  "done": "Erledigt",
+  "recovery": {
+    "title": "Wiederherstellungs-Kit speichern",
+    "description": "Ihr Wiederherstellungsschlüssel ist der einzige Weg zurück in Ihren Tresor, falls Sie Ihr Master-Passwort vergessen. Laden Sie ihn herunter und bewahren Sie ihn sicher auf.",
+    "action": "Wiederherstellungs-Kit öffnen"
+  },
+  "twofa": {
+    "title": "Zwei-Faktor-Authentifizierung aktivieren",
+    "description": "Fügen Sie einen zweiten Faktor hinzu, damit ein gestohlenes Passwort allein Ihr Konto nicht entsperren kann.",
+    "action": "2FA einrichten"
+  },
+  "extension": {
+    "title": "Browser-Erweiterung installieren",
+    "description": "Logins automatisch ausfüllen und erfassen, direkt beim Surfen.",
+    "action": "Erweiterung holen"
+  },
+  "firstItem": {
+    "title": "Ersten Eintrag hinzufügen",
+    "description": "Erstellen Sie einen Login von Hand oder importieren Sie aus einem anderen Passwort-Manager.",
+    "addAction": "Eintrag hinzufügen",
+    "importAction": "Importieren"
+  }
+}

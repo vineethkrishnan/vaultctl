@@ -34,5 +34,22 @@
     "description": "Seit über einem Jahr nicht aktualisiert. Erwägen Sie eine Rotation.",
     "empty": "Keine veralteten Logins.",
     "age": "{{months}} Monate alt"
+  },
+  "breach": {
+    "title": "Auf Datenlecks prüfen",
+    "description": "Prüfen Sie, ob eines Ihrer Passwörter in bekannten Datenlecks auftaucht - über die k-Anonymitäts-Range-API von HaveIBeenPwned.",
+    "check": "Auf Datenlecks prüfen",
+    "checking": "Passwörter werden mit bekannten Datenlecks abgeglichen...",
+    "error": "Die Datenleck-Prüfung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+    "retry": "Erneut versuchen",
+    "clear_one": "Keine Datenlecks bei {{count}} Login gefunden.",
+    "clear_other": "Keine Datenlecks bei {{count}} Logins gefunden.",
+    "found_one": "{{count}} Login verwendet ein geleaktes Passwort.",
+    "found_other": "{{count}} Logins verwenden geleakte Passwörter.",
+    "count_one": "{{count}}-mal gesehen",
+    "count_other": "{{count}}-mal gesehen",
+    "confirmTitle": "Datenleck-Prüfung ausführen?",
+    "confirmMessage": "Dabei werden nur die ersten fünf Zeichen des SHA-1-Hashes jedes Passworts direkt an api.pwnedpasswords.com gesendet. Ihre Passwörter und deren vollständige Hashes verlassen diesen Browser nie, und es wird nichts an den vaultctl-Server gesendet.",
+    "privacyNote": "Es werden nur die ersten fünf Zeichen jedes SHA-1-Hashes gesendet, direkt an api.pwnedpasswords.com. Ihre vollständigen Passwörter und Hashes verlassen Ihren Browser nie, und der vaultctl-Server ist nicht beteiligt."
   }
 }
