@@ -104,8 +104,12 @@
     "allCaughtUp": "All caught up",
     "markAllRead": "Mark all read",
     "savePrompt": "Save login for {{host}}?",
+    "saveCard": "Save card?",
+    "saveAddress": "Save address?",
     "noUsername": "(no username)",
+    "noTitle": "(unnamed)",
     "captureMeta": "{{username}} ({{age}})",
+    "itemMeta": "{{title}} ({{age}})",
     "saveTo": "Save to",
     "saveError": "Could not save this login to the vault"
   },

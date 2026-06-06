@@ -15,6 +15,21 @@
  * no secrets are held here longer than a fill takes.
  */
 
+import {
+  classifyField,
+  isCardKind,
+  isIdentityKind,
+  hasCardGroup,
+  hasIdentityGroup,
+  buildCreditCardData,
+  buildIdentityData,
+  cardTitle,
+  identityTitle,
+  type FieldDescriptor,
+  type FieldKind,
+  type ClassifiedValue,
+} from "../utils/form-fields";
+
 interface CredMatch {
   vaultId: string;
   itemId: string;
@@ -23,6 +38,40 @@ interface CredMatch {
   vaultName?: string;
   passwordLength?: number;
 }
+
+interface CardFillItem {
+  vaultId: string;
+  itemId: string;
+  name: string;
+  vaultName?: string;
+  last4?: string;
+}
+interface IdentityFillItem {
+  vaultId: string;
+  itemId: string;
+  name: string;
+  vaultName?: string;
+  city?: string;
+}
+
+// The data fields a credit_card / identity item stores, used to map a classified
+// form field to the stored value to fill. Mirrors the web editor JSON shapes.
+const CARD_FIELD_TO_DATA: Partial<Record<FieldKind, string>> = {
+  "cc-number": "number",
+  "cc-name": "cardholderName",
+  "cc-csc": "cvv",
+};
+const IDENTITY_FIELD_TO_DATA: Partial<Record<FieldKind, string>> = {
+  "given-name": "firstName",
+  "family-name": "lastName",
+  email: "email",
+  tel: "phone",
+  "street-address": "address",
+  "address-level1": "state",
+  "address-level2": "city",
+  "postal-code": "postalCode",
+  country: "country",
+};
 interface ExtSettings {
   autofill: boolean;
   fieldIcon: boolean;
@@ -154,6 +203,65 @@ export default defineContentScript({
       return { usernameInput, passwordInput };
     }
 
+    // ── Card / identity field classification ─────────────────────────────
+    // Build the DOM-free descriptor the pure classifier consumes. The label is
+    // resolved from an associated <label for>, a wrapping <label>, or aria-label
+    // so a field with only a visible label (no name/id) still classifies.
+    function labelText(input: HTMLInputElement): string {
+      const aria = input.getAttribute("aria-label");
+      if (aria) return aria;
+      if (input.id) {
+        const forLabel = document.querySelector(`label[for="${CSS.escape(input.id)}"]`);
+        if (forLabel?.textContent) return forLabel.textContent;
+      }
+      const wrapping = input.closest("label");
+      return wrapping?.textContent ?? "";
+    }
+
+    function descriptorFor(input: HTMLInputElement): FieldDescriptor {
+      return {
+        autocomplete: input.autocomplete || input.getAttribute("autocomplete") || "",
+        name: input.name,
+        id: input.id,
+        placeholder: input.placeholder,
+        label: labelText(input),
+        type: input.type,
+        value: input.value,
+      };
+    }
+
+    // Classify every visible input of a form into card/identity field kinds,
+    // pairing each with its element and current value.
+    function classifyFormFields(form: HTMLFormElement): {
+      input: HTMLInputElement;
+      kind: FieldKind;
+    }[] {
+      const inputs = ([...form.querySelectorAll("input, select")] as HTMLInputElement[])
+        .filter(isVisible);
+      const classified: { input: HTMLInputElement; kind: FieldKind }[] = [];
+      for (const input of inputs) {
+        const kind = classifyField(descriptorFor(input));
+        if (kind) classified.push({ input, kind });
+      }
+      return classified;
+    }
+
+    // Classify the inputs across the whole document (for pages whose card/address
+    // fields are not wrapped in a <form>, common on SPA checkouts).
+    function classifyDocumentFields(): {
+      input: HTMLInputElement;
+      kind: FieldKind;
+    }[] {
+      const inputs = ([...document.querySelectorAll("input, select")] as HTMLInputElement[])
+        .filter(isVisible);
+      const classified: { input: HTMLInputElement; kind: FieldKind }[] = [];
+      for (const input of inputs) {
+        const kind = classifyField(descriptorFor(input));
+        if (kind) classified.push({ input, kind });
+      }
+      return classified;
+    }
+
     function setInputValue(input: HTMLInputElement, value: string) {
       const setter = Object.getOwnPropertyDescriptor(
         HTMLInputElement.prototype,
@@ -200,7 +308,7 @@ export default defineContentScript({
       host.className = "vaultctl-field-icon";
       host.style.cssText =
         "all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;";
-      const root = host.attachShadow({ mode: "open" });
+      const root = host.attachShadow({ mode: "closed" });
       const btn = document.createElement("button");
       btn.type = "button";
       btn.setAttribute("aria-label", "Fill from vaultctl");
@@ -299,6 +407,7 @@ export default defineContentScript({
       requestAnimationFrame(() => {
         repositionScheduled = false;
         repositionFieldIcons();
+        repositionItemFieldIcons();
       });
     }
     // Scrolling moves the anchor, so close the (fixed-positioned) picker and
@@ -334,7 +443,7 @@ export default defineContentScript({
       removePicker();
       const host = document.createElement("div");
       host.id = "vaultctl-picker-host";
-      const root = host.attachShadow({ mode: "open" });
+      const root = host.attachShadow({ mode: "closed" });
       const r = anchor.getBoundingClientRect();
       // Place below the field, but flip above when there isn't room, and cap
       // the height so a long list scrolls inside the viewport instead of
@@ -405,7 +514,10 @@ export default defineContentScript({
           "mouseleave",
           () => (row.style.background = "transparent"),
         );
-        row.addEventListener("click", () => {
+        row.addEventListener("click", (e) => {
+          // Synthetic page-dispatched clicks (isTrusted=false) must never
+          // trigger a fill - only a real user gesture releases a secret.
+          if (!e.isTrusted) return;
           void fillWithMatch(form, m);
           removePicker();
         });
@@ -431,6 +543,198 @@ export default defineContentScript({
     function removePicker() {
       document.getElementById("vaultctl-picker-host")?.remove();
       document.removeEventListener("click", onDocClick, true);
+    }
+
+    // ── Card / identity fill (strictly user-initiated) ────────────────────
+    // Card and identity items have no host binding, so they are NEVER auto-
+    // filled on load. We attach a field icon to detected card/identity fields
+    // (when the user has stored items of that kind) and only fill when the user
+    // explicitly clicks a row in OUR picker. The full number / cvv are pulled
+    // per field via fillItemField, never held in the list response.
+    let cardFillItems: CardFillItem[] = [];
+    let identityFillItems: IdentityFillItem[] = [];
+    const itemFieldIcons = new Map<
+      HTMLInputElement,
+      { btn: HTMLButtonElement; kind: FieldKind }
+    >();
+
+    function clearItemFieldIcons() {
+      for (const { btn } of itemFieldIcons.values()) removeIconHost(btn);
+      itemFieldIcons.clear();
+    }
+
+    function repositionItemFieldIcons() {
+      for (const [input, entry] of itemFieldIcons) {
+        if (!input.isConnected) {
+          removeIconHost(entry.btn);
+          itemFieldIcons.delete(input);
+          continue;
+        }
+        positionFieldIcon(input, entry.btn);
+      }
+    }
+
+    function decorateItemField(input: HTMLInputElement, kind: FieldKind) {
+      if (itemFieldIcons.has(input)) return;
+      const host = document.createElement("div");
+      host.className = "vaultctl-field-icon";
+      host.style.cssText =
+        "all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;";
+      const root = host.attachShadow({ mode: "closed" });
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Fill from vaultctl");
+      btn.innerHTML = emblemSVG();
+      btn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (document.getElementById("vaultctl-picker-host")) removePicker();
+        else openItemPicker(input, kind);
+      });
+      root.appendChild(btn);
+      document.body.appendChild(host);
+      itemFieldIcons.set(input, { btn, kind });
+      positionFieldIcon(input, btn);
+    }
+
+    // Attach the fill emblem to every detected card/identity field, but only for
+    // kinds the user actually has stored items for (no card items -> no icon on
+    // card fields). Cleared when the icon setting is off or nothing is fillable.
+    function decorateItemFields() {
+      if (!settings.fieldIcon) {
+        clearItemFieldIcons();
+        return;
+      }
+      const hasCards = cardFillItems.length > 0;
+      const hasIdentities = identityFillItems.length > 0;
+      if (!hasCards && !hasIdentities) {
+        clearItemFieldIcons();
+        return;
+      }
+      for (const { input, kind } of classifyDocumentFields()) {
+        if (isCardKind(kind) && hasCards) decorateItemField(input, kind);
+        else if (isIdentityKind(kind) && hasIdentities) decorateItemField(input, kind);
+      }
+      repositionItemFieldIcons();
+    }
+
+    function openItemPicker(anchor: HTMLInputElement, kind: FieldKind) {
+      const isCard = isCardKind(kind);
+      const rows = isCard ? cardFillItems : identityFillItems;
+      if (rows.length === 0) return;
+      showItemPicker(anchor, isCard);
+    }
+
+    function showItemPicker(anchor: HTMLInputElement, isCard: boolean) {
+      removePicker();
+      const rows = isCard ? cardFillItems : identityFillItems;
+      const host = document.createElement("div");
+      host.id = "vaultctl-picker-host";
+      const root = host.attachShadow({ mode: "closed" });
+      const r = anchor.getBoundingClientRect();
+      const gap = 4;
+      const margin = 8;
+      const spaceBelow = window.innerHeight - r.bottom - gap - margin;
+      const spaceAbove = r.top - gap - margin;
+      const flipUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(120, Math.min(320, flipUp ? spaceAbove : spaceBelow));
+      const vertical = flipUp
+        ? `bottom:${window.innerHeight - r.top + gap}px`
+        : `top:${r.bottom + gap}px`;
+      const menu = document.createElement("div");
+      menu.style.cssText = `position:fixed;left:${r.left}px;${vertical};min-width:${Math.max(240, r.width)}px;max-width:min(360px,90vw);max-height:${maxHeight}px;overflow-y:auto;overscroll-behavior:contain;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;z-index:2147483647;`;
+      const showVaultName =
+        new Set(rows.map((row) => row.vaultId)).size > 1;
+      for (const item of rows) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.style.cssText =
+          "all:unset;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;";
+        const glyph = isCard ? cardGlyph() : idGlyph();
+        const text = document.createElement("span");
+        text.style.cssText =
+          "display:flex;flex-direction:column;min-width:0;line-height:1.3;";
+        const primary = document.createElement("span");
+        primary.textContent = item.name || (isCard ? "Card" : "Identity");
+        primary.style.cssText =
+          "font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        const secondary = document.createElement("span");
+        // Subtitle is masked: card shows only last4, identity shows the city.
+        secondary.textContent = isCard
+          ? (item as CardFillItem).last4
+            ? `•••• ${(item as CardFillItem).last4}`
+            : ""
+          : (item as IdentityFillItem).city ?? "";
+        secondary.style.cssText =
+          "font-size:12px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        text.append(primary, secondary);
+        row.append(glyph, text);
+        if (showVaultName && item.vaultName) {
+          const badge = document.createElement("span");
+          badge.textContent = item.vaultName;
+          badge.style.cssText =
+            "flex:none;margin-left:auto;padding:2px 7px;border-radius:999px;background:#1f1f23;color:#a1a1aa;font-size:11px;max-width:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          row.appendChild(badge);
+        }
+        row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
+        row.addEventListener(
+          "mouseleave",
+          () => (row.style.background = "transparent"),
+        );
+        row.addEventListener("click", (e) => {
+          // Card/identity fills have no host binding, so a forged synthetic
+          // click here would hand the page a full card number. Real user
+          // gestures only.
+          if (!e.isTrusted) return;
+          void fillItemEverywhere(item.vaultId, item.itemId, isCard);
+          removePicker();
+        });
+        menu.appendChild(row);
+      }
+      root.appendChild(menu);
+      document.body.appendChild(host);
+      setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+    }
+
+    // Fill every detected field of the chosen kind on the page from the picked
+    // item. Each field's value is requested individually (full number/cvv only
+    // arrive on this explicit, user-initiated request), then written into the
+    // matching input.
+    async function fillItemEverywhere(
+      vaultId: string,
+      itemId: string,
+      isCard: boolean,
+    ) {
+      const map = isCard ? CARD_FIELD_TO_DATA : IDENTITY_FIELD_TO_DATA;
+      const targets = classifyDocumentFields().filter((field) =>
+        isCard ? isCardKind(field.kind) : isIdentityKind(field.kind),
+      );
+      // De-dup the data fields to fetch (a page may repeat a field), then write
+      // each fetched value into every matching input.
+      const dataFields = new Set<string>();
+      for (const target of targets) {
+        const dataField = map[target.kind];
+        if (dataField) dataFields.add(dataField);
+      }
+      const values = new Map<string, string>();
+      for (const dataField of dataFields) {
+        const res = await bg<{ ok?: boolean; value?: string }>({
+          type: "fillItemField",
+          vaultId,
+          itemId,
+          field: dataField,
+        });
+        if (res?.ok && typeof res.value === "string") {
+          values.set(dataField, res.value);
+        }
+      }
+      for (const target of targets) {
+        const dataField = map[target.kind];
+        if (!dataField) continue;
+        const value = values.get(dataField);
+        if (value) setInputValue(target.input, value);
+      }
     }
 
     // ── Strong-password suggestion (new-password fields) ──────────────────
@@ -467,7 +771,7 @@ export default defineContentScript({
 
       const host = document.createElement("div");
       host.id = "vaultctl-suggest-host";
-      const root = host.attachShadow({ mode: "open" });
+      const root = host.attachShadow({ mode: "closed" });
       const r = input.getBoundingClientRect();
       const box = document.createElement("div");
       box.style.cssText = `position:fixed;left:${r.left}px;top:${r.bottom + 4}px;min-width:${Math.max(240, r.width)}px;max-width:340px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;padding:10px 12px;z-index:2147483647;`;
@@ -556,7 +860,7 @@ export default defineContentScript({
       document.getElementById("vaultctl-toast-host")?.remove();
       const host = document.createElement("div");
       host.id = "vaultctl-toast-host";
-      const root = host.attachShadow({ mode: "open" });
+      const root = host.attachShadow({ mode: "closed" });
       const style = document.createElement("style");
       style.textContent =
         "@keyframes vc-pop{0%{transform:scale(.5)}60%{transform:scale(1.15)}100%{transform:scale(1)}}" +
@@ -689,10 +993,30 @@ export default defineContentScript({
     // on a redirected page.
     function showSavePrompt(prompt: {
       id: string;
+      kind?: string;
       action?: string;
       host: string;
       username: string;
+      title?: string;
     }) {
+      if (prompt.kind === "credit_card" || prompt.kind === "identity") {
+        const isCard = prompt.kind === "credit_card";
+        const what = prompt.title || (isCard ? "this card" : "this address");
+        showToast({
+          message: isCard ? "Save card?" : "Save address?",
+          actionLabel: "Save",
+          successMessage: isCard
+            ? `Locked ${what} in your vault`
+            : `Saved ${what} to your vault`,
+          onAction: () =>
+            bg<{ ok?: boolean; error?: string }>({
+              type: "saveCapturedLogin",
+              id: prompt.id,
+            }),
+          onDismiss: () => void bg({ type: "markCaptureRead", id: prompt.id }),
+        });
+        return;
+      }
       const isUpdate = prompt.action === "update";
       const who = prompt.username || prompt.host;
       showToast({
@@ -725,9 +1049,67 @@ export default defineContentScript({
       }
     }
 
+    // Detect a card group and/or an identity group in a submitted form and
+    // queue a capture for each. A checkout form can yield BOTH, so they are
+    // handled independently. Capture goes through the same background queue ->
+    // encrypt -> POST path as logins; the save toast then labels itself.
+    function captureCardIdentity(form: HTMLFormElement) {
+      const classified = classifyFormFields(form);
+      if (classified.length === 0) return;
+      const origin = window.location.href;
+
+      const cardFields: ClassifiedValue[] = classified
+        .filter((c) => isCardKind(c.kind))
+        .map((c) => ({ kind: c.kind, value: c.input.value }));
+      const identityFields: ClassifiedValue[] = classified
+        .filter((c) => isIdentityKind(c.kind))
+        .map((c) => ({ kind: c.kind, value: c.input.value }));
+
+      if (hasCardGroup(cardFields)) {
+        const cardData = buildCreditCardData(cardFields);
+        queueItemCapture("credit_card", origin, cardData, cardTitle(cardData));
+      }
+      if (hasIdentityGroup(identityFields)) {
+        const identityData = buildIdentityData(identityFields);
+        queueItemCapture(
+          "identity",
+          origin,
+          identityData,
+          identityTitle(identityData),
+        );
+      }
+    }
+
+    function queueItemCapture(
+      kind: "credit_card" | "identity",
+      url: string,
+      data: unknown,
+      title: string,
+    ) {
+      void (async () => {
+        const queued = await bg<{ ok?: boolean; id?: string }>({
+          type: "captureItemSubmitted",
+          kind,
+          url,
+          data,
+          title,
+        });
+        if (!settings.savePrompt) return;
+        if (!queued?.ok || !queued.id) return;
+        showSavePrompt({
+          id: queued.id,
+          kind,
+          host: window.location.hostname,
+          username: "",
+          title,
+        });
+      })();
+    }
+
     function handleSubmit(event: Event) {
       const form = event.target as HTMLFormElement | null;
       if (!form || form.tagName !== "FORM") return;
+      captureCardIdentity(form);
       const { usernameInput, passwordInput } = extractCredentialInputs(form);
       const origin = window.location.href;
       const host = window.location.hostname;
@@ -775,8 +1157,24 @@ export default defineContentScript({
       })();
     }
 
+    // Forms worth observing for submit: login forms (password present) and forms
+    // that carry a card or identity field, so a checkout / shipping form without
+    // a password is still captured. handleSubmit runs both the login and the
+    // card/identity capture paths, de-duped per form via observedForms.
+    function findCaptureForms(): HTMLFormElement[] {
+      const seen = new Set<HTMLFormElement>(findLoginForms());
+      for (const node of document.querySelectorAll("input, select")) {
+        const input = node as HTMLInputElement;
+        if (!isVisible(input)) continue;
+        const form = input.closest("form");
+        if (!form || seen.has(form)) continue;
+        if (classifyField(descriptorFor(input))) seen.add(form);
+      }
+      return [...seen];
+    }
+
     function attachSubmitListeners() {
-      for (const form of findLoginForms()) {
+      for (const form of findCaptureForms()) {
         if (observedForms.has(form)) continue;
         observedForms.add(form);
         form.addEventListener("submit", handleSubmit, { capture: true });
@@ -837,6 +1235,20 @@ export default defineContentScript({
       }
     }
 
+    // Load the user's cards/identities (masked) so the fill emblem can appear on
+    // detected card/address fields. NEVER triggers a fill - cards/identities are
+    // filled only when the user explicitly clicks a picker row.
+    async function refreshFillItems() {
+      const res = await bg<{
+        ok?: boolean;
+        cards?: CardFillItem[];
+        identities?: IdentityFillItem[];
+      }>({ type: "listFillItems" });
+      cardFillItems = res?.cards ?? [];
+      identityFillItems = res?.identities ?? [];
+      decorateItemFields();
+    }
+
     // Popup-initiated explicit fill (existing behaviour).
     browser.runtime.onMessage.addListener(
       (message: { type: string; username?: string; password?: string }) => {
@@ -866,10 +1278,12 @@ export default defineContentScript({
 
     attachSubmitListeners();
     void refreshMatches().then(() => void maybeReopenSavePrompt());
+    void refreshFillItems();
 
     const mutationObserver = new MutationObserver(() => {
       attachSubmitListeners();
       decorateLoginFields();
+      decorateItemFields();
     });
     mutationObserver.observe(document.documentElement, {
       childList: true,
@@ -878,6 +1292,7 @@ export default defineContentScript({
     ctx.onInvalidated(() => {
       mutationObserver.disconnect();
       clearFieldIcons();
+      clearItemFieldIcons();
       removePicker();
     });
 
@@ -895,6 +1310,26 @@ const EMBLEM_PATH =
 
 function emblemSVG(fill = "#ffffff"): string {
   return `<svg width="16" height="16" viewBox="0 0 1024 1024" fill="${fill}" xmlns="http://www.w3.org/2000/svg"><path d="${EMBLEM_PATH}"/></svg>`;
+}
+
+function pickerGlyph(svg: string): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.style.cssText =
+    "flex:none;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#1f1f23;";
+  span.innerHTML = svg;
+  return span;
+}
+
+function cardGlyph(): HTMLSpanElement {
+  return pickerGlyph(
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+  );
+}
+
+function idGlyph(): HTMLSpanElement {
+  return pickerGlyph(
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  );
 }
 
 // Neutral globe glyph shown when a page has no loadable favicon, so picker
