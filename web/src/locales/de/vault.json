@@ -58,6 +58,13 @@
     "trash": "Papierkorb",
     "newItem": "Neuer Eintrag"
   },
+  "createVault": {
+    "title": "Neuer Tresor",
+    "nameLabel": "Tresorname",
+    "namePlaceholder": "z. B. Arbeit",
+    "create": "Tresor erstellen",
+    "failed": "Tresor konnte nicht erstellt werden"
+  },
   "folders": {
     "heading": "Ordner",
     "newFolder": "Neuer Ordner",

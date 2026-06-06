@@ -30,6 +30,7 @@ import {
   rsaOaepDecrypt,
   verifyRecipientPublicKey,
   buildSharePayload,
+  buildSelfVaultKeyWrap,
 } from "../shared/crypto/index.js";
 import type {
   WorkerRequest,
@@ -40,6 +41,10 @@ import type {
 let stretchedKey: Uint8Array | null = null;
 let rsaPrivateKey: CryptoKey | null = null;
 const vaultKeys = new Map<string, Uint8Array>();
+// Freshly generated vault keys awaiting their server-assigned vault id (M9
+// create-vault). Buffered under a temporary client handle, then moved into
+// vaultKeys by bindVaultKey once POST /vaults returns.
+const pendingVaultKeys = new Map<string, Uint8Array>();
 // identityKey.value stored alongside other keys for signing (sharing flow).
 // Kept in a container to avoid TS noUnusedLocals since read access is Phase 5+.
 const identityKey: { value: CryptoKey | null } = { value: null };
@@ -67,6 +72,10 @@ function doLock() {
     zero(key);
   }
   vaultKeys.clear();
+  for (const [, key] of pendingVaultKeys) {
+    zero(key);
+  }
+  pendingVaultKeys.clear();
   if (lockTimer) {
     clearTimeout(lockTimer);
     lockTimer = undefined;
@@ -267,6 +276,48 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
           requestId: msg.requestId,
           value: JSON.stringify(payload),
         });
+        break;
+      }
+
+      case "createVaultKey": {
+        const sk = stretchedKey;
+        const idKey = identityKey.value;
+        if (!sk || !idKey) {
+          respond({
+            op: "error",
+            requestId: msg.requestId,
+            message: "Keys not loaded",
+          });
+          break;
+        }
+        const rawVaultKey = crypto.getRandomValues(new Uint8Array(32));
+        const wrap = await buildSelfVaultKeyWrap({
+          rawVaultKey,
+          stretchedKey: sk,
+          signWrap: (message) => ed25519Sign(idKey, message),
+        });
+        pendingVaultKeys.set(msg.handle, rawVaultKey);
+        respond({
+          op: "resultString",
+          requestId: msg.requestId,
+          value: JSON.stringify(wrap),
+        });
+        break;
+      }
+
+      case "bindVaultKey": {
+        const rawVaultKey = pendingVaultKeys.get(msg.handle);
+        if (!rawVaultKey) {
+          respond({
+            op: "error",
+            requestId: msg.requestId,
+            message: "No pending vault key for handle",
+          });
+          break;
+        }
+        pendingVaultKeys.delete(msg.handle);
+        vaultKeys.set(msg.vaultId, rawVaultKey);
+        respond({ op: "result", requestId: msg.requestId, data: new ArrayBuffer(0) });
         break;
       }
 

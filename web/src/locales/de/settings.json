@@ -5,12 +5,20 @@
     "security": "Sicherheit",
     "sessions": "Sitzungen",
     "data": "Daten",
+    "updates": "Updates",
     "about": "Über"
   },
   "profile": {
     "heading": "Profil",
     "userId": "Benutzer-ID:",
     "email": "E-Mail:"
+  },
+  "displayName": {
+    "heading": "Anzeigename",
+    "description": "Der Name, der in Ihrem Konto und im Profilmenü angezeigt wird.",
+    "label": "Anzeigename",
+    "saved": "Anzeigename gespeichert",
+    "saveFailed": "Anzeigename konnte nicht gespeichert werden"
   },
   "security": {
     "heading": "Sicherheit",
@@ -31,7 +39,8 @@
     "never": "Nie"
   },
   "updates": {
-    "heading": "Updates"
+    "heading": "Updates",
+    "disabled": "Die Update-Prüfung ist auf diesem Server deaktiviert."
   },
   "language": {
     "title": "Sprache",

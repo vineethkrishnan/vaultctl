@@ -21,6 +21,7 @@ import { BiometricSetting } from "@/components/settings/BiometricSetting";
 import { RecoveryKitSetting } from "@/components/settings/RecoveryKitSetting";
 import { AboutPanel } from "@/components/settings/AboutPanel";
 import { UpdatePanel } from "@/components/settings/UpdatePanel";
+import { DisplayNameSetting } from "@/components/settings/DisplayNameSetting";
 import { EmailDigestSetting } from "@/components/settings/EmailDigestSetting";
 import { LanguageSwitcher } from "@/components/settings/LanguageSwitcher";
 import {
@@ -32,6 +33,7 @@ import {
   Check,
   Monitor,
   Database,
+  Download,
   Info,
 } from "lucide-react";
 
@@ -44,13 +46,14 @@ const LOCK_OPTIONS = [
   { labelKey: "lockOptions.never", value: 0 },
 ];
 
-type TabId = "profile" | "security" | "sessions" | "data" | "about";
+type TabId = "profile" | "security" | "sessions" | "data" | "updates" | "about";
 
 const TABS: { id: TabId; labelKey: string; icon: typeof User }[] = [
   { id: "profile", labelKey: "tabs.profile", icon: User },
   { id: "security", labelKey: "tabs.security", icon: Shield },
   { id: "sessions", labelKey: "tabs.sessions", icon: Monitor },
   { id: "data", labelKey: "tabs.data", icon: Database },
+  { id: "updates", labelKey: "tabs.updates", icon: Download },
   { id: "about", labelKey: "tabs.about", icon: Info },
 ];
 
@@ -128,6 +131,7 @@ export function SettingsPage() {
           </section>
         )}
 
+        {tab === "profile" && <DisplayNameSetting />}
         {tab === "profile" && features.mailer && <EmailDigestSetting />}
         {tab === "profile" && <LanguageSwitcher />}
 
@@ -199,6 +203,7 @@ export function SettingsPage() {
                     setShowPasswordChange(false);
                     setPasswordChanged(true);
                   }}
+                  onCancel={() => setShowPasswordChange(false)}
                 />
               ) : (
                 <div>
@@ -257,18 +262,25 @@ export function SettingsPage() {
           </>
         )}
 
+        {tab === "updates" && (
+          <section className="rounded-lg border border-border p-4">
+            <div className="flex items-center gap-2">
+              <Download className="h-4 w-4 text-muted-foreground" />
+              <h2 className="font-semibold">{t("updates.heading")}</h2>
+            </div>
+            {features.updates ? (
+              <UpdatePanel />
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                {t("updates.disabled")}
+              </p>
+            )}
+          </section>
+        )}
+
         {tab === "about" && (
           <div className="space-y-6">
             <AboutPanel />
-            {features.updates && (
-              <section className="rounded-lg border border-border p-4">
-                <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="font-semibold">{t("updates.heading")}</h2>
-                </div>
-                <UpdatePanel />
-              </section>
-            )}
           </div>
         )}
       </div>

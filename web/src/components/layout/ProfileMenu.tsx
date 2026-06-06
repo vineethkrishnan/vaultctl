@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Settings, LogOut, ChevronUp } from "lucide-react";
+import { Settings, LogOut, ChevronUp, ShieldCheck, Activity } from "lucide-react";
 import { apiGet } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth-store";
 import { terminate as terminateWorker } from "@/lib/key-holder";
@@ -128,6 +128,30 @@ export function ProfileMenu({ align = "up", compact = false, onNavigate }: Props
         >
           <Link
             ref={firstItemRef}
+            to="/health"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
+            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            {t("profileMenu.security")}
+          </Link>
+          <Link
+            to="/activity"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
+            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          >
+            <Activity className="h-4 w-4" />
+            {t("profileMenu.activity")}
+          </Link>
+          <Link
             to="/settings"
             role="menuitem"
             onClick={() => {

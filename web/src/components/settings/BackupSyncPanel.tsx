@@ -85,6 +85,43 @@ function ProviderIcon({ provider }: { provider: string }) {
 const OAUTH_PROVIDERS = ["gdrive", "dropbox", "onedrive"];
 const isOAuthProvider = (p: string) => OAUTH_PROVIDERS.includes(p);
 
+type OAuthPopupOutcome =
+  | { status: "connected" }
+  | { status: "error"; reason: string | null }
+  | { status: "closed" };
+
+// Polls the consent popup until the provider redirects it back to our origin
+// (the callback lands on /settings?backup=...), then reads the result and
+// closes it. While the popup is on the provider's domain, reading its location
+// throws a cross-origin error - that just means "keep waiting".
+function waitForOAuthPopup(popup: Window): Promise<OAuthPopupOutcome> {
+  return new Promise((resolve) => {
+    const timer = window.setInterval(() => {
+      if (popup.closed) {
+        window.clearInterval(timer);
+        resolve({ status: "closed" });
+        return;
+      }
+      let params: URLSearchParams;
+      try {
+        if (popup.location.origin !== window.location.origin) return;
+        params = new URLSearchParams(popup.location.search);
+      } catch {
+        return;
+      }
+      const status = params.get("backup");
+      if (!status) return;
+      window.clearInterval(timer);
+      popup.close();
+      if (status === "connected") {
+        resolve({ status: "connected" });
+      } else {
+        resolve({ status: "error", reason: params.get("reason") });
+      }
+    }, 400);
+  });
+}
+
 export function BackupSyncPanel() {
   const { t } = useTranslation(["settings", "common"]);
   const queryClient = useQueryClient();
@@ -601,7 +638,23 @@ function DestinationForm({
       const res = await apiPost<{ authUrl: string }>(
         `/api/v1/backup/oauth/${provider}/start`,
       );
-      window.location.href = res.authUrl;
+      // Run the consent in a popup so this tab never unloads - a full-page
+      // redirect would drop the in-memory session and vault keys and force a
+      // re-login after every connect. Fall back to the redirect only when the
+      // popup is blocked.
+      const popup = window.open(res.authUrl, "vaultctl-oauth", "popup,width=540,height=700");
+      if (!popup) {
+        window.location.href = res.authUrl;
+        return;
+      }
+      const outcome = await waitForOAuthPopup(popup);
+      setConnecting(false);
+      if (outcome.status === "connected") {
+        onDone();
+      } else if (outcome.status === "error") {
+        setError(t("backup.connectError", { reason: outcome.reason || t("backup.reasonUnknown") }));
+      }
+      // "closed" (user dismissed the popup) ends the spinner without an error.
     } catch (err) {
       setConnecting(false);
       setError(err instanceof Error ? err.message : t("backup.connectStartFailed"));

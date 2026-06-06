@@ -61,6 +61,11 @@ export {
   buildSharePayload,
 } from "./vault-share.js";
 
+export {
+  type SelfVaultKeyWrap,
+  buildSelfVaultKeyWrap,
+} from "./vault-create.js";
+
 export { deriveKeys } from "./kdf.js";
 
 export { pad, unpad } from "./padding.js";

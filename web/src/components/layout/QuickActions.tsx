@@ -45,6 +45,7 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
           to="/notifications"
           onClick={onNavigate}
           className={btn}
+          title={t("chrome.notifications")}
           aria-label={
             unread > 0
               ? t("chrome.notificationsUnread", { count: unread })
@@ -59,10 +60,20 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
           )}
         </Link>
       )}
-      <button onClick={toggleTheme} className={btn} aria-label={t("chrome.toggleTheme")}>
+      <button
+        onClick={toggleTheme}
+        className={btn}
+        title={t("chrome.toggleTheme")}
+        aria-label={t("chrome.toggleTheme")}
+      >
         {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </button>
-      <button onClick={lockVault} className={btn} aria-label={t("chrome.lockVault")}>
+      <button
+        onClick={lockVault}
+        className={btn}
+        title={t("chrome.lockVault")}
+        aria-label={t("chrome.lockVault")}
+      >
         <Lock className="h-5 w-5" />
       </button>
     </div>

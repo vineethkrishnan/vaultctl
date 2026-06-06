@@ -23,6 +23,8 @@
   "profileMenu": {
     "account": "Konto",
     "accountMenu": "Kontomenü",
+    "security": "Sicherheit",
+    "activity": "Aktivität",
     "settings": "Einstellungen",
     "logOut": "Abmelden"
   }

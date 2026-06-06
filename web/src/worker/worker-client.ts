@@ -245,6 +245,33 @@ export async function workerWrapVaultKey(params: {
   return JSON.parse(json) as WrapVaultKeyResult;
 }
 
+export interface CreateVaultKeyResult {
+  encryptedVaultKey: string; // base64 wire blob (alg=AES-256-KW)
+  wrapSignature: string; // base64 Ed25519 signature
+}
+
+/**
+ * Generate a fresh personal vault key inside the Worker, AES-KW wrap it under
+ * the held stretchedKey, and sign the wrap with the identity key (M9 create
+ * vault). The raw key is buffered under `handle`; call workerBindVaultKey with
+ * the server-assigned vault id afterwards so the new vault is usable in-session.
+ * The raw vault key never leaves the Worker.
+ */
+export async function workerCreateVaultKey(
+  handle: string,
+): Promise<CreateVaultKeyResult> {
+  const json = await send<string>({ op: "createVaultKey", handle });
+  return JSON.parse(json) as CreateVaultKeyResult;
+}
+
+/** Bind a buffered new-vault key (by handle) to its server-assigned vault id. */
+export async function workerBindVaultKey(
+  handle: string,
+  vaultId: string,
+): Promise<void> {
+  await send({ op: "bindVaultKey", handle, vaultId });
+}
+
 /** Lock: zero all keys in the Worker. */
 export function workerLock(): void {
   if (worker) {

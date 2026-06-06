@@ -8,6 +8,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
+import { restoreSession } from "@/lib/session-restore";
 import { LoginPage } from "./login";
 import { RegisterPage } from "./register";
 import { RecoveryPage } from "./recovery";
@@ -58,7 +59,11 @@ const authLayout = createRoute({
   getParentRoute: () => rootRoute,
   id: "auth",
   component: AuthLayout,
-  beforeLoad: () => {
+  beforeLoad: async () => {
+    // Cold load (reload / OAuth redirect return) wipes the in-memory access
+    // token. If a refresh token survives, silently restore the session as
+    // LOCKED (no vault keys yet) before deciding to bounce to /login.
+    await restoreSession();
     const { isAuthenticated, isLocked } = useAuthStore.getState();
     if (!isAuthenticated) {
       throw redirect({ to: "/login" });
@@ -139,12 +144,12 @@ const healthRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => {
-    const { isAuthenticated } = useAuthStore.getState();
-    if (!isAuthenticated) {
-      throw redirect({ to: "/login" });
+  beforeLoad: async () => {
+    await restoreSession();
+    const { isAuthenticated, isLocked } = useAuthStore.getState();
+    if (isAuthenticated && isLocked) {
+      throw redirect({ to: "/lock" });
     }
-    // Will redirect to first vault in Phase 2 login flow
     throw redirect({ to: "/login" });
   },
 });

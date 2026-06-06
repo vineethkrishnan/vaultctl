@@ -61,6 +61,26 @@ export type WorkerRequest =
       recipientPublicKey: string; // base64 SPKI (RSA wrapping key)
       recipientIdentityPublicKey: string; // base64 raw Ed25519 identity key
       recipientPublicKeySignature: string; // base64 Ed25519(idPriv, publicKey)
+    }
+  | {
+      // createVaultKey: generate a fresh personal vault key, AES-KW wrap it
+      // under the held stretchedKey, and sign the serialized wrap with the
+      // identity key (mirrors the owner's self-wrap at registration). The raw
+      // key is buffered under `handle` so it can be bound to the server-assigned
+      // vault id once the vault is created. The wrapped blob and signature
+      // (base64) come back; the raw vault key never leaves the worker.
+      op: "createVaultKey";
+      requestId: string;
+      handle: string;
+    }
+  | {
+      // bindVaultKey: move a buffered new-vault key from its temporary handle
+      // to the real, server-assigned vault id so subsequent encrypt/decrypt for
+      // that vault works without re-login.
+      op: "bindVaultKey";
+      requestId: string;
+      handle: string;
+      vaultId: string;
     };
 
 // ===========================================================================

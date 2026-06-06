@@ -15,6 +15,7 @@ import { workerDecrypt } from "@/worker/worker-client";
 
 interface Props {
   onComplete: () => void;
+  onCancel: () => void;
 }
 
 /**
@@ -26,13 +27,21 @@ interface Props {
  * 5. POST /auth/password/change
  * 6. Re-init key custody with new credentials
  */
-export function PasswordChangeForm({ onComplete }: Props) {
+export function PasswordChangeForm({ onComplete, onCancel }: Props) {
   const { t } = useTranslation(["security", "common"]);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function handleCancel() {
+    setOldPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError(null);
+    onCancel();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -159,13 +168,23 @@ export function PasswordChangeForm({ onComplete }: Props) {
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={loading || !oldPassword || !newPassword || !confirmPassword}
-        className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-      >
-        {loading ? t("passwordChange.changing") : t("passwordChange.submit")}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="submit"
+          disabled={loading || !oldPassword || !newPassword || !confirmPassword}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          {loading ? t("passwordChange.changing") : t("passwordChange.submit")}
+        </button>
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={loading}
+          className="rounded-md border border-input px-4 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          {t("common:actions.cancel")}
+        </button>
+      </div>
     </form>
   );
 }
