@@ -51,8 +51,11 @@
     "copyPassword": "Copy password",
     "openSite": "Open site",
     "noVaults": "No vaults on this account yet - create one in the web vault.",
+    "switchVault": "Switch vault",
+    "sharedOption": "{{name}} (shared)",
     "errors": {
-      "decryptPassword": "Could not decrypt password"
+      "decryptPassword": "Could not decrypt password",
+      "switchFailed": "Could not load that vault"
     }
   },
   "status": {
@@ -103,6 +106,7 @@
     "savePrompt": "Save login for {{host}}?",
     "noUsername": "(no username)",
     "captureMeta": "{{username}} ({{age}})",
+    "saveTo": "Save to",
     "saveError": "Could not save this login to the vault"
   },
   "update": {

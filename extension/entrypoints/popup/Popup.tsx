@@ -27,6 +27,8 @@ import {
   Fingerprint,
   Heart,
   ArrowUpCircle,
+  Users,
+  ChevronDown,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import { generatePassword, GEN_MAX_LENGTH } from "../../utils/password-gen";
@@ -287,6 +289,7 @@ export function Popup() {
         const session = await bg<{
           isUnlocked?: boolean;
           accessToken?: string | null;
+          activeVaultId?: string;
           vaults?: VaultMeta[];
         }>({ type: "getSession" });
 
@@ -329,13 +332,15 @@ export function Popup() {
         };
 
         if (session?.isUnlocked && session.accessToken && session.vaults?.length) {
-          const first = session.vaults[0]!;
+          const active =
+            session.vaults.find((v) => v.id === session.activeVaultId) ??
+            session.vaults[0]!;
           setToken(session.accessToken);
           setVaults(session.vaults);
-          setActiveVaultId(first.id);
+          setActiveVaultId(active.id);
           setPhase("list");
           try {
-            await loadItems(first.id);
+            await loadItems(active.id);
           } catch {
             // Session truly gone (token refresh also failed) - fall back to
             // login, honoring the remembered email so only the master password
@@ -567,10 +572,23 @@ export function Popup() {
     copyText(item.password, t("common:password"));
   }
 
-  async function handleSaveCapture(captureId: string) {
+  async function handleSwitchVault(vaultId: string) {
+    if (!vaultId || vaultId === activeVaultId) return;
+    setActiveVaultId(vaultId);
+    setSearchQuery("");
+    void bg({ type: "setActiveVault", vaultId });
+    try {
+      await loadItems(vaultId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("vault.errors.switchFailed"));
+    }
+  }
+
+  async function handleSaveCapture(captureId: string, vaultId?: string) {
     const res = await bg<{ ok?: boolean; error?: string }>({
       type: "saveCapturedLogin",
       id: captureId,
+      ...(vaultId ? { vaultId } : {}),
     });
     if (!res?.ok) {
       setError(res?.error || t("notifications.saveError"));
@@ -842,11 +860,19 @@ export function Popup() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
         <BrandMark className="text-2xl text-brand" />
-        <span className="flex-1 truncate text-sm font-semibold tracking-tight">
-          {tab === "vault"
-            ? vaults.find((v) => v.id === activeVaultId)?.name ?? t("vault.fallbackName")
-            : t(`tabTitles.${tab}`)}
-        </span>
+        {tab === "vault" && vaults.length > 1 ? (
+          <VaultSwitcher
+            vaults={vaults}
+            activeVaultId={activeVaultId}
+            onSwitch={handleSwitchVault}
+          />
+        ) : (
+          <span className="flex-1 truncate text-sm font-semibold tracking-tight">
+            {tab === "vault"
+              ? vaults.find((v) => v.id === activeVaultId)?.name ?? t("vault.fallbackName")
+              : t(`tabTitles.${tab}`)}
+          </span>
+        )}
       </div>
 
       {/* Tab content */}
@@ -934,6 +960,8 @@ export function Popup() {
         {tab === "notifications" && (
           <NotificationsTab
             captures={captures}
+            vaults={vaults}
+            activeVaultId={activeVaultId}
             update={updatePending ? updateInfo : null}
             onSave={handleSaveCapture}
             onDismiss={handleDismissCapture}
@@ -984,6 +1012,45 @@ export function Popup() {
           </button>
         ))}
       </nav>
+    </div>
+  );
+}
+
+// Vault switcher: a native select wrapped so the active vault name (and a
+// shared badge) read like the header title it replaces. Switching persists the
+// choice in the background and reloads that vault's items.
+function VaultSwitcher({
+  vaults,
+  activeVaultId,
+  onSwitch,
+}: {
+  vaults: VaultMeta[];
+  activeVaultId: string;
+  onSwitch: (vaultId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const active = vaults.find((v) => v.id === activeVaultId);
+  return (
+    <div className="relative flex min-w-0 flex-1 items-center gap-1">
+      {active?.type === "shared" && (
+        <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      )}
+      <span className="truncate text-sm font-semibold tracking-tight">
+        {active?.name ?? t("vault.fallbackName")}
+      </span>
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <select
+        aria-label={t("vault.switchVault")}
+        value={activeVaultId}
+        onChange={(e) => onSwitch(e.target.value)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {vaults.map((v) => (
+          <option key={v.id} value={v.id}>
+            {v.type === "shared" ? t("vault.sharedOption", { name: v.name }) : v.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -1261,6 +1328,8 @@ function UpdateAlert({ info }: { info: UpdateInfo }) {
 
 function NotificationsTab({
   captures,
+  vaults,
+  activeVaultId,
   update,
   onSave,
   onDismiss,
@@ -1269,8 +1338,10 @@ function NotificationsTab({
   onClearAll,
 }: {
   captures: CapturedLoginSummary[];
+  vaults: VaultMeta[];
+  activeVaultId: string;
   update: UpdateInfo | null;
-  onSave: (id: string) => void;
+  onSave: (id: string, vaultId?: string) => void;
   onDismiss: (id: string) => void;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
@@ -1278,6 +1349,11 @@ function NotificationsTab({
 }) {
   const { t } = useTranslation();
   const unread = captures.reduce((n, c) => (c.read ? n : n + 1), 0);
+  // Per-capture chosen save target, defaulting to the active vault. A capture
+  // already stored under a matching username updates in place regardless, so
+  // the target only steers brand-new logins.
+  const [targets, setTargets] = useState<Record<string, string>>({});
+  const targetFor = (id: string) => targets[id] ?? activeVaultId;
 
   if (captures.length === 0) {
     if (update) {
@@ -1354,12 +1430,34 @@ function NotificationsTab({
                   age: relativeAge(capture.capturedAt, t),
                 })}
               </div>
+              {vaults.length > 1 && (
+                <label className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                  {t("notifications.saveTo")}
+                  <select
+                    value={targetFor(capture.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setTargets((prev) => ({ ...prev, [capture.id]: e.target.value }));
+                    }}
+                    className="min-w-0 flex-1 rounded border border-border bg-card px-1 py-0.5 text-[10px]"
+                  >
+                    {vaults.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.type === "shared"
+                          ? t("vault.sharedOption", { name: v.name })
+                          : v.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSave(capture.id);
+                  onSave(capture.id, targetFor(capture.id));
                 }}
                 className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
               >
