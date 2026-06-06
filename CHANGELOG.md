@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.16.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.15.0...v1.16.0) (2026-06-06)
+
+
+### Features
+
+* **digest:** per-user timezone and granular schedule for email digests ([#213](https://github.com/vineethkrishnan/vaultctl/issues/213)) ([36266d8](https://github.com/vineethkrishnan/vaultctl/commit/36266d82e4f25b3e0b8bcb163da2206c92258896))
+* **extension:** detect, capture, and fill credit-card and identity forms ([#215](https://github.com/vineethkrishnan/vaultctl/issues/215)) ([f7b3f4a](https://github.com/vineethkrishnan/vaultctl/commit/f7b3f4a1cced7b13ab495c60c8e62c1bdf98a7d5))
+* **extension:** multi-vault switcher, cross-vault autofill, and save target ([#211](https://github.com/vineethkrishnan/vaultctl/issues/211)) ([ea0935f](https://github.com/vineethkrishnan/vaultctl/commit/ea0935fa356d03e092048f3d03c8f87e622d867d))
+
+
+### Bug Fixes
+
+* **web:** session restore, settings reorg, tooltips, and create-vault ([#212](https://github.com/vineethkrishnan/vaultctl/issues/212)) ([791768a](https://github.com/vineethkrishnan/vaultctl/commit/791768a6d185637d5f2a8a5d96001c40dfb1dfac))
+
+
+### Documentation
+
+* configuration reference, email and backup guides, feature overview ([#216](https://github.com/vineethkrishnan/vaultctl/issues/216)) ([90d285c](https://github.com/vineethkrishnan/vaultctl/commit/90d285c9cf6578395dc62ba0c194ad6ff335dcfc))
+
 ## [1.15.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.14.0...v1.15.0) (2026-06-06)
 
 
