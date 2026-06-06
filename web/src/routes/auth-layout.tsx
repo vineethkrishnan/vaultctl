@@ -11,9 +11,11 @@ import { QuickActions } from "@/components/layout/QuickActions";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useCryptoWorker } from "@/hooks/use-crypto-worker";
+import { useServerFeatures } from "@/hooks/use-server-features";
 
 export function AuthLayout() {
   const { t } = useTranslation("common");
+  const features = useServerFeatures();
   // Wire Worker locked event → auth store
   useCryptoWorker();
   // Auto-lock on inactivity (timeout read from the user's settings).
@@ -71,8 +73,8 @@ export function AuthLayout() {
           className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8"
           role="main"
         >
-          <VerifyEmailBanner />
-          <UpdateBanner />
+          {features.mailer && features.emailVerification && <VerifyEmailBanner />}
+          {features.updates && <UpdateBanner />}
           <div key={pathname} className="animate-fade-up">
             <Outlet />
           </div>

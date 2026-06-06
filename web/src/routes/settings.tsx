@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth-store";
+import { useServerFeatures } from "@/hooks/use-server-features";
 import {
   LOCK_TIMEOUT_STORAGE_KEY,
   LOCK_TIMEOUT_CHANGED_EVENT,
@@ -55,6 +56,7 @@ const TABS: { id: TabId; labelKey: string; icon: typeof User }[] = [
 export function SettingsPage() {
   const { t } = useTranslation("settings");
   const userId = useAuthStore((s) => s.userId);
+  const features = useServerFeatures();
   const identityPubKey = sessionStorage.getItem("vaultctl_id_pubkey") ?? "";
 
   const [tab, setTab] = useState<TabId>("profile");
@@ -121,7 +123,7 @@ export function SettingsPage() {
           </section>
         )}
 
-        {tab === "profile" && <EmailDigestSetting />}
+        {tab === "profile" && features.mailer && <EmailDigestSetting />}
         {tab === "profile" && <LanguageSwitcher />}
 
         {tab === "security" && (
@@ -242,22 +244,26 @@ export function SettingsPage() {
             <section className="rounded-lg border border-border p-4">
               <RestoreDialog />
             </section>
-            <section className="rounded-lg border border-border p-4">
-              <BackupSyncPanel />
-            </section>
+            {features.backupSync && (
+              <section className="rounded-lg border border-border p-4">
+                <BackupSyncPanel />
+              </section>
+            )}
           </>
         )}
 
         {tab === "about" && (
           <div className="space-y-6">
             <AboutPanel />
-            <section className="rounded-lg border border-border p-4">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-muted-foreground" />
-                <h2 className="font-semibold">{t("updates.heading")}</h2>
-              </div>
-              <UpdatePanel />
-            </section>
+            {features.updates && (
+              <section className="rounded-lg border border-border p-4">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="font-semibold">{t("updates.heading")}</h2>
+                </div>
+                <UpdatePanel />
+              </section>
+            )}
           </div>
         )}
       </div>

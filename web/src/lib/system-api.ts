@@ -37,6 +37,31 @@ export interface NotificationsResponse {
 
 export const getUpdateStatus = () => apiGet<UpdateStatus>("/api/v1/updates");
 
+// ── Audit trail (FEAT-2) ───────────────────────────────────────────────────
+
+export interface AuditEntry {
+  action: string;
+  resourceType?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;
+}
+
+export interface AuditPage {
+  entries: AuditEntry[];
+  nextBefore?: string;
+}
+
+export function getOwnAudit(
+  params: { limit?: number; before?: string } = {},
+): Promise<AuditPage> {
+  const search = new URLSearchParams();
+  if (params.limit != null) search.set("limit", String(params.limit));
+  if (params.before) search.set("before", params.before);
+  const query = search.toString();
+  return apiGet<AuditPage>(`/api/v1/users/me/audit${query ? `?${query}` : ""}`);
+}
+
 export const getNotifications = () =>
   apiGet<NotificationsResponse>("/api/v1/notifications");
 

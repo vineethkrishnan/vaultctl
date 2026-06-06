@@ -2,17 +2,12 @@
 
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/lib/api-client";
+import {
+  getServerConfig,
+  serverConfigQueryKey,
+} from "@/lib/server-config";
 import { BrandMark } from "@/components/BrandMark";
 import { BookOpen, Github, Scale, Mail } from "lucide-react";
-
-interface ServerConfig {
-  version: string;
-  registrationMode: string;
-  appVersion?: string;
-  commit?: string;
-  goVersion?: string;
-}
 
 const REPO_URL = "https://github.com/vineethkrishnan/vaultctl";
 const DOCS_URL = "https://vaultctl.vinelabs.de";
@@ -27,8 +22,8 @@ function shortCommit(commit: string | undefined): string {
 export function AboutPanel() {
   const { t } = useTranslation("settings");
   const { data: config } = useQuery({
-    queryKey: ["server-config"],
-    queryFn: () => apiGet<ServerConfig>("/api/v1/config"),
+    queryKey: serverConfigQueryKey,
+    queryFn: getServerConfig,
     staleTime: Infinity,
   });
 

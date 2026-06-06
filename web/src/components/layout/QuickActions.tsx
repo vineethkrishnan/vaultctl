@@ -9,20 +9,25 @@ import { useAuthStore } from "@/lib/auth-store";
 import { lock as lockKeys } from "@/lib/key-holder";
 import { getNotifications } from "@/lib/system-api";
 import { useUpdateNotification } from "@/hooks/use-update-notification";
+import { useServerFeatures } from "@/hooks/use-server-features";
 
 // QuickActions is the always-one-tap row: notifications (with unread badge),
 // theme toggle, and lock. Shared by the desktop sidebar footer and the mobile
-// top bar, so these stay immediately reachable everywhere.
+// top bar, so these stay immediately reachable everywhere. The notifications
+// bell is hidden, and its endpoints left unpolled, on deployments where the
+// notifications feature is off (FEAT-7/FEAT-21).
 export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation("common");
   const { theme, toggleTheme } = useTheme();
+  const features = useServerFeatures();
   const { data: notifications } = useQuery({
     queryKey: ["system", "notifications"],
     queryFn: getNotifications,
     staleTime: 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    enabled: features.notifications,
   });
-  const { show: showUpdate } = useUpdateNotification();
+  const { show: showUpdate } = useUpdateNotification(features.updates);
   const unread = (notifications?.unreadCount ?? 0) + (showUpdate ? 1 : 0);
 
   function lockVault() {
@@ -35,23 +40,25 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex items-center gap-1">
-      <Link
-        to="/notifications"
-        onClick={onNavigate}
-        className={btn}
-        aria-label={
-          unread > 0
-            ? t("chrome.notificationsUnread", { count: unread })
-            : t("chrome.notifications")
-        }
-      >
-        <Bell className="h-5 w-5" />
-        {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex min-w-[1.05rem] items-center justify-center rounded-full bg-brand px-1 text-[0.6rem] font-semibold leading-[1.05rem] text-[#042f2a]">
-            {unread > 99 ? "99+" : unread}
-          </span>
-        )}
-      </Link>
+      {features.notifications && (
+        <Link
+          to="/notifications"
+          onClick={onNavigate}
+          className={btn}
+          aria-label={
+            unread > 0
+              ? t("chrome.notificationsUnread", { count: unread })
+              : t("chrome.notifications")
+          }
+        >
+          <Bell className="h-5 w-5" />
+          {unread > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex min-w-[1.05rem] items-center justify-center rounded-full bg-brand px-1 text-[0.6rem] font-semibold leading-[1.05rem] text-[#042f2a]">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </Link>
+      )}
       <button onClick={toggleTheme} className={btn} aria-label={t("chrome.toggleTheme")}>
         {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </button>
