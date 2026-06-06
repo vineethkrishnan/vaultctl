@@ -209,6 +209,10 @@ type OrganizationRepository interface {
 	// ListMembers returns all members of an organization.
 	ListMembers(ctx context.Context, orgID organization.ID) ([]organization.Membership, error)
 
+	// ListForUser returns the organizations the user is an ACTIVE member of
+	// (accepted invite), each paired with the user's role (FEAT-8).
+	ListForUser(ctx context.Context, userID user.ID) ([]organization.UserOrg, error)
+
 	// UpdateMemberRole changes a member's org-level role.
 	UpdateMemberRole(ctx context.Context, orgID organization.ID, userID user.ID, role user.Role) error
 

@@ -93,6 +93,29 @@ func (uc *ListOrgMembers) Execute(ctx context.Context, in ListOrgMembersInput) (
 }
 
 // ===========================================================================
+// ListMyOrgs
+// ===========================================================================
+
+// ListMyOrgsInput identifies the caller whose org memberships to list.
+type ListMyOrgsInput struct {
+	Caller user.ID
+}
+
+// ListMyOrgs returns the organizations the caller is an active member of, with
+// their role (FEAT-8).
+type ListMyOrgs struct {
+	Orgs ports.OrganizationRepository
+}
+
+// Execute lists the caller's orgs.
+func (uc *ListMyOrgs) Execute(ctx context.Context, in ListMyOrgsInput) ([]organization.UserOrg, error) {
+	if in.Caller.IsZero() {
+		return nil, domain.NewInvalid("caller", "required")
+	}
+	return uc.Orgs.ListForUser(ctx, in.Caller)
+}
+
+// ===========================================================================
 // UpdateOrgMemberRole
 // ===========================================================================
 

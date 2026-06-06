@@ -20,6 +20,7 @@ import (
 type OrgHandlers struct {
 	CreateOrg        *auth.CreateOrganization
 	ListMembers      *auth.ListOrgMembers
+	ListMyOrgs       *auth.ListMyOrgs
 	UpdateMemberRole *auth.UpdateOrgMemberRole
 	RemoveMember     *auth.RemoveOrgMember
 
@@ -64,6 +65,37 @@ func (h *OrgHandlers) HandleCreateOrg(w http.ResponseWriter, r *http.Request) {
 		CreatedBy: string(org.CreatedBy),
 		CreatedAt: org.CreatedAt.UTC().Format(timeFormat),
 	})
+}
+
+// HandleListMyOrgs returns the organizations the caller actively belongs to.
+// @Summary List my organizations
+// @Description List the organizations the authenticated caller is an active member of, with their role.
+// @Tags Organizations
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} MyOrgResponse
+// @Failure 401 {object} ErrorBody
+// @Router /orgs [get]
+func (h *OrgHandlers) HandleListMyOrgs(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+
+	orgs, err := h.ListMyOrgs.Execute(r.Context(), auth.ListMyOrgsInput{Caller: callerID})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	dtos := make([]MyOrgResponse, 0, len(orgs))
+	for _, o := range orgs {
+		dtos = append(dtos, MyOrgResponse{
+			ID:       string(o.ID),
+			Name:     o.Name,
+			Role:     string(o.Role),
+			JoinedAt: o.JoinedAt.UTC().Format(timeFormat),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, dtos)
 }
 
 // HandleListOrgMembers returns all members of an organization.

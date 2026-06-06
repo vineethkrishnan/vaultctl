@@ -88,6 +88,24 @@ func (r *fakeOrgRepo) ListMembers(_ context.Context, orgID organization.ID) ([]o
 	}
 	return out, nil
 }
+func (r *fakeOrgRepo) ListForUser(_ context.Context, userID user.ID) ([]organization.UserOrg, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []organization.UserOrg{}
+	for k, m := range r.members {
+		if k.userID != userID || m.AcceptedAt == nil {
+			continue
+		}
+		org := r.orgs[k.orgID]
+		out = append(out, organization.UserOrg{
+			ID:       k.orgID,
+			Name:     org.Name,
+			Role:     m.Role,
+			JoinedAt: *m.AcceptedAt,
+		})
+	}
+	return out, nil
+}
 func (r *fakeOrgRepo) UpdateMemberRole(_ context.Context, orgID organization.ID, userID user.ID, role user.Role) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

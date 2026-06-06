@@ -78,3 +78,13 @@ func (m Membership) Validate() error {
 
 // IsAccepted reports whether the member has accepted the invite.
 func (m Membership) IsAccepted() bool { return m.AcceptedAt != nil }
+
+// UserOrg is a read projection joining an Organization with the caller's role
+// in it. It backs the "list the orgs I belong to" query (FEAT-8) so the admin
+// UI can offer a selectable list instead of asking for a raw UUID.
+type UserOrg struct {
+	ID       ID
+	Name     string
+	Role     user.Role
+	JoinedAt time.Time
+}

@@ -54,11 +54,17 @@ type Dependencies struct {
 	// EmailVerifyGate gates vault mutations for accounts unverified past the
 	// grace window. Nil when email verification is not enforced (no mailer).
 	EmailVerifyGate func(http.Handler) http.Handler
+	// Require2FAGate blocks vault mutations from accounts without TOTP enabled.
+	// Nil unless cfg.Require2FA is set (FEAT-6).
+	Require2FAGate func(http.Handler) http.Handler
 	// MailerEnabled reports whether an SMTP mailer is configured. Email
 	// verification and digests are only mounted when this is true.
 	MailerEnabled bool
 	// Require2FA mirrors cfg.Require2FA so the client can surface the policy.
 	Require2FA bool
+	// HIBPEnabled mirrors cfg.HIBPEnabled so the client can offer the opt-in
+	// breach check (FEAT-4).
+	HIBPEnabled bool
 }
 
 // ConfigFeatures advertises which optional feature sets this deployment has
@@ -71,6 +77,7 @@ type ConfigFeatures struct {
 	Updates           bool `json:"updates"`
 	Notifications     bool `json:"notifications"`
 	Require2FA        bool `json:"require2fa"`
+	Hibp              bool `json:"hibp"`
 }
 
 func (deps Dependencies) features() ConfigFeatures {
@@ -82,6 +89,7 @@ func (deps Dependencies) features() ConfigFeatures {
 		Updates:           deps.Update != nil && deps.Update.Enabled,
 		Notifications:     deps.Notification != nil,
 		Require2FA:        deps.Require2FA,
+		Hibp:              deps.HIBPEnabled,
 	}
 }
 
@@ -210,7 +218,10 @@ func NewRouter(deps Dependencies) http.Handler {
 				r.Put("/users/me/email-preferences", deps.User.HandleUpdateEmailPreferences)
 			}
 
-			// Organizations (admin only)
+			// Organizations
+			// Listing the caller's own orgs is available to any authenticated
+			// user (FEAT-8); creating one is admin-only.
+			r.Get("/orgs", deps.Org.HandleListMyOrgs)
 			r.With(requireAdmin).Post("/orgs", deps.Org.HandleCreateOrg)
 			r.Route("/orgs/{id}", func(r chi.Router) {
 				r.Get("/members", deps.Org.HandleListOrgMembers)
@@ -262,10 +273,16 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			// Vault data routes. When email verification is enforced, the gate
 			// blocks mutating requests from accounts unverified past the grace
-			// window (read-only) while still allowing reads.
+			// window (read-only) while still allowing reads. The 2FA gate does
+			// the same for accounts without TOTP enabled when VAULTCTL_REQUIRE_2FA
+			// is set; both leave reads and the /auth/totp/* enrolment routes
+			// reachable so the user can unblock themselves.
 			r.Group(func(r chi.Router) {
 				if deps.EmailVerifyGate != nil {
 					r.Use(deps.EmailVerifyGate)
+				}
+				if deps.Require2FAGate != nil {
+					r.Use(deps.Require2FAGate)
 				}
 
 				// Vault management

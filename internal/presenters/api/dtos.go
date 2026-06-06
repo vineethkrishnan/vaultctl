@@ -508,6 +508,15 @@ type OrgMemberResponse struct {
 	AcceptedAt *string `json:"acceptedAt,omitempty"`
 }
 
+// MyOrgResponse is one organization the caller belongs to, with their role
+// (FEAT-8). It backs the admin UI's org picker.
+type MyOrgResponse struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Role     string `json:"role"`
+	JoinedAt string `json:"joinedAt"`
+}
+
 type UpdateMemberRoleRequest struct {
 	Role string `json:"role"`
 }

@@ -21,6 +21,7 @@ func TestConfigHandlerFeatures(t *testing.T) {
 		Auth:             &AuthHandlers{VerifyEmail: &auth.VerifyEmail{}},
 		MailerEnabled:    true,
 		Require2FA:       true,
+		HIBPEnabled:      true,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/config", nil)
@@ -52,6 +53,7 @@ func TestConfigHandlerFeatures(t *testing.T) {
 		Updates:           true,
 		Notifications:     true,
 		Require2FA:        true,
+		Hibp:              true,
 	}
 	if *body.Features != want {
 		t.Errorf("features = %+v, want %+v", *body.Features, want)
