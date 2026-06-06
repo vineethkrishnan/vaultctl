@@ -37,6 +37,7 @@ type DigestPref struct {
 type DueDigest struct {
 	UserID    user.ID
 	Email     string
+	Locale    string // transactional-email locale, carried so RunDue avoids a per-user lookup
 	Frequency string
 	LastRunAt *time.Time
 }

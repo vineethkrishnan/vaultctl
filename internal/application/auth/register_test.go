@@ -113,6 +113,35 @@ func TestRegister_HappyPath(t *testing.T) {
 	}
 }
 
+func TestRegister_LocaleNormalized(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"de", "de"},
+		{"en", "en"},
+		{"", "en"},
+		{"fr", "en"},
+	}
+	for _, c := range cases {
+		uc, repo := newRegister()
+		in := validRegisterInput(t)
+		in.Locale = c.in
+		out, err := uc.Execute(context.Background(), in)
+		if err != nil {
+			t.Fatalf("Execute(locale=%q): %v", c.in, err)
+		}
+		loaded, err := repo.FindByID(context.Background(), out.UserID)
+		if err != nil {
+			t.Fatalf("lookup: %v", err)
+		}
+		if loaded.Locale != c.want {
+			t.Errorf("locale %q -> persisted %q, want %q", c.in, loaded.Locale, c.want)
+		}
+	}
+}
+
 func TestRegister_WeakPassword(t *testing.T) {
 	t.Parallel()
 	uc, _ := newRegister()

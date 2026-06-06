@@ -84,7 +84,7 @@ func (r *DigestPrefsRepo) Set(ctx context.Context, userID user.ID, frequency str
 func (r *DigestPrefsRepo) ClaimDue(ctx context.Context, now time.Time) ([]ports.DueDigest, error) {
 	rows, err := r.Pool.Query(ctx, `
 		WITH due AS (
-			SELECT p.user_id, u.email, p.frequency, p.last_run_at AS prior_last_run_at
+			SELECT p.user_id, u.email, u.locale, p.frequency, p.last_run_at AS prior_last_run_at
 			FROM user_digest_prefs p JOIN users u ON u.id = p.user_id
 			WHERE p.frequency IN ('daily','weekly','monthly','quarterly','yearly')
 			  AND p.next_run_at IS NOT NULL AND p.next_run_at <= $1
@@ -105,7 +105,7 @@ func (r *DigestPrefsRepo) ClaimDue(ctx context.Context, now time.Time) ([]ports.
 			WHERE p.user_id = due.user_id
 			RETURNING p.user_id
 		)
-		SELECT due.user_id, due.email, due.frequency, due.prior_last_run_at FROM due
+		SELECT due.user_id, due.email, due.locale, due.frequency, due.prior_last_run_at FROM due
 	`, now)
 	if err != nil {
 		return nil, fmt.Errorf("claim due digests: %w", err)
@@ -117,10 +117,11 @@ func (r *DigestPrefsRepo) ClaimDue(ctx context.Context, now time.Time) ([]ports.
 		var d ports.DueDigest
 		var uid string
 		var priorLastRun *time.Time
-		if err := rows.Scan(&uid, &d.Email, &d.Frequency, &priorLastRun); err != nil {
+		if err := rows.Scan(&uid, &d.Email, &d.Locale, &d.Frequency, &priorLastRun); err != nil {
 			return nil, fmt.Errorf("scan due digest: %w", err)
 		}
 		d.UserID = user.ID(uid)
+		d.Locale = user.NormalizeLocale(d.Locale)
 		d.LastRunAt = priorLastRun
 		due = append(due, d)
 	}

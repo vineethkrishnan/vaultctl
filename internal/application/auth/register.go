@@ -24,6 +24,7 @@ import (
 type RegisterInput struct {
 	Email                       string
 	Name                        string
+	Locale                      string // "en"/"de"; unsupported values fall back to default
 	AuthHash                    []byte
 	Salt                        []byte
 	KDFParams                   user.KDFParams
@@ -130,6 +131,7 @@ func (uc *Register) Execute(ctx context.Context, in RegisterInput) (RegisterOutp
 		ID:                                user.ID(uc.IDs.NewID()),
 		Email:                             email,
 		Name:                              in.Name,
+		Locale:                            user.NormalizeLocale(in.Locale),
 		Salt:                              append([]byte(nil), in.Salt...),
 		KDFParams:                         in.KDFParams,
 		EncryptedPrivateKey:               in.EncryptedPrivateKey,

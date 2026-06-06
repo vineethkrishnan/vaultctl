@@ -60,6 +60,10 @@ type User struct {
 	Email Email
 	Name  string
 
+	// Locale selects the language for transactional email ("en"/"de").
+	// Defaults to DefaultLocale; always normalised on read/write.
+	Locale string
+
 	KDFParams KDFParams
 	// Salt is the per-user Argon2id salt (public - returned from prelogin).
 	// It lives on the aggregate because prelogin needs it alongside KDFParams.
@@ -101,6 +105,30 @@ type User struct {
 
 // MaxNameLength mirrors users.name VARCHAR(255).
 const MaxNameLength = 255
+
+// Supported UI/email locales. DefaultLocale is used when none is set or an
+// unsupported value is supplied.
+const (
+	LocaleEN      = "en"
+	LocaleDE      = "de"
+	DefaultLocale = LocaleEN
+)
+
+// NormalizeLocale returns the locale if supported, otherwise DefaultLocale.
+// Unknown or empty values fall back to English so callers never have to guard.
+func NormalizeLocale(locale string) string {
+	switch locale {
+	case LocaleEN, LocaleDE:
+		return locale
+	default:
+		return DefaultLocale
+	}
+}
+
+// IsSupportedLocale reports whether the value is one of the supported locales.
+func IsSupportedLocale(locale string) bool {
+	return locale == LocaleEN || locale == LocaleDE
+}
 
 // Validate asserts every User invariant.
 func (u User) Validate() error {

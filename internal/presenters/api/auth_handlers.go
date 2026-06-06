@@ -125,6 +125,7 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		out, err = h.Register.Execute(r.Context(), auth.RegisterInput{
 			Email:                             req.Email,
 			Name:                              req.Name,
+			Locale:                            req.Locale,
 			AuthHash:                          authHash,
 			Salt:                              salt,
 			MasterPasswordPreflight:           req.MasterPasswordPreflight,
@@ -148,7 +149,7 @@ func (h *AuthHandlers) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	// Best-effort: a verification-send failure must not fail registration. The
 	// user can resend from the app. Skipped entirely when no mailer is wired.
 	if h.SendVerification != nil {
-		if verr := h.SendVerification.Execute(r.Context(), out.UserID, req.Email); verr != nil {
+		if verr := h.SendVerification.Execute(r.Context(), out.UserID, req.Email, user.NormalizeLocale(req.Locale)); verr != nil {
 			slog.WarnContext(r.Context(), "register.send_verification.failed", slog.String("err", verr.Error()))
 		}
 	}
@@ -218,7 +219,7 @@ func (h *AuthHandlers) HandleResendVerification(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	if err := h.SendVerification.Execute(r.Context(), callerID, u.Email.String()); err != nil {
+	if err := h.SendVerification.Execute(r.Context(), callerID, u.Email.String(), u.Locale); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -313,9 +314,9 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// (the response returns first) while keeping its values - not bare Background.
 	if h.NotifyLogin != nil {
 		alertCtx := context.WithoutCancel(r.Context())
-		userID, email, deviceName := out.UserID, req.Email, req.DeviceName
+		userID, email, locale, deviceName := out.UserID, req.Email, out.Locale, req.DeviceName
 		go func() {
-			if e := h.NotifyLogin.Execute(alertCtx, userID, email, deviceName, userAgent, ip); e != nil {
+			if e := h.NotifyLogin.Execute(alertCtx, userID, email, locale, deviceName, userAgent, ip); e != nil {
 				slog.WarnContext(alertCtx, "login.alert.failed", slog.String("err", e.Error())) //nolint:gosec // G706: slog quotes the field; err is an internal send failure, not attacker-controlled output
 			}
 		}()

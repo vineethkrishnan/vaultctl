@@ -35,18 +35,29 @@ type UserHandlers struct {
 // @Success 200 {object} EmailPreferencesResponse
 // @Router /users/me/email-preferences [get]
 func (h *UserHandlers) HandleGetEmailPreferences(w http.ResponseWriter, r *http.Request) {
-	callerID := middleware.CallerID(r.Context())
-	freq, err := h.Digest.Frequency(r.Context(), callerID)
+	resp, err := h.emailPreferences(r, middleware.CallerID(r.Context()))
 	if err != nil {
 		writeError(w, r, err)
 		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// emailPreferences assembles the caller's current email-preference view.
+func (h *UserHandlers) emailPreferences(r *http.Request, callerID user.ID) (EmailPreferencesResponse, error) {
+	freq, err := h.Digest.Frequency(r.Context(), callerID)
+	if err != nil {
+		return EmailPreferencesResponse{}, err
 	}
 	loginAlerts, err := h.Digest.LoginAlerts(r.Context(), callerID)
 	if err != nil {
-		writeError(w, r, err)
-		return
+		return EmailPreferencesResponse{}, err
 	}
-	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq), LoginAlerts: loginAlerts})
+	u, err := h.Users.FindByID(r.Context(), callerID)
+	if err != nil {
+		return EmailPreferencesResponse{}, err
+	}
+	return EmailPreferencesResponse{DigestFrequency: string(freq), LoginAlerts: loginAlerts, Locale: u.Locale}, nil
 }
 
 // HandleUpdateEmailPreferences sets the caller's digest frequency.
@@ -84,18 +95,23 @@ func (h *UserHandlers) HandleUpdateEmailPreferences(w http.ResponseWriter, r *ht
 			return
 		}
 	}
+	if req.Locale != nil {
+		if !user.IsSupportedLocale(*req.Locale) {
+			writeError(w, r, domain.NewInvalid("locale", "must be en or de"))
+			return
+		}
+		if err := h.Users.SetLocale(r.Context(), callerID, *req.Locale); err != nil {
+			writeError(w, r, err)
+			return
+		}
+	}
 
-	freq, err := h.Digest.Frequency(r.Context(), callerID)
+	resp, err := h.emailPreferences(r, callerID)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	loginAlerts, err := h.Digest.LoginAlerts(r.Context(), callerID)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq), LoginAlerts: loginAlerts})
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // HandleGetProfile returns the authenticated user's profile.

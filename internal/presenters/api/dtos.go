@@ -38,8 +38,9 @@ func decodeAuthHashSecret(s string) (*secure.Secret, error) {
 type RegisterRequest struct {
 	Email                       string `json:"email"`
 	Name                        string `json:"name"`
-	AuthHash                    string `json:"authHash"` // base64
-	Salt                        string `json:"salt"`     // base64
+	Locale                      string `json:"locale,omitempty"` // "en"/"de"; defaults to "en"
+	AuthHash                    string `json:"authHash"`         // base64
+	Salt                        string `json:"salt"`             // base64
 	MasterPasswordPreflight     string `json:"masterPasswordPreflight"`
 	KDFIterations               uint32 `json:"kdfIterations"`
 	KDFMemoryKB                 uint32 `json:"kdfMemoryKB"`
@@ -449,14 +450,17 @@ type VerifyEmailRequest struct {
 type EmailPreferencesResponse struct {
 	DigestFrequency string `json:"digestFrequency"`
 	LoginAlerts     bool   `json:"loginAlerts"`
+	Locale          string `json:"locale"`
 }
 
 // UpdateEmailPreferencesRequest sets the digest frequency
-// (off|daily|weekly|monthly|quarterly|yearly) and the sign-in alert opt-in.
-// Fields are pointers so an omitted field leaves that preference unchanged.
+// (off|daily|weekly|monthly|quarterly|yearly), the sign-in alert opt-in, and
+// the transactional-email locale (en|de). Fields are pointers so an omitted
+// field leaves that preference unchanged.
 type UpdateEmailPreferencesRequest struct {
 	DigestFrequency *string `json:"digestFrequency"`
 	LoginAlerts     *bool   `json:"loginAlerts"`
+	Locale          *string `json:"locale"`
 }
 
 type UpdateProfileRequest struct {

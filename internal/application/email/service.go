@@ -3,13 +3,13 @@
 // Package email composes vaultctl's transactional messages (verification codes,
 // security alerts, digests) and hands them to a ports.Mailer. It owns the
 // shared branded layout so every message looks consistent; callers pass only
-// the content. Composition lives here, in the application layer, so use cases
-// depend on typed Send* methods rather than on HTML.
+// the content and the recipient's locale. Composition lives here, in the
+// application layer, so use cases depend on typed Send* methods rather than on
+// HTML or translation tables.
 package email
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -39,110 +39,94 @@ type content struct {
 	ctaURL   string
 	outro    []string // paragraphs after
 	signoff  string
+	footer   string // localized layout footer
 }
 
-// SendVerificationCode emails a signup verification code.
-func (s *Service) SendVerificationCode(ctx context.Context, to, code string, ttl time.Duration) error {
+// SendVerificationCode emails a signup verification code in the user's locale.
+func (s *Service) SendVerificationCode(ctx context.Context, to, locale, code string, ttl time.Duration) error {
+	cat := catalogFor(locale)
 	c := content{
-		heading: "Confirm your email",
-		intro: []string{
-			"Enter this code in vaultctl to confirm your email address and activate your account.",
-		},
-		code: code,
-		outro: []string{
-			fmt.Sprintf("The code expires in %s. If you didn't create a vaultctl account, you can ignore this email.", humanizeDuration(ttl)),
-		},
+		heading: cat.verifyHeading,
+		intro:   []string{cat.verifyIntro},
+		code:    code,
+		outro:   []string{cat.verifyOutro(cat.humanizeDuration(ttl))},
+		signoff: cat.signoff,
+		footer:  cat.footer,
 	}
 	text, htmlBody := s.render(c)
 	return s.Mailer.Send(ctx, ports.Email{
 		To:      to,
-		Subject: "Your vaultctl verification code",
+		Subject: cat.verifySubject,
 		Text:    text,
 		HTML:    htmlBody,
 	})
 }
 
 // SendLoginAlert emails a security alert about a sign-in from a new device or
-// network. Copy is strictly factual: it states only what the server knows
-// (device label, IP, time) and never asserts a location it cannot verify.
-func (s *Service) SendLoginAlert(ctx context.Context, to, reason, deviceLabel, ipAddress string, when time.Time) error {
-	what := "A new sign-in"
+// network, in the user's locale. Copy is strictly factual: it states only what
+// the server knows (device label, IP, time) and never asserts a location it
+// cannot verify.
+func (s *Service) SendLoginAlert(ctx context.Context, to, locale, reason, deviceLabel, ipAddress string, when time.Time) error {
+	cat := catalogFor(locale)
+	what := cat.loginNewSignin
 	switch reason {
 	case "new_device":
-		what = "A sign-in from a new device"
+		what = cat.loginNewDevice
 	case "new_network":
-		what = "A sign-in from a new network"
+		what = cat.loginNewNetwork
 	}
 	ip := ipAddress
 	if ip == "" {
-		ip = "unknown"
+		ip = cat.loginUnknownIP
 	}
 	c := content{
-		heading: "New sign-in to your vault",
+		heading: cat.loginHeading,
 		intro: []string{
-			what + " just happened on your vaultctl account.",
-			"Device: " + deviceLabel,
-			"When: " + when.UTC().Format("2 Jan 2006, 15:04 MST"),
-			"IP address: " + ip,
+			cat.loginHappened(what),
+			cat.loginDeviceLabel + deviceLabel,
+			cat.loginWhenLabel + when.UTC().Format("2 Jan 2006, 15:04 MST"),
+			cat.loginIPLabel + ip,
 		},
-		ctaLabel: "Review your sessions",
+		ctaLabel: cat.loginCTA,
 		ctaURL:   s.BaseURL + "/settings",
-		outro: []string{
-			"If this was you, no action is needed.",
-			"If you don't recognise it, change your master password and sign out other sessions right away.",
-		},
+		outro:    []string{cat.loginOutroOK, cat.loginOutroAct},
+		signoff:  cat.signoff,
+		footer:   cat.footer,
 	}
 	text, htmlBody := s.render(c)
-	return s.Mailer.Send(ctx, ports.Email{To: to, Subject: "New sign-in to your vaultctl account", Text: text, HTML: htmlBody})
+	return s.Mailer.Send(ctx, ports.Email{To: to, Subject: cat.loginSubject, Text: text, HTML: htmlBody})
 }
 
-// SendDigest emails an activity summary for the given period (e.g. "weekly").
-func (s *Service) SendDigest(ctx context.Context, to, period string, a ports.DigestActivity) error {
+// SendDigest emails an activity summary for the given period (a frequency key
+// like "weekly") in the user's locale.
+func (s *Service) SendDigest(ctx context.Context, to, locale, period string, a ports.DigestActivity) error {
+	cat := catalogFor(locale)
+	localizedPeriod := cat.period(period)
 	lines := []string{
-		fmt.Sprintf("Sign-ins: %d", a.Logins),
-		fmt.Sprintf("New devices or networks: %d", a.NewDevices),
-		fmt.Sprintf("Items added: %d", a.ItemsAdded),
+		cat.digestLogins(a.Logins),
+		cat.digestDevices(a.NewDevices),
+		cat.digestItems(a.ItemsAdded),
 	}
 	outro := []string{}
 	if a.StaleLogins > 0 {
-		outro = append(outro, fmt.Sprintf("%d login%s haven't been updated in over a year. Consider rotating those passwords.", a.StaleLogins, plural(a.StaleLogins)))
+		outro = append(outro, cat.digestStale(a.StaleLogins))
 	}
-	outro = append(outro, "You can change how often you receive this in vaultctl settings.")
+	outro = append(outro, cat.digestSettings)
 
 	c := content{
-		heading:  "Your vaultctl " + period + " digest",
-		intro:    append([]string{"Here's what happened on your account:"}, lines...),
-		ctaLabel: "Open vaultctl",
+		heading:  cat.digestHeading(localizedPeriod),
+		intro:    append([]string{cat.digestIntro}, lines...),
+		ctaLabel: cat.digestCTA,
 		ctaURL:   s.BaseURL,
 		outro:    outro,
+		signoff:  cat.signoff,
+		footer:   cat.footer,
 	}
 	text, htmlBody := s.render(c)
 	return s.Mailer.Send(ctx, ports.Email{
 		To:      to,
-		Subject: "Your vaultctl " + period + " digest",
+		Subject: cat.digestSubject(localizedPeriod),
 		Text:    text,
 		HTML:    htmlBody,
 	})
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
-}
-
-func humanizeDuration(d time.Duration) string {
-	if d >= time.Hour && d%time.Hour == 0 {
-		h := int(d / time.Hour)
-		if h == 1 {
-			return "1 hour"
-		}
-		return fmt.Sprintf("%d hours", h)
-	}
-	m := int(d / time.Minute)
-	if m <= 1 {
-		return "1 minute"
-	}
-	return fmt.Sprintf("%d minutes", m)
 }
