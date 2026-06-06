@@ -29,6 +29,8 @@ import {
   ArrowUpCircle,
   Users,
   ChevronDown,
+  CreditCard,
+  User,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import { generatePassword, GEN_MAX_LENGTH } from "../../utils/password-gen";
@@ -80,6 +82,9 @@ interface DecryptedItem {
   username: string;
   password: string;
   uri: string;
+  // For credit_card / identity rows: a masked subtitle (card last4 / city). The
+  // full number and cvv are never decrypted into the list.
+  subtitle: string;
   encryptedData: string;
 }
 
@@ -91,8 +96,11 @@ interface VaultMeta {
 
 interface CapturedLoginSummary {
   id: string;
+  kind?: "login" | "credit_card" | "identity";
   url: string;
   username: string;
+  // Masked title for card/identity captures (card brand + last4 / full name).
+  title?: string;
   capturedAt: number;
   read: boolean;
 }
@@ -232,6 +240,7 @@ export function Popup() {
         let username = "";
         let password = "";
         let uri = "";
+        let subtitle = "";
         try {
           name = decoder.decode(unpad(await decryptForVault(vaultId, item.encryptedName)));
         } catch {
@@ -248,6 +257,22 @@ export function Popup() {
           } catch {
             // leave blank if data can't be read
           }
+        } else if (item.itemType === "credit_card" || item.itemType === "identity") {
+          try {
+            const data = JSON.parse(
+              decoder.decode(await decryptForVault(vaultId, item.encryptedData)),
+            ) as { number?: string; city?: string; state?: string };
+            // Masked subtitle only: card -> last4, identity -> city/state. The
+            // full number and cvv stay encrypted and never enter the list.
+            if (item.itemType === "credit_card") {
+              const last4 = String(data.number ?? "").replace(/\D/g, "").slice(-4);
+              subtitle = last4 ? `•••• ${last4}` : "";
+            } else {
+              subtitle = [data.city, data.state].filter(Boolean).join(", ");
+            }
+          } catch {
+            // leave blank if data can't be read
+          }
         }
         decrypted.push({
           id: item.id,
@@ -257,6 +282,7 @@ export function Popup() {
           username,
           password,
           uri,
+          subtitle,
           encryptedData: item.encryptedData,
         });
       }
@@ -852,6 +878,7 @@ export function Popup() {
       !searchQuery ||
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.uri.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
@@ -908,12 +935,14 @@ export function Popup() {
               className="group flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-accent/60"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white" style={avatarStyle(item.name)}>
-                <KeyRound className="h-4 w-4" />
+                <ItemTypeIcon itemType={item.itemType} />
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{item.name}</div>
-                {item.username && (
-                  <div className="text-xs text-muted-foreground truncate">{item.username}</div>
+                {(item.username || item.subtitle) && (
+                  <div className="text-xs text-muted-foreground truncate">
+                    {item.username || item.subtitle}
+                  </div>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100">
@@ -1415,20 +1444,37 @@ function NotificationsTab({
             }`}
           >
             <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand/10 text-brand">
-              <Save className="h-3.5 w-3.5" />
+              {capture.kind === "credit_card" ? (
+                <CreditCard className="h-3.5 w-3.5" />
+              ) : capture.kind === "identity" ? (
+                <User className="h-3.5 w-3.5" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
               {!capture.read && (
                 <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-brand" />
               )}
             </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-medium">
-                {t("notifications.savePrompt", { host: safeHostname(capture.url) })}
+                {capture.kind === "credit_card"
+                  ? t("notifications.saveCard")
+                  : capture.kind === "identity"
+                    ? t("notifications.saveAddress")
+                    : t("notifications.savePrompt", {
+                        host: safeHostname(capture.url),
+                      })}
               </div>
               <div className="truncate text-[11px] text-muted-foreground">
-                {t("notifications.captureMeta", {
-                  username: capture.username || t("notifications.noUsername"),
-                  age: relativeAge(capture.capturedAt, t),
-                })}
+                {capture.kind === "credit_card" || capture.kind === "identity"
+                  ? t("notifications.itemMeta", {
+                      title: capture.title || t("notifications.noTitle"),
+                      age: relativeAge(capture.capturedAt, t),
+                    })
+                  : t("notifications.captureMeta", {
+                      username: capture.username || t("notifications.noUsername"),
+                      age: relativeAge(capture.capturedAt, t),
+                    })}
               </div>
               {vaults.length > 1 && (
                 <label className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -2082,6 +2128,12 @@ function Toggle({
       </span>
     </button>
   );
+}
+
+function ItemTypeIcon({ itemType }: { itemType: string }) {
+  if (itemType === "credit_card") return <CreditCard className="h-4 w-4" />;
+  if (itemType === "identity") return <User className="h-4 w-4" />;
+  return <KeyRound className="h-4 w-4" />;
 }
 
 function avatarStyle(name: string): CSSProperties {

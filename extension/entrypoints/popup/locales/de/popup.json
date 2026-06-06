@@ -105,8 +105,12 @@
     "allCaughtUp": "Alles erledigt",
     "markAllRead": "Alle als gelesen markieren",
     "savePrompt": "Zugangsdaten für {{host}} speichern?",
+    "saveCard": "Karte speichern?",
+    "saveAddress": "Adresse speichern?",
     "noUsername": "(kein Benutzername)",
+    "noTitle": "(ohne Namen)",
     "captureMeta": "{{username}} ({{age}})",
+    "itemMeta": "{{title}} ({{age}})",
     "saveTo": "Speichern in",
     "saveError": "Diese Zugangsdaten konnten nicht im Tresor gespeichert werden"
   },

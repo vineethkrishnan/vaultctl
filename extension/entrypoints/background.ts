@@ -32,6 +32,7 @@ import {
 } from "@shared/crypto";
 import { generatePassword } from "../utils/password-gen";
 import { safeHost, safeHostname, hostMatches } from "../utils/host";
+import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
 // ===========================================================================
 // Types
@@ -46,9 +47,19 @@ interface VaultKeyMaterial {
 
 interface CapturedLogin {
   id: string;
+  // "login" captures carry a username/password; "credit_card" and "identity"
+  // captures carry a pre-built, web-compatible data payload and a title. The
+  // field is optional so older persisted login captures (no kind) still read as
+  // logins after a worker recycle.
+  kind?: "login" | "credit_card" | "identity";
   url: string;
   username: string;
   password: string;
+  // Pre-classified card/identity payload + the masked title to show. Only set
+  // for credit_card / identity captures.
+  cardData?: CreditCardData;
+  identityData?: IdentityData;
+  title?: string;
   capturedAt: number;
   read: boolean;
   // The tab that submitted the login. The save toast is only re-opened on a
@@ -535,6 +546,7 @@ const ITEMS_CACHE_MS = 15_000;
 
 function invalidateItemsCache(): void {
   itemsCache = null;
+  fillableCache = null;
 }
 
 async function loadLoginEntries(): Promise<LoginEntry[]> {
@@ -589,6 +601,83 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
 async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
   const host = safeHost(origin);
   return (await loadLoginEntries()).filter((e) => hostMatches(e.host, host));
+}
+
+// ===========================================================================
+// Credit-card / identity items (for user-initiated fill)
+//
+// Unlike logins, cards and identities have no host binding: the user fills them
+// wherever they explicitly pick from our picker. The list response is masked
+// (no full number, no cvv) - the secrets only leave the worker on an explicit
+// single-item fill request, mirroring fillCredential.
+// ===========================================================================
+
+interface CardEntry {
+  vaultId: string;
+  itemId: string;
+  name: string;
+  data: Record<string, unknown>;
+}
+
+interface IdentityEntry {
+  vaultId: string;
+  itemId: string;
+  name: string;
+  data: Record<string, unknown>;
+}
+
+let fillableCache: {
+  at: number;
+  cards: CardEntry[];
+  identities: IdentityEntry[];
+} | null = null;
+const FILLABLE_CACHE_MS = 15_000;
+
+async function loadFillableEntries(): Promise<{
+  cards: CardEntry[];
+  identities: IdentityEntry[];
+}> {
+  if (fillableCache && Date.now() - fillableCache.at < FILLABLE_CACHE_MS) {
+    return { cards: fillableCache.cards, identities: fillableCache.identities };
+  }
+  const cards: CardEntry[] = [];
+  const identities: IdentityEntry[] = [];
+  for (const vaultId of vaultKeys.keys()) {
+    let res: Response;
+    try {
+      res = await apiFetch(`/api/v1/vaults/${vaultId}/items`, { method: "GET" });
+    } catch {
+      continue;
+    }
+    if (!res.ok) continue;
+    const items = (await res.json()) as Array<{
+      id: string;
+      itemType: string;
+      encryptedName: string;
+      encryptedData: string;
+      trashed: boolean;
+    }>;
+    for (const it of items) {
+      if (it.trashed) continue;
+      if (it.itemType !== "credit_card" && it.itemType !== "identity") continue;
+      try {
+        const data = await decData(vaultId, it.encryptedData);
+        let name = "";
+        try {
+          name = await decName(vaultId, it.encryptedName);
+        } catch {
+          name = it.itemType === "credit_card" ? "Card" : "Identity";
+        }
+        const entry = { vaultId, itemId: it.id, name, data };
+        if (it.itemType === "credit_card") cards.push(entry);
+        else identities.push(entry);
+      } catch {
+        // skip items that fail to decrypt or parse
+      }
+    }
+  }
+  fillableCache = { at: Date.now(), cards, identities };
+  return { cards, identities };
 }
 
 // ===========================================================================
@@ -660,6 +749,36 @@ async function createLogin(
     itemType: "login",
     encryptedName: await encName(vaultId, host || safeHostname(uri)),
     encryptedData: await encData(vaultId, { username, password, uri }),
+    favorite: false,
+    reprompt: false,
+  };
+  const res = await apiFetch(`/api/v1/vaults/${vaultId}/items`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`create failed: ${res.status}`);
+  invalidateItemsCache();
+}
+
+// Persist a pre-built credit_card / identity payload as a new vault item. The
+// payload is already in the exact web-editor JSON shape, so it round-trips with
+// the web credit-card / identity editors. encryptedName is the masked title
+// (card: brand + last4; identity: full name).
+async function createItem(
+  itemType: "credit_card" | "identity",
+  title: string,
+  data: unknown,
+  targetVaultId?: string,
+): Promise<void> {
+  const vaultId =
+    targetVaultId && vaultKeys.has(targetVaultId)
+      ? targetVaultId
+      : await getActiveVaultId();
+  if (!vaultId) throw new Error("no vault available");
+  const body = {
+    itemType,
+    encryptedName: await encName(vaultId, title || itemType),
+    encryptedData: await encData(vaultId, data),
     favorite: false,
     reprompt: false,
   };
@@ -786,6 +905,18 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   // capture mutations (clear/dismiss/markAll) and every read stay page-only.
   "saveCapturedLogin",
   "markCaptureRead",
+  // Card/identity capture-on-submit, mirroring loginSubmitted: the content
+  // script hands over a pre-classified payload to queue. The response carries no
+  // secret (only an id + title), so this is no more privileged than loginSubmitted.
+  "captureItemSubmitted",
+  // List the user's cards/identities for the in-page picker. The response is
+  // MASKED (last4 / city only, never the full number or cvv), exactly like
+  // matchCredentials masks the password, so it leaks no secret.
+  "listFillItems",
+  // Single-item fill for an explicit user click in OUR picker. Returns the one
+  // requested field value (incl. full number / cvv) only on this explicit
+  // request, mirroring how fillCredential returns the password.
+  "fillItemField",
 ]);
 
 // A content script always carries a sender.tab; the popup / extension pages do
@@ -1020,6 +1151,43 @@ export default defineBackground(() => {
               return;
             }
 
+            case "captureItemSubmitted": {
+              pruneStaleCaptures();
+              const kind = message.kind === "identity" ? "identity" : "credit_card";
+              const url = String(message.url ?? "");
+              const title = String(message.title ?? "");
+              const capture: CapturedLogin = {
+                id: makeCaptureId(),
+                kind,
+                url,
+                username: "",
+                password: "",
+                title,
+                cardData:
+                  kind === "credit_card"
+                    ? (message.data as CreditCardData)
+                    : undefined,
+                identityData:
+                  kind === "identity"
+                    ? (message.data as IdentityData)
+                    : undefined,
+                capturedAt: Date.now(),
+                read: false,
+                tabId: sender.tab?.id,
+              };
+              capturedLogins.push(capture);
+              while (capturedLogins.length > CAPTURE_MAX) {
+                capturedLogins.shift();
+              }
+              await showCaptureNotification(
+                capture.url,
+                title ||
+                  (kind === "credit_card" ? "a card" : "an address"),
+              );
+              sendResponse({ ok: true, id: capture.id, kind, title });
+              return;
+            }
+
             case "getCapturedLogins": {
               // Opening the popup reconciles the badge: a capture that aged out
               // is pruned here, so the badge can never outlive its captures.
@@ -1030,8 +1198,12 @@ export default defineBackground(() => {
                 ok: true,
                 captures: capturedLogins.map((capture) => ({
                   id: capture.id,
+                  kind: capture.kind ?? "login",
                   url: capture.url,
                   username: capture.username,
+                  // The masked title (card brand + last4 / full name). No secret:
+                  // the card number / cvv are never included in this summary.
+                  title: capture.title ?? "",
                   capturedAt: capture.capturedAt,
                   read: capture.read,
                 })),
@@ -1067,6 +1239,23 @@ export default defineBackground(() => {
                 sendResponse({ ok: true });
                 return;
               }
+              // Card / identity captures aren't host-deduped; re-open them as-is.
+              if (candidate.kind === "credit_card" || candidate.kind === "identity") {
+                candidate.reprompts = (candidate.reprompts ?? 0) + 1;
+                await persistCaptures();
+                sendResponse({
+                  ok: true,
+                  prompt: {
+                    id: candidate.id,
+                    kind: candidate.kind,
+                    action: "add",
+                    host,
+                    username: "",
+                    title: candidate.title ?? "",
+                  },
+                });
+                return;
+              }
               const decision = await decideSave(
                 candidate.url,
                 candidate.username,
@@ -1082,9 +1271,11 @@ export default defineBackground(() => {
                 ok: true,
                 prompt: {
                   id: candidate.id,
+                  kind: "login",
                   action: decision.action,
                   host,
                   username: candidate.username,
+                  title: "",
                 },
               });
               return;
@@ -1116,6 +1307,33 @@ export default defineBackground(() => {
               }
               if (!unlocked) {
                 sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
+              // Card / identity captures carry a pre-built, web-compatible
+              // payload; persist it as a new item (no dedupe/update flow - cards
+              // and addresses aren't host-keyed the way logins are).
+              if (capture.kind === "credit_card" || capture.kind === "identity") {
+                try {
+                  const targetVaultId =
+                    typeof message.vaultId === "string" ? message.vaultId : undefined;
+                  await createItem(
+                    capture.kind,
+                    capture.title ?? "",
+                    capture.kind === "credit_card"
+                      ? capture.cardData
+                      : capture.identityData,
+                    targetVaultId,
+                  );
+                  const idx = capturedLogins.findIndex((c) => c.id === targetId);
+                  if (idx !== -1) capturedLogins.splice(idx, 1);
+                  await syncBadge();
+                  sendResponse({ ok: true, action: "add" });
+                } catch (err) {
+                  sendResponse({
+                    ok: false,
+                    error: err instanceof Error ? err.message : String(err),
+                  });
+                }
                 return;
               }
               try {
@@ -1327,6 +1545,69 @@ export default defineBackground(() => {
                 ok: true,
                 username: entry.username,
                 password: entry.password,
+              });
+              return;
+            }
+
+            case "listFillItems": {
+              // The content script asks for the user's cards/identities to show
+              // in OUR picker when card/identity fields are detected. The
+              // response is MASKED: only the item name, a last4/city subtitle and
+              // the vault label - never the full number, cvv, or any identity
+              // secret. Cards/identities have no host binding, so the full set is
+              // returned and the user explicitly picks.
+              if (!unlocked) {
+                sendResponse({ ok: true, cards: [], identities: [] });
+                return;
+              }
+              const { cards, identities } = await loadFillableEntries();
+              sendResponse({
+                ok: true,
+                cards: cards.map((card) => ({
+                  vaultId: card.vaultId,
+                  itemId: card.itemId,
+                  name: card.name,
+                  vaultName: vaultMeta.get(card.vaultId)?.name ?? "",
+                  last4: String(card.data.number ?? "")
+                    .replace(/\D/g, "")
+                    .slice(-4),
+                })),
+                identities: identities.map((identity) => ({
+                  vaultId: identity.vaultId,
+                  itemId: identity.itemId,
+                  name: identity.name,
+                  vaultName: vaultMeta.get(identity.vaultId)?.name ?? "",
+                  city: String(identity.data.city ?? ""),
+                })),
+              });
+              return;
+            }
+
+            case "fillItemField": {
+              // Single-field fill on an explicit user click in our picker. Unlike
+              // a login fill there is no host binding (cards/identities fill
+              // wherever the user picked), but the full value (incl. number/cvv)
+              // is only ever returned on this explicit request, never in
+              // listFillItems. The content script asks once per field.
+              if (!unlocked) {
+                sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
+              const vaultId = String(message.vaultId ?? "");
+              const itemId = String(message.itemId ?? "");
+              const field = String(message.field ?? "");
+              const { cards, identities } = await loadFillableEntries();
+              const entry =
+                cards.find((c) => c.vaultId === vaultId && c.itemId === itemId) ??
+                identities.find((i) => i.vaultId === vaultId && i.itemId === itemId);
+              if (!entry) {
+                sendResponse({ ok: false, error: "not found" });
+                return;
+              }
+              const raw = entry.data[field];
+              sendResponse({
+                ok: true,
+                value: raw === undefined || raw === null ? "" : String(raw),
               });
               return;
             }
