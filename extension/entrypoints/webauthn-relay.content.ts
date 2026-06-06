@@ -22,6 +22,8 @@
  *     tests can verify the interception path ran.
  */
 
+import { ContentScriptContext } from "wxt/utils/content-script-context";
+
 declare global {
   interface Window {
     __vaultctlWebAuthnSeen?: Array<{
@@ -38,9 +40,20 @@ export default defineContentScript({
   world: "MAIN",
 
   main() {
+    // MAIN-world content scripts receive no ctx argument from WXT, so build one
+    // to hook onInvalidated and restore the original WebAuthn API on reload.
+    const ctx = new ContentScriptContext("webauthn-relay");
+
+    // The relay is a v1 observer stub with no current feature value. It
+    // monkey-patches navigator.credentials on every https page and exposes a
+    // page-readable install fingerprint, so it ships DISABLED by default and
+    // only runs in a dev build. Production users get the unmodified browser API.
+    if (!import.meta.env.DEV) return;
     if (typeof navigator === "undefined" || !navigator.credentials) return;
 
     const observed: NonNullable<Window["__vaultctlWebAuthnSeen"]> = [];
+    // Only exposed in dev so production pages cannot read it as an install
+    // fingerprint.
     window.__vaultctlWebAuthnSeen = observed;
 
     const originalCreate = navigator.credentials.create?.bind(
@@ -79,6 +92,19 @@ export default defineContentScript({
         return originalGet(options);
       };
     }
+
+    // On extension reload/update the patched functions would otherwise outlive
+    // the relay, leaking the override into a dead context. Restore the originals
+    // and remove the global when the content script is invalidated.
+    ctx.onInvalidated(() => {
+      if (originalCreate) navigator.credentials.create = originalCreate;
+      if (originalGet) navigator.credentials.get = originalGet;
+      try {
+        delete window.__vaultctlWebAuthnSeen;
+      } catch {
+        window.__vaultctlWebAuthnSeen = undefined;
+      }
+    });
   },
 });
 

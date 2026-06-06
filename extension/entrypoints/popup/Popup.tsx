@@ -29,6 +29,9 @@ import {
   ArrowUpCircle,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
+import { generatePassword, GEN_MAX_LENGTH } from "../../utils/password-gen";
+import { isSafeHttpUri } from "../../utils/host";
+import { copySecret } from "../../utils/clipboard";
 import {
   isBiometricAvailable,
   isBiometricEnrolled,
@@ -547,13 +550,13 @@ export function Popup() {
   function flashCopied(label: string) {
     setCopied(label);
     setTimeout(() => setCopied(null), 1800);
-    // Best-effort clipboard clear after 30s.
-    setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30_000);
   }
 
   function copyText(text: string, label: string) {
     if (!text) return;
-    navigator.clipboard.writeText(text).then(() => flashCopied(label));
+    void copySecret(text).then((ok) => {
+      if (ok) flashCopied(label);
+    });
   }
 
   function copyPassword(item: DecryptedItem) {
@@ -906,9 +909,11 @@ export function Popup() {
                     <KeyRound className="h-3.5 w-3.5" />
                   </button>
                 )}
-                {item.uri && (
+                {item.uri && isSafeHttpUri(item.uri) && (
                   <button
-                    onClick={() => window.open(item.uri, "_blank")}
+                    onClick={() =>
+                      window.open(item.uri, "_blank", "noopener,noreferrer")
+                    }
                     className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                     title={t("vault.openSite")}
                   >
@@ -992,11 +997,6 @@ const NAV_TABS: { id: TabId; labelKey: string; Icon: typeof Wallet }[] = [
 ];
 
 // ── Generator tab ──────────────────────────────────────────────────────────
-const GEN_LOWER = "abcdefghijkmnopqrstuvwxyz";
-const GEN_UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-const GEN_DIGITS = "23456789";
-const GEN_SYMBOLS = "!@#$%^&*()-_=+[]{}";
-
 interface GenEntry {
   id: string;
   password: string;
@@ -1004,16 +1004,7 @@ interface GenEntry {
 }
 
 function genWith(cfg: ExtSettings): string {
-  let charset = "";
-  if (cfg.genLower) charset += GEN_LOWER;
-  if (cfg.genUpper) charset += GEN_UPPER;
-  if (cfg.genDigits) charset += GEN_DIGITS;
-  if (cfg.genSymbols) charset += GEN_SYMBOLS;
-  if (!charset) charset = GEN_LOWER + GEN_UPPER + GEN_DIGITS;
-  const len = Math.min(128, Math.max(8, cfg.genLength || 20));
-  const arr = new Uint32Array(len);
-  crypto.getRandomValues(arr);
-  return Array.from(arr, (v) => charset[v % charset.length]).join("");
+  return generatePassword(cfg);
 }
 
 function relativeAge(ts: number, t: TFunction): string {
@@ -1061,9 +1052,8 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
   }
 
   function copyOnly(pw: string) {
-    navigator.clipboard.writeText(pw).then(() => {
-      onCopied(t("common:password"));
-      setTimeout(() => navigator.clipboard.writeText("").catch(() => {}), 30_000);
+    void copySecret(pw).then((ok) => {
+      if (ok) onCopied(t("common:password"));
     });
   }
 
@@ -1120,7 +1110,7 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
         <input
           type="range"
           min={8}
-          max={64}
+          max={GEN_MAX_LENGTH}
           value={cfg.genLength}
           onChange={(e) => update({ genLength: Number(e.target.value) })}
           className="w-full accent-brand"
@@ -1732,7 +1722,10 @@ function SettingsTab({
       />
 
       <button
-        onClick={() => serverUrl && window.open(serverUrl, "_blank")}
+        onClick={() =>
+          isSafeHttpUri(serverUrl) &&
+          window.open(serverUrl, "_blank", "noopener,noreferrer")
+        }
         className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
       >
         <ExternalLink className="h-4 w-4 text-muted-foreground" />

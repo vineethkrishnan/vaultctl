@@ -59,6 +59,9 @@ export default defineConfig({
       "activeTab",
       "storage",
       "clipboardWrite",
+      // Read-back before the auto-clear wipes the clipboard, so we only clear it
+      // when it still holds the copied secret (never destroy unrelated content).
+      "clipboardRead",
       "notifications",
       "scripting",
     ],

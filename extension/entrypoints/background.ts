@@ -30,6 +30,8 @@ import {
   unpad,
   AlgID,
 } from "@shared/crypto";
+import { generatePassword } from "../utils/password-gen";
+import { safeHost, safeHostname, hostMatches } from "../utils/host";
 
 // ===========================================================================
 // Types
@@ -49,6 +51,10 @@ interface CapturedLogin {
   password: string;
   capturedAt: number;
   read: boolean;
+  // The tab that submitted the login. The save toast is only re-opened on a
+  // fresh load IN THIS TAB, so an unrelated same-host navigation in another tab
+  // within the redirect window can never re-trigger the prompt.
+  tabId?: number;
   // How many times the in-page save toast has been re-opened on a fresh page
   // load after the submit. Bounds re-prompting so a redirect re-shows the toast
   // without it reappearing on every later navigation.
@@ -75,6 +81,9 @@ const CAPTURE_MAX = 10;
 // land on; REOPEN_MAX bounds it so it does not nag on later navigation.
 const PROMPT_REOPEN_MS = 60 * 1000;
 const REOPEN_MAX = 2;
+// Fixed dot count for the autofill picker's password mask. A constant avoids
+// leaking the stored password's real length to the page.
+const MASK_DOT_COUNT = 8;
 
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
@@ -261,9 +270,9 @@ async function showCaptureNotification(url: string, username: string): Promise<v
   try {
     await browser.notifications.create(`vaultctl-capture-${Date.now()}`, {
       type: "basic",
-      // Fall back to the extension's default icon; the MV3 manifest may not
-      // expose a fixed path here, so we let the browser pick.
-      iconUrl: browser.runtime.getURL("icon/128.png" as never),
+      iconUrl: (browser.runtime.getURL as (p: string) => string)(
+        "/icon/icon-128.png",
+      ),
       title: "Save to vaultctl?",
       message: `Capture login for ${username || "(no username)"} on ${hostname}`,
     });
@@ -272,24 +281,6 @@ async function showCaptureNotification(url: string, username: string): Promise<v
     // was denied; fall back to the action badge.
   }
   await syncBadge();
-}
-
-function safeHostname(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
-
-// Host including any non-default port (e.g. "locaboo.localhost:380"). Used for
-// matching so a different port or subdomain counts as a different site.
-function safeHost(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url;
-  }
 }
 
 function getVaultKey(vaultId: string): Uint8Array {
@@ -346,24 +337,6 @@ const DEFAULT_SETTINGS: ExtSettings = {
 // ===========================================================================
 // Strong-password generation + ephemeral generated-password history
 // ===========================================================================
-
-const GEN_LOWER = "abcdefghijkmnopqrstuvwxyz";
-const GEN_UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-const GEN_DIGITS = "23456789";
-const GEN_SYMBOLS = "!@#$%^&*()-_=+[]{}";
-
-function generatePassword(cfg: ExtSettings): string {
-  let charset = "";
-  if (cfg.genLower) charset += GEN_LOWER;
-  if (cfg.genUpper) charset += GEN_UPPER;
-  if (cfg.genDigits) charset += GEN_DIGITS;
-  if (cfg.genSymbols) charset += GEN_SYMBOLS;
-  if (!charset) charset = GEN_LOWER + GEN_UPPER + GEN_DIGITS;
-  const length = Math.min(128, Math.max(8, cfg.genLength || 20));
-  const arr = new Uint32Array(length);
-  crypto.getRandomValues(arr);
-  return Array.from(arr, (v) => charset[v % charset.length]).join("");
-}
 
 interface GenEntry {
   id: string;
@@ -587,15 +560,6 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
   return entries;
 }
 
-// A stored item matches only its exact origin host: the same hostname AND the
-// same port. A different port (locaboo.localhost:380) or a different subdomain
-// (booking.locaboo.localhost) is treated as a different site, so suggestions
-// stay scoped to the page the user is actually on.
-function hostMatches(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  return a.toLowerCase() === b.toLowerCase();
-}
-
 async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
   const host = safeHost(origin);
   return (await loadLoginEntries()).filter((e) => hostMatches(e.host, host));
@@ -767,6 +731,44 @@ async function handleInit(payload: {
 }
 
 // ===========================================================================
+// Sender validation
+// ===========================================================================
+
+// The content script matches <all_urls>, so a privileged message could
+// originate from any web page. Only a narrow autofill/capture set is reachable
+// from a content script; everything that returns plaintext, touches key
+// material, mutates the vault, or mutates the capture queue is reachable only
+// from the extension's own pages (popup / options), which have no sender.tab.
+const CONTENT_SCRIPT_ALLOWED = new Set<string>([
+  "loginSubmitted",
+  "getPendingPrompt",
+  "matchCredentials",
+  "fillCredential",
+  "saveDecision",
+  "rememberUsername",
+  "getRememberedUsername",
+  "generatePassword",
+  "logGeneratedPassword",
+  "loginFormDetected",
+  "webauthnObserved",
+  // The in-page save toast's Save / Not-now buttons act on a capture the user
+  // just submitted. Neither returns plaintext or key material - the dangerous
+  // capture mutations (clear/dismiss/markAll) and every read stay page-only.
+  "saveCapturedLogin",
+  "markCaptureRead",
+]);
+
+// A content script always carries a sender.tab; the popup / extension pages do
+// not. A genuine same-extension message also has sender.id === runtime.id.
+function isFromContentScript(sender: Browser.runtime.MessageSender): boolean {
+  return sender.tab !== undefined;
+}
+
+function isFromExtension(sender: Browser.runtime.MessageSender): boolean {
+  return sender.id === browser.runtime.id;
+}
+
+// ===========================================================================
 // Message handler
 // ===========================================================================
 
@@ -803,12 +805,25 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener(
     (
       rawMessage: unknown,
-      _sender: Browser.runtime.MessageSender,
+      sender: Browser.runtime.MessageSender,
       sendResponse: SendResponse,
     ): boolean => {
       const message = rawMessage as IncomingMessage;
       if (!message || typeof message.type !== "string") {
         sendResponse({ error: "invalid message" });
+        return false;
+      }
+
+      // Reject any message not from this extension, and gate privileged
+      // (extension-page-only) messages so a web page's content script can never
+      // reach getSession, fillCredential, decryptForVault, listItems, unlock,
+      // setToken, or any capture mutation.
+      if (!isFromExtension(sender)) {
+        sendResponse({ error: "unauthorized sender" });
+        return false;
+      }
+      if (isFromContentScript(sender) && !CONTENT_SCRIPT_ALLOWED.has(message.type)) {
+        sendResponse({ error: "message not allowed from this context" });
         return false;
       }
 
@@ -952,6 +967,7 @@ export default defineBackground(() => {
                 password,
                 capturedAt: Date.now(),
                 read: false,
+                tabId: sender.tab?.id,
               };
               capturedLogins.push(capture);
               while (capturedLogins.length > CAPTURE_MAX) {
@@ -983,14 +999,17 @@ export default defineBackground(() => {
 
             case "getPendingPrompt": {
               // Re-open the save toast on the page the user lands on after a
-              // redirect: return the freshest unsaved capture for this host that
-              // is still inside the redirect window and hasn't been exhausted.
+              // redirect: return the freshest unsaved capture submitted by THIS
+              // tab that is still inside the redirect window and hasn't been
+              // exhausted. Scoping to the submitting tab stops an unrelated
+              // same-host navigation in another tab from re-triggering it.
               pruneStaleCaptures();
               if (!unlocked) {
                 sendResponse({ ok: true });
                 return;
               }
               const host = safeHostname(String(message.host ?? ""));
+              const requestTabId = sender.tab?.id;
               const now = Date.now();
               const candidate = [...capturedLogins]
                 .reverse()
@@ -999,7 +1018,8 @@ export default defineBackground(() => {
                     !c.read &&
                     (c.reprompts ?? 0) < REOPEN_MAX &&
                     now - c.capturedAt <= PROMPT_REOPEN_MS &&
-                    safeHostname(c.url) === host,
+                    safeHostname(c.url) === host &&
+                    (c.tabId === undefined || c.tabId === requestTabId),
                 );
               if (!candidate) {
                 sendResponse({ ok: true });
@@ -1176,14 +1196,15 @@ export default defineBackground(() => {
               sendResponse({
                 ok: true,
                 settings,
-                // Never ship the password itself until an explicit fill is
-                // requested - only its length, so the picker shows a dot mask.
+                // Never ship the password itself, nor its real length: the page
+                // would learn how long the stored secret is. The picker shows a
+                // fixed-width dot mask, so every row carries the same constant.
                 matches: matches.map((m) => ({
                   vaultId: m.vaultId,
                   itemId: m.itemId,
                   name: m.name,
                   username: m.username,
-                  passwordLength: m.password.length,
+                  passwordLength: MASK_DOT_COUNT,
                 })),
               });
               return;
@@ -1242,6 +1263,17 @@ export default defineBackground(() => {
               if (!entry) {
                 sendResponse({ ok: false, error: "not found" });
                 return;
+              }
+              // Defence in depth: when a content script asks for the plaintext,
+              // re-derive the requesting tab's host from sender.tab.url and
+              // require it matches the credential's stored host, so a tab can
+              // never pull a password for a different origin.
+              if (isFromContentScript(sender)) {
+                const tabHost = safeHost(sender.tab?.url ?? "");
+                if (!hostMatches(tabHost, entry.host)) {
+                  sendResponse({ ok: false, error: "origin mismatch" });
+                  return;
+                }
               }
               sendResponse({
                 ok: true,
