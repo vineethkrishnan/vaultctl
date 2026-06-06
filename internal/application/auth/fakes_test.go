@@ -200,6 +200,17 @@ func (r *fakeUserRepo) SetLocale(_ context.Context, id user.ID, locale string) e
 	u.Locale = user.NormalizeLocale(locale)
 	return nil
 }
+
+func (r *fakeUserRepo) SetTimezone(_ context.Context, id user.ID, timezone string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	u, ok := r.byID[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	u.Timezone = user.NormalizeTimezone(timezone)
+	return nil
+}
 func (r *fakeUserRepo) UpdateAuthHash(_ context.Context, id user.ID, authHash string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

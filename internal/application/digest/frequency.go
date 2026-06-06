@@ -33,24 +33,6 @@ func (f Frequency) Label() string {
 	return string(f)
 }
 
-// NextRun returns the next send time after from, or (zero, false) when off.
-func (f Frequency) NextRun(from time.Time) (time.Time, bool) {
-	switch f {
-	case Daily:
-		return from.AddDate(0, 0, 1), true
-	case Weekly:
-		return from.AddDate(0, 0, 7), true
-	case Monthly:
-		return from.AddDate(0, 1, 0), true
-	case Quarterly:
-		return from.AddDate(0, 3, 0), true
-	case Yearly:
-		return from.AddDate(1, 0, 0), true
-	default:
-		return time.Time{}, false
-	}
-}
-
 // Window returns how far back a digest should look for a given frequency. Used
 // for the very first digest, when there is no previous run to measure from.
 func (f Frequency) Window() time.Duration {

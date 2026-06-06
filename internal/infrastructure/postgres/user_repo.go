@@ -63,7 +63,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		       encrypted_recovery_wrapped_private_key, encrypted_recovery_wrapped_identity_private_key,
 		       totp_enabled, totp_last_counter, failed_login_attempts, locked_until,
 		       email_verified, email_verified_at,
-		       role, locale, created_at, updated_at
+		       role, locale, timezone, created_at, updated_at
 		FROM users WHERE `+where, arg)
 
 	var (
@@ -80,7 +80,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		lockedUntil                                  *time.Time
 		emailVerified                                bool
 		emailVerifiedAt                              *time.Time
-		role, locale                                 string
+		role, locale, timezone                       string
 		createdAt, updatedAt                         time.Time
 	)
 	err := row.Scan(&uid, &email, &name, &salt, &iter, &mem, &par,
@@ -88,7 +88,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		&recPriv, &recIDPriv,
 		&totpEnabled, &totpCounter, &failedAttempts, &lockedUntil,
 		&emailVerified, &emailVerifiedAt,
-		&role, &locale, &createdAt, &updatedAt)
+		&role, &locale, &timezone, &createdAt, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return user.User{}, domain.ErrNotFound
 	}
@@ -124,6 +124,7 @@ func (r *UserRepo) query(ctx context.Context, where string, arg any) (user.User,
 		Email:                             em,
 		Name:                              name,
 		Locale:                            user.NormalizeLocale(locale),
+		Timezone:                          user.NormalizeTimezone(timezone),
 		Salt:                              salt,
 		KDFParams:                         user.KDFParams{Iterations: iter, MemoryKB: mem, Parallelism: par},
 		EncryptedPrivateKey:               priv,
@@ -187,6 +188,20 @@ func (r *UserRepo) UpdateProfile(ctx context.Context, id user.ID, name string) e
 func (r *UserRepo) SetLocale(ctx context.Context, id user.ID, locale string) error {
 	tag, err := r.Pool.Exec(ctx, `UPDATE users SET locale = $1, updated_at = NOW() WHERE id = $2`,
 		user.NormalizeLocale(locale), string(id))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// SetTimezone updates the user's IANA timezone. The caller validates the name
+// via time.LoadLocation before calling.
+func (r *UserRepo) SetTimezone(ctx context.Context, id user.ID, timezone string) error {
+	tag, err := r.Pool.Exec(ctx, `UPDATE users SET timezone = $1, updated_at = NOW() WHERE id = $2`,
+		user.NormalizeTimezone(timezone), string(id))
 	if err != nil {
 		return err
 	}

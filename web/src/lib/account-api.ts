@@ -46,12 +46,38 @@ export type DigestFrequency =
   | "quarterly"
   | "yearly";
 
+// EmailPreferences mirrors the backend EmailPreferencesResponse. Schedule fields
+// are null for components not relevant to the chosen frequency.
+export interface EmailPreferences {
+  digestFrequency: DigestFrequency;
+  loginAlerts: boolean;
+  locale: string;
+  timezone: string;
+  schedHour: number | null;
+  schedMinute: number | null;
+  schedWeekday: number | null;
+  schedDay: number | null;
+  schedMonth: number | null;
+}
+
+// UpdateEmailPreferences carries only the fields the caller wants to change;
+// omitted fields leave that preference untouched (pointer semantics server-side).
+export interface UpdateEmailPreferences {
+  digestFrequency?: DigestFrequency;
+  loginAlerts?: boolean;
+  locale?: string;
+  timezone?: string;
+  schedHour?: number | null;
+  schedMinute?: number | null;
+  schedWeekday?: number | null;
+  schedDay?: number | null;
+  schedMonth?: number | null;
+}
+
 export const emailPrefsQueryKey = ["account", "email-preferences"] as const;
 
 export const getEmailPreferences = () =>
-  apiGet<{ digestFrequency: DigestFrequency }>("/api/v1/users/me/email-preferences");
+  apiGet<EmailPreferences>("/api/v1/users/me/email-preferences");
 
-export const setDigestFrequency = (digestFrequency: DigestFrequency) =>
-  apiPut<{ digestFrequency: DigestFrequency }>("/api/v1/users/me/email-preferences", {
-    digestFrequency,
-  });
+export const updateEmailPreferences = (update: UpdateEmailPreferences) =>
+  apiPut<EmailPreferences>("/api/v1/users/me/email-preferences", update);

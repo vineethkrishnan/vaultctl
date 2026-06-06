@@ -4,6 +4,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -45,7 +46,7 @@ func (h *UserHandlers) HandleGetEmailPreferences(w http.ResponseWriter, r *http.
 
 // emailPreferences assembles the caller's current email-preference view.
 func (h *UserHandlers) emailPreferences(r *http.Request, callerID user.ID) (EmailPreferencesResponse, error) {
-	freq, err := h.Digest.Frequency(r.Context(), callerID)
+	pref, err := h.Digest.Pref(r.Context(), callerID)
 	if err != nil {
 		return EmailPreferencesResponse{}, err
 	}
@@ -57,7 +58,17 @@ func (h *UserHandlers) emailPreferences(r *http.Request, callerID user.ID) (Emai
 	if err != nil {
 		return EmailPreferencesResponse{}, err
 	}
-	return EmailPreferencesResponse{DigestFrequency: string(freq), LoginAlerts: loginAlerts, Locale: u.Locale}, nil
+	return EmailPreferencesResponse{
+		DigestFrequency: string(pref.Frequency),
+		LoginAlerts:     loginAlerts,
+		Locale:          u.Locale,
+		Timezone:        pref.Timezone,
+		SchedHour:       pref.Schedule.Hour,
+		SchedMinute:     pref.Schedule.Minute,
+		SchedWeekday:    pref.Schedule.Weekday,
+		SchedDay:        pref.Schedule.Day,
+		SchedMonth:      pref.Schedule.Month,
+	}, nil
 }
 
 // HandleUpdateEmailPreferences sets the caller's digest frequency.
@@ -78,13 +89,35 @@ func (h *UserHandlers) HandleUpdateEmailPreferences(w http.ResponseWriter, r *ht
 	}
 	callerID := middleware.CallerID(r.Context())
 
+	if req.Timezone != nil {
+		if _, err := time.LoadLocation(*req.Timezone); err != nil {
+			writeError(w, r, domain.NewInvalid("timezone", "must be a valid IANA timezone name"))
+			return
+		}
+		if err := h.Users.SetTimezone(r.Context(), callerID, *req.Timezone); err != nil {
+			writeError(w, r, err)
+			return
+		}
+	}
 	if req.DigestFrequency != nil {
 		freq := digest.Frequency(*req.DigestFrequency)
 		if !freq.Valid() {
 			writeError(w, r, domain.NewInvalid("digestFrequency", "must be off, daily, weekly, monthly, quarterly or yearly"))
 			return
 		}
-		if err := h.Digest.SetFrequency(r.Context(), callerID, freq); err != nil {
+		loc, err := h.effectiveLocation(r, callerID, req.Timezone)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		schedule := digest.Schedule{
+			Hour:    req.SchedHour,
+			Minute:  req.SchedMinute,
+			Weekday: req.SchedWeekday,
+			Day:     req.SchedDay,
+			Month:   req.SchedMonth,
+		}
+		if err := h.Digest.SetFrequency(r.Context(), callerID, freq, schedule, loc); err != nil {
 			writeError(w, r, err)
 			return
 		}
@@ -112,6 +145,20 @@ func (h *UserHandlers) HandleUpdateEmailPreferences(w http.ResponseWriter, r *ht
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// effectiveLocation resolves the timezone the schedule should be interpreted in:
+// the one supplied in this request if present, otherwise the user's stored
+// timezone. The request value is already validated by the caller.
+func (h *UserHandlers) effectiveLocation(r *http.Request, callerID user.ID, requested *string) (*time.Location, error) {
+	if requested != nil {
+		return time.LoadLocation(*requested)
+	}
+	u, err := h.Users.FindByID(r.Context(), callerID)
+	if err != nil {
+		return nil, err
+	}
+	return time.LoadLocation(user.NormalizeTimezone(u.Timezone))
 }
 
 // HandleGetProfile returns the authenticated user's profile.

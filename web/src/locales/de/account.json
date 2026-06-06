@@ -25,6 +25,19 @@
       "monthly": "Monatlich",
       "quarterly": "Vierteljährlich",
       "yearly": "Jährlich"
+    },
+    "time": "Uhrzeit",
+    "weekday": "Wochentag",
+    "dayOfMonth": "Tag des Monats",
+    "month": "Monat",
+    "timezone": "Zeitzone",
+    "defaultHint": "Die Zeiten gelten in Ihrer gewählten Zeitzone. Standard ist 08:00.",
+    "summary": {
+      "daily": "Wird täglich um {{time}} Uhr ({{timezone}}) gesendet.",
+      "weekly": "Wird jeden {{weekday}} um {{time}} Uhr ({{timezone}}) gesendet.",
+      "monthly": "Wird am {{day}}. jedes Monats um {{time}} Uhr ({{timezone}}) gesendet.",
+      "quarterly": "Wird am {{day}}. alle drei Monate um {{time}} Uhr ({{timezone}}) gesendet.",
+      "yearly": "Wird jedes Jahr am {{day}}. {{month}} um {{time}} Uhr ({{timezone}}) gesendet."
     }
   }
 }

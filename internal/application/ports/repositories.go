@@ -80,6 +80,10 @@ type UserRepository interface {
 	// normalised to a supported locale before persistence.
 	SetLocale(ctx context.Context, id user.ID, locale string) error
 
+	// SetTimezone updates the user's IANA timezone used to interpret the digest
+	// schedule. The caller validates the name via time.LoadLocation first.
+	SetTimezone(ctx context.Context, id user.ID, timezone string) error
+
 	// UpdateAuthHash replaces the stored server-side auth hash. Used when
 	// AuthHasher.Verify returns upgrade=true, and on password change.
 	UpdateAuthHash(ctx context.Context, id user.ID, authHash string) error
