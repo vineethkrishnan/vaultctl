@@ -62,10 +62,47 @@ export default defineContentScript({
     };
 
     // ── Field detection ──────────────────────────────────────────────────
+    // An input the user can actually see and type into. Hidden inputs (honeypot
+    // anti-bot fields, off-screen "current-password" fields a SPA keeps mounted,
+    // display:none steps) must never be treated as fill targets, or the
+    // extension fills a trap field or the wrong form.
+    function isVisible(el: HTMLElement): boolean {
+      if (el.hidden) return false;
+      if (el instanceof HTMLInputElement && el.type === "hidden") return false;
+      // offsetParent is null for display:none (and position:fixed, handled by
+      // the rect check below); getClientRects is empty for collapsed elements.
+      if (el.offsetParent === null && el.getClientRects().length === 0) {
+        return false;
+      }
+      const style = window.getComputedStyle(el);
+      if (
+        style.visibility === "hidden" ||
+        style.visibility === "collapse" ||
+        style.display === "none" ||
+        style.opacity === "0"
+      ) {
+        return false;
+      }
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }
+
+    function visiblePasswordCount(form: HTMLFormElement): number {
+      return [...form.querySelectorAll('input[type="password"]')].filter((p) =>
+        isVisible(p as HTMLInputElement),
+      ).length;
+    }
+
     function findLoginForms(): HTMLFormElement[] {
       return [...document.querySelectorAll("form")].filter((f) =>
         f.querySelector('input[type="password"]'),
       ) as HTMLFormElement[];
+    }
+
+    // Login forms with at least one visible password field - the only forms we
+    // should auto-fill into.
+    function findVisibleLoginForms(): HTMLFormElement[] {
+      return findLoginForms().filter((f) => visiblePasswordCount(f) > 0);
     }
 
     // A one-time-code / 2FA field (e.g. Teleport's "Authenticator Code") must
@@ -91,7 +128,12 @@ export default defineContentScript({
       usernameInput: HTMLInputElement | null;
       passwordInput: HTMLInputElement | null;
     } {
-      const inputs = [...form.querySelectorAll("input")] as HTMLInputElement[];
+      // Only consider visible inputs as fill targets: a hidden text input before
+      // the password (honeypot, off-screen field) must never become the username
+      // target, and a hidden password field must never be filled.
+      const inputs = ([...form.querySelectorAll("input")] as HTMLInputElement[]).filter(
+        isVisible,
+      );
       const passwordInput = inputs.find((i) => i.type === "password") ?? null;
       let usernameInput: HTMLInputElement | null = null;
       // The username is almost always the field immediately before the
@@ -446,9 +488,17 @@ export default defineContentScript({
         }
       });
       use.addEventListener("click", () => {
-        // Fill every password field in the form (covers confirm fields).
-        for (const p of form.querySelectorAll('input[type="password"]')) {
-          setInputValue(p as HTMLInputElement, pw);
+        // Fill the focused new-password field, plus any OTHER visible
+        // new-password field (a confirm box). Never touch hidden password
+        // fields or a current-password field, so the secret only lands in the
+        // fields the user can actually see and is signing up with.
+        setInputValue(input, pw);
+        for (const node of form.querySelectorAll('input[type="password"]')) {
+          const field = node as HTMLInputElement;
+          if (field === input) continue;
+          if (isVisible(field) && isNewPasswordField(field, form)) {
+            setInputValue(field, pw);
+          }
         }
         void bg({ type: "logGeneratedPassword", password: pw });
         removeSuggestion();
@@ -764,9 +814,13 @@ export default defineContentScript({
       if (res?.settings) settings = res.settings;
       matches = res?.matches ?? [];
       decorateLoginFields();
-      if (settings.autofill && matches.length >= 1) {
-        const forms = findLoginForms();
-        if (forms[0]) void fillWithMatch(forms[0], matches[0]!);
+      // Only auto-fill on load when the page is unambiguous: exactly one visible
+      // login form and exactly one matching credential. Anything else (multiple
+      // forms, multiple matches) waits for the user to pick from the icon/picker,
+      // so we never silently fill the wrong form or guess between credentials.
+      if (settings.autofill && matches.length === 1) {
+        const forms = findVisibleLoginForms();
+        if (forms.length === 1) void fillWithMatch(forms[0]!, matches[0]!);
       }
     }
 
