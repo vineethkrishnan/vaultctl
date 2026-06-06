@@ -28,6 +28,8 @@ import {
   importEd25519PrivateKey,
   ed25519Sign,
   rsaOaepDecrypt,
+  verifyRecipientPublicKey,
+  buildSharePayload,
 } from "../shared/crypto/index.js";
 import type {
   WorkerRequest,
@@ -215,6 +217,55 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
             sig.byteOffset,
             sig.byteOffset + sig.byteLength,
           ) as ArrayBuffer,
+        });
+        break;
+      }
+
+      case "wrapVaultKey": {
+        const idKey = identityKey.value;
+        if (!idKey) {
+          respond({
+            op: "error",
+            requestId: msg.requestId,
+            message: "Identity key not loaded",
+          });
+          break;
+        }
+
+        const recipientPublicKey = fromBase64(msg.recipientPublicKey);
+        const recipientIdentityPublicKey = fromBase64(
+          msg.recipientIdentityPublicKey,
+        );
+        const recipientPublicKeySignature = fromBase64(
+          msg.recipientPublicKeySignature,
+        );
+
+        const authentic = await verifyRecipientPublicKey({
+          rsaPublicKey: recipientPublicKey,
+          identityPublicKey: recipientIdentityPublicKey,
+          publicKeySignature: recipientPublicKeySignature,
+        });
+        if (!authentic) {
+          respond({
+            op: "error",
+            requestId: msg.requestId,
+            message: "Recipient public key failed identity verification",
+          });
+          break;
+        }
+
+        const rawVaultKey = getVaultKey(msg.vaultId);
+        const payload = await buildSharePayload({
+          vaultId: msg.vaultId,
+          recipientUserId: msg.recipientUserId,
+          rawVaultKey,
+          recipientRsaPublicKey: recipientPublicKey,
+          signWrap: (message) => ed25519Sign(idKey, message),
+        });
+        respond({
+          op: "resultString",
+          requestId: msg.requestId,
+          value: JSON.stringify(payload),
         });
         break;
       }

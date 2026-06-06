@@ -484,9 +484,10 @@ type SessionResponse struct {
 // ===========================================================================
 
 type PublicKeyResponse struct {
-	UserID            string `json:"userId"`
-	PublicKey         string `json:"publicKey"`
-	IdentityPublicKey string `json:"identityPublicKey"`
+	UserID             string `json:"userId"`
+	PublicKey          string `json:"publicKey"`
+	PublicKeySignature string `json:"publicKeySignature"`
+	IdentityPublicKey  string `json:"identityPublicKey"`
 }
 
 // ===========================================================================

@@ -9,5 +9,6 @@
 export interface PublicKeyResponse {
   identityPublicKey?: string;
   publicKey?: string;
+  publicKeySignature?: string;
   userId?: string;
 }

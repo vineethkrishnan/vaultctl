@@ -217,6 +217,34 @@ export async function workerSignIdentity(
   return new Uint8Array(ab);
 }
 
+export interface WrapVaultKeyResult {
+  encryptedVaultKey: string; // base64 wire blob (RSA-OAEP)
+  wrapSignature: string; // base64 Ed25519 signature
+}
+
+/**
+ * Re-wrap a held vault key to a recipient and sign the wrap (M8 sharing). The
+ * Worker verifies the recipient's public key against their identity key before
+ * wrapping. The raw vault key and identity private key never leave the Worker.
+ */
+export async function workerWrapVaultKey(params: {
+  vaultId: string;
+  recipientUserId: string;
+  recipientPublicKey: string; // base64 SPKI
+  recipientIdentityPublicKey: string; // base64 raw Ed25519
+  recipientPublicKeySignature: string; // base64 Ed25519 signature
+}): Promise<WrapVaultKeyResult> {
+  const json = await send<string>({
+    op: "wrapVaultKey",
+    vaultId: params.vaultId,
+    recipientUserId: params.recipientUserId,
+    recipientPublicKey: params.recipientPublicKey,
+    recipientIdentityPublicKey: params.recipientIdentityPublicKey,
+    recipientPublicKeySignature: params.recipientPublicKeySignature,
+  });
+  return JSON.parse(json) as WrapVaultKeyResult;
+}
+
 /** Lock: zero all keys in the Worker. */
 export function workerLock(): void {
   if (worker) {

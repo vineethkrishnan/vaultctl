@@ -203,8 +203,9 @@
     "roleAdmin": "Admin",
     "add": "Add",
     "invited": "Invited {{recipient}} as {{role}}",
-    "comingSoonTitle": "Adding members is not yet available",
-    "comingSoonNote": "Sharing a vault requires wrapping the vault key for each recipient. That key-exchange step is still being built, so inviting new members is temporarily disabled. Existing members can still be removed."
+    "errorNoOrg": "This vault is not linked to an organization.",
+    "errorPubkeyFetch": "Could not fetch the recipient's public key. Check the user ID.",
+    "errorShare": "Could not share the vault. Please try again."
   },
   "attachments": {
     "heading": "Attachments",

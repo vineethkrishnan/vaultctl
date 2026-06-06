@@ -19,9 +19,11 @@ import {
   workerDecryptName,
   workerLock,
   workerSignIdentity,
+  workerWrapVaultKey,
   workerTerminate,
   workerIsUnlocked,
 } from "@/worker/worker-client";
+import type { WrapVaultKeyResult } from "@/worker/worker-client";
 import type { VaultMembership } from "@/shared/types/api";
 
 export interface InitParams {
@@ -89,6 +91,22 @@ export async function decryptName(
  */
 export async function signIdentity(message: Uint8Array): Promise<Uint8Array> {
   return workerSignIdentity(message);
+}
+
+/**
+ * Wrap a held vault key to a recipient and sign it for sharing (M8). The Worker
+ * verifies the recipient's public key against their identity key, RSA-OAEP wraps
+ * the raw vault key, and signs the wrap with the identity key. Returns the
+ * base64 blob + signature ready to POST to the share endpoint.
+ */
+export async function wrapVaultKeyForRecipient(params: {
+  vaultId: string;
+  recipientUserId: string;
+  recipientPublicKey: string;
+  recipientIdentityPublicKey: string;
+  recipientPublicKeySignature: string;
+}): Promise<WrapVaultKeyResult> {
+  return workerWrapVaultKey(params);
 }
 
 /** Lock the vault: zero all key material in the Worker. */
