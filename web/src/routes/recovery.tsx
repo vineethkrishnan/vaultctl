@@ -183,6 +183,7 @@ export function RecoveryPage() {
         stretchedKey: newStretchedKey,
         encryptedPrivateKey: loginRes.encryptedPrivateKey,
         encryptedIdentityPrivateKey: loginRes.encryptedIdentityPrivateKey,
+        publicKey: loginRes.publicKey,
         vaults: loginRes.vaults,
       });
 

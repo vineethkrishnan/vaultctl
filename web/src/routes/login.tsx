@@ -127,6 +127,7 @@ export function LoginPage() {
       stretchedKey,
       encryptedPrivateKey: res.encryptedPrivateKey,
       encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
+      publicKey: res.publicKey,
       vaults: res.vaults,
     });
 

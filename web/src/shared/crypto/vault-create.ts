@@ -17,6 +17,7 @@
  */
 
 import { aesKeyWrap } from "./aes-kw.js";
+import { importRSAPublicKey, rsaOaepEncrypt } from "./rsa-oaep.js";
 import { serializeBlob } from "./blob.js";
 import { toBase64 } from "./utils.js";
 
@@ -39,6 +40,36 @@ export async function buildSelfVaultKeyWrap(params: {
   signWrap: (message: Uint8Array) => Promise<Uint8Array>;
 }): Promise<SelfVaultKeyWrap> {
   const wrappedBlob = await aesKeyWrap(params.stretchedKey, params.rawVaultKey);
+  const encryptedVaultKeyBytes = serializeBlob(wrappedBlob);
+  const signature = await params.signWrap(encryptedVaultKeyBytes);
+
+  return {
+    encryptedVaultKey: toBase64(encryptedVaultKeyBytes),
+    wrapSignature: toBase64(signature),
+  };
+}
+
+/**
+ * Shared-vault variant of the self-wrap (creating an org vault).
+ *
+ * A shared vault's member wraps use RSA-OAEP (domain Member.Validate rejects
+ * AES-KW for shared vaults). The owner's own initial membership therefore wraps
+ * the fresh vault key to their OWN RSA-OAEP public key. The signature scheme is
+ * identical to the AES-KW path: Ed25519 over the serialized wire-blob bytes (NOT
+ * the H1 vault_id || user_id || blob message used by the recipient share flow,
+ * which can't apply here because the vault id doesn't exist yet at create time).
+ *
+ * The RSA public key is the owner's own wrapping key (sourced from the login
+ * payload and held in the Worker); decryption uses the owner's RSA private key,
+ * exactly like any other shared-vault key the owner unwraps at login.
+ */
+export async function buildSelfSharedVaultKeyWrap(params: {
+  rawVaultKey: Uint8Array;
+  ownRsaPublicKey: Uint8Array; // SPKI DER (the owner's own wrapping key)
+  signWrap: (message: Uint8Array) => Promise<Uint8Array>;
+}): Promise<SelfVaultKeyWrap> {
+  const publicKey = await importRSAPublicKey(params.ownRsaPublicKey);
+  const wrappedBlob = await rsaOaepEncrypt(publicKey, params.rawVaultKey);
   const encryptedVaultKeyBytes = serializeBlob(wrappedBlob);
   const signature = await params.signWrap(encryptedVaultKeyBytes);
 

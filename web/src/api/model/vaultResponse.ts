@@ -11,6 +11,7 @@ export interface VaultResponse {
   encryptedVaultKey?: string;
   id?: string;
   name?: string;
+  orgId?: string;
   role?: string;
   senderId?: string;
   type?: string;

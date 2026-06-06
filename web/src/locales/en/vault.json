@@ -63,7 +63,14 @@
     "nameLabel": "Vault name",
     "namePlaceholder": "e.g. Work",
     "create": "Create vault",
-    "failed": "Could not create the vault"
+    "failed": "Could not create the vault",
+    "typeLabel": "Vault type",
+    "typePersonal": "Personal",
+    "typeShared": "Shared (organization)",
+    "orgLabel": "Organization",
+    "orgPlaceholder": "Select an organization",
+    "noOrgsHint": "Join or create an organization to make a shared vault.",
+    "orgRequired": "Choose an organization for the shared vault."
   },
   "folders": {
     "heading": "Folders",

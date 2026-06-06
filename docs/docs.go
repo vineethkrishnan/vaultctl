@@ -3674,6 +3674,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "orgId": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -3721,6 +3724,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "orgId": {
                     "type": "string"
                 },
                 "role": {

@@ -63,6 +63,7 @@ func (h *VaultHandlers) HandleListVaults(w http.ResponseWriter, r *http.Request)
 			ID:                string(vm.Vault.ID),
 			Name:              vm.Vault.Name,
 			Type:              string(vm.Vault.Type),
+			OrgID:             vm.Vault.OrgID,
 			Role:              string(vm.Member.Role),
 			EncryptedVaultKey: encodeB64Blob(vm.Member.EncryptedVaultKey),
 			SenderID:          string(vm.Member.SenderID),
@@ -106,6 +107,7 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 		Caller:            callerID,
 		Name:              req.Name,
 		Type:              req.Type,
+		OrgID:             req.OrgID,
 		EncryptedVaultKey: encKey,
 		WrapSignature:     sig,
 	})
@@ -118,6 +120,7 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 		ID:                string(vm.Vault.ID),
 		Name:              vm.Vault.Name,
 		Type:              string(vm.Vault.Type),
+		OrgID:             vm.Vault.OrgID,
 		Role:              string(vm.Member.Role),
 		EncryptedVaultKey: encodeB64Blob(vm.Member.EncryptedVaultKey),
 		SenderID:          string(vm.Member.SenderID),

@@ -3668,6 +3668,9 @@
                 "name": {
                     "type": "string"
                 },
+                "orgId": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -3715,6 +3718,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "orgId": {
                     "type": "string"
                 },
                 "role": {

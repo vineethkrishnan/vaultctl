@@ -45,7 +45,7 @@ export function SharingPanel() {
   }, [vaultsRes, vaultId]);
 
   const isShared = vault?.type === "shared";
-  const orgId = (vault as any)?.orgId as string | undefined;
+  const orgId = vault?.orgId;
 
   // Fetch org members (only for shared vaults with orgId).
   // The non-null assertion is safe: the query is disabled until orgId exists.

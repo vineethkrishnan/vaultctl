@@ -63,7 +63,14 @@
     "nameLabel": "Tresorname",
     "namePlaceholder": "z. B. Arbeit",
     "create": "Tresor erstellen",
-    "failed": "Tresor konnte nicht erstellt werden"
+    "failed": "Tresor konnte nicht erstellt werden",
+    "typeLabel": "Tresortyp",
+    "typePersonal": "Persönlich",
+    "typeShared": "Geteilt (Organisation)",
+    "orgLabel": "Organisation",
+    "orgPlaceholder": "Organisation auswählen",
+    "noOrgsHint": "Tritt einer Organisation bei oder erstelle eine, um einen geteilten Tresor anzulegen.",
+    "orgRequired": "Wähle eine Organisation für den geteilten Tresor."
   },
   "folders": {
     "heading": "Ordner",

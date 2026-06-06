@@ -384,7 +384,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 
 	vaultHandlers := &api.VaultHandlers{
 		ListVaults:  &appvault.ListVaults{Vaults: a.vaults},
-		CreateVault: &appvault.CreateVault{Vaults: a.vaults, Clock: a.clock, IDs: a.ids},
+		CreateVault: &appvault.CreateVault{Vaults: a.vaults, Orgs: a.orgs, Clock: a.clock, IDs: a.ids},
 		CreateItem:  &appvault.CreateItem{Vaults: a.vaults, Items: a.items, Clock: a.clock, IDs: a.ids},
 		GetItem:     &appvault.GetItem{Vaults: a.vaults, Items: a.items},
 		UpdateItem:  &appvault.UpdateItem{Vaults: a.vaults, Items: a.items, Clock: a.clock},

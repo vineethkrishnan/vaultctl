@@ -4,10 +4,13 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
+	"github.com/vineethkrishnan/vaultctl/internal/domain"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/organization"
 	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 	domainvault "github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
@@ -17,6 +20,7 @@ type CreateVaultInput struct {
 	Caller            user.ID
 	Name              string
 	Type              string
+	OrgID             string
 	EncryptedVaultKey crypto.EncryptedBlob
 	WrapSignature     crypto.Signature
 }
@@ -24,6 +28,7 @@ type CreateVaultInput struct {
 // CreateVault creates a new vault with the caller as the initial owner.
 type CreateVault struct {
 	Vaults ports.VaultRepository
+	Orgs   ports.OrganizationRepository
 	Clock  ports.Clock
 	IDs    ports.IDGenerator
 }
@@ -35,11 +40,18 @@ func (uc *CreateVault) Execute(ctx context.Context, in CreateVaultInput) (VaultW
 		return VaultWithMembership{}, err
 	}
 
+	if vaultType == domainvault.TypeShared {
+		if err := uc.assertActiveOrgMember(ctx, organization.ID(in.OrgID), in.Caller); err != nil {
+			return VaultWithMembership{}, err
+		}
+	}
+
 	now := uc.Clock.Now()
 	v := domainvault.Vault{
 		ID:        domainvault.ID(uc.IDs.NewID()),
 		Name:      in.Name,
 		Type:      vaultType,
+		OrgID:     in.OrgID,
 		CreatedBy: in.Caller,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -66,4 +78,23 @@ func (uc *CreateVault) Execute(ctx context.Context, in CreateVaultInput) (VaultW
 	}
 
 	return VaultWithMembership{Vault: v, Member: m}, nil
+}
+
+// assertActiveOrgMember rejects a shared-vault creation unless the caller is an
+// active (accepted-invite) member of the named organization.
+func (uc *CreateVault) assertActiveOrgMember(ctx context.Context, orgID organization.ID, caller user.ID) error {
+	if orgID.IsZero() {
+		return domain.NewInvalid("org_id", "shared vaults require org_id")
+	}
+	membership, err := uc.Orgs.GetMembership(ctx, orgID, caller)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.NewInvalid("org_id", "caller is not a member of this organization")
+	}
+	if err != nil {
+		return fmt.Errorf("load org membership: %w", err)
+	}
+	if !membership.IsAccepted() {
+		return domain.NewInvalid("org_id", "caller is not an active member of this organization")
+	}
+	return nil
 }
