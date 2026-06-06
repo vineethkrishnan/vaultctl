@@ -22,6 +22,7 @@ services:
       - "127.0.0.1:${VAULTCTL_HOST_PORT:-8080}:8080"
     volumes:
       - attachments-data:/data/attachments
+      - backups-data:/data/backups
     networks:
       - vaultctl-net
     depends_on:
@@ -49,6 +50,7 @@ services:
 volumes:
   postgres-data:
   attachments-data:
+  backups-data:
 
 networks:
   vaultctl-net:

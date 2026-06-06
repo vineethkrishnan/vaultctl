@@ -48,6 +48,7 @@ services:
       VAULTCTL_ATTACHMENTS_DIR: /data/attachments
     volumes:
       - attachments-data:/data/attachments
+      - backups-data:/data/backups
     networks:
       - vaultctl-net
     depends_on:
@@ -77,6 +78,7 @@ volumes:
   caddy-config:
   postgres-data:
   attachments-data:
+  backups-data:
 
 networks:
   vaultctl-net:
