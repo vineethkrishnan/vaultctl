@@ -22,6 +22,12 @@ type LoginAlertSender interface {
 	SendLoginAlert(ctx context.Context, to, reason, deviceLabel, ipAddress string, when time.Time) error
 }
 
+// LoginAlertPrefs reports a user's opt-in for sign-in alert emails.
+// *digest.Service satisfies it via LoginAlerts.
+type LoginAlertPrefs interface {
+	LoginAlerts(ctx context.Context, userID user.ID) (bool, error)
+}
+
 // NotifyLogin records the login's device + network and, when new for the user,
 // sends a single security alert. It never alerts on the user's first recorded
 // login (the signup device) and skips entirely when the user-agent is missing,
@@ -35,6 +41,8 @@ type NotifyLogin struct {
 	// the network is a /24-anonymised IP that roams for mobile users; the
 	// new-device alert is always active regardless.
 	NewNetworkEnabled bool
+	// Prefs gates sending on the user's opt-out. Nil means always-on.
+	Prefs LoginAlertPrefs
 }
 
 // Execute classifies the login and alerts if warranted. Best-effort: callers
@@ -62,6 +70,16 @@ func (uc *NotifyLogin) Execute(ctx context.Context, userID user.ID, to, deviceNa
 	// racing login on the same (device, network) stays silent.
 	if !obs.Inserted {
 		return nil
+	}
+
+	if uc.Prefs != nil {
+		enabled, perr := uc.Prefs.LoginAlerts(ctx, userID)
+		if perr != nil {
+			return perr
+		}
+		if !enabled {
+			return nil
+		}
 	}
 
 	reason := ""

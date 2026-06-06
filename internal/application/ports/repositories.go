@@ -29,6 +29,11 @@ type AuditLogReader interface {
 	// is in `actions` (empty = any) and whose created_at is strictly after
 	// `after` (zero = no lower bound), newest first, capped at `limit`.
 	ListForUser(ctx context.Context, userID string, actions []string, after time.Time, limit int) ([]auditlog.Entry, error)
+
+	// PageForUser returns the user's audit entries strictly before the
+	// `before` cursor (zero = most recent), newest first, capped at `limit`.
+	// Used by the self-audit activity API for keyset pagination.
+	PageForUser(ctx context.Context, userID string, before time.Time, limit int) ([]auditlog.Entry, error)
 }
 
 // NotificationState tracks how far a user has read/cleared the notification

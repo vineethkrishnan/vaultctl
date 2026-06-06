@@ -50,6 +50,16 @@ func (s *Service) SetFrequency(ctx context.Context, userID user.ID, freq Frequen
 	return s.Prefs.Set(ctx, userID, string(freq), nextRun, now)
 }
 
+// LoginAlerts reports whether the user receives sign-in alert emails.
+func (s *Service) LoginAlerts(ctx context.Context, userID user.ID) (bool, error) {
+	return s.Prefs.LoginAlertsEnabled(ctx, userID)
+}
+
+// SetLoginAlerts stores whether the user receives sign-in alert emails.
+func (s *Service) SetLoginAlerts(ctx context.Context, userID user.ID, enabled bool) error {
+	return s.Prefs.SetLoginAlerts(ctx, userID, enabled, s.Clock.Now())
+}
+
 // RunDue sends every digest that is due. ClaimDue advances the schedule before
 // any send (at-most-once), so a per-user send failure is logged and skipped
 // rather than retried, and a crash never double-sends. One bad send doesn't

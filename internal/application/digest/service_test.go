@@ -44,6 +44,12 @@ func (f *fakeDigestPrefs) Get(context.Context, user.ID) (ports.DigestPref, error
 func (f *fakeDigestPrefs) Set(context.Context, user.ID, string, *time.Time, time.Time) error {
 	return nil
 }
+func (f *fakeDigestPrefs) SetLoginAlerts(context.Context, user.ID, bool, time.Time) error {
+	return nil
+}
+func (f *fakeDigestPrefs) LoginAlertsEnabled(context.Context, user.ID) (bool, error) {
+	return true, nil
+}
 func (f *fakeDigestPrefs) ClaimDue(_ context.Context, now time.Time) ([]ports.DueDigest, error) {
 	if f.marked == nil {
 		f.marked = map[user.ID]*time.Time{}
