@@ -19,6 +19,7 @@ import (
 type VaultHandlers struct {
 	ListVaults        *appvault.ListVaults
 	CreateVault       *appvault.CreateVault
+	DeleteVault       *appvault.DeleteVault
 	CreateItem        *appvault.CreateItem
 	GetItem           *appvault.GetItem
 	UpdateItem        *appvault.UpdateItem
@@ -127,6 +128,32 @@ func (h *VaultHandlers) HandleCreateVault(w http.ResponseWriter, r *http.Request
 		WrapSignature:     encodeB64(vm.Member.WrapSignature.Bytes()),
 		CreatedAt:         vm.Vault.CreatedAt.UTC().Format(timeFormat),
 	})
+}
+
+// HandleDeleteVault permanently deletes a vault with everything in it.
+// @Summary Delete vault
+// @Description Irreversibly delete a vault, its items, folders, members, and attachments. Owner-only; requires a fresh step-up.
+// @Tags Vaults
+// @Security BearerAuth
+// @Param vaultId path string true "Vault ID"
+// @Success 204 "deleted"
+// @Failure 400 {object} ErrorBody
+// @Failure 401 {object} ErrorBody
+// @Failure 403 {object} ErrorBody
+// @Failure 404 {object} ErrorBody
+// @Router /vaults/{vaultId} [delete]
+func (h *VaultHandlers) HandleDeleteVault(w http.ResponseWriter, r *http.Request) {
+	callerID := middleware.CallerID(r.Context())
+	vaultID := vault.ID(chi.URLParam(r, "vaultId"))
+	if err := h.DeleteVault.Execute(r.Context(), appvault.DeleteVaultInput{
+		Caller:  callerID,
+		VaultID: vaultID,
+	}); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	h.Audit.VaultDeleted(r.Context(), string(callerID), string(vaultID), middleware.ClientIP(r), r.UserAgent())
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleCreateItem creates a new encrypted item in a vault.

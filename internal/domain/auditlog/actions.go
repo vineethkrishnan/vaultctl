@@ -40,6 +40,7 @@ const (
 
 	// Vault + sharing lifecycle.
 	ActionVaultCreated       = "vault.created"
+	ActionVaultDeleted       = "vault.deleted"
 	ActionVaultRekeyed       = "vault.rekeyed"
 	ActionVaultMemberAdded   = "vault.member_added"
 	ActionVaultMemberRemoved = "vault.member_removed"

@@ -228,6 +228,26 @@ func (r *fakeVaultRepo) ListSharedByOrgMember(_ context.Context, orgID organizat
 	return out, nil
 }
 
+func (r *fakeVaultRepo) Delete(_ context.Context, id domainvault.ID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.vaults[id]; !ok {
+		return domain.ErrNotFound
+	}
+	delete(r.vaults, id)
+	for k := range r.members {
+		if k.vaultID == id {
+			delete(r.members, k)
+		}
+	}
+	for k := range r.memberships {
+		if k.vaultID == id {
+			delete(r.memberships, k)
+		}
+	}
+	return nil
+}
+
 // ===========================================================================
 // fakeOrgRepo - minimal OrganizationRepository for shared-vault creation tests.
 // Only GetMembership is exercised by CreateVault; the rest satisfy the port.

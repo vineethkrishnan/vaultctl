@@ -259,6 +259,8 @@ func (r *cascadeVaultRepo) ListSharedByOrgMember(_ context.Context, orgID organi
 	return out, nil
 }
 
+func (r *cascadeVaultRepo) Delete(_ context.Context, _ vault.ID) error { return nil }
+
 // ===========================================================================
 // Tests
 // ===========================================================================

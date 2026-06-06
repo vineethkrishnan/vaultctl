@@ -30,4 +30,8 @@ type AttachmentRepository interface {
 	// StorageKeysForItem returns the blob-store keys of every attachment on
 	// an item, so the bytes can be deleted before the rows cascade away.
 	StorageKeysForItem(ctx context.Context, vaultID vault.ID, itemID vault.ItemID) ([]string, error)
+
+	// StorageKeysForVault returns the blob-store keys of every attachment in
+	// the vault, for blob cleanup when the whole vault is deleted.
+	StorageKeysForVault(ctx context.Context, vaultID vault.ID) ([]string, error)
 }

@@ -72,6 +72,17 @@
     "noOrgsHint": "Join or create an organization to make a shared vault.",
     "orgRequired": "Choose an organization for the shared vault."
   },
+  "deleteVault": {
+    "dangerZone": "Danger zone",
+    "description": "Permanently delete this vault with every item, folder, and attachment in it. This cannot be undone.",
+    "lastVaultHint": "This is your only vault. Create another vault before deleting this one.",
+    "action": "Delete vault",
+    "title": "Delete vault?",
+    "warning": "This permanently deletes \"{{name}}\" and everything in it - items, folders, attachments, and member access. There is no trash for vaults and no way back.",
+    "typeToConfirm": "Type {{name}} to confirm",
+    "confirm": "Delete forever",
+    "failed": "Deleting the vault failed"
+  },
   "folders": {
     "heading": "Folders",
     "newFolder": "New Folder",

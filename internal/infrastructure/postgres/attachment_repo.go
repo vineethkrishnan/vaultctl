@@ -123,3 +123,24 @@ func scanAttachment(row rowScanner) (vault.Attachment, error) {
 	a.VaultID = vault.ID(vaultID)
 	return a, nil
 }
+
+// StorageKeysForVault returns the blob keys of every attachment in the vault,
+// so the bytes can be deleted when the whole vault is removed.
+func (r *AttachmentRepo) StorageKeysForVault(ctx context.Context, vaultID vault.ID) ([]string, error) {
+	rows, err := r.Pool.Query(ctx, `
+		SELECT storage_key FROM attachments WHERE vault_id = $1
+	`, string(vaultID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var keys []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, rows.Err()
+}
