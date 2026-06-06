@@ -1,0 +1,38 @@
+{
+  "nav": "Sicherheit",
+  "title": "Passwort-Gesundheit",
+  "subtitle": "Schwache, wiederverwendete und veraltete Logins - vollständig in Ihrem Browser geprüft.",
+  "scanning": "Ihre Logins werden entschlüsselt und analysiert...",
+  "allClear": "Keine Probleme gefunden. Ihre Logins sehen gesund aus.",
+  "privacyNote": "Jede Prüfung läuft lokal, nachdem die Einträge in Ihrem Browser entschlüsselt wurden. Es werden niemals Passwörter, Hashes oder Bewertungen an den Server gesendet.",
+  "summary": {
+    "checked": "Geprüft",
+    "weak": "Schwach",
+    "reused": "Wiederverwendet",
+    "stale": "Veraltet"
+  },
+  "weak": {
+    "title": "Schwache Passwörter",
+    "description": "Leicht zu erraten oder zu knacken. Ersetzen Sie diese durch stärkere.",
+    "empty": "Keine schwachen Passwörter.",
+    "score": {
+      "0": "Sehr schwach",
+      "1": "Schwach",
+      "2": "Mittel",
+      "3": "Stark",
+      "4": "Sehr stark"
+    }
+  },
+  "reused": {
+    "title": "Wiederverwendete Passwörter",
+    "description": "Dasselbe Passwort wird von mehr als einem Login verwendet.",
+    "empty": "Keine wiederverwendeten Passwörter.",
+    "group": "Gruppe {{index}} - {{count}} Logins"
+  },
+  "stale": {
+    "title": "Veraltete Logins",
+    "description": "Seit über einem Jahr nicht aktualisiert. Erwägen Sie eine Rotation.",
+    "empty": "Keine veralteten Logins.",
+    "age": "{{months}} Monate alt"
+  }
+}

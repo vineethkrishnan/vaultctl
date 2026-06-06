@@ -34,7 +34,8 @@
     "react-i18next": "^17.0.8",
     "tailwind-merge": "^3.6.0",
     "zod": "^3.23.0",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
@@ -42,6 +43,7 @@
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.0.0",
+    "@types/zxcvbn": "^4.4.5",
     "@vitejs/plugin-react": "^4.3.0",
     "orval": "^8.14.0",
     "svg2ttf": "^6.1.0",

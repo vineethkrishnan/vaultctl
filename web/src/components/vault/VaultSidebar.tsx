@@ -10,7 +10,7 @@ import { FolderList } from "@/components/vault/FolderList";
 import { BrandMark } from "@/components/BrandMark";
 import { QuickActions } from "@/components/layout/QuickActions";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
-import { KeyRound, Star, Trash2, FolderClosed, Plus, X } from "lucide-react";
+import { KeyRound, Star, Trash2, FolderClosed, Plus, X, ShieldCheck } from "lucide-react";
 
 const navLink =
   "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
@@ -21,7 +21,7 @@ interface Props {
 }
 
 export function VaultSidebar({ open = false, onClose }: Props) {
-  const { t } = useTranslation(["vault", "common"]);
+  const { t } = useTranslation(["vault", "health", "common"]);
   const { vaultId } = useParams({ strict: false }) as { vaultId?: string };
 
   const { data: vaults } = useQuery({
@@ -99,6 +99,10 @@ export function VaultSidebar({ open = false, onClose }: Props) {
           >
             <Trash2 className="h-4 w-4" />
             {t("vault:sidebar.trash")}
+          </Link>
+          <Link to="/health" className={navLink}>
+            <ShieldCheck className="h-4 w-4" />
+            {t("health:nav")}
           </Link>
 
           {/* Folders */}

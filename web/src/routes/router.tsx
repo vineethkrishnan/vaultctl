@@ -19,6 +19,7 @@ import { VaultNewItemPage } from "./vault-new-item";
 import { SettingsPage } from "./settings";
 import { NotificationsPage } from "./notifications";
 import { AdminPage } from "./admin";
+import { HealthPage } from "./health";
 import { VaultTrashPage } from "./vault-trash";
 
 // Root route
@@ -119,6 +120,13 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+// Password health route
+const healthRoute = createRoute({
+  getParentRoute: () => authLayout,
+  path: "/health",
+  component: HealthPage,
+});
+
 // Index redirect
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -144,6 +152,7 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     notificationsRoute,
     adminRoute,
+    healthRoute,
     vaultRoute.addChildren([
       vaultItemsRoute,
       vaultNewItemRoute,

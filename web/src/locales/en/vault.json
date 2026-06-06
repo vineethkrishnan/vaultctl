@@ -127,7 +127,19 @@
     "notSignedIn": "Not signed in",
     "serverReturned": "Server returned {{status}}",
     "unknownError": "Export failed for an unknown reason",
-    "savedFile": "Saved <1>{{filename}}</1> ({{size}})"
+    "savedFile": "Saved <1>{{filename}}</1> ({{size}})",
+    "format": "Format",
+    "formatJson": "Encrypted backup (JSON)",
+    "formatCsv": "Plain CSV (unencrypted)",
+    "csvWarning": "A CSV export is NOT encrypted - every password is written in plain text. Store it somewhere safe and delete it once you are done.",
+    "downloadCsv": "Download CSV",
+    "noItems": "There are no items to export."
+  },
+  "totp": {
+    "label": "One-time code",
+    "copy": "Copy one-time code",
+    "expiresIn": "Expires in {{seconds}}s",
+    "invalid": "Stored value is not a valid TOTP secret"
   },
   "import": {
     "heading": "Import",

@@ -1,0 +1,38 @@
+{
+  "nav": "Security",
+  "title": "Password Health",
+  "subtitle": "Weak, reused, and stale logins - checked entirely in your browser.",
+  "scanning": "Decrypting and analysing your logins...",
+  "allClear": "No issues found. Your logins look healthy.",
+  "privacyNote": "Every check runs locally after decrypting items in your browser. No passwords, hashes, or scores are ever sent to the server.",
+  "summary": {
+    "checked": "Checked",
+    "weak": "Weak",
+    "reused": "Reused",
+    "stale": "Stale"
+  },
+  "weak": {
+    "title": "Weak passwords",
+    "description": "Easy to guess or crack. Replace these with stronger ones.",
+    "empty": "No weak passwords.",
+    "score": {
+      "0": "Very weak",
+      "1": "Weak",
+      "2": "Fair",
+      "3": "Strong",
+      "4": "Very strong"
+    }
+  },
+  "reused": {
+    "title": "Reused passwords",
+    "description": "The same password is used by more than one login.",
+    "empty": "No reused passwords.",
+    "group": "Group {{index}} - {{count}} logins"
+  },
+  "stale": {
+    "title": "Stale logins",
+    "description": "Not updated in over a year. Consider rotating these.",
+    "empty": "No stale logins.",
+    "age": "{{months}} months old"
+  }
+}
