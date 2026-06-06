@@ -16,6 +16,7 @@ import { ApiKeyFields } from "@/components/items/ApiKeyFields";
 import { SSHKeyFields } from "@/components/items/SSHKeyFields";
 import { PasskeyFields } from "@/components/items/PasskeyFields";
 import { AttachmentsSection } from "@/components/items/AttachmentsSection";
+import { useServerFeatures } from "@/hooks/use-server-features";
 import { itemDataSchemas } from "@/shared/types/item-data";
 import type { ItemResponse } from "@/shared/types/api";
 import { ArrowLeft, Star, Trash2 } from "lucide-react";
@@ -32,6 +33,7 @@ export function ItemEditor({ vaultId, itemId }: Props) {
   const { t } = useTranslation(["vault", "common"]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const features = useServerFeatures();
 
   const { data: item, isLoading } = useQuery({
     queryKey: queryKeys.items.detail(vaultId, itemId),
@@ -245,7 +247,9 @@ export function ItemEditor({ vaultId, itemId }: Props) {
         />
       </div>
 
-      {decrypted && <AttachmentsSection vaultId={vaultId} itemId={itemId} />}
+      {decrypted && features.attachments && (
+        <AttachmentsSection vaultId={vaultId} itemId={itemId} />
+      )}
 
       {/* Save */}
       <div className="flex gap-2">

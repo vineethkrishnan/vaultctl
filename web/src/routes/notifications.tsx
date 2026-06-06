@@ -24,6 +24,7 @@ import {
   type NotificationItem,
 } from "@/lib/system-api";
 import { useUpdateNotification } from "@/hooks/use-update-notification";
+import { useServerFeatures } from "@/hooks/use-server-features";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
 
 const categoryIcon: Record<NotificationCategory, typeof Shield> = {
@@ -73,10 +74,12 @@ function groupByDay(items: NotificationItem[], t: TFunction) {
 export function NotificationsPage() {
   const { t } = useTranslation(["notifications", "system", "common"]);
   const queryClient = useQueryClient();
+  const features = useServerFeatures();
   const { data, isLoading } = useQuery({
     queryKey: ["system", "notifications"],
     queryFn: getNotifications,
     refetchOnWindowFocus: true,
+    enabled: features.notifications,
   });
 
   const invalidate = () =>
@@ -85,7 +88,9 @@ export function NotificationsPage() {
   const markRead = useMutation({ mutationFn: markNotificationsRead, onSuccess: invalidate });
   const clearAll = useMutation({ mutationFn: clearNotifications, onSuccess: invalidate });
 
-  const { status: updateStatus, show: showUpdate } = useUpdateNotification();
+  const { status: updateStatus, show: showUpdate } = useUpdateNotification(
+    features.updates,
+  );
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const updateVisible = showUpdate && !!updateStatus && !updateDismissed;
