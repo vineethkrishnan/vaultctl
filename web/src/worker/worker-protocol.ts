@@ -47,6 +47,20 @@ export type WorkerRequest =
       op: "signIdentity";
       requestId: string;
       message: ArrayBuffer;
+    }
+  | {
+      // wrapVaultKey: re-wrap a held vault key to a recipient's RSA public key
+      // and sign the wrap with the identity key (M8 sharing / H1). The recipient
+      // key is verified against their identity key first; the raw vault key and
+      // identity private key never leave the worker - only the wrapped blob and
+      // signature (base64) come back.
+      op: "wrapVaultKey";
+      requestId: string;
+      vaultId: string;
+      recipientUserId: string;
+      recipientPublicKey: string; // base64 SPKI (RSA wrapping key)
+      recipientIdentityPublicKey: string; // base64 raw Ed25519 identity key
+      recipientPublicKeySignature: string; // base64 Ed25519(idPriv, publicKey)
     };
 
 // ===========================================================================

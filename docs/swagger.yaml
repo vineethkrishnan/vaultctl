@@ -414,6 +414,8 @@ definitions:
         type: string
       publicKey:
         type: string
+      publicKeySignature:
+        type: string
       userId:
         type: string
     type: object

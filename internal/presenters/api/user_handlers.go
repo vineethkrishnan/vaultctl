@@ -282,8 +282,9 @@ func (h *UserHandlers) HandleGetMemberPublicKey(w http.ResponseWriter, r *http.R
 		return
 	}
 	writeJSON(w, http.StatusOK, PublicKeyResponse{
-		UserID:            string(u.ID),
-		PublicKey:         encodeB64(u.PublicKey.Bytes()),
-		IdentityPublicKey: encodeB64(u.IdentityPublicKey.Bytes()),
+		UserID:             string(u.ID),
+		PublicKey:          encodeB64(u.PublicKey.Bytes()),
+		PublicKeySignature: encodeB64(u.PublicKeySignature.Bytes()),
+		IdentityPublicKey:  encodeB64(u.IdentityPublicKey.Bytes()),
 	})
 }

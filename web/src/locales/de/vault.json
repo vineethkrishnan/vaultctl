@@ -203,8 +203,9 @@
     "roleAdmin": "Administrator",
     "add": "Hinzufügen",
     "invited": "{{recipient}} als {{role}} eingeladen",
-    "comingSoonTitle": "Das Hinzufügen von Mitgliedern ist noch nicht verfügbar",
-    "comingSoonNote": "Für die Freigabe eines Tresors muss der Tresorschlüssel für jeden Empfänger verschlüsselt werden. Dieser Schlüsselaustausch wird noch entwickelt, daher ist das Einladen neuer Mitglieder vorübergehend deaktiviert. Vorhandene Mitglieder können weiterhin entfernt werden."
+    "errorNoOrg": "Dieser Tresor ist mit keiner Organisation verknüpft.",
+    "errorPubkeyFetch": "Der öffentliche Schlüssel des Empfängers konnte nicht abgerufen werden. Bitte die Benutzer-ID prüfen.",
+    "errorShare": "Der Tresor konnte nicht freigegeben werden. Bitte erneut versuchen."
   },
   "attachments": {
     "heading": "Anhänge",

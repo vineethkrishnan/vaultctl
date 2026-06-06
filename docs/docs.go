@@ -3247,6 +3247,9 @@ const docTemplate = `{
                 "publicKey": {
                     "type": "string"
                 },
+                "publicKeySignature": {
+                    "type": "string"
+                },
                 "userId": {
                     "type": "string"
                 }

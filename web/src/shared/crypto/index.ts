@@ -55,6 +55,12 @@ export {
 
 export { aesKeyWrap, aesKeyUnwrap } from "./aes-kw.js";
 
+export {
+  type SharePayload,
+  verifyRecipientPublicKey,
+  buildSharePayload,
+} from "./vault-share.js";
+
 export { deriveKeys } from "./kdf.js";
 
 export { pad, unpad } from "./padding.js";
