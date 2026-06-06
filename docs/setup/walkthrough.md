@@ -72,9 +72,14 @@ Save. Every encrypted blob round-trips through the worker - the server only ever
 ## 6. From here
 
 - **CLI:** `vaultctl login`, `vaultctl ls`, `vaultctl get GitHub` - uses the same backend, decrypts client-side. See [`README.md`](../../README.md#cli).
-- **Browser extension:** build with `cd extension && npm run build`, load `extension/.output/chrome-mv3/` into Chrome (`chrome://extensions` -> Developer mode -> Load unpacked).
+- **Browser extension:** build with `cd extension && npm run build`, load `extension/.output/chrome-mv3/` into Chrome (`chrome://extensions` -> Developer mode -> Load unpacked). Autofills logins and captures/fills cards and identities.
+- **Set up 2FA:** add a TOTP authenticator in **Settings** -> security. The app can also store and show live TOTP codes for your other accounts.
+- **Verify your email:** if the server has SMTP configured, confirm the code sent on signup before the read-only grace expires. See [`email.md`](email.md).
+- **Enable digests:** opt into a periodic activity summary (and tune its schedule and timezone) in **Settings**, once mail is configured.
+- **Connect a backup destination:** add local, S3, WebDAV, or a cloud provider in **Settings** -> backup sync for scheduled encrypted backups. See [`backup-sync.md`](backup-sync.md).
 - **Sharing:** create a shared vault, then invite a teammate from **Admin** -> **Invites**.
-- **Backups:** `vaultctl backup --output /var/backups/vaultctl` runs an encrypted dump and prunes per `VAULTCTL_BACKUP_RETENTION_DAYS`.
+- **Backups (admin DB dump):** `vaultctl backup --output /var/backups/vaultctl` runs an encrypted dump and prunes per `VAULTCTL_BACKUP_RETENTION_DAYS`.
+- **Configuration:** every server setting and its default is in [`configuration.md`](configuration.md).
 - **Verify the release** you actually installed: see [`docs/security/verifying-releases.md`](../security/verifying-releases.md).
 
 ## Notes on this walkthrough
