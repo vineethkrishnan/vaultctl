@@ -17,7 +17,7 @@ const staleAfterMonths = 12
 
 // Sender delivers a rendered digest. *email.Service satisfies it.
 type Sender interface {
-	SendDigest(ctx context.Context, to, period string, a ports.DigestActivity) error
+	SendDigest(ctx context.Context, to, locale, period string, a ports.DigestActivity) error
 }
 
 // Service runs due digests.
@@ -89,7 +89,7 @@ func (s *Service) RunDue(ctx context.Context) error {
 		if summary.Empty() {
 			continue
 		}
-		if err := s.Sender.SendDigest(ctx, d.Email, freq.Label(), summary); err != nil {
+		if err := s.Sender.SendDigest(ctx, d.Email, d.Locale, freq.Label(), summary); err != nil {
 			slog.WarnContext(ctx, "digest.send.failed", slog.String("user_id", string(d.UserID)), slog.String("err", err.Error()))
 		}
 	}

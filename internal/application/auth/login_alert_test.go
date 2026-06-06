@@ -57,12 +57,12 @@ func (m *memKnownLogins) Observe(_ context.Context, userID user.ID, fingerprint 
 	return obs, nil
 }
 
-type loginAlertCall struct{ to, reason, label, ip string }
+type loginAlertCall struct{ to, locale, reason, label, ip string }
 
 type capturingLoginSender struct{ calls []loginAlertCall }
 
-func (s *capturingLoginSender) SendLoginAlert(_ context.Context, to, reason, label, ip string, _ time.Time) error {
-	s.calls = append(s.calls, loginAlertCall{to, reason, label, ip})
+func (s *capturingLoginSender) SendLoginAlert(_ context.Context, to, locale, reason, label, ip string, _ time.Time) error {
+	s.calls = append(s.calls, loginAlertCall{to, locale, reason, label, ip})
 	return nil
 }
 
@@ -82,31 +82,34 @@ func TestNotifyLogin(t *testing.T) {
 	const device = "Alice's laptop"
 
 	// First login: recorded, no alert (signup device).
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "203.0.113.0"))
 	if len(sender.calls) != 0 {
 		t.Fatalf("first login alerted: %+v", sender.calls)
 	}
 
 	// Same device + network again: no alert.
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "203.0.113.0"))
 	if len(sender.calls) != 0 {
 		t.Fatalf("repeat login alerted: %+v", sender.calls)
 	}
 
 	// New device: alert new_device.
-	must(t, uc.Execute(ctx, uid, to, device, firefox, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, firefox, "203.0.113.0"))
 	if len(sender.calls) != 1 || sender.calls[0].reason != LoginReasonNewDevice {
 		t.Fatalf("expected new_device alert, got %+v", sender.calls)
 	}
+	if sender.calls[0].locale != "de" {
+		t.Fatalf("expected the user's locale threaded to the alert, got %q", sender.calls[0].locale)
+	}
 
 	// Known device (chrome) from a new network: alert new_network (enabled here).
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "198.51.100.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "198.51.100.0"))
 	if len(sender.calls) != 2 || sender.calls[1].reason != LoginReasonNewNetwork {
 		t.Fatalf("expected new_network alert, got %+v", sender.calls)
 	}
 
 	// Empty user-agent: never alerts (cannot describe the device).
-	must(t, uc.Execute(ctx, uid, to, device, "", "192.0.2.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, "", "192.0.2.0"))
 	if len(sender.calls) != 2 {
 		t.Fatalf("empty UA alerted: %+v", sender.calls)
 	}
@@ -124,8 +127,8 @@ func TestNotifyLogin_NewNetworkDisabledByDefault(t *testing.T) {
 	const to = "a@example.com"
 	const device = "Alice's laptop"
 
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))  // signup device
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "198.51.100.0")) // known device, new network
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "203.0.113.0"))  // signup device
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "198.51.100.0")) // known device, new network
 	if len(sender.calls) != 0 {
 		t.Fatalf("new_network alerted while disabled: %+v", sender.calls)
 	}
@@ -144,8 +147,8 @@ func TestNotifyLogin_DeviceNameInFingerprint(t *testing.T) {
 
 	// Same browser/OS, different device names => different fingerprints, so the
 	// second distinct device is detected as new rather than colliding.
-	must(t, uc.Execute(ctx, uid, to, "Alice's laptop", chromeMac, "203.0.113.0"))
-	must(t, uc.Execute(ctx, uid, to, "Alice's desktop", chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", "Alice's laptop", chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", "Alice's desktop", chromeMac, "203.0.113.0"))
 	if len(sender.calls) != 1 || sender.calls[0].reason != LoginReasonNewDevice {
 		t.Fatalf("expected new_device for distinct device name, got %+v", sender.calls)
 	}
@@ -176,9 +179,9 @@ func TestNotifyLoginRespectsOptOut(t *testing.T) {
 	const device = "Alice's laptop"
 
 	// Signup device (no alert regardless).
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "203.0.113.0"))
 	// New device would normally alert, but the user opted out.
-	must(t, uc.Execute(ctx, uid, to, device, firefox, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, firefox, "203.0.113.0"))
 
 	if len(sender.calls) != 0 {
 		t.Fatalf("opted-out user was alerted: %+v", sender.calls)
@@ -211,8 +214,8 @@ func TestNotifyLoginOptInStillAlerts(t *testing.T) {
 	const to = "a@example.com"
 	const device = "Alice's laptop"
 
-	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
-	must(t, uc.Execute(ctx, uid, to, device, firefox, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "de", device, firefox, "203.0.113.0"))
 
 	if len(sender.calls) != 1 || sender.calls[0].reason != LoginReasonNewDevice {
 		t.Fatalf("expected new_device alert for opted-in user, got %+v", sender.calls)

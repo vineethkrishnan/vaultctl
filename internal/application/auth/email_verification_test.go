@@ -46,12 +46,12 @@ func (m *memVerifs) Delete(_ context.Context, id user.ID) error {
 }
 
 type capturingSender struct {
-	to, code string
-	ttl      time.Duration
+	to, locale, code string
+	ttl              time.Duration
 }
 
-func (s *capturingSender) SendVerificationCode(_ context.Context, to, code string, ttl time.Duration) error {
-	s.to, s.code, s.ttl = to, code, ttl
+func (s *capturingSender) SendVerificationCode(_ context.Context, to, locale, code string, ttl time.Duration) error {
+	s.to, s.locale, s.code, s.ttl = to, locale, code, ttl
 	return nil
 }
 
@@ -64,11 +64,14 @@ func TestSendAndVerifyEmail(t *testing.T) {
 	sender := &capturingSender{}
 
 	send := &SendEmailVerification{Verifications: verifs, HMAC: fakeHMAC{}, Clock: clock, Sender: sender, CodeTTL: 15 * time.Minute}
-	if err := send.Execute(context.Background(), u.ID, "alice@example.com"); err != nil {
+	if err := send.Execute(context.Background(), u.ID, "alice@example.com", "de"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	if len(sender.code) != 6 {
 		t.Fatalf("expected 6-digit code, got %q", sender.code)
+	}
+	if sender.locale != "de" {
+		t.Fatalf("expected the requested locale threaded to the send, got %q", sender.locale)
 	}
 
 	verify := &VerifyEmail{Users: repo, Verifications: verifs, HMAC: fakeHMAC{}, Clock: clock}
@@ -161,7 +164,7 @@ func TestSendVerification_ResendCooldown(t *testing.T) {
 	const uid user.ID = "u1"
 
 	// First send issues a code.
-	if err := send.Execute(context.Background(), uid, "a@b.com"); err != nil {
+	if err := send.Execute(context.Background(), uid, "a@b.com", "en"); err != nil {
 		t.Fatalf("first send: %v", err)
 	}
 	firstHash := verifs.rec[uid].CodeHash
@@ -171,7 +174,7 @@ func TestSendVerification_ResendCooldown(t *testing.T) {
 	verifs.rec[uid] = rec
 
 	// Immediate resend is rejected and must NOT reset attempts or reissue.
-	if err := send.Execute(context.Background(), uid, "a@b.com"); !errors.Is(err, ErrResendTooSoon) {
+	if err := send.Execute(context.Background(), uid, "a@b.com", "en"); !errors.Is(err, ErrResendTooSoon) {
 		t.Fatalf("expected ErrResendTooSoon, got %v", err)
 	}
 	if verifs.rec[uid].Attempts != 3 {

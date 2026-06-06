@@ -27,7 +27,7 @@ var (
 // VerificationEmailSender delivers the one-time code. *email.Service satisfies
 // it; the use case depends on the narrow interface so it stays testable.
 type VerificationEmailSender interface {
-	SendVerificationCode(ctx context.Context, to, code string, ttl time.Duration) error
+	SendVerificationCode(ctx context.Context, to, locale, code string, ttl time.Duration) error
 }
 
 // SendEmailVerification generates a fresh code, stores its HMAC digest, and
@@ -48,7 +48,7 @@ type SendEmailVerification struct {
 // is a no-op so a mail-less deployment doesn't error on register. A resend
 // inside the cooldown window of a live code returns ErrResendTooSoon without
 // re-issuing, so the existing code's attempt budget is preserved.
-func (uc *SendEmailVerification) Execute(ctx context.Context, userID user.ID, to string) error {
+func (uc *SendEmailVerification) Execute(ctx context.Context, userID user.ID, to, locale string) error {
 	if uc.Sender == nil {
 		return nil
 	}
@@ -77,7 +77,7 @@ func (uc *SendEmailVerification) Execute(ctx context.Context, userID user.ID, to
 	if err := uc.Verifications.Upsert(ctx, rec); err != nil {
 		return fmt.Errorf("store verification: %w", err)
 	}
-	return uc.Sender.SendVerificationCode(ctx, to, code, uc.ttl())
+	return uc.Sender.SendVerificationCode(ctx, to, locale, code, uc.ttl())
 }
 
 // ClearCode removes any pending verification code for a user, used when the

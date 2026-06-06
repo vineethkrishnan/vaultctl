@@ -43,6 +43,7 @@ type VaultMembership struct {
 type LoginOutput struct {
 	UserID           user.ID
 	Role             user.Role
+	Locale           string // transactional-email locale, threaded to login alerts
 	AccessToken      string
 	RefreshToken     string
 	SessionID        user.SessionID
@@ -185,6 +186,7 @@ func (uc *Login) Execute(ctx context.Context, in LoginInput) (LoginOutput, error
 	return LoginOutput{
 		UserID:           u.ID,
 		Role:             u.Role,
+		Locale:           u.Locale,
 		AccessToken:      access,
 		RefreshToken:     refresh,
 		SessionID:        session.ID,

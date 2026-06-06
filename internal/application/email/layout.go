@@ -73,7 +73,7 @@ func (s *Service) renderHTML(c content) string {
 		`<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%%;background:#ffffff;border-radius:14px;border:1px solid #e4e4e7;">`+
 		`<tr><td style="padding:28px 28px 8px;"><div style="font-size:16px;font-weight:700;color:%s;">vaultctl</div></td></tr>`+
 		`<tr><td style="padding:8px 28px 24px;">%s</td></tr>`+
-		`<tr><td style="padding:16px 28px;border-top:1px solid #f0f0f1;font-size:12px;color:#a1a1aa;">You're receiving this because of activity on your vaultctl account.</td></tr>`+
+		`<tr><td style="padding:16px 28px;border-top:1px solid #f0f0f1;font-size:12px;color:#a1a1aa;">%s</td></tr>`+
 		`</table></td></tr></table></body></html>`,
-		pageBg, pageBg, brandAccent, inner.String())
+		pageBg, pageBg, brandAccent, inner.String(), html.EscapeString(c.footer))
 }

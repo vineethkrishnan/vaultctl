@@ -19,7 +19,7 @@ const (
 
 // LoginAlertSender delivers the security alert. *email.Service satisfies it.
 type LoginAlertSender interface {
-	SendLoginAlert(ctx context.Context, to, reason, deviceLabel, ipAddress string, when time.Time) error
+	SendLoginAlert(ctx context.Context, to, locale, reason, deviceLabel, ipAddress string, when time.Time) error
 }
 
 // LoginAlertPrefs reports a user's opt-in for sign-in alert emails.
@@ -48,7 +48,7 @@ type NotifyLogin struct {
 // Execute classifies the login and alerts if warranted. Best-effort: callers
 // run it off the request path and only log failures. Novelty is decided from a
 // single atomic upsert so concurrent logins can't double-alert.
-func (uc *NotifyLogin) Execute(ctx context.Context, userID user.ID, to, deviceName, userAgent, ipAddress string) error {
+func (uc *NotifyLogin) Execute(ctx context.Context, userID user.ID, to, locale, deviceName, userAgent, ipAddress string) error {
 	if uc.Sender == nil || strings.TrimSpace(userAgent) == "" || to == "" {
 		return nil
 	}
@@ -91,7 +91,7 @@ func (uc *NotifyLogin) Execute(ctx context.Context, userID user.ID, to, deviceNa
 	default:
 		return nil
 	}
-	return uc.Sender.SendLoginAlert(ctx, to, reason, label, ipAddress, now)
+	return uc.Sender.SendLoginAlert(ctx, to, locale, reason, label, ipAddress, now)
 }
 
 // deviceFingerprint folds the client-provided device name into the HMAC so two

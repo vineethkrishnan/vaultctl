@@ -71,16 +71,20 @@ func (f fakeActivity) Summary(context.Context, user.ID, time.Time, time.Time) (p
 	return f.a, nil
 }
 
-type capturingDigestSender struct{ sent []string }
+type capturingDigestSender struct {
+	sent    []string
+	locales []string
+}
 
-func (s *capturingDigestSender) SendDigest(_ context.Context, to, _ string, _ ports.DigestActivity) error {
+func (s *capturingDigestSender) SendDigest(_ context.Context, to, locale, _ string, _ ports.DigestActivity) error {
 	s.sent = append(s.sent, to)
+	s.locales = append(s.locales, locale)
 	return nil
 }
 
 func TestRunDue_SendsAndReschedules(t *testing.T) {
 	now := time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)
-	prefs := &fakeDigestPrefs{due: []ports.DueDigest{{UserID: "u1", Email: "a@b.com", Frequency: "weekly"}}}
+	prefs := &fakeDigestPrefs{due: []ports.DueDigest{{UserID: "u1", Email: "a@b.com", Locale: "de", Frequency: "weekly"}}}
 	sender := &capturingDigestSender{}
 	svc := &Service{
 		Prefs:    prefs,
@@ -93,6 +97,9 @@ func TestRunDue_SendsAndReschedules(t *testing.T) {
 	}
 	if len(sender.sent) != 1 || sender.sent[0] != "a@b.com" {
 		t.Fatalf("expected one send to a@b.com, got %v", sender.sent)
+	}
+	if len(sender.locales) != 1 || sender.locales[0] != "de" {
+		t.Fatalf("expected the user's locale threaded to the send, got %v", sender.locales)
 	}
 	next := prefs.marked["u1"]
 	if next == nil || !next.Equal(now.AddDate(0, 0, 7)) {
