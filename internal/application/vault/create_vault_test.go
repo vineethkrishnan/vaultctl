@@ -16,6 +16,8 @@ import (
 	domainvault "github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
 
+const orgIDField = "org_id"
+
 func aesKWBlob() crypto.EncryptedBlob {
 	return crypto.EncryptedBlob{
 		Version:    crypto.V1,
@@ -99,7 +101,7 @@ func TestCreateVault_PersonalWithOrg_Rejected(t *testing.T) {
 		WrapSignature:     sig(t),
 	})
 	var invalid *domain.Invalid
-	if !errors.As(err, &invalid) || invalid.Field != "org_id" {
+	if !errors.As(err, &invalid) || invalid.Field != orgIDField {
 		t.Fatalf("expected org_id invalid, got %v", err)
 	}
 }
@@ -115,7 +117,7 @@ func TestCreateVault_SharedWithoutOrg_Rejected(t *testing.T) {
 		WrapSignature:     sig(t),
 	})
 	var invalid *domain.Invalid
-	if !errors.As(err, &invalid) || invalid.Field != "org_id" {
+	if !errors.As(err, &invalid) || invalid.Field != orgIDField {
 		t.Fatalf("expected org_id invalid, got %v", err)
 	}
 }
@@ -134,7 +136,7 @@ func TestCreateVault_SharedForeignOrg_Rejected(t *testing.T) {
 		WrapSignature:     sig(t),
 	})
 	var invalid *domain.Invalid
-	if !errors.As(err, &invalid) || invalid.Field != "org_id" {
+	if !errors.As(err, &invalid) || invalid.Field != orgIDField {
 		t.Fatalf("expected org_id invalid (not a member), got %v", err)
 	}
 }
@@ -154,7 +156,7 @@ func TestCreateVault_SharedPendingInvite_Rejected(t *testing.T) {
 		WrapSignature:     sig(t),
 	})
 	var invalid *domain.Invalid
-	if !errors.As(err, &invalid) || invalid.Field != "org_id" {
+	if !errors.As(err, &invalid) || invalid.Field != orgIDField {
 		t.Fatalf("expected org_id invalid (inactive member), got %v", err)
 	}
 }
