@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LoginData } from "@/shared/types/item-data";
 import { Field } from "./FieldGroup";
+import { TotpField } from "./TotpField";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { PasswordHistory } from "./PasswordHistory";
 import { PasswordGenerator } from "@/components/vault/PasswordGenerator";
@@ -43,6 +44,9 @@ export function LoginFields({ data, onChange }: Props) {
       )}
       <Field label={t("vault:fields.uri")} value={data.uri} onChange={(v) => set("uri", v)} type="url" copyable />
       <Field label={t("vault:fields.totp")} value={data.totp} onChange={(v) => set("totp", v)} type="password" />
+      {data.totp?.trim() && (
+        <TotpField label={t("vault:totp.label")} value={data.totp} />
+      )}
       <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
       <CustomFieldsEditor
         fields={data.customFields}

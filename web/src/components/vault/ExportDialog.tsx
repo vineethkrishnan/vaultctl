@@ -4,26 +4,34 @@ import { useState } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { Download, Shield, AlertTriangle, Check } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
-import { signIdentity } from "@/lib/key-holder";
+import { signIdentity, decryptData, decryptName } from "@/lib/key-holder";
 import {
   buildSignedEnvelopeWithSigner,
   type ExportEnvelopeBody,
 } from "@/shared/export";
+import { itemsToCsv, type CsvExportItem } from "@/shared/export/csv";
 import { getExport } from "@/api/import-export/import-export";
 
+type ExportFormat = "json" | "csv";
+
+const decoder = new TextDecoder();
+
+interface ExportPayload {
+  vaults: ExportEnvelopeBody["vaults"];
+  items: ExportEnvelopeBody["items"];
+  folders: ExportEnvelopeBody["folders"];
+}
+
 /**
- * Encrypted backup download. Calls the server /export endpoint (which
- * returns the already-encrypted items + metadata), wraps them in an
- * Ed25519-signed envelope using the user's identity key held inside the
- * Web Worker, and triggers a browser download.
- *
- * The resulting file is useless to anyone without the master password -
- * every item body is still encrypted with its source vault's key. The
- * envelope signature only guarantees integrity and authorship.
+ * Backup download. JSON produces an Ed25519-signed envelope of the
+ * still-encrypted items (useless without the master password). CSV decrypts
+ * every item in the browser and writes a plaintext file for portability to
+ * other managers - never encrypted, and the plaintext never leaves the client.
  */
 export function ExportDialog() {
   const { t } = useTranslation(["vault", "common"]);
   const userId = useAuthStore((s) => s.userId);
+  const [format, setFormat] = useState<ExportFormat>("json");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ filename: string; bytes: number } | null>(
@@ -46,39 +54,51 @@ export function ExportDialog() {
         setError(t("vault:export.serverReturned", { status: res.status }));
         return;
       }
-      // The server returns the raw ExportData shape { vaults, items, folders }.
-      // Coerce to the envelope body; envelope.ts handles canonicalisation.
-      const payload = res.data as unknown as {
-        vaults: ExportEnvelopeBody["vaults"];
-        items: ExportEnvelopeBody["items"];
-        folders: ExportEnvelopeBody["folders"];
-      };
+      const payload = res.data as unknown as ExportPayload;
 
-      const signed = await buildSignedEnvelopeWithSigner(
-        {
-          createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
-          userId,
-          vaults: payload.vaults ?? [],
-          items: payload.items ?? [],
-          folders: payload.folders ?? [],
-        },
-        signIdentity,
-      );
+      const result =
+        format === "csv"
+          ? await buildCsv(payload)
+          : await buildJson(payload, userId);
 
-      const filename = `vaultctl-backup-${new Date()
-        .toISOString()
-        .slice(0, 10)}.json`;
-      triggerDownload(signed, filename);
-      setDone({ filename, bytes: signed.byteLength });
+      triggerDownload(result.bytes, result.filename, result.mime);
+      setDone({ filename: result.filename, bytes: result.bytes.byteLength });
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : t("vault:export.unknownError"),
+        err instanceof Error ? err.message : t("vault:export.unknownError"),
       );
     } finally {
       setBusy(false);
     }
+  }
+
+  async function buildJson(payload: ExportPayload, signerUserId: string) {
+    const signed = await buildSignedEnvelopeWithSigner(
+      {
+        createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+        userId: signerUserId,
+        vaults: payload.vaults ?? [],
+        items: payload.items ?? [],
+        folders: payload.folders ?? [],
+      },
+      signIdentity,
+    );
+    return {
+      bytes: signed,
+      filename: `vaultctl-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      mime: "application/json",
+    };
+  }
+
+  async function buildCsv(payload: ExportPayload) {
+    const rows = await decryptToCsvItems(payload);
+    if (rows.length === 0) throw new Error(t("vault:export.noItems"));
+    const bytes = new TextEncoder().encode(itemsToCsv(rows));
+    return {
+      bytes,
+      filename: `vaultctl-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      mime: "text/csv",
+    };
   }
 
   return (
@@ -92,12 +112,39 @@ export function ExportDialog() {
         {t("vault:export.description")}
       </p>
 
-      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-        <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <div>
-          {t("vault:export.signedNote")}
-        </div>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="export-format"
+          className="text-sm font-medium text-foreground"
+        >
+          {t("vault:export.format")}
+        </label>
+        <select
+          id="export-format"
+          value={format}
+          onChange={(e) => {
+            setFormat(e.target.value as ExportFormat);
+            setDone(null);
+            setError(null);
+          }}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2 sm:w-72"
+        >
+          <option value="json">{t("vault:export.formatJson")}</option>
+          <option value="csv">{t("vault:export.formatCsv")}</option>
+        </select>
       </div>
+
+      {format === "json" ? (
+        <div className="flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+          <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <div>{t("vault:export.signedNote")}</div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <div>{t("vault:export.csvWarning")}</div>
+        </div>
+      )}
 
       <button
         onClick={handleExport}
@@ -105,7 +152,11 @@ export function ExportDialog() {
         className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         <Download className="h-4 w-4" />
-        {busy ? t("vault:export.building") : t("vault:export.download")}
+        {busy
+          ? t("vault:export.building")
+          : format === "csv"
+            ? t("vault:export.downloadCsv")
+            : t("vault:export.download")}
       </button>
 
       {error && (
@@ -132,12 +183,67 @@ export function ExportDialog() {
   );
 }
 
-function triggerDownload(bytes: Uint8Array, filename: string): void {
+async function decryptToCsvItems(
+  payload: ExportPayload,
+): Promise<CsvExportItem[]> {
+  const folderNames = new Map<string, string>();
+  for (const folder of payload.folders ?? []) {
+    try {
+      folderNames.set(
+        folder.id,
+        await decryptName(folder.vaultId, folder.encryptedName),
+      );
+    } catch {
+      // Skip folders we cannot decrypt; their items just get an empty folder.
+    }
+  }
+
+  const rows: CsvExportItem[] = [];
+  for (const item of payload.items ?? []) {
+    let name = "";
+    try {
+      name = await decryptName(item.vaultId, item.encryptedName);
+    } catch {
+      continue;
+    }
+
+    let fields: Record<string, unknown> = {};
+    try {
+      fields = JSON.parse(
+        decoder.decode(await decryptData(item.vaultId, item.encryptedData)),
+      ) as Record<string, unknown>;
+    } catch {
+      // Keep the row with just its name if the body fails to decrypt.
+    }
+
+    rows.push({
+      name,
+      username: pickString(fields, "username"),
+      password: pickString(fields, "password"),
+      uri: pickString(fields, "uri"),
+      notes: pickString(fields, "notes"),
+      folder: item.folderId ? (folderNames.get(item.folderId) ?? "") : "",
+      type: item.itemType,
+    });
+  }
+  return rows;
+}
+
+function pickString(source: Record<string, unknown>, key: string): string {
+  const value = source[key];
+  return typeof value === "string" ? value : "";
+}
+
+function triggerDownload(
+  bytes: Uint8Array,
+  filename: string,
+  mime: string,
+): void {
   const buf = bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
-  const blob = new Blob([buf], { type: "application/json" });
+  const blob = new Blob([buf], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -127,7 +127,19 @@
     "notSignedIn": "Nicht angemeldet",
     "serverReturned": "Server hat {{status}} zurückgegeben",
     "unknownError": "Export aus unbekanntem Grund fehlgeschlagen",
-    "savedFile": "<1>{{filename}}</1> gespeichert ({{size}})"
+    "savedFile": "<1>{{filename}}</1> gespeichert ({{size}})",
+    "format": "Format",
+    "formatJson": "Verschlüsseltes Backup (JSON)",
+    "formatCsv": "Einfaches CSV (unverschlüsselt)",
+    "csvWarning": "Ein CSV-Export ist NICHT verschlüsselt - jedes Passwort wird im Klartext geschrieben. Bewahren Sie die Datei sicher auf und löschen Sie sie, sobald Sie fertig sind.",
+    "downloadCsv": "CSV herunterladen",
+    "noItems": "Es sind keine Einträge zum Exportieren vorhanden."
+  },
+  "totp": {
+    "label": "Einmalcode",
+    "copy": "Einmalcode kopieren",
+    "expiresIn": "Läuft in {{seconds}}s ab",
+    "invalid": "Der gespeicherte Wert ist kein gültiges TOTP-Geheimnis"
   },
   "import": {
     "heading": "Importieren",
