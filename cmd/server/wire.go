@@ -410,6 +410,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	orgHandlers := &api.OrgHandlers{
 		CreateOrg:        &auth.CreateOrganization{Orgs: a.orgs, Clock: a.clock, IDs: a.ids},
 		ListMembers:      &auth.ListOrgMembers{Orgs: a.orgs},
+		ListMyOrgs:       &auth.ListMyOrgs{Orgs: a.orgs},
 		UpdateMemberRole: &auth.UpdateOrgMemberRole{Orgs: a.orgs},
 		RemoveMember: &auth.RemoveOrgMember{
 			Orgs: a.orgs, Vaults: a.vaults, IDs: a.ids,
@@ -486,6 +487,10 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 	if a.mailer.Enabled() {
 		emailVerifyGate = api.NewEmailVerifyGate(a.users, a.clock, cfg.EmailVerifyGrace)
 	}
+	var require2FAGate func(http.Handler) http.Handler
+	if cfg.Require2FA {
+		require2FAGate = api.NewRequire2FAGate(a.users)
+	}
 
 	updateHandlers := &api.UpdateHandlers{
 		Enabled:      cfg.UpdateCheckEnabled,
@@ -530,8 +535,10 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Env:                string(cfg.Env),
 		DB:                 a.pool,
 		EmailVerifyGate:    emailVerifyGate,
+		Require2FAGate:     require2FAGate,
 		MailerEnabled:      a.mailer.Enabled(),
 		Require2FA:         cfg.Require2FA,
+		HIBPEnabled:        cfg.HIBPEnabled,
 	}, nil
 }
 

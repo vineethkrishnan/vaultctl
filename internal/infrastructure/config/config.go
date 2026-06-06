@@ -73,8 +73,12 @@ type Config struct {
 	// ===========================================================================
 	// Security
 	// ===========================================================================
-	RegistrationMode         string        `env:"VAULTCTL_REGISTRATION_MODE" envDefault:"invite"`
-	Require2FA               bool          `env:"VAULTCTL_REQUIRE_2FA" envDefault:"false"`
+	RegistrationMode string `env:"VAULTCTL_REGISTRATION_MODE" envDefault:"invite"`
+	Require2FA       bool   `env:"VAULTCTL_REQUIRE_2FA" envDefault:"false"`
+	// HIBPEnabled lets the client offer an opt-in Have I Been Pwned breach
+	// check (k-anonymity range API, client-side - the server makes no HIBP
+	// calls). Off by default so air-gapped self-hosters never phone home.
+	HIBPEnabled              bool          `env:"VAULTCTL_HIBP_ENABLED" envDefault:"false"`
 	MaxLoginAttempts         int           `env:"VAULTCTL_MAX_LOGIN_ATTEMPTS" envDefault:"5"`
 	LockoutDuration          time.Duration `env:"VAULTCTL_LOCKOUT_DURATION" envDefault:"15m"`
 	RateLimitRPM             int           `env:"VAULTCTL_RATE_LIMIT_RPM" envDefault:"60"`

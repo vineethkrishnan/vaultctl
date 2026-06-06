@@ -94,6 +94,40 @@ func (r *OrgRepo) ListMembers(ctx context.Context, orgID organization.ID) ([]org
 	return out, rows.Err()
 }
 
+// ListForUser returns the orgs the user has actively joined (accepted invite),
+// each with their role (FEAT-8).
+func (r *OrgRepo) ListForUser(ctx context.Context, userID user.ID) ([]organization.UserOrg, error) {
+	rows, err := r.Pool.Query(ctx, `
+		SELECT o.id, o.name, m.role, m.accepted_at
+		FROM org_members m
+		JOIN organizations o ON o.id = m.org_id
+		WHERE m.user_id = $1 AND m.accepted_at IS NOT NULL
+		ORDER BY m.accepted_at ASC
+	`, string(userID))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []organization.UserOrg{}
+	for rows.Next() {
+		var (
+			orgID, name, role string
+			joinedAt          time.Time
+		)
+		if err := rows.Scan(&orgID, &name, &role, &joinedAt); err != nil {
+			return nil, fmt.Errorf("scan user org: %w", err)
+		}
+		out = append(out, organization.UserOrg{
+			ID:       organization.ID(orgID),
+			Name:     name,
+			Role:     user.Role(role),
+			JoinedAt: joinedAt,
+		})
+	}
+	return out, rows.Err()
+}
+
 // UpdateMemberRole changes a member's org-level role.
 func (r *OrgRepo) UpdateMemberRole(ctx context.Context, orgID organization.ID, userID user.ID, role user.Role) error {
 	tag, err := r.Pool.Exec(ctx, `
