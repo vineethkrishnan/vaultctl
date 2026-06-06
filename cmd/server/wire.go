@@ -150,6 +150,7 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 			From:     cfg.SMTPFrom,
 			TLSMode:  mailer.TLSMode(cfg.SMTPTLS),
 			Timeout:  cfg.SMTPTimeout,
+			LogBody:  cfg.Env != config.EnvProduction,
 		}),
 		rateLimiter: middleware.NewRateLimiter(
 			clock, cfg.RateLimitRPM, time.Minute,
@@ -276,6 +277,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		sendVerification = &auth.SendEmailVerification{
 			Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
 			Sender: emailComposer, CodeTTL: cfg.EmailOTPTTL,
+			ResendCooldown: cfg.EmailResendCooldown,
 		}
 		verifyEmail = &auth.VerifyEmail{
 			Users: a.users, Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
@@ -283,6 +285,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		if cfg.LoginAlertsEnabled {
 			notifyLogin = &auth.NotifyLogin{
 				Known: a.knownLogins, HMAC: a.hmac, Clock: a.clock, Sender: emailComposer,
+				NewNetworkEnabled: cfg.LoginAlertNewNetworkEnabled,
 			}
 		}
 		a.digestService = &digest.Service{

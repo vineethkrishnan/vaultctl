@@ -39,30 +39,22 @@ func newMemKnownLogins() *memKnownLogins {
 	return &memKnownLogins{byUser: map[user.ID][]loginKey{}}
 }
 
-func (m *memKnownLogins) Lookup(_ context.Context, userID user.ID, fingerprint []byte, network string) (deviceSeen, networkSeen, anySeen bool, err error) {
+func (m *memKnownLogins) Observe(_ context.Context, userID user.ID, fingerprint []byte, network, _ string, _ time.Time) (ports.KnownLoginObservation, error) {
 	fp := string(fingerprint)
 	rows := m.byUser[userID]
-	anySeen = len(rows) > 0
+	obs := ports.KnownLoginObservation{AnySeen: len(rows) > 0}
 	for _, k := range rows {
 		if k.fp == fp {
-			deviceSeen = true
-			if k.network == network {
-				networkSeen = true
-			}
+			obs.DeviceSeen = true
 		}
-	}
-	return deviceSeen, networkSeen, anySeen, nil
-}
-
-func (m *memKnownLogins) Record(_ context.Context, userID user.ID, fingerprint []byte, network, _ string, _ time.Time) error {
-	fp := string(fingerprint)
-	for _, k := range m.byUser[userID] {
 		if k.fp == fp && k.network == network {
-			return nil
+			// Pair already recorded: an upsert, not an insert.
+			return obs, nil
 		}
 	}
+	obs.Inserted = true
 	m.byUser[userID] = append(m.byUser[userID], loginKey{fp, network})
-	return nil
+	return obs, nil
 }
 
 type loginAlertCall struct{ to, reason, label, ip string }
@@ -83,39 +75,79 @@ func TestNotifyLogin(t *testing.T) {
 
 	known := newMemKnownLogins()
 	sender := &capturingLoginSender{}
-	uc := &NotifyLogin{Known: known, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now }), Sender: sender}
+	uc := &NotifyLogin{Known: known, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now }), Sender: sender, NewNetworkEnabled: true}
 	ctx := context.Background()
 	const uid user.ID = "u1"
 	const to = "a@example.com"
+	const device = "Alice's laptop"
 
 	// First login: recorded, no alert (signup device).
-	must(t, uc.Execute(ctx, uid, to, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
 	if len(sender.calls) != 0 {
 		t.Fatalf("first login alerted: %+v", sender.calls)
 	}
 
 	// Same device + network again: no alert.
-	must(t, uc.Execute(ctx, uid, to, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
 	if len(sender.calls) != 0 {
 		t.Fatalf("repeat login alerted: %+v", sender.calls)
 	}
 
 	// New device: alert new_device.
-	must(t, uc.Execute(ctx, uid, to, firefox, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, device, firefox, "203.0.113.0"))
 	if len(sender.calls) != 1 || sender.calls[0].reason != LoginReasonNewDevice {
 		t.Fatalf("expected new_device alert, got %+v", sender.calls)
 	}
 
-	// Known device (chrome) from a new network: alert new_network.
-	must(t, uc.Execute(ctx, uid, to, chromeMac, "198.51.100.0"))
+	// Known device (chrome) from a new network: alert new_network (enabled here).
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "198.51.100.0"))
 	if len(sender.calls) != 2 || sender.calls[1].reason != LoginReasonNewNetwork {
 		t.Fatalf("expected new_network alert, got %+v", sender.calls)
 	}
 
 	// Empty user-agent: never alerts (cannot describe the device).
-	must(t, uc.Execute(ctx, uid, to, "", "192.0.2.0"))
+	must(t, uc.Execute(ctx, uid, to, device, "", "192.0.2.0"))
 	if len(sender.calls) != 2 {
 		t.Fatalf("empty UA alerted: %+v", sender.calls)
+	}
+}
+
+func TestNotifyLogin_NewNetworkDisabledByDefault(t *testing.T) {
+	now := time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)
+	const chromeMac = "Mozilla/5.0 (Macintosh; Mac OS X) Chrome/120 Safari/537"
+
+	known := newMemKnownLogins()
+	sender := &capturingLoginSender{}
+	uc := &NotifyLogin{Known: known, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now }), Sender: sender}
+	ctx := context.Background()
+	const uid user.ID = "u1"
+	const to = "a@example.com"
+	const device = "Alice's laptop"
+
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))  // signup device
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "198.51.100.0")) // known device, new network
+	if len(sender.calls) != 0 {
+		t.Fatalf("new_network alerted while disabled: %+v", sender.calls)
+	}
+}
+
+func TestNotifyLogin_DeviceNameInFingerprint(t *testing.T) {
+	now := time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)
+	const chromeMac = "Mozilla/5.0 (Macintosh; Mac OS X) Chrome/120 Safari/537"
+
+	known := newMemKnownLogins()
+	sender := &capturingLoginSender{}
+	uc := &NotifyLogin{Known: known, HMAC: fakeHMAC{}, Clock: ports.ClockFunc(func() time.Time { return now }), Sender: sender}
+	ctx := context.Background()
+	const uid user.ID = "u1"
+	const to = "a@example.com"
+
+	// Same browser/OS, different device names => different fingerprints, so the
+	// second distinct device is detected as new rather than colliding.
+	must(t, uc.Execute(ctx, uid, to, "Alice's laptop", chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, "Alice's desktop", chromeMac, "203.0.113.0"))
+	if len(sender.calls) != 1 || sender.calls[0].reason != LoginReasonNewDevice {
+		t.Fatalf("expected new_device for distinct device name, got %+v", sender.calls)
 	}
 }
 

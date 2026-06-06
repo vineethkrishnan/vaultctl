@@ -46,12 +46,12 @@ type DigestPrefsRepository interface {
 	// Set stores the frequency and the computed next run time (nil when off).
 	Set(ctx context.Context, userID user.ID, frequency string, nextRunAt *time.Time, now time.Time) error
 
-	// ListDue returns users whose digest is due (next_run_at <= now, not off),
-	// joined to their email.
-	ListDue(ctx context.Context, now time.Time) ([]DueDigest, error)
-
-	// MarkRun records a completed send and schedules the next one.
-	MarkRun(ctx context.Context, userID user.ID, lastRunAt time.Time, nextRunAt *time.Time) error
+	// ClaimDue atomically claims every due digest (next_run_at <= now, not off):
+	// in one statement it advances each row's next_run_at by its frequency and
+	// sets last_run_at = now, returning the claimed rows (with their prior
+	// last_run_at for the activity window). Claiming before sending makes
+	// delivery at-most-once, so a crash or overlapping run never double-sends.
+	ClaimDue(ctx context.Context, now time.Time) ([]DueDigest, error)
 }
 
 // DigestActivityReader aggregates a user's activity for the digest window.

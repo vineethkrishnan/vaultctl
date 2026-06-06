@@ -83,6 +83,8 @@ func mapErr(err error) (code string, status int, field string) {
 		return "INVITE_NOT_REDEEMABLE", http.StatusBadRequest, "token"
 	case errors.Is(err, auth.ErrRegistrationDisabled):
 		return "REGISTRATION_DISABLED", http.StatusForbidden, ""
+	case errors.Is(err, auth.ErrResendTooSoon):
+		return "RESEND_TOO_SOON", http.StatusTooManyRequests, ""
 	case errors.Is(err, auth.ErrInviteRequired):
 		return "INVITE_REQUIRED", http.StatusBadRequest, "inviteToken"
 	case errors.Is(err, user.ErrInvalidRole):

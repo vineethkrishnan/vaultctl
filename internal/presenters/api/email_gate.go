@@ -3,6 +3,7 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -26,8 +27,22 @@ func NewEmailVerifyGate(users ports.UserRepository, clock ports.Clock, grace tim
 				next.ServeHTTP(w, r)
 				return
 			}
-			u, err := users.FindByID(r.Context(), middleware.CallerID(r.Context()))
-			if err != nil || !blocksMutation(u, clock.Now(), grace) {
+			callerID := middleware.CallerID(r.Context())
+			if callerID == "" {
+				// An empty caller means the gate ran without an authenticated
+				// identity (misconfigured middleware order). Fail open, but log
+				// it so the broken gate is noticed rather than silently bypassed.
+				slog.WarnContext(r.Context(), "email_verify_gate.fail_open", slog.String("reason", "empty caller id"))
+				next.ServeHTTP(w, r)
+				return
+			}
+			u, err := users.FindByID(r.Context(), callerID)
+			if err != nil {
+				slog.WarnContext(r.Context(), "email_verify_gate.fail_open", slog.String("reason", "user lookup failed"), slog.String("err", err.Error()))
+				next.ServeHTTP(w, r)
+				return
+			}
+			if !blocksMutation(u, clock.Now(), grace) {
 				next.ServeHTTP(w, r)
 				return
 			}

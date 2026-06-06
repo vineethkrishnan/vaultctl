@@ -15,12 +15,23 @@ import (
 const (
 	trashPurgeSchedule    = "0 3 * * *"    // daily at 3 AM
 	sessionPurgeSchedule  = "0 * * * *"    // every hour
+	authPurgeSchedule     = "30 3 * * *"   // daily at 3:30 AM: known logins + expired OTPs
 	backupSchedule        = "*/15 * * * *" // every 15 minutes: scan for due backups
 	updateRefreshSchedule = "*/15 * * * *" // every 15 minutes: refresh the release cache
 	digestSchedule        = "5 * * * *"    // hourly at :05: send any due activity digests
 	jobTimeout            = 30 * time.Second
 	backupJobTimeout      = 10 * time.Minute
 )
+
+// KnownLoginPurger deletes known-login rows older than a cutoff.
+type KnownLoginPurger interface {
+	PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
+}
+
+// EmailVerificationPurger deletes verification codes expired before now.
+type EmailVerificationPurger interface {
+	PurgeExpired(ctx context.Context, now time.Time) (int64, error)
+}
 
 // Scheduler runs periodic maintenance tasks.
 type Scheduler struct {
@@ -41,6 +52,20 @@ type Scheduler struct {
 
 	// Optional activity-digest run, enabled via EnableDigests.
 	runDigests func(ctx context.Context) error
+
+	// Optional auth-data purge, enabled via EnablePurges: bounds known_logins
+	// growth and clears expired email_verifications.
+	knownLogins         KnownLoginPurger
+	emailVerifications  EmailVerificationPurger
+	knownLoginRetention time.Duration
+}
+
+// EnablePurges wires the daily purge of stale known-login rows (older than
+// retention) and expired email verifications. No-op unless called before Start.
+func (s *Scheduler) EnablePurges(knownLogins KnownLoginPurger, emailVerifications EmailVerificationPurger, knownLoginRetention time.Duration) {
+	s.knownLogins = knownLogins
+	s.emailVerifications = emailVerifications
+	s.knownLoginRetention = knownLoginRetention
 }
 
 // EnableDigests wires periodic sending of due activity digests. No-op unless
@@ -97,6 +122,11 @@ func (s *Scheduler) Start() {
 	if s.runDigests != nil {
 		if _, err := s.cron.AddFunc(digestSchedule, s.sendDigests); err != nil {
 			slog.Error("scheduler.register_digests.failed", slog.String("err", err.Error()))
+		}
+	}
+	if s.knownLogins != nil || s.emailVerifications != nil {
+		if _, err := s.cron.AddFunc(authPurgeSchedule, s.purgeAuthData); err != nil {
+			slog.Error("scheduler.register_auth_purge.failed", slog.String("err", err.Error()))
 		}
 	}
 
@@ -176,5 +206,29 @@ func (s *Scheduler) purgeSessions() {
 	}
 	if n > 0 {
 		slog.Info("scheduler.purge_sessions.done", slog.Int("purged", n))
+	}
+}
+
+func (s *Scheduler) purgeAuthData() {
+	ctx, cancel := context.WithTimeout(context.Background(), jobTimeout)
+	defer cancel()
+
+	now := s.clock.Now()
+	if s.knownLogins != nil {
+		cutoff := now.Add(-s.knownLoginRetention)
+		n, err := s.knownLogins.PurgeOlderThan(ctx, cutoff)
+		if err != nil {
+			slog.Error("scheduler.purge_known_logins.failed", slog.String("err", err.Error()))
+		} else if n > 0 {
+			slog.Info("scheduler.purge_known_logins.done", slog.Int64("purged", n))
+		}
+	}
+	if s.emailVerifications != nil {
+		n, err := s.emailVerifications.PurgeExpired(ctx, now)
+		if err != nil {
+			slog.Error("scheduler.purge_email_verifications.failed", slog.String("err", err.Error()))
+		} else if n > 0 {
+			slog.Info("scheduler.purge_email_verifications.done", slog.Int64("purged", n))
+		}
 	}
 }

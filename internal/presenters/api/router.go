@@ -140,10 +140,12 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Recovery-kit (re)generation (requires step-up + rate limit)
 			r.With(requireStepUp).With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/recovery/rotate", deps.Auth.HandleRotateRecoveryKey)
 
-			// Email verification (mounted only when a mailer is wired)
+			// Email verification (mounted only when a mailer is wired).
+			// Rate-limited per-IP like the TOTP routes: the code is short, so
+			// verify must not be brute-forceable and resend must not mail-bomb.
 			if deps.Auth.VerifyEmail != nil {
-				r.Post("/auth/email/verify", deps.Auth.HandleVerifyEmail)
-				r.Post("/auth/email/resend", deps.Auth.HandleResendVerification)
+				r.With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/email/verify", deps.Auth.HandleVerifyEmail)
+				r.With(rateLimitOrNoop(deps.RateLimiter)...).Post("/auth/email/resend", deps.Auth.HandleResendVerification)
 			}
 
 			// Update check + in-app notification feed

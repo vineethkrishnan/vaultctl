@@ -11,6 +11,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -120,6 +121,11 @@ type Config struct {
 	SMTPTimeout  time.Duration `env:"VAULTCTL_SMTP_TIMEOUT" envDefault:"15s"`
 	// EmailOTPTTL is how long a signup verification code stays valid.
 	EmailOTPTTL time.Duration `env:"VAULTCTL_EMAIL_OTP_TTL" envDefault:"15m"`
+	// EmailResendCooldown is the minimum gap between verification-code sends for
+	// one user. A resend inside this window reuses the live code (no reset of the
+	// attempt counter), so resend cannot be used to refresh the guess budget or
+	// mail-bomb the inbox.
+	EmailResendCooldown time.Duration `env:"VAULTCTL_EMAIL_RESEND_COOLDOWN" envDefault:"60s"`
 	// EmailVerifyGrace is how long an unverified account keeps full access
 	// before its vault becomes read-only (creates/edits/shares blocked) until
 	// the email is confirmed. Only enforced when a mailer is configured.
@@ -127,6 +133,15 @@ type Config struct {
 	// LoginAlertsEnabled emails the user when a sign-in comes from a new device
 	// or network. Only active when a mailer is configured.
 	LoginAlertsEnabled bool `env:"VAULTCTL_LOGIN_ALERTS_ENABLED" envDefault:"true"`
+	// LoginAlertNewNetworkEnabled controls the new-network alert specifically.
+	// Off by default: the network is a /24-anonymised IP, so roaming mobile
+	// users would otherwise get an alert on nearly every login. The new-device
+	// alert stays on regardless.
+	LoginAlertNewNetworkEnabled bool `env:"VAULTCTL_LOGIN_ALERT_NEW_NETWORK_ENABLED" envDefault:"false"`
+	// KnownLoginRetention is how long a known-login row is kept before the purge
+	// job deletes it. Bounds the unbounded growth of one row per distinct device
+	// or network.
+	KnownLoginRetention time.Duration `env:"VAULTCTL_KNOWN_LOGIN_RETENTION" envDefault:"8760h"`
 
 	// ===========================================================================
 	// Retention
@@ -180,7 +195,15 @@ func Load() (*Config, error) {
 
 var ErrMissingProdSecrets = errors.New("missing required production secrets")
 
+var ErrInvalidConfig = errors.New("invalid configuration")
+
 func (c *Config) validate() error {
+	// BaseURL is escaped into email CTA hrefs, so a non-http(s) scheme would
+	// render a clickable javascript:/data: link. Reject it in every env.
+	if err := validateBaseURL(c.BaseURL); err != nil {
+		return err
+	}
+
 	if c.Env != EnvProduction {
 		return nil
 	}
@@ -204,6 +227,25 @@ func (c *Config) validate() error {
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("%w: %s", ErrMissingProdSecrets, strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+// validateBaseURL accepts an empty value (the gate/email features tolerate it)
+// but rejects any non-http(s) or malformed URL.
+func validateBaseURL(raw string) error {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%w: VAULTCTL_BASE_URL is not a valid URL: %w", ErrInvalidConfig, err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("%w: VAULTCTL_BASE_URL must use http or https, got %q", ErrInvalidConfig, parsed.Scheme)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("%w: VAULTCTL_BASE_URL must include a host", ErrInvalidConfig)
 	}
 	return nil
 }

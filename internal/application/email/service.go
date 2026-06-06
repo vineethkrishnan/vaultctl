@@ -141,7 +141,7 @@ func humanizeDuration(d time.Duration) string {
 		return fmt.Sprintf("%d hours", h)
 	}
 	m := int(d / time.Minute)
-	if m == 1 {
+	if m <= 1 {
 		return "1 minute"
 	}
 	return fmt.Sprintf("%d minutes", m)

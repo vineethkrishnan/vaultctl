@@ -44,15 +44,19 @@ func (f *fakeDigestPrefs) Get(context.Context, user.ID) (ports.DigestPref, error
 func (f *fakeDigestPrefs) Set(context.Context, user.ID, string, *time.Time, time.Time) error {
 	return nil
 }
-func (f *fakeDigestPrefs) ListDue(context.Context, time.Time) ([]ports.DueDigest, error) {
-	return f.due, nil
-}
-func (f *fakeDigestPrefs) MarkRun(_ context.Context, id user.ID, _ time.Time, next *time.Time) error {
+func (f *fakeDigestPrefs) ClaimDue(_ context.Context, now time.Time) ([]ports.DueDigest, error) {
 	if f.marked == nil {
 		f.marked = map[user.ID]*time.Time{}
 	}
-	f.marked[id] = next
-	return nil
+	// Mirror the real repo: claim each due row by advancing its next run before
+	// returning it (the send happens after the claim).
+	for _, d := range f.due {
+		if next, ok := Frequency(d.Frequency).NextRun(now); ok {
+			n := next
+			f.marked[d.UserID] = &n
+		}
+	}
+	return f.due, nil
 }
 
 type fakeActivity struct{ a ports.DigestActivity }

@@ -16,6 +16,7 @@ import (
 	"net/mail"
 	"net/smtp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/vineethkrishnan/vaultctl/internal/application/ports"
@@ -39,6 +40,10 @@ type Config struct {
 	From     string // "Name <addr@host>" or "addr@host"
 	TLSMode  TLSMode
 	Timeout  time.Duration
+	// LogBody, when true, makes the no-op LogMailer print message bodies (which
+	// include OTP codes) so a developer can read them from logs. Off by default
+	// so a production deploy without SMTP never leaks codes into its logs.
+	LogBody bool
 }
 
 // New returns an SMTP mailer when a host is set, otherwise a logging mailer so
@@ -47,12 +52,12 @@ type Config struct {
 func New(cfg Config) ports.Mailer {
 	if cfg.Host == "" {
 		slog.Info("mailer.disabled", slog.String("reason", "VAULTCTL_SMTP_HOST not set"))
-		return LogMailer{}
+		return LogMailer{logBody: cfg.LogBody}
 	}
 	parsed, err := mail.ParseAddress(cfg.From)
 	if err != nil {
 		slog.Error("mailer.disabled", slog.String("reason", "invalid VAULTCTL_SMTP_FROM"), slog.String("err", err.Error()))
-		return LogMailer{}
+		return LogMailer{logBody: cfg.LogBody}
 	}
 	timeout := cfg.Timeout
 	if timeout <= 0 {
@@ -97,7 +102,14 @@ func (m *SMTPMailer) Send(ctx context.Context, msg ports.Email) error {
 	if msg.Text == "" && msg.HTML == "" {
 		return errors.New("mailer: empty body")
 	}
-	raw, err := buildMIME(m.fromHeader, msg.To, msg.Subject, msg.Text, msg.HTML, m.now())
+	rcpt, err := mail.ParseAddress(msg.To)
+	if err != nil {
+		return fmt.Errorf("mailer: invalid recipient: %w", err)
+	}
+	if containsCRLF(rcpt.Address) || containsCRLF(msg.Subject) {
+		return errors.New("mailer: header injection in recipient or subject")
+	}
+	raw, err := buildMIME(m.fromHeader, rcpt.Address, msg.Subject, msg.Text, msg.HTML, m.now())
 	if err != nil {
 		return fmt.Errorf("mailer: build message: %w", err)
 	}
@@ -132,7 +144,7 @@ func (m *SMTPMailer) Send(ctx context.Context, msg ports.Email) error {
 	if err := client.Mail(m.fromAddr); err != nil {
 		return fmt.Errorf("mailer: MAIL FROM: %w", err)
 	}
-	if err := client.Rcpt(msg.To); err != nil {
+	if err := client.Rcpt(rcpt.Address); err != nil {
 		return fmt.Errorf("mailer: RCPT TO: %w", err)
 	}
 	w, err := client.Data()
@@ -157,18 +169,26 @@ func (m *SMTPMailer) dial(ctx context.Context, addr string) (net.Conn, error) {
 }
 
 // LogMailer logs that a message would have been sent. Used when SMTP is not
-// configured. Bodies are logged only at debug level (an OTP code is sensitive),
-// so a dev can still read codes from logs without leaking them in production.
-type LogMailer struct{}
+// configured. Bodies (which include OTP codes) are logged only when logBody is
+// explicitly enabled for development, never just because debug logging is on.
+type LogMailer struct{ logBody bool }
 
 func (LogMailer) Enabled() bool { return false }
 
-func (LogMailer) Send(_ context.Context, msg ports.Email) error {
+func (m LogMailer) Send(_ context.Context, msg ports.Email) error {
 	slog.Info("mailer.log",
 		slog.String("to", msg.To),
 		slog.String("subject", msg.Subject),
 		slog.String("note", "SMTP not configured; message not delivered"),
 	)
-	slog.Debug("mailer.log.body", slog.String("to", msg.To), slog.String("text", msg.Text))
+	if m.logBody {
+		slog.Info("mailer.log.body", slog.String("to", msg.To), slog.String("text", msg.Text))
+	}
 	return nil
+}
+
+// containsCRLF reports whether s holds a carriage return or line feed, which
+// would let an attacker inject extra SMTP headers or commands.
+func containsCRLF(s string) bool {
+	return strings.ContainsAny(s, "\r\n")
 }
