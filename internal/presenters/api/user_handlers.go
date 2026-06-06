@@ -35,12 +35,18 @@ type UserHandlers struct {
 // @Success 200 {object} EmailPreferencesResponse
 // @Router /users/me/email-preferences [get]
 func (h *UserHandlers) HandleGetEmailPreferences(w http.ResponseWriter, r *http.Request) {
-	freq, err := h.Digest.Frequency(r.Context(), middleware.CallerID(r.Context()))
+	callerID := middleware.CallerID(r.Context())
+	freq, err := h.Digest.Frequency(r.Context(), callerID)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq)})
+	loginAlerts, err := h.Digest.LoginAlerts(r.Context(), callerID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq), LoginAlerts: loginAlerts})
 }
 
 // HandleUpdateEmailPreferences sets the caller's digest frequency.
@@ -59,16 +65,37 @@ func (h *UserHandlers) HandleUpdateEmailPreferences(w http.ResponseWriter, r *ht
 		writeError(w, r, err)
 		return
 	}
-	freq := digest.Frequency(req.DigestFrequency)
-	if !freq.Valid() {
-		writeError(w, r, domain.NewInvalid("digestFrequency", "must be off, daily, weekly, monthly, quarterly or yearly"))
-		return
+	callerID := middleware.CallerID(r.Context())
+
+	if req.DigestFrequency != nil {
+		freq := digest.Frequency(*req.DigestFrequency)
+		if !freq.Valid() {
+			writeError(w, r, domain.NewInvalid("digestFrequency", "must be off, daily, weekly, monthly, quarterly or yearly"))
+			return
+		}
+		if err := h.Digest.SetFrequency(r.Context(), callerID, freq); err != nil {
+			writeError(w, r, err)
+			return
+		}
 	}
-	if err := h.Digest.SetFrequency(r.Context(), middleware.CallerID(r.Context()), freq); err != nil {
+	if req.LoginAlerts != nil {
+		if err := h.Digest.SetLoginAlerts(r.Context(), callerID, *req.LoginAlerts); err != nil {
+			writeError(w, r, err)
+			return
+		}
+	}
+
+	freq, err := h.Digest.Frequency(r.Context(), callerID)
+	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq)})
+	loginAlerts, err := h.Digest.LoginAlerts(r.Context(), callerID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, EmailPreferencesResponse{DigestFrequency: string(freq), LoginAlerts: loginAlerts})
 }
 
 // HandleGetProfile returns the authenticated user's profile.

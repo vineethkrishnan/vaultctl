@@ -282,17 +282,18 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		verifyEmail = &auth.VerifyEmail{
 			Users: a.users, Verifications: a.emailVerif, HMAC: a.hmac, Clock: a.clock,
 		}
-		if cfg.LoginAlertsEnabled {
-			notifyLogin = &auth.NotifyLogin{
-				Known: a.knownLogins, HMAC: a.hmac, Clock: a.clock, Sender: emailComposer,
-				NewNetworkEnabled: cfg.LoginAlertNewNetworkEnabled,
-			}
-		}
 		a.digestService = &digest.Service{
 			Prefs:    a.digestPrefs,
 			Activity: a.digestActivity,
 			Sender:   emailComposer,
 			Clock:    a.clock,
+		}
+		if cfg.LoginAlertsEnabled {
+			notifyLogin = &auth.NotifyLogin{
+				Known: a.knownLogins, HMAC: a.hmac, Clock: a.clock,
+				Sender: emailComposer, Prefs: a.digestService,
+				NewNetworkEnabled: cfg.LoginAlertNewNetworkEnabled,
+			}
 		}
 	}
 
@@ -480,6 +481,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 			Clock: a.clock,
 		},
 	}
+	auditHandlers := &api.AuditHandlers{Reader: a.audit}
 	var emailVerifyGate func(http.Handler) http.Handler
 	if a.mailer.Enabled() {
 		emailVerifyGate = api.NewEmailVerifyGate(a.users, a.clock, cfg.EmailVerifyGrace)
@@ -502,6 +504,7 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Auth:         authHandlers,
 		Update:       updateHandlers,
 		Notification: notificationHandlers,
+		Audit:        auditHandlers,
 		User:         userHandlers,
 		Vault:        vaultHandlers,
 		Attachment:   attachmentHandlers,
@@ -527,6 +530,8 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		Env:                string(cfg.Env),
 		DB:                 a.pool,
 		EmailVerifyGate:    emailVerifyGate,
+		MailerEnabled:      a.mailer.Enabled(),
+		Require2FA:         cfg.Require2FA,
 	}, nil
 }
 

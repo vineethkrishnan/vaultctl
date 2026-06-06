@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/vineethkrishnan/vaultctl/internal/domain/auditlog"
 )
 
@@ -75,6 +77,39 @@ func (r *AuditRepo) ListForUser(ctx context.Context, userID string, actions []st
 	if err != nil {
 		return nil, fmt.Errorf("query audit_logs: %w", err)
 	}
+	return scanAuditEntries(rows, userID)
+}
+
+// PageForUser implements ports.AuditLogReader keyset pagination: it returns the
+// caller's entries strictly older than `before` (zero = newest page), newest
+// first. INET is cast to text and NULL optional columns become "".
+func (r *AuditRepo) PageForUser(ctx context.Context, userID string, before time.Time, limit int) ([]auditlog.Entry, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	var beforeArg any
+	if !before.IsZero() {
+		beforeArg = before
+	}
+	rows, err := r.Pool.Query(ctx, `
+		SELECT id, action, resource_type, resource_id,
+		       ip_address::text, user_agent, created_at
+		FROM audit_logs
+		WHERE user_id = $1
+		  AND ($2::timestamptz IS NULL OR created_at < $2)
+		ORDER BY created_at DESC
+		LIMIT $3
+	`, userID, beforeArg, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query audit_logs page: %w", err)
+	}
+	return scanAuditEntries(rows, userID)
+}
+
+// scanAuditEntries drains an audit_logs result set into domain entries and
+// closes the rows. UserID is taken from the caller since the column is the
+// filter and may be NULL in the table for unauthenticated events.
+func scanAuditEntries(rows pgx.Rows, userID string) ([]auditlog.Entry, error) {
 	defer rows.Close()
 
 	var entries []auditlog.Entry

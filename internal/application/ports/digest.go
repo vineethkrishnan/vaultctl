@@ -28,6 +28,9 @@ type DigestPref struct {
 	Frequency string
 	NextRunAt *time.Time
 	LastRunAt *time.Time
+	// LoginAlerts is whether new-device/new-network sign-in alert emails are
+	// sent to this user. Defaults to true when no row exists.
+	LoginAlerts bool
 }
 
 // DueDigest identifies a user whose digest is ready to send.
@@ -52,6 +55,13 @@ type DigestPrefsRepository interface {
 	// last_run_at for the activity window). Claiming before sending makes
 	// delivery at-most-once, so a crash or overlapping run never double-sends.
 	ClaimDue(ctx context.Context, now time.Time) ([]DueDigest, error)
+
+	// SetLoginAlerts stores whether the user receives sign-in alert emails.
+	SetLoginAlerts(ctx context.Context, userID user.ID, enabled bool, now time.Time) error
+
+	// LoginAlertsEnabled reports whether the user receives sign-in alert
+	// emails, defaulting to true when no row exists.
+	LoginAlertsEnabled(ctx context.Context, userID user.ID) (bool, error)
 }
 
 // DigestActivityReader aggregates a user's activity for the digest window.

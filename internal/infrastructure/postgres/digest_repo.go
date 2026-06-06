@@ -20,15 +20,46 @@ type DigestPrefsRepo struct{ Pool *Pool }
 func (r *DigestPrefsRepo) Get(ctx context.Context, userID user.ID) (ports.DigestPref, error) {
 	var p ports.DigestPref
 	err := r.Pool.QueryRow(ctx, `
-		SELECT frequency, next_run_at, last_run_at FROM user_digest_prefs WHERE user_id = $1
-	`, string(userID)).Scan(&p.Frequency, &p.NextRunAt, &p.LastRunAt)
+		SELECT frequency, next_run_at, last_run_at, login_alerts FROM user_digest_prefs WHERE user_id = $1
+	`, string(userID)).Scan(&p.Frequency, &p.NextRunAt, &p.LastRunAt, &p.LoginAlerts)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ports.DigestPref{Frequency: "off"}, nil
+		return ports.DigestPref{Frequency: "off", LoginAlerts: true}, nil
 	}
 	if err != nil {
 		return ports.DigestPref{}, fmt.Errorf("get digest pref: %w", err)
 	}
 	return p, nil
+}
+
+// SetLoginAlerts upserts the user's sign-in alert opt-in without disturbing
+// their digest frequency. A fresh row defaults frequency to 'off'.
+func (r *DigestPrefsRepo) SetLoginAlerts(ctx context.Context, userID user.ID, enabled bool, now time.Time) error {
+	_, err := r.Pool.Exec(ctx, `
+		INSERT INTO user_digest_prefs (user_id, login_alerts, updated_at)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id) DO UPDATE
+		SET login_alerts = EXCLUDED.login_alerts, updated_at = EXCLUDED.updated_at
+	`, string(userID), enabled, now)
+	if err != nil {
+		return fmt.Errorf("set login alerts pref: %w", err)
+	}
+	return nil
+}
+
+// LoginAlertsEnabled reports whether the user receives sign-in alert emails,
+// defaulting to true when no preference row exists.
+func (r *DigestPrefsRepo) LoginAlertsEnabled(ctx context.Context, userID user.ID) (bool, error) {
+	var enabled bool
+	err := r.Pool.QueryRow(ctx, `
+		SELECT login_alerts FROM user_digest_prefs WHERE user_id = $1
+	`, string(userID)).Scan(&enabled)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("get login alerts pref: %w", err)
+	}
+	return enabled, nil
 }
 
 // Set upserts the frequency and computed next run.

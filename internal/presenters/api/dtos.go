@@ -448,12 +448,15 @@ type VerifyEmailRequest struct {
 // EmailPreferencesResponse reports a user's email-digest preference.
 type EmailPreferencesResponse struct {
 	DigestFrequency string `json:"digestFrequency"`
+	LoginAlerts     bool   `json:"loginAlerts"`
 }
 
 // UpdateEmailPreferencesRequest sets the digest frequency
-// (off|daily|weekly|monthly|quarterly|yearly).
+// (off|daily|weekly|monthly|quarterly|yearly) and the sign-in alert opt-in.
+// Fields are pointers so an omitted field leaves that preference unchanged.
 type UpdateEmailPreferencesRequest struct {
-	DigestFrequency string `json:"digestFrequency"`
+	DigestFrequency *string `json:"digestFrequency"`
+	LoginAlerts     *bool   `json:"loginAlerts"`
 }
 
 type UpdateProfileRequest struct {

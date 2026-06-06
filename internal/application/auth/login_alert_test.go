@@ -151,6 +151,74 @@ func TestNotifyLogin_DeviceNameInFingerprint(t *testing.T) {
 	}
 }
 
+type stubLoginAlertPrefs struct{ enabled bool }
+
+func (s stubLoginAlertPrefs) LoginAlerts(context.Context, user.ID) (bool, error) {
+	return s.enabled, nil
+}
+
+func TestNotifyLoginRespectsOptOut(t *testing.T) {
+	now := time.Date(2026, 6, 6, 9, 0, 0, 0, time.UTC)
+	const (
+		chromeMac = "Mozilla/5.0 (Macintosh; Mac OS X) Chrome/120 Safari/537"
+		firefox   = "Mozilla/5.0 (Windows NT 10.0) Firefox/119"
+	)
+	known := newMemKnownLogins()
+	sender := &capturingLoginSender{}
+	uc := &NotifyLogin{
+		Known: known, HMAC: fakeHMAC{},
+		Clock:  ports.ClockFunc(func() time.Time { return now }),
+		Sender: sender, Prefs: stubLoginAlertPrefs{enabled: false},
+	}
+	ctx := context.Background()
+	const uid user.ID = "u1"
+	const to = "a@example.com"
+	const device = "Alice's laptop"
+
+	// Signup device (no alert regardless).
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
+	// New device would normally alert, but the user opted out.
+	must(t, uc.Execute(ctx, uid, to, device, firefox, "203.0.113.0"))
+
+	if len(sender.calls) != 0 {
+		t.Fatalf("opted-out user was alerted: %+v", sender.calls)
+	}
+
+	// The new device must still be recorded so re-enabling doesn't re-alert it:
+	// observing the same device again reports it as already seen, not inserted.
+	obs, err := known.Observe(ctx, uid, uc.deviceFingerprint(DescribeUserAgent(firefox), device), "203.0.113.0", DescribeUserAgent(firefox), now)
+	must(t, err)
+	if obs.Inserted || !obs.DeviceSeen {
+		t.Fatal("expected the new device to already be recorded even when alerts are off")
+	}
+}
+
+func TestNotifyLoginOptInStillAlerts(t *testing.T) {
+	now := time.Date(2026, 6, 6, 9, 0, 0, 0, time.UTC)
+	const (
+		chromeMac = "Mozilla/5.0 (Macintosh; Mac OS X) Chrome/120 Safari/537"
+		firefox   = "Mozilla/5.0 (Windows NT 10.0) Firefox/119"
+	)
+	known := newMemKnownLogins()
+	sender := &capturingLoginSender{}
+	uc := &NotifyLogin{
+		Known: known, HMAC: fakeHMAC{},
+		Clock:  ports.ClockFunc(func() time.Time { return now }),
+		Sender: sender, Prefs: stubLoginAlertPrefs{enabled: true},
+	}
+	ctx := context.Background()
+	const uid user.ID = "u1"
+	const to = "a@example.com"
+	const device = "Alice's laptop"
+
+	must(t, uc.Execute(ctx, uid, to, device, chromeMac, "203.0.113.0"))
+	must(t, uc.Execute(ctx, uid, to, device, firefox, "203.0.113.0"))
+
+	if len(sender.calls) != 1 || sender.calls[0].reason != LoginReasonNewDevice {
+		t.Fatalf("expected new_device alert for opted-in user, got %+v", sender.calls)
+	}
+}
+
 func must(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {

@@ -40,6 +40,7 @@ type Dependencies struct {
 	BackupOAuth        *BackupOAuthHandlers
 	Update             *UpdateHandlers
 	Notification       *NotificationHandlers
+	Audit              *AuditHandlers
 	APIKeyValidator    middleware.APIKeyValidator
 	RateLimiter        *middleware.RateLimiter
 	TrustedProxies     []*net.IPNet
@@ -53,6 +54,35 @@ type Dependencies struct {
 	// EmailVerifyGate gates vault mutations for accounts unverified past the
 	// grace window. Nil when email verification is not enforced (no mailer).
 	EmailVerifyGate func(http.Handler) http.Handler
+	// MailerEnabled reports whether an SMTP mailer is configured. Email
+	// verification and digests are only mounted when this is true.
+	MailerEnabled bool
+	// Require2FA mirrors cfg.Require2FA so the client can surface the policy.
+	Require2FA bool
+}
+
+// ConfigFeatures advertises which optional feature sets this deployment has
+// wired, so the client can hide UI that would otherwise hit unmounted routes.
+type ConfigFeatures struct {
+	BackupSync        bool `json:"backupSync"`
+	Attachments       bool `json:"attachments"`
+	Mailer            bool `json:"mailer"`
+	EmailVerification bool `json:"emailVerification"`
+	Updates           bool `json:"updates"`
+	Notifications     bool `json:"notifications"`
+	Require2FA        bool `json:"require2fa"`
+}
+
+func (deps Dependencies) features() ConfigFeatures {
+	return ConfigFeatures{
+		BackupSync:        deps.Backup != nil,
+		Attachments:       deps.Attachment != nil,
+		Mailer:            deps.MailerEnabled,
+		EmailVerification: deps.Auth != nil && deps.Auth.VerifyEmail != nil,
+		Updates:           deps.Update != nil && deps.Update.Enabled,
+		Notifications:     deps.Notification != nil,
+		Require2FA:        deps.Require2FA,
+	}
 }
 
 // Pinger is the readiness probe the health endpoint uses to confirm the vault's
@@ -168,6 +198,11 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Put("/users/me", deps.User.HandleUpdateProfile)
 			r.Get("/users/me/sessions", deps.User.HandleListSessions)
 			r.Delete("/users/me/sessions/{id}", deps.User.HandleRevokeSession)
+
+			// Self-audit activity trail (FEAT-2)
+			if deps.Audit != nil {
+				r.Get("/users/me/audit", deps.Audit.HandleListOwnAudit)
+			}
 
 			// Email-digest preferences (only when a mailer is wired)
 			if deps.User.Digest != nil {
@@ -394,6 +429,7 @@ func configHandler(deps Dependencies) http.HandlerFunc {
 			"appVersion":       deps.Version,
 			"commit":           deps.Commit,
 			"goVersion":        deps.GoVersion,
+			"features":         deps.features(),
 		})
 	}
 }
