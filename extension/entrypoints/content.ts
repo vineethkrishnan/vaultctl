@@ -1238,9 +1238,23 @@ export default defineContentScript({
       if (settings.autofill && matches.length === 1) {
         ctx.setTimeout(() => {
           const forms = findVisibleLoginForms();
-          if (forms.length === 1) void fillWithMatch(forms[0]!, matches[0]!);
+          if (forms.length !== 1) return;
+          const { usernameInput, passwordInput } = extractCredentialInputs(
+            forms[0]!,
+          );
+          // The user may have started typing during the delay - a focused or
+          // non-empty field means the form is theirs now, and a silent
+          // overwrite could swap in the wrong credential mid-keystroke.
+          if (!isUntouched(usernameInput) || !isUntouched(passwordInput)) {
+            return;
+          }
+          void fillWithMatch(forms[0]!, matches[0]!);
         }, AUTOFILL_ON_LOAD_DELAY_MS);
       }
+    }
+
+    function isUntouched(input: HTMLInputElement | null): boolean {
+      return !input || (!input.value && input !== document.activeElement);
     }
 
     // Load the user's cards/identities (masked) so the fill emblem can appear on
@@ -1260,6 +1274,14 @@ export default defineContentScript({
     // Popup-initiated explicit fill (existing behaviour).
     browser.runtime.onMessage.addListener(
       (message: { type: string; username?: string; password?: string }) => {
+        // Unlocking after this page loaded: the boot-time matchCredentials ran
+        // against a locked vault and got no matches, so re-fetch now or the tab
+        // shows no icons/autofill until a manual reload.
+        if (message.type === "vaultUnlocked") {
+          void refreshMatches();
+          void refreshFillItems();
+          return;
+        }
         if (message.type === "fill") {
           const forms = findLoginForms();
           if (forms[0] && message.username && message.password) {

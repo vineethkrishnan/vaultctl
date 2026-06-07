@@ -225,6 +225,18 @@ function doLock(): void {
   browser.runtime.sendMessage({ type: "locked" }).catch(() => {});
 }
 
+// Tabs opened while the vault was locked fetched their matches against an
+// empty vault; without this nudge they show no icons or autofill until a
+// manual reload. Tabs without the content script reject - ignore them.
+function notifyTabsUnlocked(): void {
+  void browser.tabs.query({}).then((tabs) => {
+    for (const tab of tabs) {
+      if (tab.id === undefined) continue;
+      browser.tabs.sendMessage(tab.id, { type: "vaultUnlocked" }).catch(() => {});
+    }
+  });
+}
+
 function pruneStaleCaptures(): void {
   const cutoff = Date.now() - CAPTURE_TTL_MS;
   while (capturedLogins.length && capturedLogins[0]!.capturedAt < cutoff) {
@@ -1053,6 +1065,7 @@ export default defineBackground(() => {
                 message as unknown as Parameters<typeof handleInit>[0],
               );
               resetAutoLock();
+              notifyTabsUnlocked();
               sendResponse({ ok: true, vaultCount: vaultKeys.size });
               return;
             }
