@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.17.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.16.0...v1.17.0) (2026-06-07)
+
+
+### Features
+
+* **vault:** shared org vaults from the ui and step-up-gated vault deletion ([#219](https://github.com/vineethkrishnan/vaultctl/issues/219)) ([649a054](https://github.com/vineethkrishnan/vaultctl/commit/649a0542647bfed7b819fa9148d05358f64f40bf))
+
+
+### Bug Fixes
+
+* **compose:** persist local backups across container recreates ([#217](https://github.com/vineethkrishnan/vaultctl/issues/217)) ([b1f2e87](https://github.com/vineethkrishnan/vaultctl/commit/b1f2e87f5a655ce849bd90b0811d3ab13240df1d))
+* **extension:** delay autofill on page load so late-rendered forms get filled ([#220](https://github.com/vineethkrishnan/vaultctl/issues/220)) ([dad6b17](https://github.com/vineethkrishnan/vaultctl/commit/dad6b17a8656e5a82f1d8fdca569deafdaa929e2))
+* **extension:** guard delayed autofill against user input and refresh matches on unlock ([#221](https://github.com/vineethkrishnan/vaultctl/issues/221)) ([057db98](https://github.com/vineethkrishnan/vaultctl/commit/057db984c8e7dfa113ced1448bd80b625f53b36c))
+
+
+### CI/CD
+
+* pull the postgres service image from the ecr public mirror ([#222](https://github.com/vineethkrishnan/vaultctl/issues/222)) ([8e7f677](https://github.com/vineethkrishnan/vaultctl/commit/8e7f677080921ff315f1802eb29b95baefb1fcae))
+
 ## [1.16.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.15.0...v1.16.0) (2026-06-06)
 
 
