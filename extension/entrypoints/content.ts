@@ -82,6 +82,8 @@ interface ExtSettings {
 
 const BRAND = "#2dd4bf";
 
+const AUTOFILL_ON_LOAD_DELAY_MS = 2000;
+
 // After the extension is reloaded/updated, content scripts injected by the old
 // instance keep running in already-open tabs with a dead runtime handle. Reading
 // `browser.runtime` or calling `sendMessage` then throws "Extension context
@@ -1229,9 +1231,15 @@ export default defineContentScript({
       // login form and exactly one matching credential. Anything else (multiple
       // forms, multiple matches) waits for the user to pick from the icon/picker,
       // so we never silently fill the wrong form or guess between credentials.
+      // The attempt is delayed because at document_idle SPA login pages often
+      // haven't rendered their form yet (or it is mid fade-in and fails the
+      // visibility check), so an immediate attempt finds zero forms and the
+      // fill silently never happens.
       if (settings.autofill && matches.length === 1) {
-        const forms = findVisibleLoginForms();
-        if (forms.length === 1) void fillWithMatch(forms[0]!, matches[0]!);
+        ctx.setTimeout(() => {
+          const forms = findVisibleLoginForms();
+          if (forms.length === 1) void fillWithMatch(forms[0]!, matches[0]!);
+        }, AUTOFILL_ON_LOAD_DELAY_MS);
       }
     }
 
