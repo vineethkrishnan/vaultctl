@@ -18,7 +18,7 @@ import {
   clearBiometric,
   type BiometricKDF,
 } from "@/lib/biometric";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, Loader2 } from "lucide-react";
 
 export function LoginPage() {
   const { t } = useTranslation(["auth", "common"]);
@@ -30,6 +30,12 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"email" | "password">("email");
+  // When an email is remembered we skip straight to the password step, but
+  // prelogin is async - render a spinner until it resolves rather than flashing
+  // the email form first. Seeded synchronously so the email form never paints.
+  const [booting, setBooting] = useState(
+    () => localStorage.getItem("vaultctl_remember_email") !== null,
+  );
 
   // Prelogin state
   const [kdfParams, setKdfParams] = useState<PreloginResponse | null>(null);
@@ -68,6 +74,7 @@ export function LoginPage() {
         // Prelogin failed (offline or unknown email) - stay on the email step.
       } finally {
         setLoading(false);
+        setBooting(false);
       }
     })();
   }, []);
@@ -228,6 +235,12 @@ export function LoginPage() {
           </div>
         )}
 
+        {booting ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
         {bioEnrolled && (
           <div className="space-y-2">
             <button
@@ -331,6 +344,8 @@ export function LoginPage() {
               </Link>
             </div>
           </form>
+        )}
+          </>
         )}
 
         <div className="text-center text-sm text-muted-foreground">
