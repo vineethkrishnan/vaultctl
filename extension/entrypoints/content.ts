@@ -712,9 +712,80 @@ export default defineContentScript({
         });
         menu.appendChild(row);
       }
+      // Footer actions: capture the values currently in this form as a new
+      // login, or jump to the web vault. Separated from the credential rows.
+      const footer = document.createElement("div");
+      footer.style.cssText =
+        "border-top:1px solid #26262b;display:flex;flex-direction:column;";
+      footer.append(
+        actionRow(
+          plusGlyph(),
+          "Save this site to vaultctl",
+          () => {
+            captureCurrentForm(form);
+            removePicker();
+          },
+        ),
+        actionRow(externalGlyph(), "Open vaultctl", () => {
+          void bg({ type: "openWebVault" });
+          removePicker();
+        }),
+      );
+      menu.appendChild(footer);
       root.appendChild(menu);
       document.body.appendChild(host);
       setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+    }
+
+    // A non-credential picker row (footer actions). Same look as a match row but
+    // a muted leading glyph and a single label.
+    function actionRow(
+      glyph: HTMLSpanElement,
+      label: string,
+      onClick: () => void,
+    ): HTMLButtonElement {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.style.cssText =
+        "all:unset;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;color:#d4d4d8;font-size:12px;";
+      const text = document.createElement("span");
+      text.textContent = label;
+      row.append(glyph, text);
+      row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
+      row.addEventListener("mouseleave", () => (row.style.background = "transparent"));
+      row.addEventListener("click", (e) => {
+        if (!e.isTrusted) return;
+        onClick();
+      });
+      return row;
+    }
+
+    // Queue a capture from the values currently typed in this form and show the
+    // save prompt, so the user can store a brand-new login from the picker.
+    function captureCurrentForm(form: HTMLFormElement) {
+      const { usernameInput, passwordInput } = extractCredentialInputs(form);
+      const password = changedPasswordValue(form) ?? passwordInput?.value ?? "";
+      if (!password) {
+        void bg({ type: "openWebVault" });
+        return;
+      }
+      void (async () => {
+        const queued = await bg<{ ok?: boolean; id?: string; action?: string; username?: string }>(
+          {
+            type: "loginSubmitted",
+            url: window.location.href,
+            username: usernameInput?.value ?? "",
+            password,
+          },
+        );
+        if (!queued?.ok || !queued.id) return;
+        showSavePrompt({
+          id: queued.id,
+          action: queued.action,
+          host: window.location.hostname,
+          username: queued.username || usernameInput?.value || "",
+        });
+      })();
     }
     function onDocClick(e: Event) {
       // Clicks land on the shadow host (event retargeting). Ignore our own
@@ -1618,6 +1689,18 @@ function pickerGlyph(svg: string): HTMLSpanElement {
     "flex:none;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#1f1f23;";
   span.innerHTML = svg;
   return span;
+}
+
+function plusGlyph(): HTMLSpanElement {
+  return pickerGlyph(
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
+  );
+}
+
+function externalGlyph(): HTMLSpanElement {
+  return pickerGlyph(
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+  );
 }
 
 function cardGlyph(): HTMLSpanElement {

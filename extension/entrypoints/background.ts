@@ -984,6 +984,9 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "logGeneratedPassword",
   "loginFormDetected",
   "webauthnObserved",
+  // Open the configured web vault in a new tab (no secret crosses the boundary;
+  // the background just reads the stored server URL it already holds).
+  "openWebVault",
   // The in-page save toast's Save / Not-now buttons act on a capture the user
   // just submitted. Neither returns plaintext or key material - the dangerous
   // capture mutations (clear/dismiss/markAll) and every read stay page-only.
@@ -1590,6 +1593,15 @@ export default defineBackground(() => {
             // -----------------------------------------------------------
             case "loginFormDetected": {
               devLog("login form detected", message.url);
+              sendResponse({ ok: true });
+              return;
+            }
+
+            case "openWebVault": {
+              const base = await getServerUrl();
+              if (base && /^https?:\/\//i.test(base)) {
+                void browser.tabs.create({ url: base });
+              }
               sendResponse({ ok: true });
               return;
             }
