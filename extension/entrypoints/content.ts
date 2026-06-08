@@ -1808,9 +1808,9 @@ export default defineContentScript({
           const { usernameInput, passwordInput } = extractCredentialInputs(
             forms[0]!,
           );
-          // The user may have started typing during the delay - a focused or
-          // non-empty field means the form is theirs now, and a silent
-          // overwrite could swap in the wrong credential mid-keystroke.
+          // The user may have started typing during the delay - a field with a
+          // value is theirs now, and a silent overwrite could swap in the wrong
+          // credential mid-keystroke.
           if (!isUntouched(usernameInput) || !isUntouched(passwordInput)) {
             return;
           }
@@ -1819,8 +1819,11 @@ export default defineContentScript({
       }
     }
 
+    // A field is untouched when it holds no value. A field that is merely
+    // auto-focused on load (common: a password step focuses the password box)
+    // is NOT touched - the user hasn't typed anything - so it stays fillable.
     function isUntouched(input: HTMLInputElement | null): boolean {
-      return !input || (!input.value && input !== document.activeElement);
+      return !input || !input.value;
     }
 
     // Load the user's cards/identities (masked) so the fill emblem can appear on
