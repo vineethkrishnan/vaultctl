@@ -78,6 +78,14 @@
   },
   "generator": {
     "length": "Länge",
+    "mode": {
+      "password": "Passwort",
+      "passphrase": "Merkbar"
+    },
+    "words": "Wörter",
+    "separator": "Trennzeichen",
+    "capitalize": "Großschreiben",
+    "includeNumber": "Zahl",
     "regenerate": "Neu generieren",
     "copyPassword": "Passwort kopieren",
     "recent": "Zuletzt ({{count}})",

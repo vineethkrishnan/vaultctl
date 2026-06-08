@@ -77,6 +77,14 @@
   },
   "generator": {
     "length": "Length",
+    "mode": {
+      "password": "Password",
+      "passphrase": "Memorable"
+    },
+    "words": "Words",
+    "separator": "Separator",
+    "capitalize": "Capitalize",
+    "includeNumber": "Number",
     "regenerate": "Regenerate",
     "copyPassword": "Copy password",
     "recent": "Recent ({{count}})",
