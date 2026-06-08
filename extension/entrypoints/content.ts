@@ -374,7 +374,34 @@ export default defineContentScript({
           passwordInput.autocomplete = "off";
         }
       }
+      // Split / multi-step logins show the email first with NO password field
+      // yet, so findLoginForms misses them. Decorate the email field of those
+      // first steps too, so the picker is reachable before the password step.
+      for (const form of findUsernameOnlyForms()) {
+        const { usernameInput } = extractCredentialInputs(form);
+        if (usernameInput) {
+          decorateField(usernameInput);
+          usernameInput.autocomplete = "off";
+        }
+      }
       repositionFieldIcons();
+    }
+
+    // Forms that carry a username/email field but no password yet, restricted to
+    // ones that actually look like a sign-in first step (an email field, or a
+    // username/email-hinted field) so we never decorate a search or filter box.
+    function findUsernameOnlyForms(): HTMLFormElement[] {
+      return [...document.querySelectorAll("form")].filter((form) => {
+        if (form.querySelector('input[type="password"]')) return false;
+        const inputs = ([...form.querySelectorAll("input")] as HTMLInputElement[])
+          .filter(isVisible);
+        const candidate = inputs.find(isUsernameCandidate);
+        if (!candidate) return false;
+        const hint = `${candidate.autocomplete} ${candidate.name} ${candidate.id} ${
+          candidate.getAttribute("aria-label") ?? ""
+        }`.toLowerCase();
+        return candidate.type === "email" || /user|email|login|account/.test(hint);
+      }) as HTMLFormElement[];
     }
 
     function openPicker(input: HTMLInputElement) {
