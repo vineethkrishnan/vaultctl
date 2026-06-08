@@ -48,6 +48,9 @@
     "searchPlaceholder": "Tresor durchsuchen...",
     "noItems": "Keine Einträge in diesem Tresor",
     "noMatches": "Keine Treffer",
+    "onboardingTitle": "Dein Tresor ist leer",
+    "onboardingBody": "Importiere Logins aus einem anderen Passwortmanager oder speichere sie beim Anmelden.",
+    "importPasswords": "Passwörter importieren",
     "copyUsername": "Benutzername kopieren",
     "copyPassword": "Passwort kopieren",
     "totpCode": "2FA-Code",
@@ -161,6 +164,7 @@
     "updateAlertsHint": "Wenn eine neuere vaultctl-Version einen Hinweis unter Hinweise auslöst",
     "language": "Sprache",
     "languageHint": "Anzeigesprache der Erweiterung",
+    "importPasswords": "Passwörter importieren",
     "openWebVault": "Web-Tresor öffnen",
     "lockVault": "Tresor sperren",
     "autoLockOptions": {
