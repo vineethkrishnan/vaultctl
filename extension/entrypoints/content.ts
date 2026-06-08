@@ -740,19 +740,51 @@ export default defineContentScript({
     }
 
     // ── Strong-password suggestion (new-password fields) ──────────────────
+    // The "current password" field of a change-password form (the OLD secret).
+    // It must never be treated as a new-password field, or the strong-password
+    // suggestion pops on it and the submit capture stores the old password.
+    function isCurrentPasswordField(input: HTMLInputElement): boolean {
+      if (input.type !== "password") return false;
+      const ac = (input.autocomplete || "").toLowerCase();
+      if (ac === "current-password") return true;
+      const hint = `${input.name} ${input.id} ${
+        input.getAttribute("aria-label") ?? ""
+      } ${input.placeholder ?? ""}`.toLowerCase();
+      return /current|\bold\b|existing|previous/.test(hint);
+    }
+
     function isNewPasswordField(
       input: HTMLInputElement,
       form: HTMLFormElement,
     ): boolean {
       if (input.type !== "password") return false;
+      if (isCurrentPasswordField(input)) return false;
       const ac = (input.autocomplete || "").toLowerCase();
-      if (ac === "current-password") return false;
       if (ac === "new-password") return true;
       const hint = `${input.name} ${input.id} ${
         input.getAttribute("aria-label") ?? ""
       }`.toLowerCase();
-      if (/new|confirm|sign[\s-]?up|register|create/.test(hint)) return true;
+      if (/new|confirm|repeat|retype|sign[\s-]?up|register|create/.test(hint)) {
+        return true;
+      }
       return form.querySelectorAll('input[type="password"]').length >= 2;
+    }
+
+    // On a change-password / reset form the FIRST password field is the current
+    // (old) secret, so the plain "first password input" the submit handler picks
+    // is the wrong one to store. When the form carries a current-password field,
+    // return the value of the new-password field instead so we capture the
+    // password the user is switching TO. Returns null for ordinary login/signup
+    // forms, where the first password field is already correct.
+    function changedPasswordValue(form: HTMLFormElement): string | null {
+      const passwords = ([...form.querySelectorAll('input[type="password"]')] as HTMLInputElement[])
+        .filter(isVisible);
+      if (passwords.length < 2) return null;
+      if (!passwords.some(isCurrentPasswordField)) return null;
+      const next = passwords.find(
+        (p) => !isCurrentPasswordField(p) && p.value,
+      );
+      return next?.value ?? null;
     }
 
     function removeSuggestion() {
@@ -1122,7 +1154,10 @@ export default defineContentScript({
         rememberUsername(usernameInput?.value ?? "");
         return;
       }
-      const password = passwordInput.value;
+      // On a change/reset form the first password field is the OLD secret;
+      // store the new-password value instead so we offer to UPDATE the saved
+      // credential with the password the user just set.
+      const password = changedPasswordValue(form) ?? passwordInput.value;
       const immediateUsername = usernameInput?.value ?? "";
 
       // Queue the durable capture FIRST and synchronously, before any await.

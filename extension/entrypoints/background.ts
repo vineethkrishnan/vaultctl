@@ -733,13 +733,29 @@ async function decideSave(
   if (matches.some((m) => m.username === username && m.password === password)) {
     return { action: "none" };
   }
-  const sameUser = matches.find((m) => m.username === username);
+  const sameUser = username
+    ? matches.find((m) => m.username === username)
+    : undefined;
   if (sameUser) {
     return {
       action: "update",
       vaultId: sameUser.vaultId,
       itemId: sameUser.itemId,
       name: sameUser.name,
+    };
+  }
+  // A change-password / reset form carries no username (you're already signed
+  // in, or arrived via an email link). If exactly one credential is stored for
+  // this host, offer to UPDATE its password rather than creating a junk entry
+  // with an empty username.
+  if (!username && matches.length === 1) {
+    const only = matches[0]!;
+    if (only.password === password) return { action: "none" };
+    return {
+      action: "update",
+      vaultId: only.vaultId,
+      itemId: only.itemId,
+      name: only.name,
     };
   }
   return { action: "add" };
@@ -819,7 +835,9 @@ async function updateLogin(
     reprompt: boolean;
   };
   const data = await decData(vaultId, it.encryptedData);
-  data.username = username;
+  // A password-change capture carries no username; keep the stored one rather
+  // than blanking it.
+  if (username) data.username = username;
   data.password = password;
   const body = {
     encryptedName: it.encryptedName,
