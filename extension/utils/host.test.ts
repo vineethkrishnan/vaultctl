@@ -27,6 +27,15 @@ describe("registrableDomain", () => {
     expect(registrableDomain("mail.google.com:443")).toBe("google.com");
     expect(registrableDomain("192.168.0.1")).toBe("192.168.0.1");
   });
+
+  it("treats multi-tenant hosting platforms as effective TLDs", () => {
+    expect(registrableDomain("foo.github.io")).toBe("foo.github.io");
+    expect(registrableDomain("bar.github.io")).toBe("bar.github.io");
+    expect(registrableDomain("app.vercel.app")).toBe("app.vercel.app");
+    expect(registrableDomain("bucket.s3.amazonaws.com")).toBe(
+      "bucket.s3.amazonaws.com",
+    );
+  });
 });
 
 describe("domainMatches", () => {
@@ -38,6 +47,13 @@ describe("domainMatches", () => {
   it("does not match across different registrable domains", () => {
     expect(domainMatches("google.com", "google.co.uk")).toBe(false);
     expect(domainMatches("evil.com", "bank.com")).toBe(false);
+  });
+
+  it("does not match across tenants of a shared hosting platform", () => {
+    expect(domainMatches("alice.github.io", "mallory.github.io")).toBe(false);
+    expect(domainMatches("victim.herokuapp.com", "attacker.herokuapp.com")).toBe(
+      false,
+    );
   });
 });
 

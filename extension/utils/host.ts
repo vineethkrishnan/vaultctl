@@ -38,12 +38,14 @@ export function hostMatches(a: string, b: string): boolean {
   return stripWww(a) === stripWww(b);
 }
 
-// A compact public-suffix list: second-level suffixes under which the
-// registrable name is the THIRD label from the right (e.g. "co.uk" -> the
-// registrable domain of "foo.co.uk" is "foo.co.uk", not "co.uk"). Not
-// exhaustive - covers the common ccTLD second levels - and only consulted for
-// the OPT-IN relaxed matcher, never the strict default.
-const MULTI_PART_SUFFIXES = new Set([
+// A compact effective-TLD list. NOT the full Mozilla PSL - it covers the common
+// ccTLD second levels PLUS the multi-tenant hosting platforms that MUST be
+// treated as public suffixes, or relaxed matching would leak a credential saved
+// on one tenant (foo.github.io) to another (bar.github.io). Each entry is a
+// suffix BELOW which a registrable name is one extra label to the left. Only
+// consulted by the OPT-IN relaxed matcher, never the strict default.
+const KNOWN_SUFFIXES = new Set([
+  // ccTLD second levels
   "co.uk", "org.uk", "gov.uk", "ac.uk", "me.uk", "net.uk", "sch.uk",
   "com.au", "net.au", "org.au", "edu.au", "gov.au", "id.au",
   "co.nz", "net.nz", "org.nz", "govt.nz",
@@ -53,19 +55,34 @@ const MULTI_PART_SUFFIXES = new Set([
   "co.za", "org.za", "net.za", "gov.za",
   "co.kr", "or.kr", "com.sg", "com.mx", "com.tr", "com.cn",
   "com.hk", "com.tw", "com.ar",
+  // Multi-tenant hosting platforms: a subdomain is a SEPARATE site/owner, so
+  // these are effective TLDs (cross-tenant fill must never happen).
+  "github.io", "gitlab.io", "herokuapp.com", "vercel.app", "netlify.app",
+  "netlify.com", "pages.dev", "workers.dev", "web.app", "firebaseapp.com",
+  "appspot.com", "blogspot.com", "wordpress.com", "azurewebsites.net",
+  "cloudfront.net", "translate.goog", "s3.amazonaws.com",
+  "glitch.me", "onrender.com", "fly.dev", "surge.sh", "github.dev",
 ]);
 
+// Number of right-most labels that form the public suffix of a host.
+function publicSuffixLength(labels: string[]): number {
+  for (let take = Math.min(labels.length - 1, 3); take >= 2; take--) {
+    if (KNOWN_SUFFIXES.has(labels.slice(-take).join("."))) return take;
+  }
+  return 1;
+}
+
 // The registrable domain (eTLD+1) of a host, e.g. "mail.google.com" ->
-// "google.com" and "shop.foo.co.uk" -> "foo.co.uk". Port and a leading "www."
+// "google.com", "shop.foo.co.uk" -> "foo.co.uk", and "bar.github.io" ->
+// "bar.github.io" (each platform tenant isolated). Port and a leading "www."
 // are stripped; IPv4 literals and single-label hosts are returned unchanged.
 export function registrableDomain(host: string): string {
   const clean = stripWww((host.split(":")[0] ?? host)).toLowerCase();
   const labels = clean.split(".").filter(Boolean);
   if (labels.length <= 2) return clean;
   if (labels.every((label) => /^\d+$/.test(label))) return clean; // IPv4
-  const lastTwo = labels.slice(-2).join(".");
-  const take = MULTI_PART_SUFFIXES.has(lastTwo) ? 3 : 2;
-  return labels.slice(-take).join(".");
+  const suffixLength = publicSuffixLength(labels);
+  return labels.slice(-(suffixLength + 1)).join(".");
 }
 
 // True when two hosts share a registrable domain (so "accounts.google.com" and
