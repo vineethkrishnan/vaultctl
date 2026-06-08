@@ -1462,14 +1462,18 @@ export default defineBackground(() => {
                 try {
                   const targetVaultId =
                     typeof message.vaultId === "string" ? message.vaultId : undefined;
-                  await createItem(
-                    capture.kind,
-                    capture.title ?? "",
-                    capture.kind === "credit_card"
-                      ? capture.cardData
-                      : capture.identityData,
-                    targetVaultId,
-                  );
+                  // The review toast may pass an edited payload and title.
+                  const data =
+                    message.data && typeof message.data === "object"
+                      ? message.data
+                      : capture.kind === "credit_card"
+                        ? capture.cardData
+                        : capture.identityData;
+                  const title =
+                    typeof message.title === "string" && message.title
+                      ? message.title
+                      : capture.title ?? "";
+                  await createItem(capture.kind, title, data, targetVaultId);
                   const idx = capturedLogins.findIndex((c) => c.id === targetId);
                   if (idx !== -1) capturedLogins.splice(idx, 1);
                   await syncBadge();

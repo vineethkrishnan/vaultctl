@@ -1216,6 +1216,8 @@ export default defineContentScript({
       onAction: (overrides: {
         username?: string;
         vaultId?: string;
+        itemTitle?: string;
+        itemValues?: Record<string, string>;
       }) => Promise<{ ok?: boolean; error?: string }>;
       onDismiss?: () => void;
       neverLabel?: string;
@@ -1226,6 +1228,12 @@ export default defineContentScript({
         username: string;
         vaults: { id: string; name: string; type: string }[];
         defaultVaultId: string;
+      };
+      // When present, the toast shows an editable title and a scrollable list of
+      // the captured card / address fields for review before saving.
+      itemEdit?: {
+        title: string;
+        fields: { key: string; label: string; value: string }[];
       };
     }) {
       document.getElementById("vaultctl-toast-host")?.remove();
@@ -1295,10 +1303,43 @@ export default defineContentScript({
       } else {
         card.append(row);
       }
+      // Optional card / address field review: an editable title plus one input
+      // per captured field, scrollable so a long address fits.
+      let itemTitleField: HTMLInputElement | null = null;
+      const itemFieldInputs = new Map<string, HTMLInputElement>();
+      if (opts.itemEdit) {
+        const wrap = document.createElement("div");
+        wrap.style.cssText =
+          "margin-top:10px;display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;overscroll-behavior:contain;";
+        itemTitleField = document.createElement("input");
+        itemTitleField.type = "text";
+        itemTitleField.value = opts.itemEdit.title;
+        itemTitleField.placeholder = "name";
+        itemTitleField.style.cssText =
+          "all:unset;box-sizing:border-box;width:100%;background:#0c0c0e;border:1px solid #26262b;border-radius:6px;padding:6px 8px;color:#fafafa;font-size:12px;font-weight:600;";
+        wrap.append(itemTitleField);
+        for (const field of opts.itemEdit.fields) {
+          const label = document.createElement("label");
+          label.style.cssText =
+            "display:flex;flex-direction:column;gap:2px;font-size:10px;color:#a1a1aa;";
+          const labelText = document.createElement("span");
+          labelText.textContent = field.label;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = field.value;
+          input.style.cssText =
+            "all:unset;box-sizing:border-box;width:100%;background:#0c0c0e;border:1px solid #26262b;border-radius:6px;padding:6px 8px;color:#fafafa;font-size:12px;";
+          label.append(labelText, input);
+          wrap.append(label);
+          itemFieldInputs.set(field.key, input);
+        }
+        card.append(wrap);
+      }
       actions.append(dismiss, action);
       card.append(actions);
       const editWrapHide = () => {
         if (usernameField) usernameField.parentElement!.style.display = "none";
+        if (itemTitleField) itemTitleField.parentElement!.style.display = "none";
       };
       // Optional tertiary opt-out: stop offering to save on this site at all.
       let never: HTMLButtonElement | null = null;
@@ -1373,6 +1414,12 @@ export default defineContentScript({
         const overrides = {
           username: usernameField ? usernameField.value : undefined,
           vaultId: vaultSelect ? vaultSelect.value : undefined,
+          itemTitle: itemTitleField ? itemTitleField.value : undefined,
+          itemValues: itemFieldInputs.size
+            ? Object.fromEntries(
+                [...itemFieldInputs].map(([key, input]) => [key, input.value]),
+              )
+            : undefined,
         };
         let res: { ok?: boolean; error?: string };
         try {
@@ -1540,14 +1587,72 @@ export default defineContentScript({
         });
         if (!settings.savePrompt) return;
         if (!queued?.ok || !queued.id) return;
-        showSavePrompt({
-          id: queued.id,
-          kind,
-          host: window.location.hostname,
-          username: "",
-          title,
-        });
+        // The content script still holds the captured payload here, so show an
+        // editable review toast (title + fields) before saving.
+        showItemSavePrompt(queued.id, kind, data as Record<string, unknown>, title);
       })();
+    }
+
+    // Human labels for the card / identity fields worth reviewing in the toast.
+    // Order matters; only non-empty string fields are shown.
+    const ITEM_FIELD_LABELS: Record<
+      "credit_card" | "identity",
+      { key: string; label: string }[]
+    > = {
+      credit_card: [
+        { key: "cardholderName", label: "Cardholder" },
+        { key: "number", label: "Number" },
+        { key: "expiry", label: "Expiry" },
+        { key: "cvv", label: "CVV" },
+      ],
+      identity: [
+        { key: "firstName", label: "First name" },
+        { key: "lastName", label: "Last name" },
+        { key: "email", label: "Email" },
+        { key: "phone", label: "Phone" },
+        { key: "address", label: "Address" },
+        { key: "city", label: "City" },
+        { key: "state", label: "State" },
+        { key: "postalCode", label: "Postal code" },
+        { key: "country", label: "Country" },
+      ],
+    };
+
+    // Editable review toast for a freshly captured card / address: the user can
+    // fix the title and any field, and the edited payload is saved.
+    function showItemSavePrompt(
+      id: string,
+      kind: "credit_card" | "identity",
+      data: Record<string, unknown>,
+      title: string,
+    ) {
+      const isCard = kind === "credit_card";
+      const fields = ITEM_FIELD_LABELS[kind]
+        .map((f) => ({ key: f.key, label: f.label, value: String(data[f.key] ?? "") }))
+        .filter((f) => f.value);
+      showToast({
+        message: isCard ? "Review and save card?" : "Review and save address?",
+        actionLabel: "Save",
+        successMessage: isCard
+          ? "Locked this card in your vault"
+          : "Saved this address to your vault",
+        itemEdit: { title, fields },
+        onAction: (overrides) =>
+          bg<{ ok?: boolean; error?: string }>({
+            type: "saveCapturedLogin",
+            id,
+            ...(overrides.itemTitle ? { title: overrides.itemTitle } : {}),
+            // Merge edits back over the original payload so untouched fields
+            // (and non-string fields like customFields) are preserved.
+            data: { ...data, ...(overrides.itemValues ?? {}) },
+          }),
+        onDismiss: () => void bg({ type: "markCaptureRead", id }),
+        neverLabel: "Never for this site",
+        onNever: () => {
+          void bg({ type: "markCaptureRead", id });
+          void bg({ type: "neverSaveHost" });
+        },
+      });
     }
 
     function handleSubmit(event: Event) {
