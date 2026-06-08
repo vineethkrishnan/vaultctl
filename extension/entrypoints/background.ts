@@ -330,6 +330,7 @@ interface ExtSettings {
   savePrompt: boolean; // offer to save/update after a login submit
   toastMs: number; // auto-dismiss timeout for toasts (ms)
   relaxedMatch: boolean; // match credentials by registrable domain, not exact host
+  breachCheck: boolean; // check passwords against HIBP (k-anonymity, opt-in)
   suggestPassword: boolean; // suggest a strong password on new-password fields
   updateNotify: UpdateNotifyLevel; // which update severities raise the alert
   genMode: GenMode; // "password" (random charset) or "passphrase" (memorable)
@@ -353,6 +354,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   savePrompt: true,
   toastMs: 8000,
   relaxedMatch: false,
+  breachCheck: false,
   suggestPassword: true,
   updateNotify: "all",
   genMode: "password",
