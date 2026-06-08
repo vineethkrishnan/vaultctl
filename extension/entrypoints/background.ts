@@ -437,6 +437,38 @@ async function getSettings(): Promise<ExtSettings> {
 }
 
 // ===========================================================================
+// Per-site "never save" list (hosts the user opted out of save prompts for).
+// Persisted in storage.local so the choice survives a worker recycle.
+// ===========================================================================
+
+const NEVER_SAVE_KEY = "vaultctl_never_save_hosts";
+
+async function getNeverSaveHosts(): Promise<string[]> {
+  const stored = await browser.storage.local.get(NEVER_SAVE_KEY);
+  const hosts = stored[NEVER_SAVE_KEY];
+  return Array.isArray(hosts) ? (hosts as string[]) : [];
+}
+
+async function isNeverSaveHost(host: string): Promise<boolean> {
+  if (!host) return false;
+  const hosts = await getNeverSaveHosts();
+  return hosts.some((h) => hostMatches(h, host));
+}
+
+async function addNeverSaveHost(host: string): Promise<void> {
+  if (!host) return;
+  const hosts = await getNeverSaveHosts();
+  if (hosts.some((h) => hostMatches(h, host))) return;
+  hosts.push(host);
+  await browser.storage.local.set({ [NEVER_SAVE_KEY]: hosts });
+}
+
+async function removeNeverSaveHost(host: string): Promise<void> {
+  const hosts = (await getNeverSaveHosts()).filter((h) => h !== host);
+  await browser.storage.local.set({ [NEVER_SAVE_KEY]: hosts });
+}
+
+// ===========================================================================
 // Active vault (the default save target + the vault the popup list shows).
 // Persisted in storage.local so the choice survives popup close and worker
 // recycle; falls back to the first unlocked vault when unset or stale.
@@ -945,6 +977,9 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   // capture mutations (clear/dismiss/markAll) and every read stay page-only.
   "saveCapturedLogin",
   "markCaptureRead",
+  // "Never for this site" from the in-page toast. The host is taken from
+  // sender.tab.url, so a page can only ever opt ITSELF out.
+  "neverSaveHost",
   // Card/identity capture-on-submit, mirroring loginSubmitted: the content
   // script hands over a pre-classified payload to queue. The response carries no
   // secret (only an id + title), so this is no more privileged than loginSubmitted.
@@ -1153,6 +1188,12 @@ export default defineBackground(() => {
             case "loginSubmitted": {
               pruneStaleCaptures();
               const url = String(message.url ?? "");
+              // Respect a per-site opt-out: never queue a capture (and so never
+              // prompt) for a host the user marked "never save".
+              if (await isNeverSaveHost(safeHostname(url))) {
+                sendResponse({ ok: true, skipped: true });
+                return;
+              }
               let username = String(message.username ?? "");
               const password = String(message.password ?? "");
               // A password-only step (multi-step login) carries no username;
@@ -1196,6 +1237,10 @@ export default defineBackground(() => {
               pruneStaleCaptures();
               const kind = message.kind === "identity" ? "identity" : "credit_card";
               const url = String(message.url ?? "");
+              if (await isNeverSaveHost(safeHostname(url))) {
+                sendResponse({ ok: true, skipped: true });
+                return;
+              }
               const title = String(message.title ?? "");
               const capture: CapturedLogin = {
                 id: makeCaptureId(),
@@ -1452,6 +1497,42 @@ export default defineBackground(() => {
               capturedLogins.length = 0;
               await syncBadge();
               sendResponse({ ok: true });
+              return;
+            }
+
+            // -----------------------------------------------------------
+            // Per-site "never save" list
+            // -----------------------------------------------------------
+            case "neverSaveHost": {
+              // A content-script sender can only opt out ITS OWN host (derived
+              // from sender.tab.url), so a page can't suppress prompts for an
+              // unrelated site; the popup may pass an explicit host.
+              const host = isFromContentScript(sender)
+                ? safeHostname(sender.tab?.url ?? "")
+                : safeHostname(String(message.host ?? ""));
+              if (host) {
+                await addNeverSaveHost(host);
+                // Drop any already-queued captures for this host so the prompt
+                // can't reappear after the user opted out.
+                for (let i = capturedLogins.length - 1; i >= 0; i--) {
+                  if (hostMatches(safeHostname(capturedLogins[i]!.url), host)) {
+                    capturedLogins.splice(i, 1);
+                  }
+                }
+                await syncBadge();
+              }
+              sendResponse({ ok: true, host });
+              return;
+            }
+
+            case "listNeverSaveHosts": {
+              sendResponse({ ok: true, hosts: await getNeverSaveHosts() });
+              return;
+            }
+
+            case "removeNeverSaveHost": {
+              await removeNeverSaveHost(String(message.host ?? ""));
+              sendResponse({ ok: true, hosts: await getNeverSaveHosts() });
               return;
             }
 

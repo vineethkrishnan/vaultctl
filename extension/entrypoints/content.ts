@@ -890,6 +890,8 @@ export default defineContentScript({
       successMessage: string;
       onAction: () => Promise<{ ok?: boolean; error?: string }>;
       onDismiss?: () => void;
+      neverLabel?: string;
+      onNever?: () => void;
     }) {
       document.getElementById("vaultctl-toast-host")?.remove();
       const host = document.createElement("div");
@@ -929,6 +931,16 @@ export default defineContentScript({
       action.style.cssText = `all:unset;cursor:pointer;padding:5px 12px;border-radius:6px;background:${BRAND};color:#042f2a;font-weight:600;font-size:12px;`;
       actions.append(dismiss, action);
       card.append(row, actions);
+      // Optional tertiary opt-out: stop offering to save on this site at all.
+      let never: HTMLButtonElement | null = null;
+      if (opts.onNever && opts.neverLabel) {
+        never = document.createElement("button");
+        never.type = "button";
+        never.textContent = opts.neverLabel;
+        never.style.cssText =
+          "all:unset;cursor:pointer;display:block;margin-top:6px;color:#71717a;font-size:11px;";
+        card.append(never);
+      }
       root.appendChild(card);
       document.body.appendChild(host);
       requestAnimationFrame(() => {
@@ -949,6 +961,7 @@ export default defineContentScript({
         actions.style.maxHeight = "0";
         actions.style.opacity = "0";
         actions.style.marginTop = "0";
+        if (never) never.style.display = "none";
       };
 
       // Smoothly morph the same toast into a success / error state instead of
@@ -1013,6 +1026,10 @@ export default defineContentScript({
         opts.onDismiss?.();
         close();
       });
+      never?.addEventListener("click", () => {
+        opts.onNever?.();
+        close();
+      });
       action.addEventListener("click", () => void submit());
       // Auto-timeout closes the toast WITHOUT resolving the capture, so a submit
       // that redirected mid-prompt can still re-open it on the page the user
@@ -1033,6 +1050,10 @@ export default defineContentScript({
       username: string;
       title?: string;
     }) {
+      const neverSave = () => {
+        void bg({ type: "markCaptureRead", id: prompt.id });
+        void bg({ type: "neverSaveHost" });
+      };
       if (prompt.kind === "credit_card" || prompt.kind === "identity") {
         const isCard = prompt.kind === "credit_card";
         const what = prompt.title || (isCard ? "this card" : "this address");
@@ -1048,6 +1069,8 @@ export default defineContentScript({
               id: prompt.id,
             }),
           onDismiss: () => void bg({ type: "markCaptureRead", id: prompt.id }),
+          neverLabel: "Never for this site",
+          onNever: neverSave,
         });
         return;
       }
@@ -1067,6 +1090,8 @@ export default defineContentScript({
             id: prompt.id,
           }),
         onDismiss: () => void bg({ type: "markCaptureRead", id: prompt.id }),
+        neverLabel: "Never for this site",
+        onNever: neverSave,
       });
     }
 

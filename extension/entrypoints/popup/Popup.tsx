@@ -31,6 +31,7 @@ import {
   ChevronDown,
   CreditCard,
   User,
+  Ban,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import {
@@ -1760,6 +1761,54 @@ function BiometricSetting({
   );
 }
 
+// Lists the hosts the user has opted out of save prompts for, with a control to
+// re-enable each. Hidden entirely when the list is empty so it never clutters
+// settings until the user has actually opted a site out.
+function NeverSaveCard() {
+  const { t } = useTranslation();
+  const [hosts, setHosts] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    bg<{ hosts?: string[] }>({ type: "listNeverSaveHosts" }).then((res) => {
+      if (!cancelled) setHosts(res?.hosts ?? []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function remove(host: string) {
+    setHosts((prev) => prev.filter((h) => h !== host));
+    void bg({ type: "removeNeverSaveHost", host });
+  }
+
+  if (hosts.length === 0) return null;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card/50 p-3">
+      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <Ban className="h-3.5 w-3.5" />
+        {t("settings.neverSave")}
+      </div>
+      <p className="text-[11px] text-muted-foreground">{t("settings.neverSaveHint")}</p>
+      <ul className="space-y-1">
+        {hosts.map((host) => (
+          <li key={host} className="flex items-center gap-2">
+            <span className="flex-1 truncate text-xs">{host}</span>
+            <button
+              onClick={() => remove(host)}
+              className="shrink-0 rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+            >
+              {t("settings.neverSaveAllow")}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SettingsTab({
   serverUrl,
   onLock,
@@ -1918,6 +1967,8 @@ function SettingsTab({
           </label>
         </div>
       )}
+
+      <NeverSaveCard />
 
       <BiometricSetting
         serverUrl={serverUrl}
