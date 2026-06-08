@@ -1591,6 +1591,7 @@ interface ExtSettings {
   fieldIcon: boolean;
   savePrompt: boolean;
   toastMs: number;
+  relaxedMatch: boolean;
   suggestPassword: boolean;
   updateNotify: UpdateNotifyLevel;
   genMode: GenMode;
@@ -1886,6 +1887,12 @@ function SettingsTab({
             hint={t("settings.suggestPasswordHint")}
             checked={settings.suggestPassword}
             onChange={(v) => update({ suggestPassword: v })}
+          />
+          <Toggle
+            label={t("settings.relaxedMatch")}
+            hint={t("settings.relaxedMatchHint")}
+            checked={settings.relaxedMatch}
+            onChange={(v) => update({ relaxedMatch: v })}
           />
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">

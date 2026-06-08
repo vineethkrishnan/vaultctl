@@ -31,7 +31,7 @@ import {
   AlgID,
 } from "@shared/crypto";
 import { generateSecret, type GenMode } from "../utils/password-gen";
-import { safeHost, safeHostname, hostMatches } from "../utils/host";
+import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
 // ===========================================================================
@@ -328,6 +328,7 @@ interface ExtSettings {
   fieldIcon: boolean; // show the inline vaultctl icon inside login fields
   savePrompt: boolean; // offer to save/update after a login submit
   toastMs: number; // auto-dismiss timeout for toasts (ms)
+  relaxedMatch: boolean; // match credentials by registrable domain, not exact host
   suggestPassword: boolean; // suggest a strong password on new-password fields
   updateNotify: UpdateNotifyLevel; // which update severities raise the alert
   genMode: GenMode; // "password" (random charset) or "passphrase" (memorable)
@@ -350,6 +351,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   fieldIcon: true,
   savePrompt: true,
   toastMs: 8000,
+  relaxedMatch: false,
   suggestPassword: true,
   updateNotify: "all",
   genMode: "password",
@@ -654,7 +656,11 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
 
 async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
   const host = safeHost(origin);
-  return (await loadLoginEntries()).filter((e) => hostMatches(e.host, host));
+  const { relaxedMatch } = await getSettings();
+  const entries = await loadLoginEntries();
+  return entries.filter((e) =>
+    relaxedMatch ? domainMatches(e.host, host) : hostMatches(e.host, host),
+  );
 }
 
 // ===========================================================================
@@ -1665,7 +1671,11 @@ export default defineBackground(() => {
               // never pull a password for a different origin.
               if (isFromContentScript(sender)) {
                 const tabHost = safeHost(sender.tab?.url ?? "");
-                if (!hostMatches(tabHost, entry.host)) {
+                const { relaxedMatch } = await getSettings();
+                const ok = relaxedMatch
+                  ? domainMatches(tabHost, entry.host)
+                  : hostMatches(tabHost, entry.host);
+                if (!ok) {
                   sendResponse({ ok: false, error: "origin mismatch" });
                   return;
                 }
