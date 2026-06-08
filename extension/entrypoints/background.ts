@@ -32,6 +32,7 @@ import {
 } from "@shared/crypto";
 import { generateSecret, type GenMode } from "../utils/password-gen";
 import { parseTotp, generateTotp, secondsRemaining } from "@shared/totp";
+import { breachCount } from "../utils/password-health";
 import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
@@ -217,6 +218,7 @@ function doLock(): void {
   vaultMeta.clear();
   genHistory = [];
   pendingUsernames.clear();
+  breachCache.clear();
   unlocked = false;
   void doLockAsync();
   if (autoLockTimer) {
@@ -666,6 +668,21 @@ async function matchesForOrigin(origin: string): Promise<LoginEntry[]> {
   return entries.filter((e) =>
     relaxedMatch ? domainMatches(e.host, host) : hostMatches(e.host, host),
   );
+}
+
+// HIBP breach results cached by password so the picker's compromised flag
+// doesn't re-hit the network on every match. Cleared on lock so no plaintext
+// password lingers as a cache key longer than the session.
+const breachCache = new Map<string, { breached: boolean; at: number }>();
+const BREACH_CACHE_MS = 60 * 60 * 1000;
+
+async function isPasswordBreached(password: string): Promise<boolean> {
+  if (!password) return false;
+  const cached = breachCache.get(password);
+  if (cached && Date.now() - cached.at < BREACH_CACHE_MS) return cached.breached;
+  const breached = (await breachCount(password)) > 0;
+  breachCache.set(password, { breached, at: Date.now() });
+  return breached;
 }
 
 // ===========================================================================
@@ -1666,6 +1683,12 @@ export default defineBackground(() => {
                 return;
               }
               const matches = await matchesForOrigin(String(message.origin ?? ""));
+              // When the opt-in breach check is on, flag which matches use a
+              // compromised password so the picker can warn (cached; no secret
+              // leaves the device beyond the k-anonymous HIBP prefix).
+              const compromisedFlags = settings.breachCheck
+                ? await Promise.all(matches.map((m) => isPasswordBreached(m.password)))
+                : matches.map(() => false);
               sendResponse({
                 ok: true,
                 settings,
@@ -1679,7 +1702,7 @@ export default defineBackground(() => {
                 // Never ship the password itself, nor its real length: the page
                 // would learn how long the stored secret is. The picker shows a
                 // fixed-width dot mask, so every row carries the same constant.
-                matches: matches.map((m) => ({
+                matches: matches.map((m, index) => ({
                   vaultId: m.vaultId,
                   itemId: m.itemId,
                   name: m.name,
@@ -1689,6 +1712,7 @@ export default defineBackground(() => {
                   // Flag (never the secret) so the page can offer to fill a 2FA
                   // code when this login carries a TOTP secret.
                   hasTotp: m.totp.trim().length > 0,
+                  compromised: compromisedFlags[index] ?? false,
                 })),
               });
               return;
