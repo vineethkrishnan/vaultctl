@@ -597,6 +597,7 @@ export default defineContentScript({
         repositionFieldIcons();
         repositionItemFieldIcons();
         repositionOtpFieldIcons();
+        repositionSuggestIcons();
       });
     }
     // Scrolling moves the anchor, so close the (fixed-positioned) picker and
@@ -877,6 +878,71 @@ export default defineContentScript({
         else if (isIdentityKind(kind) && hasIdentities) decorateItemField(input, kind);
       }
       repositionItemFieldIcons();
+    }
+
+    // ── Suggest-password field emblem ─────────────────────────────────────
+    // GPM surfaces "Suggest strong password" as a persistent entry in the field
+    // dropdown, not only on focus. Mirror that: decorate new-password fields on
+    // signup forms with the emblem so the suggestion is reachable by click too.
+    const suggestIcons = new Map<HTMLInputElement, HTMLButtonElement>();
+
+    function clearSuggestIcons() {
+      for (const btn of suggestIcons.values()) removeIconHost(btn);
+      suggestIcons.clear();
+    }
+
+    function repositionSuggestIcons() {
+      for (const [input, btn] of suggestIcons) {
+        if (!input.isConnected) {
+          removeIconHost(btn);
+          suggestIcons.delete(input);
+          continue;
+        }
+        positionFieldIcon(input, btn);
+      }
+    }
+
+    function decorateSuggestField(input: HTMLInputElement) {
+      if (suggestIcons.has(input)) return;
+      const host = document.createElement("div");
+      host.className = "vaultctl-field-icon";
+      host.style.cssText =
+        "all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;";
+      const root = host.attachShadow({ mode: "closed" });
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Suggest a strong password");
+      btn.innerHTML = emblemSVG();
+      btn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const form = input.closest("form") as HTMLFormElement | null;
+        if (!form) return;
+        if (document.getElementById("vaultctl-suggest-host")) removeSuggestion();
+        else void showSuggestion(input, form);
+      });
+      root.appendChild(btn);
+      document.body.appendChild(host);
+      suggestIcons.set(input, btn);
+      positionFieldIcon(input, btn);
+    }
+
+    // Decorate visible new-password fields when the suggestion is enabled and
+    // there's no stored match (a fresh signup, not a sign-in).
+    function decorateSuggestFields() {
+      if (!settings.fieldIcon || !settings.suggestPassword || matches.length > 0) {
+        clearSuggestIcons();
+        return;
+      }
+      for (const node of document.querySelectorAll('input[type="password"]')) {
+        const input = node as HTMLInputElement;
+        const form = input.closest("form") as HTMLFormElement | null;
+        if (form && isVisible(input) && isNewPasswordField(input, form)) {
+          decorateSuggestField(input);
+        }
+      }
+      repositionSuggestIcons();
     }
 
     function openItemPicker(anchor: HTMLInputElement, kind: FieldKind) {
@@ -1546,6 +1612,7 @@ export default defineContentScript({
       matches = res?.matches ?? [];
       decorateLoginFields();
       decorateOtpFields();
+      decorateSuggestFields();
       // Only auto-fill on load when the page is unambiguous: exactly one visible
       // login form and exactly one matching credential. Anything else (multiple
       // forms, multiple matches) waits for the user to pick from the icon/picker,
@@ -1650,6 +1717,7 @@ export default defineContentScript({
       decorateLoginFields();
       decorateItemFields();
       decorateOtpFields();
+      decorateSuggestFields();
       if (window.location.href !== lastHref) {
         lastHref = window.location.href;
         void maybeReopenSavePrompt();
@@ -1664,7 +1732,9 @@ export default defineContentScript({
       clearFieldIcons();
       clearItemFieldIcons();
       clearOtpFieldIcons();
+      clearSuggestIcons();
       removePicker();
+      removeSuggestion();
     });
 
     if (findLoginForms().length > 0) {
