@@ -35,6 +35,12 @@ import {
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import {
+  parseTotp,
+  generateTotp,
+  secondsRemaining,
+  type TotpParams,
+} from "@shared/totp";
+import {
   generateSecret,
   GEN_MAX_LENGTH,
   GEN_WORDS_MIN,
@@ -89,6 +95,7 @@ interface DecryptedItem {
   username: string;
   password: string;
   uri: string;
+  totp: string;
   // For credit_card / identity rows: a masked subtitle (card last4 / city). The
   // full number and cvv are never decrypted into the list.
   subtitle: string;
@@ -247,6 +254,7 @@ export function Popup() {
         let username = "";
         let password = "";
         let uri = "";
+        let totp = "";
         let subtitle = "";
         try {
           name = decoder.decode(unpad(await decryptForVault(vaultId, item.encryptedName)));
@@ -257,10 +265,11 @@ export function Popup() {
           try {
             const data = JSON.parse(
               decoder.decode(await decryptForVault(vaultId, item.encryptedData)),
-            ) as { username?: string; password?: string; uri?: string };
+            ) as { username?: string; password?: string; uri?: string; totp?: string };
             username = data.username ?? "";
             password = data.password ?? "";
             uri = data.uri ?? "";
+            totp = data.totp ?? "";
           } catch {
             // leave blank if data can't be read
           }
@@ -289,6 +298,7 @@ export function Popup() {
           username,
           password,
           uri,
+          totp,
           subtitle,
           encryptedData: item.encryptedData,
         });
@@ -950,6 +960,9 @@ export function Popup() {
                   <div className="text-xs text-muted-foreground truncate">
                     {item.username || item.subtitle}
                   </div>
+                )}
+                {item.totp && (
+                  <TotpChip secret={item.totp} onCopied={() => flashCopied(t("vault.totpCode"))} />
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100">
@@ -2248,6 +2261,64 @@ function Toggle({
       </span>
     </button>
   );
+}
+
+// A live 2FA code derived locally from the item's stored secret (the secret
+// never leaves the popup). Re-derives each second and on period rollover, with
+// a copy button. Renders nothing if the stored value isn't a valid secret.
+function TotpChip({ secret, onCopied }: { secret: string; onCopied: () => void }) {
+  const params = useTotpParams(secret);
+  const [code, setCode] = useState("");
+  const [remaining, setRemaining] = useState(0);
+
+  useEffect(() => {
+    if (!params) return;
+    let cancelled = false;
+    const tick = async () => {
+      const next = await generateTotp(params);
+      if (!cancelled) {
+        setCode(next);
+        setRemaining(secondsRemaining(params.period));
+      }
+    };
+    void tick();
+    const timer = setInterval(() => void tick(), 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [params]);
+
+  if (!params || !code) return null;
+  const grouped = code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        void copySecret(code).then((ok) => ok && onCopied());
+      }}
+      className="mt-0.5 flex items-center gap-1.5 text-[11px] text-brand hover:opacity-80"
+      title={`2FA · expires in ${remaining}s`}
+    >
+      <KeyRound className="h-3 w-3" />
+      <span className="font-mono tracking-wide">{grouped}</span>
+      <span className="text-muted-foreground">{remaining}s</span>
+    </button>
+  );
+}
+
+// Parse the stored secret once per value; invalid secrets yield null so the chip
+// renders nothing rather than throwing.
+function useTotpParams(secret: string): TotpParams | null {
+  const [params, setParams] = useState<TotpParams | null>(null);
+  useEffect(() => {
+    try {
+      setParams(parseTotp(secret));
+    } catch {
+      setParams(null);
+    }
+  }, [secret]);
+  return params;
 }
 
 function ItemTypeIcon({ itemType }: { itemType: string }) {

@@ -37,6 +37,7 @@ interface CredMatch {
   username: string;
   vaultName?: string;
   passwordLength?: number;
+  hasTotp?: boolean;
 }
 
 interface CardFillItem {
@@ -384,12 +385,147 @@ export default defineContentScript({
       showPicker();
     }
 
+    // ── TOTP / 2FA code fill ──────────────────────────────────────────────
+    // When a host-matched login carries a TOTP secret, decorate the page's
+    // one-time-code field with the emblem; clicking (or focusing) it opens a
+    // picker that shows the live code and fills it. The secret never reaches the
+    // page - only the short-lived 6-digit code, fetched per click.
+    const otpFieldIcons = new Map<HTMLInputElement, HTMLButtonElement>();
+
+    function totpMatches(): CredMatch[] {
+      return matches.filter((m) => m.hasTotp);
+    }
+
+    // A code-entry input: a one-time-code field that is not itself a password
+    // field (those are handled by the credential picker).
+    function isOtpInput(input: HTMLInputElement): boolean {
+      if (input.type === "password") return false;
+      if (!["text", "tel", "number", ""].includes(input.type)) return false;
+      return isOneTimeCodeField(input);
+    }
+
+    function clearOtpFieldIcons() {
+      for (const btn of otpFieldIcons.values()) removeIconHost(btn);
+      otpFieldIcons.clear();
+    }
+
+    function repositionOtpFieldIcons() {
+      for (const [input, btn] of otpFieldIcons) {
+        if (!input.isConnected) {
+          removeIconHost(btn);
+          otpFieldIcons.delete(input);
+          continue;
+        }
+        positionFieldIcon(input, btn);
+      }
+    }
+
+    function decorateOtpField(input: HTMLInputElement) {
+      if (otpFieldIcons.has(input)) return;
+      const host = document.createElement("div");
+      host.className = "vaultctl-field-icon";
+      host.style.cssText =
+        "all:initial;position:fixed;top:0;left:0;width:0;height:0;z-index:2147483646;";
+      const root = host.attachShadow({ mode: "closed" });
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Fill 2FA code from vaultctl");
+      btn.innerHTML = emblemSVG();
+      btn.style.cssText = `all:unset;position:fixed;cursor:pointer;width:22px;height:22px;border-radius:6px;background:${BRAND};display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);`;
+      btn.addEventListener("mousedown", (e) => e.preventDefault());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (document.getElementById("vaultctl-picker-host")) removePicker();
+        else openTotpPicker(input);
+      });
+      root.appendChild(btn);
+      document.body.appendChild(host);
+      otpFieldIcons.set(input, btn);
+      positionFieldIcon(input, btn);
+    }
+
+    function decorateOtpFields() {
+      if (!settings.fieldIcon || totpMatches().length === 0) {
+        clearOtpFieldIcons();
+        return;
+      }
+      for (const node of document.querySelectorAll("input")) {
+        const input = node as HTMLInputElement;
+        if (isVisible(input) && isOtpInput(input)) decorateOtpField(input);
+      }
+      repositionOtpFieldIcons();
+    }
+
+    function openTotpPicker(anchor: HTMLInputElement) {
+      const rows = totpMatches();
+      if (rows.length === 0) return;
+      removePicker();
+      const host = document.createElement("div");
+      host.id = "vaultctl-picker-host";
+      const root = host.attachShadow({ mode: "closed" });
+      const r = anchor.getBoundingClientRect();
+      const gap = 4;
+      const menu = document.createElement("div");
+      menu.style.cssText = `position:fixed;left:${r.left}px;top:${r.bottom + gap}px;min-width:${Math.max(220, r.width)}px;max-width:min(360px,90vw);background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.4);font:13px system-ui,sans-serif;z-index:2147483647;overflow:hidden;`;
+      for (const match of rows) {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.style.cssText =
+          "all:unset;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:8px 12px;cursor:pointer;";
+        const glyph = pickerGlyph(
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+        );
+        const text = document.createElement("span");
+        text.style.cssText =
+          "display:flex;flex-direction:column;min-width:0;line-height:1.3;flex:1;";
+        const primary = document.createElement("span");
+        primary.textContent = match.username || match.name || "2FA code";
+        primary.style.cssText =
+          "font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        const secondary = document.createElement("span");
+        secondary.textContent = "Loading code...";
+        secondary.style.cssText =
+          "font-size:13px;letter-spacing:2px;color:#2dd4bf;font-family:ui-monospace,monospace;";
+        text.append(primary, secondary);
+        row.append(glyph, text);
+        row.addEventListener("mouseenter", () => (row.style.background = "#1f1f23"));
+        row.addEventListener("mouseleave", () => (row.style.background = "transparent"));
+        // Fetch the current code to show in the row; the click fills it.
+        void bg<{ ok?: boolean; code?: string; secondsRemaining?: number }>({
+          type: "generateTotp",
+          vaultId: match.vaultId,
+          itemId: match.itemId,
+        }).then((res) => {
+          if (res?.ok && res.code) {
+            secondary.textContent = `${res.code}  ·  ${res.secondsRemaining ?? 0}s`;
+            row.dataset.code = res.code;
+          } else {
+            secondary.textContent = "Code unavailable";
+          }
+        });
+        row.addEventListener("click", (e) => {
+          if (!e.isTrusted) return;
+          const code = row.dataset.code;
+          if (code) setInputValue(anchor, code);
+          removePicker();
+        });
+        menu.appendChild(row);
+      }
+      root.appendChild(menu);
+      document.body.appendChild(host);
+      setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+    }
+
     // Open the picker as soon as a decorated field gains focus.
     document.addEventListener(
       "focusin",
       (e) => {
         const target = e.target;
         if (!(target instanceof HTMLInputElement)) return;
+        if (otpFieldIcons.has(target)) {
+          openTotpPicker(target);
+          return;
+        }
         if (!fieldIcons.has(target)) return;
         openPicker(target);
       },
@@ -410,6 +546,7 @@ export default defineContentScript({
         repositionScheduled = false;
         repositionFieldIcons();
         repositionItemFieldIcons();
+        repositionOtpFieldIcons();
       });
     }
     // Scrolling moves the anchor, so close the (fixed-positioned) picker and
@@ -1287,6 +1424,7 @@ export default defineContentScript({
       if (res?.settings) settings = res.settings;
       matches = res?.matches ?? [];
       decorateLoginFields();
+      decorateOtpFields();
       // Only auto-fill on load when the page is unambiguous: exactly one visible
       // login form and exactly one matching credential. Anything else (multiple
       // forms, multiple matches) waits for the user to pick from the icon/picker,
@@ -1384,6 +1522,7 @@ export default defineContentScript({
       attachSubmitListeners();
       decorateLoginFields();
       decorateItemFields();
+      decorateOtpFields();
       if (window.location.href !== lastHref) {
         lastHref = window.location.href;
         void maybeReopenSavePrompt();
@@ -1397,6 +1536,7 @@ export default defineContentScript({
       mutationObserver.disconnect();
       clearFieldIcons();
       clearItemFieldIcons();
+      clearOtpFieldIcons();
       removePicker();
     });
 

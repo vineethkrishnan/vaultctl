@@ -49,6 +49,7 @@
     "noMatches": "No matches",
     "copyUsername": "Copy username",
     "copyPassword": "Copy password",
+    "totpCode": "2FA code",
     "openSite": "Open site",
     "noVaults": "No vaults on this account yet - create one in the web vault.",
     "switchVault": "Switch vault",

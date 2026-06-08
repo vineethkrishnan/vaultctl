@@ -31,6 +31,7 @@ import {
   AlgID,
 } from "@shared/crypto";
 import { generateSecret, type GenMode } from "../utils/password-gen";
+import { parseTotp, generateTotp, secondsRemaining } from "@shared/totp";
 import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
@@ -595,6 +596,7 @@ interface LoginEntry {
   password: string;
   uri: string;
   host: string;
+  totp: string;
 }
 
 let itemsCache: { at: number; entries: LoginEntry[] } | null = null;
@@ -644,6 +646,7 @@ async function loadLoginEntries(): Promise<LoginEntry[]> {
           password: String(data.password ?? ""),
           uri,
           host: safeHost(uri),
+          totp: String(data.totp ?? ""),
         });
       } catch {
         // skip items that fail to decrypt or parse
@@ -971,6 +974,9 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "getPendingPrompt",
   "matchCredentials",
   "fillCredential",
+  // Generate a 2FA code for a host-matched login. Returns only the short-lived
+  // code (never the TOTP secret), gated by the same origin check as fillCredential.
+  "generateTotp",
   "saveDecision",
   "rememberUsername",
   "getRememberedUsername",
@@ -1606,6 +1612,9 @@ export default defineBackground(() => {
                   username: m.username,
                   vaultName: vaultMeta.get(m.vaultId)?.name ?? "",
                   passwordLength: MASK_DOT_COUNT,
+                  // Flag (never the secret) so the page can offer to fill a 2FA
+                  // code when this login carries a TOTP secret.
+                  hasTotp: m.totp.trim().length > 0,
                 })),
               });
               return;
@@ -1685,6 +1694,51 @@ export default defineBackground(() => {
                 username: entry.username,
                 password: entry.password,
               });
+              return;
+            }
+
+            case "generateTotp": {
+              if (!unlocked) {
+                sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
+              const vaultId = String(message.vaultId ?? "");
+              const itemId = String(message.itemId ?? "");
+              const entry = (await loadLoginEntries()).find(
+                (e) => e.vaultId === vaultId && e.itemId === itemId,
+              );
+              if (!entry || !entry.totp.trim()) {
+                sendResponse({ ok: false, error: "no totp" });
+                return;
+              }
+              // Same origin guard as fillCredential: a content script can only
+              // pull a code for a login whose host matches the requesting tab.
+              if (isFromContentScript(sender)) {
+                const tabHost = safeHost(sender.tab?.url ?? "");
+                const { relaxedMatch } = await getSettings();
+                const ok = relaxedMatch
+                  ? domainMatches(tabHost, entry.host)
+                  : hostMatches(tabHost, entry.host);
+                if (!ok) {
+                  sendResponse({ ok: false, error: "origin mismatch" });
+                  return;
+                }
+              }
+              try {
+                const params = parseTotp(entry.totp);
+                const code = await generateTotp(params);
+                sendResponse({
+                  ok: true,
+                  code,
+                  period: params.period,
+                  secondsRemaining: secondsRemaining(params.period),
+                });
+              } catch (err) {
+                sendResponse({
+                  ok: false,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              }
               return;
             }
 
