@@ -109,7 +109,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	r.Use(middleware.RealIP(deps.TrustedProxies))
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(60 * time.Second))
-	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.SecurityHeaders(deps.HIBPEnabled))
 	r.Use(middleware.CORS(deps.CORSAllowedOrigins))
 
 	requireAuth := middleware.RequireJWTOrAPIKey(deps.Tokens, deps.APIKeyValidator)

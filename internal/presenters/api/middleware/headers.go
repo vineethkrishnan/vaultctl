@@ -10,12 +10,22 @@ import (
 // SecurityHeaders emits the committed CSP + companion headers from
 // architecture §6.4 (M8 finding). CSP is tuned for hash-wasm Argon2id
 // (`wasm-unsafe-eval` allowance).
-func SecurityHeaders() func(http.Handler) http.Handler {
-	const csp = "default-src 'self'; " +
+//
+// hibpEnabled widens connect-src to the Have I Been Pwned range API: the opt-in
+// breach check fetches it directly from the browser (the server is never
+// involved, by design), so the origin must be allowed for the fetch to clear
+// CSP. It is only opened when the operator turned HIBP on, so deployments that
+// haven't opted in keep connect-src locked to 'self'.
+func SecurityHeaders(hibpEnabled bool) func(http.Handler) http.Handler {
+	connectSrc := "connect-src 'self'"
+	if hibpEnabled {
+		connectSrc = "connect-src 'self' https://api.pwnedpasswords.com"
+	}
+	csp := "default-src 'self'; " +
 		"script-src 'self' 'wasm-unsafe-eval'; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' data:; " +
-		"connect-src 'self'; " +
+		connectSrc + "; " +
 		"frame-ancestors 'none'; " +
 		"base-uri 'self'; " +
 		"form-action 'self'"

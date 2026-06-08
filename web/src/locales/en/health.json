@@ -37,7 +37,7 @@
   },
   "breach": {
     "title": "Check for breaches",
-    "description": "See whether any of your passwords appear in known data breaches, using HaveIBeenPwned's k-anonymity range API.",
+    "description": "See whether any of your passwords appear in known data breaches, using Have I Been Pwned's k-anonymity range API.",
     "check": "Check for breaches",
     "checking": "Checking passwords against known breaches...",
     "error": "The breach check could not be completed. Please try again.",
