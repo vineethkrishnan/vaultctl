@@ -149,6 +149,8 @@
     "savePromptHint": "Prompt after a login submit",
     "suggestPassword": "Suggest strong passwords",
     "suggestPasswordHint": "Offer a generated password on signup fields",
+    "relaxedMatch": "Match across subdomains",
+    "relaxedMatchHint": "Fill logins on any subdomain of the same site (e.g. accounts. and mail.)",
     "promptTimeout": "Prompt timeout",
     "promptTimeoutHint": "How long the save/update prompt stays before it fades",
     "autoLock": "Auto-lock",

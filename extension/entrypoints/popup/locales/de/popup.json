@@ -150,6 +150,8 @@
     "savePromptHint": "Nachfragen nach dem Absenden einer Anmeldung",
     "suggestPassword": "Starke Passwörter vorschlagen",
     "suggestPasswordHint": "Ein generiertes Passwort in Registrierungsfeldern anbieten",
+    "relaxedMatch": "Über Subdomains hinweg",
+    "relaxedMatchHint": "Logins auf jeder Subdomain derselben Seite ausfüllen (z. B. accounts. und mail.)",
     "promptTimeout": "Anzeigedauer der Nachfrage",
     "promptTimeoutHint": "Wie lange die Speichern-/Aktualisieren-Nachfrage angezeigt bleibt, bevor sie ausgeblendet wird",
     "autoLock": "Automatische Sperre",
