@@ -65,6 +65,16 @@
   "status": {
     "copied": "Copied {{label}} - clipboard clears in 30s"
   },
+  "checkup": {
+    "title": "Password checkup",
+    "weak": "{{count}} weak",
+    "reused": "{{count}} reused",
+    "compromised": "{{count}} compromised",
+    "weakGroup": "Weak",
+    "reusedGroup": "Reused",
+    "compromisedGroup": "Compromised",
+    "openCenter": "Open security center"
+  },
   "tabs": {
     "vault": "Vault",
     "generator": "Generator",
@@ -155,6 +165,8 @@
     "suggestPasswordHint": "Offer a generated password on signup fields",
     "relaxedMatch": "Match across subdomains",
     "relaxedMatchHint": "Fill logins on any subdomain of the same site (e.g. accounts. and mail.)",
+    "breachCheck": "Check for compromised passwords",
+    "breachCheckHint": "Look up passwords against Have I Been Pwned (only a partial hash is sent)",
     "promptTimeout": "Prompt timeout",
     "promptTimeoutHint": "How long the save/update prompt stays before it fades",
     "autoLock": "Auto-lock",

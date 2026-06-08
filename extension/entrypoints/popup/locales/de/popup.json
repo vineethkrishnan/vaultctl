@@ -66,6 +66,16 @@
   "status": {
     "copied": "{{label}} kopiert - Zwischenablage wird in 30s geleert"
   },
+  "checkup": {
+    "title": "Passwort-Check",
+    "weak": "{{count}} schwach",
+    "reused": "{{count}} wiederverwendet",
+    "compromised": "{{count}} kompromittiert",
+    "weakGroup": "Schwach",
+    "reusedGroup": "Wiederverwendet",
+    "compromisedGroup": "Kompromittiert",
+    "openCenter": "Sicherheitscenter öffnen"
+  },
   "tabs": {
     "vault": "Tresor",
     "generator": "Generator",
@@ -156,6 +166,8 @@
     "suggestPasswordHint": "Ein generiertes Passwort in Registrierungsfeldern anbieten",
     "relaxedMatch": "Über Subdomains hinweg",
     "relaxedMatchHint": "Logins auf jeder Subdomain derselben Seite ausfüllen (z. B. accounts. und mail.)",
+    "breachCheck": "Auf kompromittierte Passwörter prüfen",
+    "breachCheckHint": "Passwörter über Have I Been Pwned prüfen (nur ein Teil-Hash wird gesendet)",
     "promptTimeout": "Anzeigedauer der Nachfrage",
     "promptTimeoutHint": "Wie lange die Speichern-/Aktualisieren-Nachfrage angezeigt bleibt, bevor sie ausgeblendet wird",
     "autoLock": "Automatische Sperre",

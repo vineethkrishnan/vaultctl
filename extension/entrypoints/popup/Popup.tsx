@@ -33,7 +33,14 @@ import {
   User,
   Ban,
   Download,
+  ShieldAlert,
+  ChevronRight,
 } from "lucide-react";
+import {
+  isWeakPassword,
+  reusedPasswords,
+  breachCount,
+} from "../../utils/password-health";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import {
   parseTotp,
@@ -234,6 +241,7 @@ export function Popup() {
   const [biometricBusy, setBiometricBusy] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateNotify, setUpdateNotify] = useState<UpdateNotifyLevel>("all");
+  const [breachCheck, setBreachCheck] = useState(false);
 
   const loadItems = useCallback(
     async (vaultId: string) => {
@@ -412,6 +420,7 @@ export function Popup() {
       const stored = await bg<{ settings?: ExtSettings }>({ type: "getSettings" });
       if (!cancelled && stored?.settings) {
         setUpdateNotify(stored.settings.updateNotify ?? "all");
+        setBreachCheck(stored.settings.breachCheck ?? false);
       }
       const res = await bg<UpdateInfo>({ type: "checkUpdate" });
       if (!cancelled && res?.ok) setUpdateInfo(res);
@@ -924,6 +933,8 @@ export function Popup() {
       <div className="flex-1 overflow-y-auto">
         {tab === "vault" && (
           <div className="animate-fade-in">
+
+      <PasswordCheckup items={items} breachCheck={breachCheck} serverUrl={serverUrl} />
 
       {/* Search (sticky so it stays visible while the list scrolls) */}
       <div className="sticky top-0 z-10 bg-background/95 px-3 py-2.5 backdrop-blur-sm">
@@ -1623,6 +1634,7 @@ interface ExtSettings {
   savePrompt: boolean;
   toastMs: number;
   relaxedMatch: boolean;
+  breachCheck: boolean;
   suggestPassword: boolean;
   updateNotify: UpdateNotifyLevel;
   genMode: GenMode;
@@ -1924,6 +1936,12 @@ function SettingsTab({
             hint={t("settings.relaxedMatchHint")}
             checked={settings.relaxedMatch}
             onChange={(v) => update({ relaxedMatch: v })}
+          />
+          <Toggle
+            label={t("settings.breachCheck")}
+            hint={t("settings.breachCheckHint")}
+            checked={settings.breachCheck}
+            onChange={(v) => update({ breachCheck: v })}
           />
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">
@@ -2344,6 +2362,124 @@ function useTotpParams(secret: string): TotpParams | null {
     }
   }, [secret]);
   return params;
+}
+
+// Password checkup: counts weak and reused passwords locally, and (when the
+// opt-in breach check is on) how many are compromised per HIBP. Renders a
+// collapsible card above the list only when there's something to report.
+function PasswordCheckup({
+  items,
+  breachCheck,
+  serverUrl,
+}: {
+  items: DecryptedItem[];
+  breachCheck: boolean;
+  serverUrl: string;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [compromised, setCompromised] = useState<Set<string> | null>(null);
+
+  const logins = items.filter((i) => i.itemType === "login" && i.password);
+  const reusedSet = reusedPasswords(logins.map((l) => l.password));
+  const weak = logins.filter((l) => isWeakPassword(l.password));
+  const reused = logins.filter((l) => reusedSet.has(l.password));
+
+  useEffect(() => {
+    if (!breachCheck) {
+      setCompromised(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const unique = [...new Set(logins.map((l) => l.password))];
+      const bad = new Set<string>();
+      for (const password of unique) {
+        if ((await breachCount(password)) > 0) bad.add(password);
+      }
+      if (!cancelled) setCompromised(bad);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Re-run when the set of items changes (load / vault switch) or the toggle flips.
+  }, [breachCheck, items]);
+
+  const compromisedItems = compromised
+    ? logins.filter((l) => compromised.has(l.password))
+    : [];
+  const total = weak.length + reused.length + compromisedItems.length;
+  if (logins.length === 0 || total === 0) return null;
+
+  const parts: string[] = [];
+  if (compromisedItems.length)
+    parts.push(t("checkup.compromised", { count: compromisedItems.length }));
+  if (reused.length) parts.push(t("checkup.reused", { count: reused.length }));
+  if (weak.length) parts.push(t("checkup.weak", { count: weak.length }));
+
+  return (
+    <div className="px-3 pt-2.5">
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center gap-2 text-left"
+        >
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-500">
+            <ShieldAlert className="h-3.5 w-3.5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold">{t("checkup.title")}</span>
+            <span className="block truncate text-[11px] text-muted-foreground">
+              {parts.join(" · ")}
+            </span>
+          </span>
+          <ChevronRight
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`}
+          />
+        </button>
+        {open && (
+          <div className="mt-2 space-y-1.5 border-t border-amber-500/20 pt-2">
+            {compromisedItems.length > 0 && (
+              <CheckupGroup label={t("checkup.compromisedGroup")} items={compromisedItems} />
+            )}
+            {reused.length > 0 && (
+              <CheckupGroup label={t("checkup.reusedGroup")} items={reused} />
+            )}
+            {weak.length > 0 && (
+              <CheckupGroup label={t("checkup.weakGroup")} items={weak} />
+            )}
+            {isSafeHttpUri(serverUrl) && (
+              <button
+                onClick={() =>
+                  window.open(
+                    `${serverUrl.replace(/\/$/, "")}/health`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+                className="mt-1 inline-flex items-center gap-1 text-[11px] text-brand hover:underline"
+              >
+                {t("checkup.openCenter")} <ExternalLink className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CheckupGroup({ label, items }: { label: string; items: DecryptedItem[] }) {
+  return (
+    <div>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="truncate text-[11px]">
+        {items.map((i) => i.name).join(", ")}
+      </div>
+    </div>
+  );
 }
 
 function ItemTypeIcon({ itemType }: { itemType: string }) {
