@@ -1256,16 +1256,21 @@ export default defineBackground(() => {
               const host = safeHostname(String(message.host ?? ""));
               const requestTabId = sender.tab?.id;
               const now = Date.now();
-              const candidate = [...capturedLogins]
-                .reverse()
-                .find(
-                  (c) =>
-                    !c.read &&
-                    (c.reprompts ?? 0) < REOPEN_MAX &&
-                    now - c.capturedAt <= PROMPT_REOPEN_MS &&
-                    safeHostname(c.url) === host &&
-                    (c.tabId === undefined || c.tabId === requestTabId),
-                );
+              const candidate = [...capturedLogins].reverse().find((c) => {
+                if (c.read) return false;
+                if ((c.reprompts ?? 0) >= REOPEN_MAX) return false;
+                if (now - c.capturedAt > PROMPT_REOPEN_MS) return false;
+                // A post-login redirect frequently lands on a different
+                // host/subdomain (accounts.x -> app.x, login.x -> x), so the
+                // capture's host won't equal the landing host. Re-open on the
+                // SAME submitting tab regardless of host - the user typed this
+                // credential in this tab seconds ago. Fall back to a host match
+                // for captures with no tab (restored after a worker restart).
+                const sameTab = c.tabId !== undefined && c.tabId === requestTabId;
+                const sameHost =
+                  c.tabId === undefined && hostMatches(safeHostname(c.url), host);
+                return sameTab || sameHost;
+              });
               if (!candidate) {
                 sendResponse({ ok: true });
                 return;
@@ -1304,7 +1309,9 @@ export default defineBackground(() => {
                   id: candidate.id,
                   kind: "login",
                   action: decision.action,
-                  host,
+                  // Label with the credential's own host, not the landing host,
+                  // since a redirect may have crossed to a different host.
+                  host: safeHostname(candidate.url),
                   username: candidate.username,
                   title: "",
                 },
