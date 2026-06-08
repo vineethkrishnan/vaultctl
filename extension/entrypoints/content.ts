@@ -1334,6 +1334,9 @@ export default defineContentScript({
     // user still gets a chance to save the credential they just entered.
     async function maybeReopenSavePrompt() {
       if (!settings.savePrompt) return;
+      // Don't stack a second toast over one already on screen (e.g. an SPA
+      // navigation re-check while the original prompt is still showing).
+      if (document.getElementById("vaultctl-toast-host")) return;
       const res = await bg<{
         ok?: boolean;
         prompt?: { id: string; action?: string; host: string; username: string };
@@ -1345,10 +1348,21 @@ export default defineContentScript({
     void refreshMatches().then(() => void maybeReopenSavePrompt());
     void refreshFillItems();
 
+    // A login submitted in a single-page app navigates by history (no full
+    // reload), so the boot-time re-open check never re-runs and the save toast
+    // shown on the login route can be lost when the app swaps in the next view.
+    // Content scripts run in an isolated world and can't intercept the page's
+    // own history calls, so detect the URL change off the DOM mutations the
+    // route change already produces and re-check for a pending save prompt.
+    let lastHref = window.location.href;
     const mutationObserver = new MutationObserver(() => {
       attachSubmitListeners();
       decorateLoginFields();
       decorateItemFields();
+      if (window.location.href !== lastHref) {
+        lastHref = window.location.href;
+        void maybeReopenSavePrompt();
+      }
     });
     mutationObserver.observe(document.documentElement, {
       childList: true,
