@@ -50,6 +50,7 @@
     "noMatches": "Keine Treffer",
     "copyUsername": "Benutzername kopieren",
     "copyPassword": "Passwort kopieren",
+    "totpCode": "2FA-Code",
     "openSite": "Website öffnen",
     "noVaults": "Auf diesem Konto gibt es noch keine Tresore - erstellen Sie einen im Web-Tresor.",
     "switchVault": "Tresor wechseln",

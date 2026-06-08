@@ -13,6 +13,7 @@
       "~~/*": ["../*"],
       "@shared/crypto": ["../web/src/shared/crypto/index.ts"],
       "@shared/crypto/*": ["../web/src/shared/crypto/*"],
+      "@shared/totp": ["../web/src/shared/totp/totp.ts"],
       "hash-wasm": ["./node_modules/hash-wasm/dist/lib/index.d.ts"]
     }
   },
@@ -23,6 +24,7 @@
     "./assets/**/*",
     "./wxt.config.ts",
     "./.wxt/wxt.d.ts",
+    "../web/src/shared/totp/totp.ts",
     "../web/src/shared/crypto/aes-gcm.ts",
     "../web/src/shared/crypto/aes-kw.ts",
     "../web/src/shared/crypto/algorithm.ts",

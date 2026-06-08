@@ -9,6 +9,9 @@ import tailwindcss from "@tailwindcss/vite";
 // The extension reuses the M6 TS crypto primitives rather than duplicating them.
 const thisDir = dirname(fileURLToPath(import.meta.url));
 const sharedCryptoDir = resolve(thisDir, "../web/src/shared/crypto");
+// The RFC-6238 TOTP generator is shared with the web client (same secret wire
+// shape), reused here rather than reimplemented.
+const sharedTotpEntry = resolve(thisDir, "../web/src/shared/totp/totp.ts");
 // hash-wasm is declared as a dep of extension/package.json but the shared
 // crypto module lives outside extension/, so the bundler cannot walk
 // node_modules from the importer - alias it explicitly.
@@ -26,6 +29,7 @@ export default defineConfig({
       alias: {
         "@shared/crypto": resolve(sharedCryptoDir, "index.ts"),
         "@shared/crypto/": `${sharedCryptoDir}/`,
+        "@shared/totp": sharedTotpEntry,
         "hash-wasm": hashWasmEntry,
       },
     },
