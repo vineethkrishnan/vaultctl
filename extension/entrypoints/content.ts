@@ -412,6 +412,29 @@ export default defineContentScript({
       showPicker();
     }
 
+    // Open the appropriate picker on the focused field (or, if focus isn't on a
+    // fillable field, the first visible login form's field). Used by the
+    // right-click menu and the keyboard command.
+    function openFillPickerAtFocus() {
+      if (matches.length === 0) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement) {
+        if (otpFieldIcons.has(active)) {
+          openTotpPicker(active);
+          return;
+        }
+        if (active.closest("form")) {
+          openPicker(active);
+          return;
+        }
+      }
+      const form = findVisibleLoginForms()[0] ?? findLoginForms()[0];
+      if (!form) return;
+      const { usernameInput, passwordInput } = extractCredentialInputs(form);
+      const target = usernameInput ?? passwordInput;
+      if (target) openPicker(target);
+    }
+
     // ── TOTP / 2FA code fill ──────────────────────────────────────────────
     // When a host-matched login carries a TOTP secret, decorate the page's
     // one-time-code field with the emblem; clicking (or focusing) it opens a
@@ -1505,6 +1528,12 @@ export default defineContentScript({
         if (message.type === "vaultUnlocked") {
           void refreshMatches();
           void refreshFillItems();
+          return;
+        }
+        // Right-click menu / keyboard command: open the fill picker on the
+        // focused field, falling back to the page's first login form field.
+        if (message.type === "openFillPicker") {
+          openFillPickerAtFocus();
           return;
         }
         if (message.type === "fill") {

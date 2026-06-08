@@ -68,8 +68,20 @@ export default defineConfig({
       "clipboardRead",
       "notifications",
       "scripting",
+      // Right-click "Fill from vaultctl" on editable fields.
+      "contextMenus",
     ],
     host_permissions: ["<all_urls>"],
+    // Keyboard shortcut to open the fill picker on the focused field.
+    commands: {
+      "fill-login": {
+        suggested_key: {
+          default: "Ctrl+Shift+L",
+          mac: "Command+Shift+L",
+        },
+        description: "Fill a login from vaultctl",
+      },
+    },
     browser_specific_settings: {
       gecko: {
         id: "vaultctl@vineethkrishnan.dev",
