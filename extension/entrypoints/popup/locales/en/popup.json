@@ -47,6 +47,9 @@
     "searchPlaceholder": "Search vault...",
     "noItems": "No items in this vault",
     "noMatches": "No matches",
+    "onboardingTitle": "Your vault is empty",
+    "onboardingBody": "Import logins from another password manager, or save them as you sign in.",
+    "importPasswords": "Import passwords",
     "copyUsername": "Copy username",
     "copyPassword": "Copy password",
     "totpCode": "2FA code",
@@ -160,6 +163,7 @@
     "updateAlertsHint": "When a newer vaultctl release raises a notice in Alerts",
     "language": "Language",
     "languageHint": "Display language for the extension",
+    "importPasswords": "Import passwords",
     "openWebVault": "Open web vault",
     "lockVault": "Lock vault",
     "autoLockOptions": {

@@ -32,6 +32,7 @@ import {
   CreditCard,
   User,
   Ban,
+  Download,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
 import {
@@ -942,9 +943,26 @@ export function Popup() {
       {/* Item list */}
       <div className="px-2 pb-2">
         {filtered.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            {items.length === 0 ? t("vault.noItems") : t("vault.noMatches")}
-          </div>
+          items.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <Wallet className="h-6 w-6" />
+              </span>
+              <p className="text-sm font-medium">{t("vault.onboardingTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("vault.onboardingBody")}</p>
+              <button
+                onClick={() => openImport(serverUrl)}
+                className="mt-1 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
+              >
+                <Download className="h-4 w-4" />
+                {t("vault.importPasswords")}
+              </button>
+            </div>
+          ) : (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              {t("vault.noMatches")}
+            </div>
+          )
         ) : (
           filtered.map((item) => (
             <div
@@ -1999,6 +2017,13 @@ function SettingsTab({
       />
 
       <button
+        onClick={() => openImport(serverUrl)}
+        className="flex w-full items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-accent/60"
+      >
+        <Download className="h-4 w-4 text-muted-foreground" />
+        {t("settings.importPasswords")}
+      </button>
+      <button
         onClick={() =>
           isSafeHttpUri(serverUrl) &&
           window.open(serverUrl, "_blank", "noopener,noreferrer")
@@ -2342,6 +2367,15 @@ function safeHostname(url: string): string {
   } catch {
     return url;
   }
+}
+
+// Open the web vault's import screen (Settings -> Data, deep-linked) in a new
+// tab. Browser extensions can't import files themselves, so this hands off to
+// the web client where the import/export UI lives.
+function openImport(serverUrl: string) {
+  if (!isSafeHttpUri(serverUrl)) return;
+  const base = serverUrl.replace(/\/$/, "");
+  window.open(`${base}/settings?tab=data`, "_blank", "noopener,noreferrer");
 }
 
 const BRAND_GLYPHS = { emblem: 0xe000, wordmark: 0xe001 } as const;
