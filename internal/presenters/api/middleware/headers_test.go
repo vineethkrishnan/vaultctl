@@ -5,6 +5,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ func TestSecurityHeaders_AppliedToAllResponses(t *testing.T) {
 		"X-Frame-Options":              "DENY",
 	}
 
-	handler := SecurityHeaders()(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := SecurityHeaders(false)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -45,5 +46,29 @@ func TestSecurityHeaders_AppliedToAllResponses(t *testing.T) {
 		if got[:min(len(prefix), len(got))] != prefix[:min(len(prefix), len(got))] {
 			t.Errorf("%s = %q, expected to start with %q", name, got, prefix)
 		}
+	}
+}
+
+// TestSecurityHeaders_HIBPConnectSrc asserts the HIBP range API is only added to
+// connect-src when the breach check is enabled, so deployments that haven't
+// opted in keep connect-src locked to 'self'.
+func TestSecurityHeaders_HIBPConnectSrc(t *testing.T) {
+	const hibpOrigin = "https://api.pwnedpasswords.com"
+
+	cspFor := func(hibpEnabled bool) string {
+		handler := SecurityHeaders(hibpEnabled)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/health", nil))
+		return rec.Header().Get("Content-Security-Policy")
+	}
+
+	if got := cspFor(false); strings.Contains(got, hibpOrigin) {
+		t.Errorf("connect-src must not include %s when HIBP is off: %q", hibpOrigin, got)
+	}
+	enabled := cspFor(true)
+	if !strings.Contains(enabled, "connect-src 'self' "+hibpOrigin) {
+		t.Errorf("connect-src must include %s when HIBP is on: %q", hibpOrigin, enabled)
 	}
 }

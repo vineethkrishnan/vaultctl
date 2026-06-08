@@ -37,7 +37,7 @@
   },
   "breach": {
     "title": "Auf Datenlecks prüfen",
-    "description": "Prüfen Sie, ob eines Ihrer Passwörter in bekannten Datenlecks auftaucht - über die k-Anonymitäts-Range-API von HaveIBeenPwned.",
+    "description": "Prüfen Sie, ob eines Ihrer Passwörter in bekannten Datenlecks auftaucht - über die k-Anonymitäts-Range-API von Have I Been Pwned.",
     "check": "Auf Datenlecks prüfen",
     "checking": "Passwörter werden mit bekannten Datenlecks abgeglichen...",
     "error": "Die Datenleck-Prüfung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
