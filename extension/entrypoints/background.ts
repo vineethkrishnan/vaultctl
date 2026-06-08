@@ -30,7 +30,7 @@ import {
   unpad,
   AlgID,
 } from "@shared/crypto";
-import { generatePassword } from "../utils/password-gen";
+import { generateSecret, type GenMode } from "../utils/password-gen";
 import { safeHost, safeHostname, hostMatches } from "../utils/host";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
@@ -330,11 +330,16 @@ interface ExtSettings {
   toastMs: number; // auto-dismiss timeout for toasts (ms)
   suggestPassword: boolean; // suggest a strong password on new-password fields
   updateNotify: UpdateNotifyLevel; // which update severities raise the alert
+  genMode: GenMode; // "password" (random charset) or "passphrase" (memorable)
   genLength: number;
   genLower: boolean;
   genUpper: boolean;
   genDigits: boolean;
   genSymbols: boolean;
+  genWords: number; // passphrase word count
+  genWordSep: string; // passphrase word separator
+  genWordCaps: boolean; // capitalise each passphrase word
+  genWordDigit: boolean; // append a number to the passphrase
   historyMax: number; // how many generated passwords to keep
   historyTtlMin: number; // how long a generated password stays in history (minutes)
   autoLockMin: number; // minutes of inactivity before locking (0 = never)
@@ -347,11 +352,16 @@ const DEFAULT_SETTINGS: ExtSettings = {
   toastMs: 8000,
   suggestPassword: true,
   updateNotify: "all",
+  genMode: "password",
   genLength: 20,
   genLower: true,
   genUpper: true,
   genDigits: true,
   genSymbols: true,
+  genWords: 4,
+  genWordSep: "-",
+  genWordCaps: true,
+  genWordDigit: true,
   historyMax: 5,
   historyTtlMin: 60,
   autoLockMin: 0,
@@ -1694,7 +1704,7 @@ export default defineBackground(() => {
             // -----------------------------------------------------------
             case "generatePassword": {
               const cfg = await getSettings();
-              sendResponse({ ok: true, password: generatePassword(cfg) });
+              sendResponse({ ok: true, password: generateSecret(cfg) });
               return;
             }
 

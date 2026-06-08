@@ -33,7 +33,13 @@ import {
   User,
 } from "lucide-react";
 import { deriveKeys, fromBase64, toBase64, unpad } from "@shared/crypto";
-import { generatePassword, GEN_MAX_LENGTH } from "../../utils/password-gen";
+import {
+  generateSecret,
+  GEN_MAX_LENGTH,
+  GEN_WORDS_MIN,
+  GEN_WORDS_MAX,
+  type GenMode,
+} from "../../utils/password-gen";
 import { isSafeHttpUri } from "../../utils/host";
 import { copySecret } from "../../utils/clipboard";
 import {
@@ -1100,7 +1106,7 @@ interface GenEntry {
 }
 
 function genWith(cfg: ExtSettings): string {
-  return generatePassword(cfg);
+  return generateSecret(cfg);
 }
 
 function relativeAge(ts: number, t: TFunction): string {
@@ -1198,27 +1204,78 @@ function GeneratorTab({ onCopied }: { onCopied: (label: string) => void }) {
         </button>
       </div>
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{t("generator.length")}</span>
-          <span className="font-mono">{cfg.genLength}</span>
-        </div>
-        <input
-          type="range"
-          min={8}
-          max={GEN_MAX_LENGTH}
-          value={cfg.genLength}
-          onChange={(e) => update({ genLength: Number(e.target.value) })}
-          className="w-full accent-brand"
-        />
+      <div className="grid grid-cols-2 gap-1 rounded-lg border border-border p-1">
+        {(["password", "passphrase"] as GenMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => update({ genMode: mode })}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+              (cfg.genMode ?? "password") === mode
+                ? "bg-brand/15 text-brand"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t(`generator.mode.${mode}`)}
+          </button>
+        ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {toggle("a-z", cfg.genLower, "genLower")}
-        {toggle("A-Z", cfg.genUpper, "genUpper")}
-        {toggle("0-9", cfg.genDigits, "genDigits")}
-        {toggle("!@#", cfg.genSymbols, "genSymbols")}
-      </div>
+      {(cfg.genMode ?? "password") === "passphrase" ? (
+        <>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{t("generator.words")}</span>
+              <span className="font-mono">{cfg.genWords}</span>
+            </div>
+            <input
+              type="range"
+              min={GEN_WORDS_MIN}
+              max={GEN_WORDS_MAX}
+              value={cfg.genWords}
+              onChange={(e) => update({ genWords: Number(e.target.value) })}
+              className="w-full accent-brand"
+            />
+          </div>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">{t("generator.separator")}</span>
+            <input
+              type="text"
+              maxLength={3}
+              value={cfg.genWordSep}
+              onChange={(e) => update({ genWordSep: e.target.value })}
+              className="w-16 rounded-md border border-border bg-card px-2 py-1 text-center font-mono text-xs"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {toggle(t("generator.capitalize"), cfg.genWordCaps, "genWordCaps")}
+            {toggle(t("generator.includeNumber"), cfg.genWordDigit, "genWordDigit")}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">{t("generator.length")}</span>
+              <span className="font-mono">{cfg.genLength}</span>
+            </div>
+            <input
+              type="range"
+              min={8}
+              max={GEN_MAX_LENGTH}
+              value={cfg.genLength}
+              onChange={(e) => update({ genLength: Number(e.target.value) })}
+              className="w-full accent-brand"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {toggle("a-z", cfg.genLower, "genLower")}
+            {toggle("A-Z", cfg.genUpper, "genUpper")}
+            {toggle("0-9", cfg.genDigits, "genDigits")}
+            {toggle("!@#", cfg.genSymbols, "genSymbols")}
+          </div>
+        </>
+      )}
 
       <button
         onClick={copyCurrent}
@@ -1535,11 +1592,16 @@ interface ExtSettings {
   toastMs: number;
   suggestPassword: boolean;
   updateNotify: UpdateNotifyLevel;
+  genMode: GenMode;
   genLength: number;
   genLower: boolean;
   genUpper: boolean;
   genDigits: boolean;
   genSymbols: boolean;
+  genWords: number;
+  genWordSep: string;
+  genWordCaps: boolean;
+  genWordDigit: boolean;
   historyMax: number;
   historyTtlMin: number;
   autoLockMin: number;
