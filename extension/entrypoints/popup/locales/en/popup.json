@@ -173,6 +173,9 @@
       "major": "Major only",
       "off": "Off"
     },
+    "neverSave": "Never save on these sites",
+    "neverSaveHint": "vaultctl won't offer to save or update logins here.",
+    "neverSaveAllow": "Allow",
     "security": "Security",
     "biometricUnlock": "Unlock with Touch ID",
     "biometricEnrolledHint": "Stored behind your device biometric on this browser.",
