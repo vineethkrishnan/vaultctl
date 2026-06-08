@@ -1050,6 +1050,43 @@ export default defineBackground(() => {
     }
   });
 
+  // Tell the active tab's content script to open the fill picker on whatever
+  // field has focus. Backs both the right-click menu and the keyboard command.
+  const requestFillOnActiveTab = () => {
+    void browser.tabs
+      .query({ active: true, currentWindow: true })
+      .then((tabs) => {
+        const tabId = tabs[0]?.id;
+        if (tabId === undefined) return;
+        void browser.tabs
+          .sendMessage(tabId, { type: "openFillPicker" })
+          .catch(() => {
+            // No content script on this page (e.g. a chrome:// tab) - ignore.
+          });
+      });
+  };
+
+  // Register a right-click "Fill from vaultctl" item on editable fields.
+  // removeAll-then-create keeps it idempotent across service-worker restarts.
+  try {
+    browser.contextMenus?.removeAll?.(() => {
+      browser.contextMenus?.create?.({
+        id: "vaultctl-fill",
+        title: "Fill from vaultctl",
+        contexts: ["editable"],
+      });
+    });
+    browser.contextMenus?.onClicked.addListener((info) => {
+      if (info.menuItemId === "vaultctl-fill") requestFillOnActiveTab();
+    });
+  } catch {
+    // contextMenus is optional across browsers
+  }
+
+  browser.commands?.onCommand.addListener((command) => {
+    if (command === "fill-login") requestFillOnActiveTab();
+  });
+
   browser.runtime.onMessage.addListener(
     (
       rawMessage: unknown,
