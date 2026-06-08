@@ -106,6 +106,7 @@ export default defineContentScript({
   main(ctx) {
     const observedForms = new WeakSet<HTMLFormElement>();
     let matches: CredMatch[] = [];
+    let vaults: { id: string; name: string; type: string }[] = [];
     let settings: ExtSettings = {
       autofill: false,
       fieldIcon: true,
@@ -1212,10 +1213,20 @@ export default defineContentScript({
       message: string;
       actionLabel: string;
       successMessage: string;
-      onAction: () => Promise<{ ok?: boolean; error?: string }>;
+      onAction: (overrides: {
+        username?: string;
+        vaultId?: string;
+      }) => Promise<{ ok?: boolean; error?: string }>;
       onDismiss?: () => void;
       neverLabel?: string;
       onNever?: () => void;
+      // When present, the toast shows an editable username and (with >1 vault) a
+      // save-target selector, whose values are passed to onAction.
+      edit?: {
+        username: string;
+        vaults: { id: string; name: string; type: string }[];
+        defaultVaultId: string;
+      };
     }) {
       document.getElementById("vaultctl-toast-host")?.remove();
       const host = document.createElement("div");
@@ -1253,8 +1264,42 @@ export default defineContentScript({
       action.type = "button";
       action.textContent = opts.actionLabel;
       action.style.cssText = `all:unset;cursor:pointer;padding:5px 12px;border-radius:6px;background:${BRAND};color:#042f2a;font-weight:600;font-size:12px;`;
+      // Optional editable username + save-target selector (login saves only).
+      let usernameField: HTMLInputElement | null = null;
+      let vaultSelect: HTMLSelectElement | null = null;
+      if (opts.edit) {
+        const editWrap = document.createElement("div");
+        editWrap.style.cssText = "margin-top:10px;display:flex;flex-direction:column;gap:6px;";
+        usernameField = document.createElement("input");
+        usernameField.type = "text";
+        usernameField.value = opts.edit.username;
+        usernameField.placeholder = "username";
+        usernameField.style.cssText =
+          "all:unset;box-sizing:border-box;width:100%;background:#0c0c0e;border:1px solid #26262b;border-radius:6px;padding:6px 8px;color:#fafafa;font-size:12px;";
+        editWrap.append(usernameField);
+        if (opts.edit.vaults.length > 1) {
+          vaultSelect = document.createElement("select");
+          vaultSelect.style.cssText =
+            "all:unset;box-sizing:border-box;width:100%;background:#0c0c0e;border:1px solid #26262b;border-radius:6px;padding:6px 8px;color:#fafafa;font-size:12px;cursor:pointer;";
+          for (const vault of opts.edit.vaults) {
+            const option = document.createElement("option");
+            option.value = vault.id;
+            option.textContent =
+              vault.type === "shared" ? `${vault.name} (shared)` : vault.name;
+            if (vault.id === opts.edit.defaultVaultId) option.selected = true;
+            vaultSelect.append(option);
+          }
+          editWrap.append(vaultSelect);
+        }
+        card.append(row, editWrap);
+      } else {
+        card.append(row);
+      }
       actions.append(dismiss, action);
-      card.append(row, actions);
+      card.append(actions);
+      const editWrapHide = () => {
+        if (usernameField) usernameField.parentElement!.style.display = "none";
+      };
       // Optional tertiary opt-out: stop offering to save on this site at all.
       let never: HTMLButtonElement | null = null;
       if (opts.onNever && opts.neverLabel) {
@@ -1286,6 +1331,7 @@ export default defineContentScript({
         actions.style.opacity = "0";
         actions.style.marginTop = "0";
         if (never) never.style.display = "none";
+        editWrapHide();
       };
 
       // Smoothly morph the same toast into a success / error state instead of
@@ -1324,9 +1370,13 @@ export default defineContentScript({
         action.textContent = "Saving...";
         dismiss.style.pointerEvents = action.style.pointerEvents = "none";
         action.style.opacity = "0.7";
+        const overrides = {
+          username: usernameField ? usernameField.value : undefined,
+          vaultId: vaultSelect ? vaultSelect.value : undefined,
+        };
         let res: { ok?: boolean; error?: string };
         try {
-          res = await opts.onAction();
+          res = await opts.onAction(overrides);
         } catch {
           res = { ok: false, error: "connection problem" };
         }
@@ -1400,6 +1450,10 @@ export default defineContentScript({
       }
       const isUpdate = prompt.action === "update";
       const who = prompt.username || prompt.host;
+      // A new save lets the user fix the username and pick the target vault; an
+      // update goes to the existing item's vault, so only the message is shown.
+      const defaultVaultId =
+        vaults.find((v) => v.type === "personal")?.id ?? vaults[0]?.id ?? "";
       showToast({
         message: isUpdate
           ? `Update the saved password for ${who}?`
@@ -1408,10 +1462,17 @@ export default defineContentScript({
         successMessage: isUpdate
           ? `Updated and locked ${who}`
           : `Locked ${prompt.host} in your vault`,
-        onAction: () =>
+        edit: isUpdate
+          ? undefined
+          : { username: prompt.username, vaults, defaultVaultId },
+        onAction: (overrides) =>
           bg<{ ok?: boolean; error?: string }>({
             type: "saveCapturedLogin",
             id: prompt.id,
+            ...(overrides.username !== undefined
+              ? { username: overrides.username }
+              : {}),
+            ...(overrides.vaultId ? { vaultId: overrides.vaultId } : {}),
           }),
         onDismiss: () => void bg({ type: "markCaptureRead", id: prompt.id }),
         neverLabel: "Never for this site",
@@ -1607,9 +1668,11 @@ export default defineContentScript({
         ok?: boolean;
         settings?: ExtSettings;
         matches?: CredMatch[];
+        vaults?: { id: string; name: string; type: string }[];
       }>({ type: "matchCredentials", origin: window.location.href });
       if (res?.settings) settings = res.settings;
       matches = res?.matches ?? [];
+      vaults = res?.vaults ?? [];
       decorateLoginFields();
       decorateOtpFields();
       decorateSuggestFields();

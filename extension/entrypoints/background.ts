@@ -818,6 +818,7 @@ async function createLogin(
   password: string,
   uri: string,
   targetVaultId?: string,
+  name?: string,
 ): Promise<void> {
   const vaultId =
     targetVaultId && vaultKeys.has(targetVaultId)
@@ -826,7 +827,7 @@ async function createLogin(
   if (!vaultId) throw new Error("no vault available");
   const body = {
     itemType: "login",
-    encryptedName: await encName(vaultId, host || safeHostname(uri)),
+    encryptedName: await encName(vaultId, name || host || safeHostname(uri)),
     encryptedData: await encData(vaultId, { username, password, uri }),
     favorite: false,
     reprompt: false,
@@ -1482,9 +1483,19 @@ export default defineBackground(() => {
                 return;
               }
               try {
+                // The save toast may pass an edited username (and name) and a
+                // chosen vault. The edited username also steers the decision, so
+                // saving as a different account adds instead of silently
+                // updating the one that happened to match.
+                const editedUsername =
+                  typeof message.username === "string"
+                    ? message.username
+                    : capture.username;
+                const editedName =
+                  typeof message.name === "string" ? message.name : undefined;
                 const decision = await decideSave(
                   capture.url,
-                  capture.username,
+                  editedUsername,
                   capture.password,
                 );
                 if (decision.action === "add") {
@@ -1494,10 +1505,11 @@ export default defineBackground(() => {
                       : undefined;
                   await createLogin(
                     safeHostname(capture.url),
-                    capture.username,
+                    editedUsername,
                     capture.password,
                     capture.url,
                     targetVaultId,
+                    editedName,
                   );
                 } else if (decision.action === "update") {
                   await updateLogin(
@@ -1651,6 +1663,13 @@ export default defineBackground(() => {
               sendResponse({
                 ok: true,
                 settings,
+                // Vault list (id/name/type only) so the save toast can offer a
+                // save target. No keys or secrets cross the boundary.
+                vaults: [...vaultMeta.entries()].map(([id, meta]) => ({
+                  id,
+                  name: meta.name,
+                  type: meta.type,
+                })),
                 // Never ship the password itself, nor its real length: the page
                 // would learn how long the stored secret is. The picker shows a
                 // fixed-width dot mask, so every row carries the same constant.
