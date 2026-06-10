@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.18.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.17.0...v1.18.0) (2026-06-08)
+
+
+### Features
+
+* **extension:** add a memorable passphrase mode to the generator ([660133c](https://github.com/vineethkrishnan/vaultctl/commit/660133c22ebbfdada3a4e8fb1d26d967444852ee))
+* **extension:** add a password checkup to the popup ([b67b7e7](https://github.com/vineethkrishnan/vaultctl/commit/b67b7e7a8bdeb2264b0c4ec46b85264244fc4524))
+* **extension:** add a per-site "never save" opt-out ([9a1bdd5](https://github.com/vineethkrishnan/vaultctl/commit/9a1bdd507a6024773960964d2a46f28fc5134302))
+* **extension:** add an import / onboarding entry to the popup ([c20a43d](https://github.com/vineethkrishnan/vaultctl/commit/c20a43d93547412f216ca07a2e2def6a3ae87d58))
+* **extension:** add opt-in matching across subdomains ([bd69af5](https://github.com/vineethkrishnan/vaultctl/commit/bd69af5a0b5dd9ced30f242191a9ee727446e4ab))
+* **extension:** add save and open-vault actions to the fill picker ([f253530](https://github.com/vineethkrishnan/vaultctl/commit/f253530e0e1daa758b0c05dd6f5dcfcb19dd084e))
+* **extension:** autofill and show totp 2fa codes ([2d7a1e4](https://github.com/vineethkrishnan/vaultctl/commit/2d7a1e4ebaf6aa2c6117ff5a2100ed0329ea0bc7))
+* **extension:** let the save toast edit the username and pick a vault ([236aaca](https://github.com/vineethkrishnan/vaultctl/commit/236aaca37794906bba1c75359b580cce66d56140))
+* **extension:** open the fill picker via context menu and keyboard ([3db68cd](https://github.com/vineethkrishnan/vaultctl/commit/3db68cdb35591c4da11cf39559ac075a074cdedc))
+* **extension:** review and edit captured cards and addresses before saving ([26526ad](https://github.com/vineethkrishnan/vaultctl/commit/26526ad1dfa5720a7313f9a593abdaab4831b4b9))
+* **extension:** show the fill icon on split-login first steps ([0cf6697](https://github.com/vineethkrishnan/vaultctl/commit/0cf66972c1f02cd7b5428d04d5abfc5a1bca61ae))
+* **extension:** surface the password suggestion from a field emblem ([2fe0404](https://github.com/vineethkrishnan/vaultctl/commit/2fe0404becb694f4aa1f67cd4a475a81c93a2c10))
+* **extension:** warn about compromised passwords in the fill picker ([caf02e6](https://github.com/vineethkrishnan/vaultctl/commit/caf02e63498704fb640f189ed5c0a4e4da9e2d9f))
+
+
+### Bug Fixes
+
+* **api:** allow the hibp range api in csp when breach check is enabled ([#231](https://github.com/vineethkrishnan/vaultctl/issues/231)) ([f1a8970](https://github.com/vineethkrishnan/vaultctl/commit/f1a8970fe574ef0c6a5c654b05f872549684225d))
+* **extension:** autofill into auto-focused empty fields on page load ([cf31079](https://github.com/vineethkrishnan/vaultctl/commit/cf310798be92ebe59da80cec37f83d2b77817285))
+* **extension:** isolate multi-tenant hosts in relaxed-match suffix list ([e51e442](https://github.com/vineethkrishnan/vaultctl/commit/e51e4424a73bee6c39ac5d01a7f7592cce4d5b74))
+* **extension:** offer to update the saved password on change and reset forms ([bf57e09](https://github.com/vineethkrishnan/vaultctl/commit/bf57e09e6879542c5022c7aceb215062a21ff911))
+* **extension:** reopen the save prompt after a cross-host or spa redirect ([0b32ad6](https://github.com/vineethkrishnan/vaultctl/commit/0b32ad666022a59ee14aeedc903228e206f79713))
+* **web:** stop the login email step from flashing before the password step ([#232](https://github.com/vineethkrishnan/vaultctl/issues/232)) ([9c24cd1](https://github.com/vineethkrishnan/vaultctl/commit/9c24cd16a5fbd4b683a4089e5226b1f378d890d9))
+
 ## [1.17.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.16.0...v1.17.0) (2026-06-07)
 
 
