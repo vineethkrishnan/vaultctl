@@ -39,6 +39,7 @@ type Dependencies struct {
 	Backup             *BackupHandlers
 	BackupOAuth        *BackupOAuthHandlers
 	Update             *UpdateHandlers
+	Upgrade            *UpgradeHandlers
 	Notification       *NotificationHandlers
 	Audit              *AuditHandlers
 	APIKeyValidator    middleware.APIKeyValidator
@@ -75,6 +76,7 @@ type ConfigFeatures struct {
 	Mailer            bool `json:"mailer"`
 	EmailVerification bool `json:"emailVerification"`
 	Updates           bool `json:"updates"`
+	Upgrade           bool `json:"upgrade"`
 	Notifications     bool `json:"notifications"`
 	Require2FA        bool `json:"require2fa"`
 	Hibp              bool `json:"hibp"`
@@ -87,6 +89,7 @@ func (deps Dependencies) features() ConfigFeatures {
 		Mailer:            deps.MailerEnabled,
 		EmailVerification: deps.Auth != nil && deps.Auth.VerifyEmail != nil,
 		Updates:           deps.Update != nil && deps.Update.Enabled,
+		Upgrade:           deps.Upgrade != nil,
 		Notifications:     deps.Notification != nil,
 		Require2FA:        deps.Require2FA,
 		Hibp:              deps.HIBPEnabled,
@@ -189,6 +192,10 @@ func NewRouter(deps Dependencies) http.Handler {
 			// Update check + in-app notification feed
 			if deps.Update != nil {
 				r.Get("/updates", deps.Update.HandleGetUpdates)
+			}
+			// One-click in-app upgrade (admin + step-up; disabled by default)
+			if deps.Upgrade != nil {
+				r.With(requireAdmin, requireStepUp).Post("/updates/apply", deps.Upgrade.HandleApply)
 			}
 			if deps.Notification != nil {
 				r.Get("/notifications", deps.Notification.HandleList)

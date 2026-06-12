@@ -9,7 +9,7 @@ name: vaultctl-simple
 services:
   vaultctl:
     image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-latest}
-    command: ["server"]
+    command: ["sh", "-c", "vaultctl migrate up && exec vaultctl server"]
     container_name: vaultctl-api
     restart: unless-stopped
     env_file: .env

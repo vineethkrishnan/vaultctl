@@ -4,7 +4,24 @@
     "severitySuffix": " ({{severity}})",
     "youAreOn": "Sie verwenden v{{version}}.",
     "whatsNew": "Neuerungen",
-    "remindLater": "Später erinnern"
+    "remindLater": "Später erinnern",
+    "updateNow": "Jetzt aktualisieren"
+  },
+  "upgrade": {
+    "title": "Update wird angewendet",
+    "applying": "Neue Version wird geladen und Migrationen werden ausgeführt...",
+    "restarting": "Server wird neugestartet...",
+    "reconnecting": "Verbindung wird wiederhergestellt",
+    "success": "Update abgeschlossen",
+    "successDetail": "vaultctl wurde auf v{{version}} aktualisiert. Laden Sie die Seite neu, um fortzufahren.",
+    "reload": "Neu laden",
+    "error": "Update fehlgeschlagen",
+    "extensionNote": "Vergessen Sie nicht, Ihre Browser-Erweiterung im Web Store zu aktualisieren.",
+    "notConfigured": "In-App-Upgrade ist auf diesem Server nicht konfiguriert. Weitere Informationen finden Sie in der Dokumentation zu VAULTCTL_UPGRADE_HOOK_URL.",
+    "confirmTitle": "Update auf v{{version}} anwenden?",
+    "confirmBody": "Der Server wird nach dem Laden des neuen Images und der Ausführung von Datenbankmigrationen neugestartet. Bestehende Sitzungen bleiben erhalten. Sie werden aufgefordert, Ihr Master-Passwort zur Bestätigung einzugeben.",
+    "confirm": "Aktualisieren",
+    "cancel": "Abbrechen"
   },
   "whatsNew": {
     "title": "Neuerungen",

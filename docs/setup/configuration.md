@@ -89,6 +89,51 @@ artifacts and OAuth tokens. Store it somewhere different from your DB backups.
 | `VAULTCTL_UPDATE_CHECK_INTERVAL` | `15m` | Cache window / poll interval. |
 | `VAULTCTL_UPDATE_ROLLOUT_DELAY` | `0` | Withholds the update alert from clients until this long after a release publish time (staged rollout). `0` reveals immediately. |
 
+## In-app upgrade
+
+Lets admin users apply a new release with a single click from the update banner or
+Settings without SSHing into the host. Disabled by default. Set exactly one of
+`VAULTCTL_UPGRADE_HOOK_URL` or `VAULTCTL_UPGRADE_HOOK_SCRIPT` alongside
+`VAULTCTL_UPGRADE_ENABLED=true`.
+
+The server never pulls images or modifies its own binary. It calls out to an
+external mechanism (Watchtower, a shell script) that does the work and then
+restarts the container. Migrations run automatically on the next startup because
+the bundled compose uses `vaultctl migrate up && exec vaultctl server` as the
+container command.
+
+**Watchtower (recommended for Docker Compose)**
+
+```bash
+# In .env
+VAULTCTL_UPGRADE_ENABLED=true
+VAULTCTL_UPGRADE_HOOK_URL=http://watchtower:8080/v1/update
+VAULTCTL_UPGRADE_HOOK_TOKEN=<secret-matching-WATCHTOWER_HTTP_API_TOKEN>
+```
+
+Uncomment the `watchtower` service block in `docker-compose.yml`. The Watchtower
+container must be on the same Docker network as vaultctl and must be started with
+`--http-api-update`.
+
+**Custom script**
+
+```bash
+# In .env
+VAULTCTL_UPGRADE_ENABLED=true
+VAULTCTL_UPGRADE_HOOK_SCRIPT=/usr/local/bin/vaultctl-upgrade.sh
+```
+
+The script is exec'd directly (no shell expansion). It should pull the new image,
+stop the old container, start the new one, and exit 0 on success. stdout/stderr
+are streamed live to the admin UI as the upgrade runs.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `VAULTCTL_UPGRADE_ENABLED` | `false` | Gates the `POST /api/v1/updates/apply` endpoint. Off by default; must be explicitly opted in. Requires admin + step-up re-auth. |
+| `VAULTCTL_UPGRADE_HOOK_URL` | (none) | Full URL of an HTTP endpoint to POST to when an upgrade is triggered (e.g. `http://watchtower:8080/v1/update`). Takes precedence over `HOOK_SCRIPT` if both are set. |
+| `VAULTCTL_UPGRADE_HOOK_TOKEN` | (none) | Bearer token sent to the hook URL. Must match the Watchtower `WATCHTOWER_HTTP_API_TOKEN` value. |
+| `VAULTCTL_UPGRADE_HOOK_SCRIPT` | (none) | Absolute path to an executable script on the host. The server exec's it directly; no shell expansion. |
+
 ## Email (SMTP)
 
 Mail is disabled (logged, not sent) until `VAULTCTL_SMTP_HOST` is set, so a deploy

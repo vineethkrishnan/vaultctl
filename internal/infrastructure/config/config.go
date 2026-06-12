@@ -110,6 +110,23 @@ type Config struct {
 	// before customers are prompted.
 	UpdateRolloutDelay time.Duration `env:"VAULTCTL_UPDATE_ROLLOUT_DELAY" envDefault:"0"`
 
+	// In-app upgrade (one-click update for self-hosted deployments).
+	// UpgradeEnabled gates the POST /updates/apply endpoint. Set to true
+	// alongside exactly one of UpgradeHookURL or UpgradeHookScript.
+	//
+	// UpgradeHookURL: full URL of an HTTP endpoint to POST to when the
+	// user clicks "Update Now". Use this for Watchtower's HTTP API or a
+	// custom webhook on the host. UpgradeHookToken is sent as a Bearer token.
+	//
+	// UpgradeHookScript: absolute path to a shell script the server will exec.
+	// The script receives no arguments; its stdout/stderr are streamed to the
+	// client. It should pull the new image, run migrations, and restart the
+	// service. UpgradeHookURL takes precedence if both are set.
+	UpgradeEnabled    bool   `env:"VAULTCTL_UPGRADE_ENABLED" envDefault:"false"`
+	UpgradeHookURL    string `env:"VAULTCTL_UPGRADE_HOOK_URL"`
+	UpgradeHookToken  string `env:"VAULTCTL_UPGRADE_HOOK_TOKEN"`
+	UpgradeHookScript string `env:"VAULTCTL_UPGRADE_HOOK_SCRIPT"`
+
 	// ===========================================================================
 	// Email (SMTP). Transactional mail for signup verification, security
 	// alerts, and digests. Mail is disabled (logged, not sent) until SMTPHost

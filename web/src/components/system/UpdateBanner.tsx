@@ -9,7 +9,10 @@ import {
   setLastSeenVersion,
 } from "@/lib/system-api";
 import { useUpdateNotification } from "@/hooks/use-update-notification";
+import { useServerFeatures } from "@/hooks/use-server-features";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
+import { StepUpModal } from "@/components/auth/StepUpModal";
+import { UpgradeModal } from "@/components/system/UpgradeModal";
 
 function parseable(v?: string): boolean {
   return !!v && /^\d+\.\d+\.\d+$/.test(v.replace(/^v/, ""));
@@ -18,18 +21,16 @@ function parseable(v?: string): boolean {
 export function UpdateBanner() {
   const { t } = useTranslation(["system", "common"]);
   const { status: data, show } = useUpdateNotification();
+  const features = useServerFeatures();
 
   const [dismissed, setDismissed] = useState(false);
   const [modal, setModal] = useState<"available" | "whatsnew" | null>(null);
+  const [stepUp, setStepUp] = useState(false);
+  const [upgradeToken, setUpgradeToken] = useState<string | null>(null);
 
-  // Post-update "what's new": when the running version has changed since the
-  // last one this device saw, show the notes once. First-ever load just records
-  // the version silently.
   useEffect(() => {
     if (!data || !parseable(data.currentVersion)) return;
     const lastSeen = getLastSeenVersion();
-    // Only interrupt with the auto-opening modal for meaningful releases; let
-    // patch/none updates ride the banner instead of stealing focus mid-task.
     const isSignificant = data.severity === "major" || data.severity === "minor";
     if (lastSeen && lastSeen !== data.currentVersion && isSignificant) {
       setModal("whatsnew");
@@ -59,9 +60,17 @@ export function UpdateBanner() {
             . {t("update.youAreOn", { version: data.currentVersion })}
           </span>
           <div className="ml-auto flex items-center gap-2">
+            {features.upgrade && (
+              <button
+                onClick={() => setStepUp(true)}
+                className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-[#042f2a] hover:bg-brand/90"
+              >
+                {t("update.updateNow")}
+              </button>
+            )}
             <button
               onClick={() => setModal("available")}
-              className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-[#042f2a] hover:bg-brand/90"
+              className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
             >
               {t("update.whatsNew")}
             </button>
@@ -97,6 +106,23 @@ export function UpdateBanner() {
             setDismissed(true);
             setModal(null);
           }}
+        />
+      )}
+
+      <StepUpModal
+        open={stepUp}
+        onSuccess={(token) => {
+          setStepUp(false);
+          setUpgradeToken(token);
+        }}
+        onCancel={() => setStepUp(false)}
+      />
+
+      {upgradeToken && (
+        <UpgradeModal
+          stepUpToken={upgradeToken}
+          targetVersion={data?.latestVersion}
+          onClose={() => setUpgradeToken(null)}
         />
       )}
     </>
