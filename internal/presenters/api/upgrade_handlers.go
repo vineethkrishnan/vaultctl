@@ -44,14 +44,19 @@ func (h *UpgradeHandlers) HandleApply(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no") // disable Nginx buffering
 
-	sendEvent := func(ev upgrade.Event) {
+	sendEvent := func(ev upgrade.Event) bool {
 		b, _ := json.Marshal(ev)
-		fmt.Fprintf(w, "data: %s\n\n", b)
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", b); err != nil {
+			return false
+		}
 		flusher.Flush()
+		return true
 	}
 
 	for ev := range h.Executor.Execute(r.Context()) {
-		sendEvent(ev)
+		if !sendEvent(ev) {
+			return
+		}
 		if ev.Type == "restarting" || ev.Type == "error" {
 			return
 		}
