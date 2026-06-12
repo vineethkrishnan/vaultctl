@@ -14,6 +14,7 @@ export interface ServerFeatures {
   mailer: boolean;
   emailVerification: boolean;
   updates: boolean;
+  upgrade: boolean;
   notifications: boolean;
   require2fa: boolean;
   hibp: boolean;
@@ -35,12 +36,14 @@ export const getServerConfig = () => apiGet<ServerConfig>("/api/v1/config");
 // ALL_FEATURES_ON is the backward-compatible default: an older server that
 // predates the `features` object is treated as having every feature wired, so
 // the client never hides a panel just because the field is absent.
+// upgrade is false by default: it requires explicit operator configuration.
 export const ALL_FEATURES_ON: ServerFeatures = {
   backupSync: true,
   attachments: true,
   mailer: true,
   emailVerification: true,
   updates: true,
+  upgrade: false,
   notifications: true,
   require2fa: false,
   hibp: true,

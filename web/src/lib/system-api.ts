@@ -37,6 +37,62 @@ export interface NotificationsResponse {
 
 export const getUpdateStatus = () => apiGet<UpdateStatus>("/api/v1/updates");
 
+export interface UpgradeEvent {
+  type: "log" | "restarting" | "error";
+  msg?: string;
+}
+
+/**
+ * Call POST /api/v1/updates/apply and yield SSE-style events from the
+ * streaming response body. Requires an active step-up session (the caller
+ * must have POSTed /auth/step-up with the master password first).
+ *
+ * The generator yields events until a "restarting" or "error" event arrives,
+ * then returns. After "restarting" the server becomes temporarily unreachable;
+ * the caller should poll /api/v1/health until it comes back.
+ */
+export async function* applyUpgrade(
+  accessToken: string,
+): AsyncGenerator<UpgradeEvent> {
+  const res = await fetch("/api/v1/updates/apply", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "text/event-stream",
+    },
+  });
+
+  if (!res.ok || !res.body) {
+    yield { type: "error", msg: `HTTP ${res.status}` };
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+
+    for (const part of parts) {
+      const dataLine = part.split("\n").find((l) => l.startsWith("data: "));
+      if (!dataLine) continue;
+      try {
+        const ev = JSON.parse(dataLine.slice(6)) as UpgradeEvent;
+        yield ev;
+        if (ev.type === "restarting" || ev.type === "error") return;
+      } catch {
+        // malformed event - skip
+      }
+    }
+  }
+}
+
 // ── Audit trail (FEAT-2) ───────────────────────────────────────────────────
 
 export interface AuditEntry {

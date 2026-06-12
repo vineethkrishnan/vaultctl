@@ -11,12 +11,16 @@ import {
   clearSnooze,
   type NotifyLevel,
 } from "@/lib/system-api";
+import { useServerFeatures } from "@/hooks/use-server-features";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
+import { StepUpModal } from "@/components/auth/StepUpModal";
+import { UpgradeModal } from "@/components/system/UpgradeModal";
 
 const LEVELS: NotifyLevel[] = ["all", "minor", "major", "off"];
 
 export function UpdatePanel() {
-  const { t } = useTranslation("settings");
+  const { t } = useTranslation(["settings", "system"]);
+  const features = useServerFeatures();
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["system", "updates"],
     queryFn: getUpdateStatus,
@@ -25,6 +29,8 @@ export function UpdatePanel() {
   });
   const [level, setLevel] = useState<NotifyLevel>(() => getNotifyLevel());
   const [showNotes, setShowNotes] = useState(false);
+  const [stepUp, setStepUp] = useState(false);
+  const [upgradeToken, setUpgradeToken] = useState<string | null>(null);
 
   function changeLevel(next: NotifyLevel) {
     setLevel(next);
@@ -74,12 +80,22 @@ export function UpdatePanel() {
       </div>
 
       {data?.updateAvailable && (
-        <button
-          onClick={() => setShowNotes(true)}
-          className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          {t("update.whatsNew", { version: data.latestVersion })}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {features.upgrade && (
+            <button
+              onClick={() => setStepUp(true)}
+              className="rounded-md bg-brand px-4 py-1.5 text-sm font-medium text-[#042f2a] hover:bg-brand/90"
+            >
+              {t("system:update.updateNow")}
+            </button>
+          )}
+          <button
+            onClick={() => setShowNotes(true)}
+            className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            {t("update.whatsNew", { version: data.latestVersion })}
+          </button>
+        </div>
       )}
 
       <div className="space-y-1 pt-1">
@@ -112,6 +128,23 @@ export function UpdatePanel() {
           notes={data.releaseNotes}
           releaseUrl={data.releaseUrl}
           onClose={() => setShowNotes(false)}
+        />
+      )}
+
+      <StepUpModal
+        open={stepUp}
+        onSuccess={(token) => {
+          setStepUp(false);
+          setUpgradeToken(token);
+        }}
+        onCancel={() => setStepUp(false)}
+      />
+
+      {upgradeToken && (
+        <UpgradeModal
+          stepUpToken={upgradeToken}
+          targetVersion={data?.latestVersion}
+          onClose={() => setUpgradeToken(null)}
         />
       )}
     </div>

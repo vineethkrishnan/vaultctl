@@ -30,6 +30,7 @@ import (
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/mailer"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/postgres"
 	"github.com/vineethkrishnan/vaultctl/internal/infrastructure/updatecheck"
+	infraupgrade "github.com/vineethkrishnan/vaultctl/internal/infrastructure/upgrade"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api"
 	"github.com/vineethkrishnan/vaultctl/internal/presenters/api/middleware"
 )
@@ -504,11 +505,29 @@ func buildHandlers(cfg *config.Config, a *adapters) (api.Dependencies, error) {
 		}
 	}
 
+	var upgradeHandlers *api.UpgradeHandlers
+	if cfg.UpgradeEnabled {
+		var exec infraupgrade.Executor
+		switch {
+		case cfg.UpgradeHookURL != "":
+			exec = &infraupgrade.WebhookExecutor{
+				URL:   cfg.UpgradeHookURL,
+				Token: cfg.UpgradeHookToken,
+			}
+		case cfg.UpgradeHookScript != "":
+			exec = &infraupgrade.ScriptExecutor{ScriptPath: cfg.UpgradeHookScript}
+		}
+		if exec != nil {
+			upgradeHandlers = &api.UpgradeHandlers{Executor: exec}
+		}
+	}
+
 	return api.Dependencies{
 		Tokens:       tokens,
 		Clock:        a.clock,
 		Auth:         authHandlers,
 		Update:       updateHandlers,
+		Upgrade:      upgradeHandlers,
 		Notification: notificationHandlers,
 		Audit:        auditHandlers,
 		User:         userHandlers,

@@ -41,8 +41,7 @@ cp .env.example .env
 # fill in every secret - server fail-closes if any prod secret is empty.
 # generate values with: openssl rand -base64 32   (or 64 for JWT secrets)
 
-docker compose up -d                              # starts caddy + vaultctl + postgres
-docker compose exec vaultctl vaultctl migrate up  # apply embedded migrations
+docker compose up -d   # starts caddy + vaultctl + postgres; migrations run automatically on startup
 ```
 
 Open `https://${VAULTCTL_BASE_URL}` and register the first user. Without a TLS-terminating proxy, use `docker-compose.simple.yml` and front it with your own reverse proxy on `127.0.0.1:8080`.

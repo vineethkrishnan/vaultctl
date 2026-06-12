@@ -34,7 +34,7 @@ services:
       args:
         VERSION: ${VAULTCTL_VERSION:-latest}
     image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-latest}
-    command: ["server"]
+    command: ["sh", "-c", "vaultctl migrate up && exec vaultctl server"]
     container_name: vaultctl-api
     restart: unless-stopped
     env_file: .env
@@ -72,6 +72,23 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
+  # --- Optional: Watchtower (in-app upgrade support) ---
+  # Uncomment to enable one-click upgrades from the vaultctl admin UI.
+  # Set VAULTCTL_UPGRADE_ENABLED=true and VAULTCTL_UPGRADE_HOOK_URL=http://watchtower:8080
+  # in your .env file (VAULTCTL_UPGRADE_HOOK_TOKEN must match the Watchtower HTTP API token).
+  #
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   container_name: vaultctl-watchtower
+  #   restart: unless-stopped
+  #   command: --http-api-update --http-api-periodic-polls vaultctl-api
+  #   environment:
+  #     WATCHTOWER_HTTP_API_TOKEN: ${VAULTCTL_UPGRADE_HOOK_TOKEN}
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     - vaultctl-net
 
 volumes:
   caddy-data:

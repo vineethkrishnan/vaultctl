@@ -14,8 +14,7 @@ cp .env.example .env
 #   openssl rand -base64 32   # 32-byte values
 #   openssl rand -base64 64   # JWT secrets
 
-docker compose up -d                              # caddy + vaultctl + postgres
-docker compose exec vaultctl vaultctl migrate up  # apply embedded migrations
+docker compose up -d   # caddy + vaultctl + postgres; migrations run automatically on startup
 ```
 
 Confirm the API is up:
