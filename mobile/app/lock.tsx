@@ -4,85 +4,149 @@ import { useEffect, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-
-import { unlockWithBiometrics, isBiometricEnrolled } from '../src/biometric';
-import { initKeys } from '../src/store/keys';
-import { useAuthStore } from '../src/store/auth';
-import { syncAll } from '../src/sync/engine';
+import { useAuth } from '../src/presentation/hooks/useAuth';
+import { container } from '../src/container';
 
 export default function LockScreen() {
   const router = useRouter();
-  const { unlock, logout } = useAuthStore();
+  const { unlockWithBiometric, unlockWithPassword, logout } = useAuth();
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [hasBiometric, setHasBiometric] = useState(false);
+  const [isBiometricEnrolled, setIsBiometricEnrolled] = useState(false);
 
   useEffect(() => {
-    isBiometricEnrolled().then(setHasBiometric);
-    // Attempt biometric unlock automatically on mount.
-    attemptBiometricUnlock();
+    container.biometricService.isEnrolled().then(setIsBiometricEnrolled);
   }, []);
 
-  async function attemptBiometricUnlock() {
-    const enrolled = await isBiometricEnrolled();
-    if (!enrolled) return;
-
+  async function handleBiometric() {
     setLoading(true);
     try {
-      const params = await unlockWithBiometrics();
-      await initKeys(params);
-      unlock();
-      syncAll().catch(() => {});
+      await unlockWithBiometric();
       router.replace('/(vault)');
     } catch (err) {
-      if ((err as Error).message !== 'BIOMETRIC_NOT_ENROLLED') {
-        // User cancelled or biometric failed; show the UI for manual retry.
-      }
+      Alert.alert('Biometric failed', 'Use your master password instead.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handlePassword() {
+    if (!password.trim()) return;
+    setLoading(true);
+    try {
+      await unlockWithPassword(password);
+      router.replace('/(vault)');
+    } catch (err) {
+      Alert.alert(
+        'Unlock failed',
+        err instanceof Error ? err.message : 'Incorrect master password.',
+      );
     } finally {
       setLoading(false);
     }
   }
 
   async function handleLogout() {
-    await logout();
-    router.replace('/(auth)/login');
+    try {
+      await logout();
+    } catch {
+      Alert.alert(
+        'Logout failed',
+        'Could not remove biometric credential. Please try again.',
+      );
+    }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.icon}>🔒</Text>
-      <Text style={styles.title}>Vault Locked</Text>
-      <Text style={styles.subtitle}>Authenticate to access your vault.</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={styles.inner}>
+        <Text style={styles.title}>Vault locked</Text>
+        <Text style={styles.subtitle}>Unlock with your master password or biometrics.</Text>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 24 }} />
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={attemptBiometricUnlock}>
-          <Text style={styles.buttonText}>
-            {hasBiometric ? 'Unlock with Biometrics' : 'Unlock'}
-          </Text>
+        {isBiometricEnrolled && (
+          <TouchableOpacity
+            style={styles.biometricButton}
+            onPress={handleBiometric}
+            disabled={loading}
+          >
+            <Text style={styles.biometricText}>Unlock with Face ID / Touch ID</Text>
+          </TouchableOpacity>
+        )}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Master password"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          returnKeyType="go"
+          onSubmitEditing={handlePassword}
+        />
+
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handlePassword}
+          disabled={loading || !password.trim()}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Unlock</Text>
+          )}
         </TouchableOpacity>
-      )}
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Sign out</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Sign out</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, gap: 12 },
-  icon: { fontSize: 56 },
-  title: { fontSize: 26, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 15, color: '#888', textAlign: 'center' },
-  button: { backgroundColor: '#2563eb', borderRadius: 12, paddingVertical: 15, paddingHorizontal: 40, marginTop: 16 },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
+  inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
+  title: { fontSize: 28, fontWeight: '700', color: '#fff' },
+  subtitle: { fontSize: 14, color: '#aaa', marginBottom: 8 },
+  biometricButton: {
+    borderWidth: 1,
+    borderColor: '#2563eb',
+    borderRadius: 10,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  biometricText: { color: '#2563eb', fontSize: 16, fontWeight: '600' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#fff',
+    backgroundColor: '#111',
+  },
+  button: {
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  logoutButton: { marginTop: 24 },
-  logoutText: { color: '#555', fontSize: 14 },
+  logoutButton: { alignItems: 'center', paddingVertical: 12 },
+  logoutText: { color: '#666', fontSize: 14 },
 });

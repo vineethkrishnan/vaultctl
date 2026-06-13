@@ -7,12 +7,14 @@ import { ISessionRepository } from '../../../domain/auth/ports/ISessionRepositor
 import { IVaultRepository } from '../../../domain/vault/ports/IVaultRepository';
 import { IItemRepository } from '../../../domain/vault/ports/IItemRepository';
 import { IFolderRepository } from '../../../domain/vault/ports/IFolderRepository';
+import { IUnlockContextStore } from './Login';
 
 export interface LogoutSessionDeps {
   authService: IAuthService;
   cryptoService: ICryptoService;
   biometricService: IBiometricService;
   sessionRepository: ISessionRepository;
+  unlockContextStore: IUnlockContextStore;
   vaultRepository: IVaultRepository;
   itemRepository: IItemRepository;
   folderRepository: IFolderRepository;
@@ -23,7 +25,7 @@ export class LogoutSession {
 
   async execute(): Promise<void> {
     const { authService, cryptoService, biometricService, sessionRepository,
-      vaultRepository, itemRepository, folderRepository } = this.deps;
+      unlockContextStore, vaultRepository, itemRepository, folderRepository } = this.deps;
 
     // Zero in-memory key material first.
     cryptoService.lock();
@@ -38,6 +40,7 @@ export class LogoutSession {
 
     // Clear persisted state only after biometric credential is gone.
     await sessionRepository.clear();
+    await unlockContextStore.clear();
     await itemRepository.deleteAll();
     await folderRepository.deleteAll();
     await vaultRepository.deleteAll();

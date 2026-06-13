@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ServerConfigRepository } from './infrastructure/config/ServerConfigRepository';
+import { UnlockContextStore } from './infrastructure/crypto/UnlockContextStore';
 import { SessionRepository } from './infrastructure/crypto/SessionRepository';
 import { CryptoServiceImpl } from './infrastructure/crypto/CryptoServiceImpl';
 import { BiometricServiceExpo } from './infrastructure/crypto/BiometricServiceExpo';
@@ -35,6 +36,7 @@ import { ToggleFavorite } from './application/use-cases/vault/ToggleFavorite';
 import { SearchItems } from './application/use-cases/vault/SearchItems';
 
 const serverConfig = new ServerConfigRepository();
+const unlockContextStore = new UnlockContextStore();
 const sessionRepository = new SessionRepository();
 const cryptoService = new CryptoServiceImpl();
 const biometricService = new BiometricServiceExpo();
@@ -58,10 +60,11 @@ export const container = {
   syncEngine,
   sessionRepository,
   serverConfig,
+  unlockContextStore,
 
   // Auth use cases
   configureServer: new ConfigureServer(serverConfig),
-  login: new Login({ authService, cryptoService, sessionRepository }),
+  login: new Login({ authService, cryptoService, sessionRepository, unlockContextStore }),
   lockVault: new LockVault({ cryptoService }),
   unlockWithBiometric: new UnlockWithBiometric({ cryptoService, biometricService }),
   logoutSession: new LogoutSession({
@@ -69,6 +72,7 @@ export const container = {
     cryptoService,
     biometricService,
     sessionRepository,
+    unlockContextStore,
     vaultRepository,
     itemRepository,
     folderRepository,
