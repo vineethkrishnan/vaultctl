@@ -34,6 +34,8 @@ import { DeleteItem } from './application/use-cases/vault/DeleteItem';
 import { RestoreItem } from './application/use-cases/vault/RestoreItem';
 import { ToggleFavorite } from './application/use-cases/vault/ToggleFavorite';
 import { SearchItems } from './application/use-cases/vault/SearchItems';
+import { ListFavorites } from './application/use-cases/vault/ListFavorites';
+import { ListTrashed } from './application/use-cases/vault/ListTrashed';
 
 const serverConfig = new ServerConfigRepository();
 const unlockContextStore = new UnlockContextStore();
@@ -99,6 +101,8 @@ export const container = {
   restoreItem: new RestoreItem({ itemRepository, vaultApiPort, syncEngine }),
   toggleFavorite: new ToggleFavorite({ itemRepository, vaultApiPort, syncEngine }),
   searchItems: new SearchItems({ itemRepository, cryptoService }),
+  listFavorites: new ListFavorites({ itemRepository, cryptoService }),
+  listTrashed: new ListTrashed({ itemRepository, cryptoService }),
 } as const;
 
 export type Container = typeof container;

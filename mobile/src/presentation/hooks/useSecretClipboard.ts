@@ -5,23 +5,30 @@ import * as Clipboard from 'expo-clipboard';
 
 const WIPE_DELAY_MS = 30_000;
 
+let pendingWipeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleWipe() {
+  if (pendingWipeTimer) clearTimeout(pendingWipeTimer);
+  pendingWipeTimer = setTimeout(async () => {
+    pendingWipeTimer = null;
+    const current = await Clipboard.getStringAsync().catch(() => '');
+    if (current !== '') {
+      await Clipboard.setStringAsync('').catch(() => undefined);
+    }
+  }, WIPE_DELAY_MS);
+}
+
 export function useSecretClipboard() {
   const [copied, setCopied] = useState(false);
-  const wipeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
-      if (wipeTimer.current) clearTimeout(wipeTimer.current);
       if (copiedTimer.current) clearTimeout(copiedTimer.current);
     };
   }, []);
 
   const copy = useCallback(async (value: string, secret: boolean) => {
-    if (wipeTimer.current) {
-      clearTimeout(wipeTimer.current);
-      wipeTimer.current = null;
-    }
     if (copiedTimer.current) {
       clearTimeout(copiedTimer.current);
       copiedTimer.current = null;
@@ -32,11 +39,7 @@ export function useSecretClipboard() {
 
     copiedTimer.current = setTimeout(() => setCopied(false), 2000);
 
-    if (secret) {
-      wipeTimer.current = setTimeout(() => {
-        Clipboard.setStringAsync('');
-      }, WIPE_DELAY_MS);
-    }
+    if (secret) scheduleWipe();
   }, []);
 
   return { copy, copied };

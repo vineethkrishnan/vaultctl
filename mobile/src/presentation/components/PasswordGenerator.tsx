@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,56 @@ import {
   StyleSheet,
   Switch,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import { useSecretClipboard } from '../hooks/useSecretClipboard';
 
 const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
 const DIGITS = '0123456789';
 const SYMBOLS = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+
+function generatePassword(
+  length: number,
+  charsets: { chars: string; required: boolean }[],
+): string {
+  const activeCharsets = charsets.filter((c) => c.required);
+  if (activeCharsets.length === 0) return '';
+
+  const fullCharset = activeCharsets.map((c) => c.chars).join('');
+  const charsetLen = fullCharset.length;
+
+  const maxAcceptable = 256 - (256 % charsetLen);
+  const result: string[] = [];
+
+  while (result.length < length) {
+    const batch = new Uint8Array(length * 2);
+    crypto.getRandomValues(batch);
+    for (const byte of batch) {
+      if (byte >= maxAcceptable) continue;
+      result.push(fullCharset[byte % charsetLen]!);
+      if (result.length === length) break;
+    }
+  }
+
+  for (let i = 0; i < activeCharsets.length; i++) {
+    const { chars } = activeCharsets[i]!;
+    const hasOne = result.some((c) => chars.includes(c));
+    if (!hasOne) {
+      const posBytes = new Uint32Array(1);
+      crypto.getRandomValues(posBytes);
+      const pos = posBytes[0]! % length;
+      const charMax = 256 - (256 % chars.length);
+      let chosen = '';
+      while (!chosen) {
+        const b = new Uint8Array(1);
+        crypto.getRandomValues(b);
+        if (b[0]! < charMax) chosen = chars[b[0]! % chars.length]!;
+      }
+      result[pos] = chosen;
+    }
+  }
+
+  return result.join('');
+}
 
 interface Props {
   onUse: (password: string) => void;
@@ -26,31 +70,22 @@ export function PasswordGenerator({ onUse }: Props) {
   const [useDigits, setUseDigits] = useState(true);
   const [useSymbols, setUseSymbols] = useState(false);
   const [generated, setGenerated] = useState('');
-  const [copied, setCopied] = useState(false);
+  const { copy, copied } = useSecretClipboard();
+
+  useEffect(() => {
+    return () => {
+      setGenerated('');
+    };
+  }, []);
 
   function generate() {
-    let charset = '';
-    if (useUpper) charset += UPPERCASE;
-    if (useLower) charset += LOWERCASE;
-    if (useDigits) charset += DIGITS;
-    if (useSymbols) charset += SYMBOLS;
-    if (!charset) charset = LOWERCASE + DIGITS;
-
-    const bytes = new Uint8Array(length);
-    crypto.getRandomValues(bytes);
-    let password = '';
-    for (const byte of bytes) {
-      password += charset[byte % charset.length];
-    }
-    setGenerated(password);
-    setCopied(false);
-  }
-
-  async function handleCopy() {
-    if (!generated) return;
-    await Clipboard.setStringAsync(generated);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const charsets = [
+      { chars: UPPERCASE, required: useUpper },
+      { chars: LOWERCASE, required: useLower },
+      { chars: DIGITS, required: useDigits },
+      { chars: SYMBOLS, required: useSymbols },
+    ];
+    setGenerated(generatePassword(length, charsets));
   }
 
   return (
@@ -89,7 +124,7 @@ export function PasswordGenerator({ onUse }: Props) {
             {generated}
           </Text>
           <View style={styles.resultActions}>
-            <TouchableOpacity onPress={handleCopy} style={styles.actionBtn}>
+            <TouchableOpacity onPress={() => copy(generated, true)} style={styles.actionBtn}>
               <Text style={styles.actionBtnText}>{copied ? 'Copied!' : 'Copy'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -129,7 +164,7 @@ function ToggleRow({
 
 const styles = StyleSheet.create({
   container: { gap: 12 },
-  options: { gap: 2, backgroundColor: '#111', borderRadius: 12, overflow: 'hidden' },
+  options: { gap: 0, backgroundColor: '#111', borderRadius: 12, overflow: 'hidden' },
   lengthRow: {
     flexDirection: 'row',
     alignItems: 'center',
