@@ -2,7 +2,6 @@
 
 import { IAuthService } from '../../../domain/auth/ports/IAuthService';
 import { ICryptoService } from '../../../domain/crypto/ports/ICryptoService';
-import { IBiometricService } from '../../../domain/crypto/ports/IBiometricService';
 import { ISessionRepository } from '../../../domain/auth/ports/ISessionRepository';
 import { Session } from '../../../domain/auth/entities/Session';
 import { UserId } from '../../../domain/auth/value-objects/UserId';
@@ -12,7 +11,6 @@ import { LoginInput, LoginOutput } from '../../dtos/AuthDtos';
 export interface LoginDeps {
   authService: IAuthService;
   cryptoService: ICryptoService;
-  biometricService: IBiometricService;
   sessionRepository: ISessionRepository;
 }
 
@@ -20,7 +18,7 @@ export class Login {
   constructor(private readonly deps: LoginDeps) {}
 
   async execute(input: LoginInput): Promise<LoginOutput> {
-    const { authService, cryptoService, biometricService, sessionRepository } = this.deps;
+    const { authService, cryptoService, sessionRepository } = this.deps;
     const email = input.email.trim().toLowerCase();
 
     const prelogin = await authService.prelogin(email);
@@ -50,17 +48,6 @@ export class Login {
     });
 
     await sessionRepository.save(session);
-
-    const isBiometricAvailable = await biometricService.isAvailable();
-    if (isBiometricAvailable) {
-      await biometricService.enroll({
-        stretchedKey: derived.stretchedKey,
-        encryptedPrivateKey: result.encryptedPrivateKey,
-        vaults: result.vaults,
-      }).catch(() => {
-        // Enrollment failure is non-fatal; user can enable it later in settings.
-      });
-    }
 
     return { requiresTOTP: false };
   }

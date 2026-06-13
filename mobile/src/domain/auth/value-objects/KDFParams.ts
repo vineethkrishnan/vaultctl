@@ -7,10 +7,24 @@ export class KDFParams {
     readonly parallelism: number,
   ) {}
 
+  static readonly MIN_ITERATIONS = 3;
+  static readonly MIN_MEMORY_KB = 65536;
+  static readonly MAX_MEMORY_KB = 1048576;
+  static readonly MIN_PARALLELISM = 1;
+
   static of(iterations: number, memoryKB: number, parallelism: number): KDFParams {
-    if (iterations < 1) throw new Error('KDFParams: iterations must be >= 1');
-    if (memoryKB < 1024) throw new Error('KDFParams: memoryKB must be >= 1024');
-    if (parallelism < 1) throw new Error('KDFParams: parallelism must be >= 1');
+    if (iterations < KDFParams.MIN_ITERATIONS) {
+      throw new Error(`KDFParams: iterations must be >= ${KDFParams.MIN_ITERATIONS}`);
+    }
+    if (memoryKB < KDFParams.MIN_MEMORY_KB) {
+      throw new Error(`KDFParams: memoryKB must be >= ${KDFParams.MIN_MEMORY_KB} (64 MiB)`);
+    }
+    if (memoryKB > KDFParams.MAX_MEMORY_KB) {
+      throw new Error(`KDFParams: memoryKB must be <= ${KDFParams.MAX_MEMORY_KB}`);
+    }
+    if (parallelism < KDFParams.MIN_PARALLELISM) {
+      throw new Error(`KDFParams: parallelism must be >= ${KDFParams.MIN_PARALLELISM}`);
+    }
     return new KDFParams(iterations, memoryKB, parallelism);
   }
 

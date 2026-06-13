@@ -25,9 +25,18 @@ export class LogoutSession {
     const { authService, cryptoService, biometricService, sessionRepository,
       vaultRepository, itemRepository, folderRepository } = this.deps;
 
+    // Zero in-memory key material first.
     cryptoService.lock();
-    await biometricService.clear().catch(() => {});
+
+    // Remove biometric credential - failure is propagated so the caller can
+    // surface it and let the user retry. A failure here means a hardware-backed
+    // credential for this identity still exists on device.
+    await biometricService.clear();
+
+    // Best-effort server-side session revocation.
     await authService.logout().catch(() => {});
+
+    // Clear persisted state only after biometric credential is gone.
     await sessionRepository.clear();
     await itemRepository.deleteAll();
     await folderRepository.deleteAll();

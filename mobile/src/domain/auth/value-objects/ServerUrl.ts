@@ -6,9 +6,17 @@ export class ServerUrl {
   static of(value: string): ServerUrl {
     const trimmed = value.trim().replace(/\/$/, '');
     if (!trimmed) throw new Error('ServerUrl cannot be empty');
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      throw new Error('ServerUrl must start with http:// or https://');
+
+    if (trimmed.startsWith('http://')) {
+      const host = (trimmed.slice('http://'.length).split('/')[0] ?? '').split(':')[0] ?? '';
+      const isLocalhostEquivalent = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+      if (!isLocalhostEquivalent) {
+        throw new Error('ServerUrl must use https:// for non-localhost addresses');
+      }
+    } else if (!trimmed.startsWith('https://')) {
+      throw new Error('ServerUrl must start with https://');
     }
+
     return new ServerUrl(trimmed);
   }
 
