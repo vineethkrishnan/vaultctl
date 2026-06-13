@@ -119,6 +119,15 @@ export default function ItemListScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() =>
+          router.push(`/(vault)/${vaultId}/new` as Parameters<typeof router.push>[0])
+        }
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -225,4 +234,22 @@ const styles = StyleSheet.create({
   rowMeta: { color: '#555', fontSize: 12 },
   star: { color: '#ca8a04', fontSize: 14 },
   chevron: { color: '#444', fontSize: 16 },
+  fab: {
+    position: 'absolute',
+    bottom: 28,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  fabText: { color: '#fff', fontSize: 28, lineHeight: 32, fontWeight: '300' },
 });

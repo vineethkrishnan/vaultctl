@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { generateTotp, parseTotp, secondsRemaining } from '@vaultctl/shared/totp/totp';
+import { useSecretClipboard } from '../hooks/useSecretClipboard';
 
 interface Props {
   uri: string;
@@ -12,7 +12,7 @@ interface Props {
 export function TotpCounter({ uri }: Props) {
   const [code, setCode] = useState('');
   const [secondsLeft, setSecondsLeft] = useState(30);
-  const [copied, setCopied] = useState(false);
+  const { copy, copied } = useSecretClipboard();
 
   useEffect(() => {
     let mounted = true;
@@ -40,16 +40,10 @@ export function TotpCounter({ uri }: Props) {
     };
   }, [uri]);
 
-  async function handleCopy() {
-    await Clipboard.setStringAsync(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   const isExpiring = secondsLeft <= 5;
 
   return (
-    <TouchableOpacity onPress={handleCopy} style={styles.container}>
+    <TouchableOpacity onPress={() => copy(code, true)} style={styles.container}>
       <Text style={[styles.code, isExpiring && styles.expiring]}>
         {code.slice(0, 3)} {code.slice(3)}
       </Text>
