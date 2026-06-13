@@ -7,7 +7,7 @@ import { Tabs, Callout, Steps } from 'nextra/components'
 The interactive installer works on Linux and macOS. It installs Docker if missing, starts the daemon, generates every secret, writes `.env`, applies database migrations, and brings the stack up.
 
 ```bash
-curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash
+curl -fsSL https://vaultctl.vinelab.in/install.sh | bash
 ```
 
 **What it does:**
@@ -217,7 +217,7 @@ Pre-built binaries are available on [GitHub Releases](https://github.com/vineeth
 <Callout type="info">
   The quickest binary install is the installer's `--no-docker` mode - it picks the right asset, verifies the checksum, generates secrets, writes `config.env`, and offers to run migrations:
   ```bash
-  curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash -s -- --no-docker
+  curl -fsSL https://vaultctl.vinelab.in/install.sh | bash -s -- --no-docker
   ```
   You provide your own PostgreSQL and reverse proxy. The manual steps below do the same thing by hand.
 </Callout>
