@@ -46,6 +46,7 @@ export default function VaultListScreen() {
     { label: 'Search', route: '/search' },
     { label: 'Favorites', route: '/favorites' },
     { label: 'Trash', route: '/trash' },
+    { label: 'Settings', route: '/settings' },
   ] as const;
 
   useEffect(() => {

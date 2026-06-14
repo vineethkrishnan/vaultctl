@@ -27,5 +27,6 @@ export interface ICryptoService {
   decryptItemName(vaultId: string, blob: EncryptedBlob): Promise<string>;
   encryptItemName(vaultId: string, name: string): Promise<EncryptedBlob>;
   isUnlocked(): boolean;
+  getStretchedKey(): Uint8Array | null;
   lock(): void;
 }

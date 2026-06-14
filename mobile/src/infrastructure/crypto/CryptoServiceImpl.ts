@@ -11,6 +11,7 @@ import { deriveKeys as mobileKdfDeriveKeys } from '../_legacy/crypto/kdf';
 import {
   initKeys,
   isUnlocked,
+  getStretchedKey,
   lock,
   encryptData,
   decryptData,
@@ -69,6 +70,10 @@ export class CryptoServiceImpl implements ICryptoService {
 
   isUnlocked(): boolean {
     return isUnlocked();
+  }
+
+  getStretchedKey(): Uint8Array | null {
+    return getStretchedKey();
   }
 
   lock(): void {

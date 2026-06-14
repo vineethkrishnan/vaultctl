@@ -96,6 +96,21 @@ export class AuthApiAdapter implements IAuthService {
     await this.httpClient.fetch('/auth/logout', { method: 'POST' }).catch(() => {});
   }
 
+  async listSessions(): Promise<import('../../domain/auth/ports/IAuthService').SessionInfo[]> {
+    const { data, status } = await this.httpClient.fetch<{
+      sessions: Array<{ id: string; createdAt: string; lastUsedAt: string; isCurrent: boolean }>;
+    }>('/users/me/sessions', { method: 'GET' });
+    if (status !== 200) throw new Error('Failed to list sessions');
+    return data.sessions;
+  }
+
+  async revokeSession(sessionId: string): Promise<void> {
+    const { status } = await this.httpClient.fetch(`/users/me/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+    if (status !== 204) throw new Error('Failed to revoke session');
+  }
+
   private mapLoginSuccess(data: RawLoginResponse): LoginSuccess {
     return {
       kind: 'success',

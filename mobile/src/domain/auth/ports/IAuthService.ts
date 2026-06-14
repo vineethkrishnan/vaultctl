@@ -48,10 +48,19 @@ export interface RefreshResult {
   refreshToken: string;
 }
 
+export interface SessionInfo {
+  id: string;
+  createdAt: string;
+  lastUsedAt: string;
+  isCurrent: boolean;
+}
+
 export interface IAuthService {
   prelogin(email: string): Promise<PreloginResult>;
   login(input: LoginInput): Promise<LoginResult>;
   submitTotp(input: TotpInput): Promise<LoginSuccess>;
   refresh(): Promise<RefreshResult>;
   logout(): Promise<void>;
+  listSessions(): Promise<SessionInfo[]>;
+  revokeSession(sessionId: string): Promise<void>;
 }
