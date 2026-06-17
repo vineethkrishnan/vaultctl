@@ -13,25 +13,24 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useServerStore } from '../../src/store/server';
+import { useAuth } from '../../src/presentation/hooks/useAuth';
 
 export default function ServerScreen() {
   const router = useRouter();
-  const { setServerUrl } = useServerStore();
+  const { configureServer } = useAuth();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleConnect() {
     const trimmed = url.trim().replace(/\/$/, '');
     if (!trimmed) return;
-
     setLoading(true);
     try {
       const res = await fetch(`${trimmed}/api/v1/health`, {
         signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      await setServerUrl(trimmed);
+      await configureServer(trimmed);
       router.replace('/(auth)/login');
     } catch (err) {
       Alert.alert(

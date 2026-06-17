@@ -8,17 +8,27 @@ import { UserId } from '../../../domain/auth/value-objects/UserId';
 import { TotpRequiredError } from '../../../domain/auth/errors/AuthErrors';
 import { LoginInput, LoginOutput } from '../../dtos/AuthDtos';
 
+export interface IUnlockContextStore {
+  save(ctx: {
+    email: string;
+    encryptedPrivateKey: string;
+    vaults: Array<{ vaultId: string; vaultType: string; encryptedVaultKey: string }>;
+  }): Promise<void>;
+  clear(): Promise<void>;
+}
+
 export interface LoginDeps {
   authService: IAuthService;
   cryptoService: ICryptoService;
   sessionRepository: ISessionRepository;
+  unlockContextStore: IUnlockContextStore;
 }
 
 export class Login {
   constructor(private readonly deps: LoginDeps) {}
 
   async execute(input: LoginInput): Promise<LoginOutput> {
-    const { authService, cryptoService, sessionRepository } = this.deps;
+    const { authService, cryptoService, sessionRepository, unlockContextStore } = this.deps;
     const email = input.email.trim().toLowerCase();
 
     const prelogin = await authService.prelogin(email);
@@ -48,6 +58,11 @@ export class Login {
     });
 
     await sessionRepository.save(session);
+    await unlockContextStore.save({
+      email,
+      encryptedPrivateKey: result.encryptedPrivateKey,
+      vaults: result.vaults,
+    });
 
     return { requiresTOTP: false };
   }
