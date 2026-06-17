@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { aesGcmEncrypt } from "./aes-gcm.js";
 import { serializeBlob } from "./blob.js";
 import { deriveAuthHash, deriveStretchedKey } from "./hkdf.js";
+import { deriveArgon2id } from "./argon2.js";
 import { pad, unpad } from "./padding.js";
 import { toBase64 } from "./utils.js";
 
@@ -44,7 +45,24 @@ interface PaddingFixture {
   padded_b64: string;
 }
 
+interface Argon2idFixture {
+  password: string;
+  salt_b64: string;
+  iterations: number;
+  memory_kb: number;
+  parallelism: number;
+  master_key_b64: string;
+}
+
 const encoder = new TextEncoder();
+
+// Deterministic 16-byte salts so the Argon2id fixture is reproducible across
+// regenerations - unlike the random AES-GCM/HKDF fixtures, these vectors are
+// the canonical cross-implementation reference (web hash-wasm, Go x/crypto,
+// mobile native react-native-argon2 all must reproduce master_key_b64).
+function fixedSalt(byte: number): Uint8Array {
+  return new Uint8Array(16).fill(byte);
+}
 
 describe("interop fixture generation", () => {
   it("generates AES-GCM fixtures", async () => {
@@ -143,6 +161,47 @@ describe("interop fixture generation", () => {
     );
 
     expect(fixtures.length).toBe(3);
+  });
+
+  it("generates Argon2id fixtures", async () => {
+    mkdirSync(FIXTURE_DIR, { recursive: true });
+
+    const vectors = [
+      {
+        password: "correct horse battery staple",
+        salt: fixedSalt(0x11),
+        params: { iterations: 3, memoryKB: 65536, parallelism: 4 },
+      },
+      {
+        password: "hunter2",
+        salt: fixedSalt(0x2a),
+        params: { iterations: 1, memoryKB: 19456, parallelism: 1 },
+      },
+    ];
+
+    const fixtures: Argon2idFixture[] = [];
+    for (const vector of vectors) {
+      const masterKey = await deriveArgon2id(
+        vector.password,
+        vector.salt,
+        vector.params,
+      );
+      fixtures.push({
+        password: vector.password,
+        salt_b64: toBase64(vector.salt),
+        iterations: vector.params.iterations,
+        memory_kb: vector.params.memoryKB,
+        parallelism: vector.params.parallelism,
+        master_key_b64: toBase64(masterKey),
+      });
+    }
+
+    writeFileSync(
+      join(FIXTURE_DIR, "argon2_fixtures.json"),
+      JSON.stringify(fixtures, null, 2) + "\n",
+    );
+
+    expect(fixtures.length).toBe(vectors.length);
   });
 
   it("generates padding fixtures", () => {

@@ -1,0 +1,18 @@
+[
+  {
+    "password": "correct horse battery staple",
+    "salt_b64": "EREREREREREREREREREREQ==",
+    "iterations": 3,
+    "memory_kb": 65536,
+    "parallelism": 4,
+    "master_key_b64": "2qIlRDJYs8JxMLmHI3jdYWckyAcmE/uUg0JbgkY0vDA="
+  },
+  {
+    "password": "hunter2",
+    "salt_b64": "KioqKioqKioqKioqKioqKg==",
+    "iterations": 1,
+    "memory_kb": 19456,
+    "parallelism": 1,
+    "master_key_b64": "pC0KUonnk94L1vSdnwGPz+KC0jjOAtGc0RYzWbZTtG8="
+  }
+]
