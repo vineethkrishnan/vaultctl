@@ -42,6 +42,11 @@ export default function VaultListScreen() {
   const { data: vaults, isLoading, isError, refetch, syncAndRefresh } = useVaults();
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const navItems = [
+    { label: 'Search', route: '/search' },
+    { label: 'Favorites', route: '/favorites' },
+    { label: 'Trash', route: '/trash' },
+  ] as const;
 
   useEffect(() => {
     setSyncing(true);
@@ -84,6 +89,17 @@ export default function VaultListScreen() {
           <Text style={styles.syncText}>Syncing...</Text>
         </View>
       )}
+      <View style={styles.quickNav}>
+        {navItems.map((nav) => (
+          <TouchableOpacity
+            key={nav.label}
+            onPress={() => router.push(nav.route as Parameters<typeof router.push>[0])}
+            style={styles.quickNavBtn}
+          >
+            <Text style={styles.quickNavText}>{nav.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
       <FlatList
         data={vaults ?? []}
         keyExtractor={(v) => v.id}
@@ -123,6 +139,23 @@ const styles = StyleSheet.create({
   retryText: { color: '#2563eb', fontSize: 14, fontWeight: '600' },
   syncBar: { backgroundColor: '#1a1a1a', paddingVertical: 6, alignItems: 'center' },
   syncText: { color: '#666', fontSize: 12 },
+  quickNav: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  quickNavBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    backgroundColor: '#111',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#222',
+  },
+  quickNavText: { color: '#aaa', fontSize: 13, fontWeight: '500' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
