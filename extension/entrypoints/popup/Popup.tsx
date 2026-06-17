@@ -147,9 +147,9 @@ function severityPassesLevel(
 
 const decoder = new TextDecoder();
 
-const DOCS_URL = "https://vaultctl.vinelabs.de";
-const VINELABS_URL = "https://vinelabs.de";
-const SUPPORT_EMAIL = "support@vinelabs.de";
+const DOCS_URL = "https://vaultctl.vinelab.in";
+const VINELABS_URL = "https://vinelab.in";
+const SUPPORT_EMAIL = "support@vinelab.in";
 
 function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
   return browser.runtime.sendMessage(message) as Promise<T>;
