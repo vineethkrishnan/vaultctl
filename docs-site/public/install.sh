@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # vaultctl interactive installer
-# Usage: curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash
+# Usage: curl -fsSL https://vaultctl.vinelab.in/install.sh | bash
 #
 # End-to-end: installs Docker if missing (Linux or macOS), starts the daemon,
 # downloads the source, generates every secret, writes .env, and brings the
@@ -36,14 +36,14 @@ for arg in "${@:-}"; do
       cat <<'USAGE'
 vaultctl installer
 
-  curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash
+  curl -fsSL https://vaultctl.vinelab.in/install.sh | bash
 
 Options:
   --no-docker   Install the native binary instead of Docker. You supply your
                 own PostgreSQL and TLS-terminating reverse proxy.
   -h, --help    Show this help.
 
-See https://vaultctl.vinelabs.de for the full guide.
+See https://vaultctl.vinelab.in for the full guide.
 USAGE
       exit 0 ;;
     "") ;;
@@ -287,7 +287,7 @@ EOF
   echo -e "    Restart=always"
   echo ""
   echo -e "  Put a TLS-terminating reverse proxy (Caddy, nginx, Traefik) in front of port ${listen_port}."
-  echo -e "  ${BOLD}Documentation:${NC} https://vaultctl.vinelabs.de"
+  echo -e "  ${BOLD}Documentation:${NC} https://vaultctl.vinelab.in"
   echo ""
 }
 
@@ -590,5 +590,5 @@ echo -e "  ${YELLOW}Security note:${NC}"
 echo -e "    Your secrets are in ${INSTALL_DIR}/.env"
 echo -e "    Back up this file securely - if lost, all encrypted data is unrecoverable."
 echo ""
-echo -e "  ${BOLD}Documentation:${NC} https://vaultctl.vinelabs.de"
+echo -e "  ${BOLD}Documentation:${NC} https://vaultctl.vinelab.in"
 echo ""
