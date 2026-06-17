@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthGuard } from '../src/presentation/navigation/AuthGuard';
 import { autoLockRepository } from '../src/container';
 import { useAuth } from '../src/presentation/hooks/useAuth';
+import { verifyArgon2idInterop } from '../src/infrastructure/crypto/verifyArgon2id';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -51,6 +52,13 @@ function AutoLockManager() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (!__DEV__) return;
+    verifyArgon2idInterop().catch((error: unknown) => {
+      console.error('[crypto] Argon2id interop self-check failed', error);
+    });
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="auto" />
