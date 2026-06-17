@@ -2,7 +2,6 @@
 
 import { IAuthService } from '../../../domain/auth/ports/IAuthService';
 import { ICryptoService } from '../../../domain/crypto/ports/ICryptoService';
-import { IBiometricService } from '../../../domain/crypto/ports/IBiometricService';
 import { ISessionRepository } from '../../../domain/auth/ports/ISessionRepository';
 import { Session } from '../../../domain/auth/entities/Session';
 import { UserId } from '../../../domain/auth/value-objects/UserId';
@@ -11,7 +10,6 @@ import { SubmitTotpInput } from '../../dtos/AuthDtos';
 export interface SubmitTotpDeps {
   authService: IAuthService;
   cryptoService: ICryptoService;
-  biometricService: IBiometricService;
   sessionRepository: ISessionRepository;
   pendingStretchedKey: Uint8Array;
   pendingEncryptedPrivateKey: string;
@@ -22,7 +20,7 @@ export class SubmitTotp {
   constructor(private readonly deps: SubmitTotpDeps) {}
 
   async execute(input: SubmitTotpInput): Promise<void> {
-    const { authService, cryptoService, biometricService, sessionRepository } = this.deps;
+    const { authService, cryptoService, sessionRepository } = this.deps;
 
     const result = await authService.submitTotp({
       email: input.email,
@@ -44,14 +42,5 @@ export class SubmitTotp {
     });
 
     await sessionRepository.save(session);
-
-    const isBiometricAvailable = await biometricService.isAvailable();
-    if (isBiometricAvailable) {
-      await biometricService.enroll({
-        stretchedKey: this.deps.pendingStretchedKey,
-        encryptedPrivateKey: result.encryptedPrivateKey,
-        vaults: result.vaults,
-      }).catch(() => {});
-    }
   }
 }
