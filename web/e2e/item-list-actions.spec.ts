@@ -16,7 +16,7 @@ test.describe("Item list actions", () => {
     const state = createMockState({
       vaults: [{ id: "vault-1", name: "Personal", type: "personal" }],
       items: [
-        { id: "item-1", itemType: "login", encryptedName: fakeEncrypt("GitHub"), encryptedData: data({ username: "work@vinelabs.de", password: "pw-work", uri: "https://github.com" }) },
+        { id: "item-1", itemType: "login", encryptedName: fakeEncrypt("GitHub"), encryptedData: data({ username: "work@vinelab.in", password: "pw-work", uri: "https://github.com" }) },
         { id: "item-2", itemType: "login", encryptedName: fakeEncrypt("GitHub"), encryptedData: data({ username: "personal@gmail.com", password: "pw-home", uri: "https://github.com" }) },
         { id: "item-3", itemType: "secure_note", encryptedName: fakeEncrypt("Recovery codes"), encryptedData: data({ notes: "secret" }) },
       ],
@@ -32,19 +32,19 @@ test.describe("Item list actions", () => {
   });
 
   test("shows usernames so duplicate-site logins are distinguishable", async ({ page }) => {
-    await expect(page.getByText("work@vinelabs.de")).toBeVisible();
+    await expect(page.getByText("work@vinelab.in")).toBeVisible();
     await expect(page.getByText("personal@gmail.com")).toBeVisible();
   });
 
   test("filters by type and searches across username", async ({ page }) => {
     await page.getByLabel("Filter by type").selectOption("secure_note");
     await expect(page.getByText("Recovery codes")).toBeVisible();
-    await expect(page.getByText("work@vinelabs.de")).toHaveCount(0);
+    await expect(page.getByText("work@vinelab.in")).toHaveCount(0);
 
     await page.getByLabel("Filter by type").selectOption("all");
     await page.getByPlaceholder("Search name, username or URL").fill("personal@");
     await expect(page.getByText("personal@gmail.com")).toBeVisible();
-    await expect(page.getByText("work@vinelabs.de")).toHaveCount(0);
+    await expect(page.getByText("work@vinelab.in")).toHaveCount(0);
   });
 
   test("kebab menu copies the password", async ({ page }) => {
