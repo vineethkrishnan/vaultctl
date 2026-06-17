@@ -4,9 +4,9 @@
 
 Reference text for the Chrome Web Store and Firefox AMO dashboards. Copy these into the listing forms. None of this ships in the extension package.
 
-- **Privacy policy URL:** https://vaultctl.vinelabs.de/privacy
-- **Homepage URL:** https://vaultctl.vinelabs.de
-- **Support email:** support@vinelabs.de
+- **Privacy policy URL:** https://vaultctl.vinelab.in/privacy
+- **Homepage URL:** https://vaultctl.vinelab.in
+- **Support email:** support@vinelab.in
 - **Category:** Productivity (Chrome) / Privacy & Security (Firefox)
 - **Upload artifacts:** `.output/vaultctlextension-0.0.1-chrome.zip`, `.output/vaultctlextension-0.0.1-firefox.zip`, sources: `.output/vaultctlextension-0.0.1-sources.zip`
 
@@ -45,7 +45,7 @@ PRIVACY
 You need a running VaultCTL server to use this extension. VaultCTL is open source (AGPL-3.0).
 
 Source: https://github.com/vineethkrishnan/vaultctl
-Privacy policy: https://vaultctl.vinelabs.de/privacy
+Privacy policy: https://vaultctl.vinelab.in/privacy
 ```
 
 ## Single-purpose statement
