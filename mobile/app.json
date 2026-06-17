@@ -60,9 +60,13 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "d326dda3-1bbf-4f77-8f4a-79e96cb9b680"
       }
-    }
+    },
+    "owner": "vineethkrishnan"
   }
 }
