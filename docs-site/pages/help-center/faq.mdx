@@ -39,7 +39,7 @@ vaultctl and Bitwarden share similar zero-knowledge principles, but differ in ke
 **Yes.** vaultctl ships as a single static Go binary. The installer has a `--no-docker` mode that downloads the binary, verifies its checksum, generates your secrets, writes a `config.env`, and (optionally) runs the migrations:
 
 ```bash
-curl -fsSL https://vaultctl.vinelabs.de/install.sh | bash -s -- --no-docker
+curl -fsSL https://vaultctl.vinelab.in/install.sh | bash -s -- --no-docker
 ```
 
 Or do it by hand. Configuration is read entirely from environment variables (there is no `--config` flag), so load your env file before starting the server:
