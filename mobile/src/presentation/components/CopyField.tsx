@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import { useSecretClipboard } from '../hooks/useSecretClipboard';
 
 interface Props {
   label: string;
@@ -12,13 +12,7 @@ interface Props {
 
 export function CopyField({ label, value, secret = false }: Props) {
   const [revealed, setRevealed] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await Clipboard.setStringAsync(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
+  const { copy, copied } = useSecretClipboard();
 
   const display = secret && !revealed ? '•'.repeat(Math.min(value.length, 20)) : value;
 
@@ -37,8 +31,10 @@ export function CopyField({ label, value, secret = false }: Props) {
               <Text style={styles.actionText}>{revealed ? 'Hide' : 'Show'}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleCopy} style={styles.action}>
-            <Text style={styles.actionText}>{copied ? 'Copied' : 'Copy'}</Text>
+          <TouchableOpacity onPress={() => copy(value, secret)} style={styles.action}>
+            <Text style={styles.actionText}>
+              {copied ? (secret ? 'Copied (clears in 30s)' : 'Copied') : 'Copy'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useItemDetail } from '../../../src/presentation/hooks/useItems';
+import { useDeleteItem, useToggleFavorite } from '../../../src/presentation/hooks/useItemMutations';
 import { CopyField } from '../../../src/presentation/components/CopyField';
 import { TotpCounter } from '../../../src/presentation/components/TotpCounter';
 import type {
@@ -156,9 +157,38 @@ function ItemFields({ itemType, data }: { itemType: string; data: unknown }) {
 }
 
 export default function ItemDetailScreen() {
-  const { itemId } = useLocalSearchParams<{ itemId: string }>();
+  const { vaultId, itemId } = useLocalSearchParams<{ vaultId: string; itemId: string }>();
   const router = useRouter();
   const { data: item, isLoading, isError } = useItemDetail(itemId!);
+  const { mutateAsync: deleteItem, isPending: isDeleting } = useDeleteItem(vaultId!);
+  const { mutateAsync: toggleFavorite, isPending: isTogglingFavorite } = useToggleFavorite(vaultId!);
+
+  async function handleDelete() {
+    Alert.alert('Delete Item', 'Move this item to trash?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Move to Trash',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteItem({ itemId: itemId! });
+            router.back();
+          } catch {
+            Alert.alert('Error', 'Failed to delete item.');
+          }
+        },
+      },
+    ]);
+  }
+
+  async function handleToggleFavorite() {
+    if (!item) return;
+    try {
+      await toggleFavorite({ itemId: itemId!, isFavorite: !item.isFavorite });
+    } catch {
+      Alert.alert('Error', 'Failed to update favorite.');
+    }
+  }
 
   if (isLoading) {
     return (
@@ -185,6 +215,34 @@ export default function ItemDetailScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      <View style={styles.actionBar}>
+        <TouchableOpacity
+          onPress={() =>
+            router.push(
+              `/(vault)/${vaultId}/edit/${itemId}` as Parameters<typeof router.push>[0],
+            )
+          }
+          style={styles.actionBtn}
+        >
+          <Text style={styles.actionBtnText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleToggleFavorite}
+          style={styles.actionBtn}
+          disabled={isTogglingFavorite}
+        >
+          <Text style={[styles.actionBtnText, item.isFavorite && styles.activeText]}>
+            {item.isFavorite ? 'Unfavorite' : 'Favorite'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleDelete}
+          style={styles.actionBtn}
+          disabled={isDeleting}
+        >
+          <Text style={[styles.actionBtnText, styles.destructiveText]}>Delete</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.header}>
         <Text style={styles.title} numberOfLines={2}>
           {item.decryptedName}
@@ -209,6 +267,18 @@ const styles = StyleSheet.create({
   errorText: { color: '#ef4444', fontSize: 14 },
   backBtn: { paddingHorizontal: 20, paddingVertical: 8, backgroundColor: '#1a1a1a', borderRadius: 8 },
   backBtnText: { color: '#2563eb', fontSize: 14, fontWeight: '600' },
+  actionBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  actionBtn: { paddingHorizontal: 14, paddingVertical: 7, backgroundColor: '#111', borderRadius: 8 },
+  actionBtnText: { color: '#2563eb', fontSize: 13, fontWeight: '600' },
+  activeText: { color: '#ca8a04' },
+  destructiveText: { color: '#ef4444' },
   header: {
     paddingHorizontal: 20,
     paddingTop: 24,
