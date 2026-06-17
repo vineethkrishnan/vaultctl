@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { container, makeUnlockWithPassword, makeSubmitTotp } from '../../container';
+import { container, makeUnlockWithPassword, makeSubmitTotp, makeEnableBiometricUnlock } from '../../container';
 import { useAuthStore } from './useAuthStore';
 import { TotpRequiredError } from '../../domain/auth/errors/AuthErrors';
 
@@ -71,6 +71,19 @@ export function useAuth() {
     store.setLocked(true);
   }
 
+  async function enableBiometric(): Promise<void> {
+    const stretchedKey = container.cryptoService.getStretchedKey();
+    if (!stretchedKey) throw new Error('Vault is locked. Unlock first to enable biometrics.');
+    const ctx = await container.unlockContextStore.load();
+    if (!ctx) throw new Error('No unlock context. Log in again first.');
+    const useCase = makeEnableBiometricUnlock(stretchedKey, ctx.encryptedPrivateKey, ctx.vaults);
+    await useCase.execute();
+  }
+
+  async function disableBiometric(): Promise<void> {
+    await container.disableBiometricUnlock.execute();
+  }
+
   async function logout(): Promise<void> {
     await container.logoutSession.execute();
     store.reset();
@@ -85,6 +98,8 @@ export function useAuth() {
     unlockWithBiometric,
     unlockWithPassword,
     lockVault,
+    enableBiometric,
+    disableBiometric,
     logout,
   };
 }

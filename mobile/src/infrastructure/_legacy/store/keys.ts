@@ -86,6 +86,10 @@ export function isUnlocked(): boolean {
   return state.stretchedKey !== null;
 }
 
+export function getStretchedKey(): Uint8Array | null {
+  return state.stretchedKey ? new Uint8Array(state.stretchedKey) : null;
+}
+
 /** Encrypt item data for a vault. Returns base64 wire blob. */
 export async function encryptData(
   vaultId: string,

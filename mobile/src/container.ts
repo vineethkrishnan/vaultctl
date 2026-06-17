@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ServerConfigRepository } from './infrastructure/config/ServerConfigRepository';
+import { AutoLockRepository } from './infrastructure/config/AutoLockRepository';
 import { UnlockContextStore } from './infrastructure/crypto/UnlockContextStore';
 import { SessionRepository } from './infrastructure/crypto/SessionRepository';
 import { CryptoServiceImpl } from './infrastructure/crypto/CryptoServiceImpl';
@@ -21,6 +22,8 @@ import { UnlockWithBiometric } from './application/use-cases/auth/UnlockWithBiom
 import { LockVault } from './application/use-cases/auth/LockVault';
 import { LogoutSession } from './application/use-cases/auth/LogoutSession';
 import { EnableBiometricUnlock, DisableBiometricUnlock } from './application/use-cases/auth/EnableBiometricUnlock';
+import { GetActiveSessions } from './application/use-cases/auth/GetActiveSessions';
+import { RevokeSession } from './application/use-cases/auth/RevokeSession';
 import { SyncAll } from './application/use-cases/vault/SyncAll';
 import { SyncVault } from './application/use-cases/vault/SyncVault';
 import { ListVaults } from './application/use-cases/vault/ListVaults';
@@ -38,6 +41,7 @@ import { ListFavorites } from './application/use-cases/vault/ListFavorites';
 import { ListTrashed } from './application/use-cases/vault/ListTrashed';
 
 const serverConfig = new ServerConfigRepository();
+export const autoLockRepository = new AutoLockRepository();
 const unlockContextStore = new UnlockContextStore();
 const sessionRepository = new SessionRepository();
 const cryptoService = new CryptoServiceImpl();
@@ -80,6 +84,8 @@ export const container = {
     folderRepository,
   }),
   disableBiometricUnlock: new DisableBiometricUnlock(biometricService),
+  getActiveSessions: new GetActiveSessions(authService),
+  revokeSession: new RevokeSession(authService),
 
   // Vault use cases
   syncAll: new SyncAll({ syncEngine }),
