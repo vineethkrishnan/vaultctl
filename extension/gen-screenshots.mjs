@@ -24,14 +24,14 @@ const SETTINGS = {
 };
 const CAPTURES = [
   { id: "c1", url: "https://news.ycombinator.com", username: "vineeth", capturedAt: Date.now() - 4 * 60000, read: false },
-  { id: "c2", url: "https://figma.com", username: "design@vinelabs.de", capturedAt: Date.now() - 26 * 60000, read: false },
+  { id: "c2", url: "https://figma.com", username: "design@vinelab.in", capturedAt: Date.now() - 26 * 60000, read: false },
   { id: "c3", url: "https://reddit.com", username: "vinelabs", capturedAt: Date.now() - 95 * 60000, read: true },
 ];
 const ITEMS = [
-  { id: "i1", itemType: "login", favorite: true, trashed: false, encryptedName: "NAME::GitHub", encryptedData: 'DATA::{"username":"vineeth@vinelabs.de","password":"x","uri":"https://github.com"}' },
+  { id: "i1", itemType: "login", favorite: true, trashed: false, encryptedName: "NAME::GitHub", encryptedData: 'DATA::{"username":"vineeth@vinelab.in","password":"x","uri":"https://github.com"}' },
   { id: "i2", itemType: "login", favorite: false, trashed: false, encryptedName: "NAME::Google", encryptedData: 'DATA::{"username":"vineeth@gmail.com","password":"x","uri":"https://accounts.google.com"}' },
   { id: "i3", itemType: "login", favorite: false, trashed: false, encryptedName: "NAME::AWS Console", encryptedData: 'DATA::{"username":"vinelabs-ops","password":"x","uri":"https://console.aws.amazon.com"}' },
-  { id: "i4", itemType: "login", favorite: false, trashed: false, encryptedName: "NAME::Cloudflare", encryptedData: 'DATA::{"username":"admin@vinelabs.de","password":"x","uri":"https://dash.cloudflare.com"}' },
+  { id: "i4", itemType: "login", favorite: false, trashed: false, encryptedName: "NAME::Cloudflare", encryptedData: 'DATA::{"username":"admin@vinelab.in","password":"x","uri":"https://dash.cloudflare.com"}' },
 ];
 
 const initFn = (scene) => {
@@ -41,7 +41,7 @@ const initFn = (scene) => {
   const padded = (str) => { const d = enc.encode(str); const n = B - (d.length % B); const o = new Uint8Array(d.length + n); o.set(d, 0); o.fill(n, d.length); return o; };
   const router = (m) => {
     switch (m.type) {
-      case "getServerUrl": return { url: "https://vault.vinelabs.de" };
+      case "getServerUrl": return { url: "https://vault.vinelab.in" };
       case "getSession": return scene.locked ? { isUnlocked: false } : { isUnlocked: true, accessToken: "tok", vaults: [{ id: "v1", name: "Personal", type: "personal" }] };
       case "getAuthState": return { isAuthenticated: !scene.locked, isUnlocked: !scene.locked, vaultCount: 1 };
       case "getCapturedLogins": return { captures: scene.captures || [] };

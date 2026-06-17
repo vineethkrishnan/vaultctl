@@ -10,9 +10,9 @@ import { BrandMark } from "@/components/BrandMark";
 import { BookOpen, Github, Scale, Mail } from "lucide-react";
 
 const REPO_URL = "https://github.com/vineethkrishnan/vaultctl";
-const DOCS_URL = "https://vaultctl.vinelabs.de";
+const DOCS_URL = "https://vaultctl.vinelab.in";
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
-const SUPPORT_EMAIL = "support@vinelabs.de";
+const SUPPORT_EMAIL = "support@vinelab.in";
 
 function shortCommit(commit: string | undefined): string {
   if (!commit || commit === "dev") return commit ?? "unknown";
