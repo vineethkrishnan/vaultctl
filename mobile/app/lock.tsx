@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/presentation/hooks/useAuth';
 import { container } from '../src/container';
+import { Logo } from '../src/presentation/components/Logo';
 
 export default function LockScreen() {
   const router = useRouter();
@@ -72,6 +73,7 @@ export default function LockScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.inner}>
+        <Logo />
         <Text style={styles.title}>Vault locked</Text>
         <Text style={styles.subtitle}>Unlock with your master password or biometrics.</Text>
 

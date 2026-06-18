@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/presentation/hooks/useAuth';
+import { Logo } from '../../src/presentation/components/Logo';
 
 export default function ServerScreen() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function ServerScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.inner}>
-        <Text style={styles.title}>vaultctl</Text>
+        <Logo />
         <Text style={styles.subtitle}>Enter your self-hosted server URL to get started.</Text>
 
         <TextInput
