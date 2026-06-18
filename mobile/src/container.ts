@@ -6,6 +6,7 @@ import { UnlockContextStore } from './infrastructure/crypto/UnlockContextStore';
 import { SessionRepository } from './infrastructure/crypto/SessionRepository';
 import { CryptoServiceImpl } from './infrastructure/crypto/CryptoServiceImpl';
 import { BiometricServiceExpo } from './infrastructure/crypto/BiometricServiceExpo';
+import { PinServiceExpo } from './infrastructure/crypto/PinServiceExpo';
 import { HttpClient } from './infrastructure/api/HttpClient';
 import { AuthApiAdapter } from './infrastructure/api/AuthApiAdapter';
 import { VaultApiAdapter } from './infrastructure/api/VaultApiAdapter';
@@ -22,6 +23,8 @@ import { UnlockWithBiometric } from './application/use-cases/auth/UnlockWithBiom
 import { LockVault } from './application/use-cases/auth/LockVault';
 import { LogoutSession } from './application/use-cases/auth/LogoutSession';
 import { EnableBiometricUnlock, DisableBiometricUnlock } from './application/use-cases/auth/EnableBiometricUnlock';
+import { EnablePinUnlock, DisablePinUnlock } from './application/use-cases/auth/EnablePinUnlock';
+import { UnlockWithPin } from './application/use-cases/auth/UnlockWithPin';
 import { GetActiveSessions } from './application/use-cases/auth/GetActiveSessions';
 import { RevokeSession } from './application/use-cases/auth/RevokeSession';
 import { SyncAll } from './application/use-cases/vault/SyncAll';
@@ -46,6 +49,7 @@ const unlockContextStore = new UnlockContextStore();
 const sessionRepository = new SessionRepository();
 const cryptoService = new CryptoServiceImpl();
 const biometricService = new BiometricServiceExpo();
+const pinService = new PinServiceExpo();
 const httpClient = new HttpClient(sessionRepository, serverConfig);
 const authService = new AuthApiAdapter(httpClient, serverConfig);
 const vaultApiPort = new VaultApiAdapter(httpClient);
@@ -63,6 +67,7 @@ export const container = {
   // Services
   cryptoService,
   biometricService,
+  pinService,
   syncEngine,
   sessionRepository,
   serverConfig,
@@ -84,6 +89,8 @@ export const container = {
     folderRepository,
   }),
   disableBiometricUnlock: new DisableBiometricUnlock(biometricService),
+  unlockWithPin: new UnlockWithPin({ cryptoService, pinService }),
+  disablePinUnlock: new DisablePinUnlock(pinService),
   getActiveSessions: new GetActiveSessions(authService),
   revokeSession: new RevokeSession(authService),
 
@@ -151,6 +158,20 @@ export function makeEnableBiometricUnlock(
   return new EnableBiometricUnlock({
     cryptoService,
     biometricService,
+    stretchedKey,
+    encryptedPrivateKey,
+    vaults,
+  });
+}
+
+export function makeEnablePinUnlock(
+  stretchedKey: Uint8Array,
+  encryptedPrivateKey: string,
+  vaults: Array<{ vaultId: string; vaultType: string; encryptedVaultKey: string }>,
+): EnablePinUnlock {
+  return new EnablePinUnlock({
+    cryptoService,
+    pinService,
     stretchedKey,
     encryptedPrivateKey,
     vaults,

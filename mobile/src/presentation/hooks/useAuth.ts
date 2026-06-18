@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { container, makeUnlockWithPassword, makeSubmitTotp, makeEnableBiometricUnlock } from '../../container';
+import {
+  container,
+  makeUnlockWithPassword,
+  makeSubmitTotp,
+  makeEnableBiometricUnlock,
+  makeEnablePinUnlock,
+} from '../../container';
+import { PinLockoutState } from '../../domain/crypto/ports/IPinService';
 import { useAuthStore } from './useAuthStore';
 import { TotpRequiredError } from '../../domain/auth/errors/AuthErrors';
 
@@ -84,6 +91,32 @@ export function useAuth() {
     await container.disableBiometricUnlock.execute();
   }
 
+  async function unlockWithPin(pin: string): Promise<void> {
+    await container.unlockWithPin.execute(pin);
+    store.setLocked(false);
+  }
+
+  async function enablePin(pin: string): Promise<void> {
+    const stretchedKey = container.cryptoService.getStretchedKey();
+    if (!stretchedKey) throw new Error('Vault is locked. Unlock first to set a PIN.');
+    const ctx = await container.unlockContextStore.load();
+    if (!ctx) throw new Error('No unlock context. Log in again first.');
+    const useCase = makeEnablePinUnlock(stretchedKey, ctx.encryptedPrivateKey, ctx.vaults);
+    await useCase.execute(pin);
+  }
+
+  async function disablePin(): Promise<void> {
+    await container.disablePinUnlock.execute();
+  }
+
+  function isPinSet(): Promise<boolean> {
+    return container.pinService.isSet();
+  }
+
+  function getPinLockout(): Promise<PinLockoutState> {
+    return container.pinService.getLockoutState();
+  }
+
   async function logout(): Promise<void> {
     await container.logoutSession.execute();
     store.reset();
@@ -100,6 +133,11 @@ export function useAuth() {
     lockVault,
     enableBiometric,
     disableBiometric,
+    unlockWithPin,
+    enablePin,
+    disablePin,
+    isPinSet,
+    getPinLockout,
     logout,
   };
 }

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/presentation/hooks/useAuth';
+import { Logo } from '../../src/presentation/components/Logo';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
+        <Logo />
         <Text style={styles.title}>Sign in</Text>
         <Text style={styles.subtitle}>Enter your credentials to unlock your vaults.</Text>
 
