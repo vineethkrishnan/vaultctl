@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../src/presentation/hooks/useAuth';
 import { useAutoLock, useActiveSessions, useServerUrl } from '../src/presentation/hooks/useSettings';
 import { container } from '../src/container';
@@ -47,6 +47,8 @@ export default function SettingsScreen() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnrolled, setBiometricEnrolled] = useState(false);
   const [biometricWorking, setBiometricWorking] = useState(false);
+  const [pinSet, setPinSet] = useState(false);
+  const [pinWorking, setPinWorking] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -57,6 +59,37 @@ export default function SettingsScreen() {
       setBiometricEnrolled(enrolled);
     }).catch(() => {});
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      container.pinService.isSet().then(setPinSet).catch(() => {});
+    }, []),
+  );
+
+  function handlePinToggle(enable: boolean) {
+    if (enable) {
+      router.push('/set-pin' as Parameters<typeof router.push>[0]);
+      return;
+    }
+    Alert.alert('Remove PIN?', 'You will no longer be able to unlock with a PIN.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          setPinWorking(true);
+          try {
+            await auth.disablePin();
+            setPinSet(false);
+          } catch (err) {
+            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to remove PIN.');
+          } finally {
+            setPinWorking(false);
+          }
+        },
+      },
+    ]);
+  }
 
   async function handleBiometricToggle(enable: boolean) {
     setBiometricWorking(true);
@@ -134,6 +167,19 @@ export default function SettingsScreen() {
           )}
         </SettingsRow>
       )}
+
+      <SettingsRow label="PIN unlock">
+        {pinWorking ? (
+          <ActivityIndicator color="#2563eb" />
+        ) : (
+          <Switch
+            value={pinSet}
+            onValueChange={handlePinToggle}
+            trackColor={{ false: '#333', true: '#2563eb' }}
+            thumbColor={pinSet ? '#fff' : '#888'}
+          />
+        )}
+      </SettingsRow>
 
       <View style={styles.block}>
         <Text style={styles.blockLabel}>Auto-lock</Text>

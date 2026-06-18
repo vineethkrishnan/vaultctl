@@ -73,6 +73,7 @@ export default function RootLayout() {
           <Stack.Screen name="trash" options={{ headerShown: true, title: 'Trash', headerStyle: { backgroundColor: '#0a0a0a' }, headerTintColor: '#e5e5e5' }} />
           <Stack.Screen name="settings" options={{ headerShown: true, title: 'Settings', headerStyle: { backgroundColor: '#0a0a0a' }, headerTintColor: '#e5e5e5' }} />
           <Stack.Screen name="change-password" options={{ headerShown: true, title: 'Change Password', headerStyle: { backgroundColor: '#0a0a0a' }, headerTintColor: '#e5e5e5' }} />
+          <Stack.Screen name="set-pin" options={{ headerShown: true, title: 'PIN unlock', headerStyle: { backgroundColor: '#0a0a0a' }, headerTintColor: '#e5e5e5' }} />
         </Stack>
       </AuthGuard>
     </QueryClientProvider>
