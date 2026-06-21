@@ -68,10 +68,38 @@ Save. Every encrypted blob round-trips through the worker - the server only ever
 
 ![Vault with item](screenshots/08-vault-with-item.png)
 
-## 6. From here
+## 6. Install the browser extension
+
+The MV3 extension (Chrome and Firefox) talks to the same server and does all crypto client-side, exactly like the SPA.
+
+Build it from the repo:
+
+```bash
+cd extension
+npm ci
+npm run build            # Chrome -> .output/chrome-mv3
+npm run build:firefox    # Firefox -> .output/firefox-mv3
+```
+
+Load the unpacked build:
+
+- **Chrome / Edge / Brave:** open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and pick `extension/.output/chrome-mv3`.
+- **Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and pick `extension/.output/firefox-mv3/manifest.json`.
+
+Open the toolbar popup, point it at the same server URL you deployed, then sign in with your email and master password to unlock. The vault key is derived in the popup and held only in the background service worker for the session.
+
+Once unlocked the extension:
+
+- shows a vaultctl emblem inside matching login fields; click it (or focus the field) to pick a credential to fill,
+- offers a non-blocking **Save / Update** toast after you submit a login, and captures credit cards and identities from checkout forms,
+- fills live TOTP codes for logins that carry a 2FA secret,
+- suggests a strong password on signup / new-password fields.
+
+**Autofill on page load is off by default.** The extension only fills automatically when you turn on **Autofill on page load** in the popup's **Settings -> Autofill & saving**; until then, use the field emblem or the `Ctrl/Cmd+Shift+L` shortcut to fill on demand. Auto-fill only triggers when exactly one stored login matches the page, so you are never silently filled with the wrong credential.
+
+## 7. From here
 
 - **CLI:** `vaultctl login`, `vaultctl ls`, `vaultctl get GitHub` - uses the same backend, decrypts client-side. See [`README.md`](../../README.md#cli).
-- **Browser extension:** build with `cd extension && npm run build`, load `extension/.output/chrome-mv3/` into Chrome (`chrome://extensions` -> Developer mode -> Load unpacked). Autofills logins and captures/fills cards and identities.
 - **Set up 2FA:** add a TOTP authenticator in **Settings** -> security. The app can also store and show live TOTP codes for your other accounts.
 - **Verify your email:** if the server has SMTP configured, confirm the code sent on signup before the read-only grace expires. See [`email.md`](email.md).
 - **Enable digests:** opt into a periodic activity summary (and tune its schedule and timezone) in **Settings**, once mail is configured.
