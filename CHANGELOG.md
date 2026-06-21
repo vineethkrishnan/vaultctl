@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.19.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.18.0...v1.19.0) (2026-06-21)
+
+
+### Features
+
+* **mobile:** auth presentation, hooks, AuthGuard (M03) ([#239](https://github.com/vineethkrishnan/vaultctl/issues/239)) ([d660eb8](https://github.com/vineethkrishnan/vaultctl/commit/d660eb859e28fffca83b2cba7f84aa103981b117))
+* **mobile:** create/edit item flows, password generator, secure clipboard (M05) ([#242](https://github.com/vineethkrishnan/vaultctl/issues/242)) ([6668858](https://github.com/vineethkrishnan/vaultctl/commit/666885809743f783f4c0162442fdbae3e6e6735d))
+* **mobile:** crypto interop tests, domain unit tests, CI workflow (M08) ([#245](https://github.com/vineethkrishnan/vaultctl/issues/245)) ([771bf2d](https://github.com/vineethkrishnan/vaultctl/commit/771bf2d570c0a40278950a8a34e31694826bc7ea))
+* **mobile:** domain model and application use cases (M01) ([#237](https://github.com/vineethkrishnan/vaultctl/issues/237)) ([7266da0](https://github.com/vineethkrishnan/vaultctl/commit/7266da0023466ed6667bb68a14be024134b26573))
+* **mobile:** global search, favorites, trash screens (M06) ([#243](https://github.com/vineethkrishnan/vaultctl/issues/243)) ([620332a](https://github.com/vineethkrishnan/vaultctl/commit/620332ad8c0b5098b14617cfc94c26cc59267a93))
+* **mobile:** infrastructure adapters, DI container, security hardening (M02) ([#238](https://github.com/vineethkrishnan/vaultctl/issues/238)) ([2ebecc1](https://github.com/vineethkrishnan/vaultctl/commit/2ebecc10248ae3b36ab62b7f9a0b83ed6f6541ab))
+* **mobile:** scaffold React Native app ([#236](https://github.com/vineethkrishnan/vaultctl/issues/236)) ([e66b81e](https://github.com/vineethkrishnan/vaultctl/commit/e66b81eb98ced6814a9fb73b296b7dc399cfe203))
+* **mobile:** settings screen, sessions, biometric toggle, auto-lock (M07) ([#244](https://github.com/vineethkrishnan/vaultctl/issues/244)) ([e924db8](https://github.com/vineethkrishnan/vaultctl/commit/e924db8a612af78a6950a985b33dff4541b6c27f))
+* **mobile:** upgrade to Expo SDK 54, add Vault CTL branding and PIN unlock ([3f5635b](https://github.com/vineethkrishnan/vaultctl/commit/3f5635b500b2fbf09a105ebb466c3bfbe5cd6727))
+* **mobile:** vault read screens, item detail, TOTP counter (M04) ([#241](https://github.com/vineethkrishnan/vaultctl/issues/241)) ([821f5c6](https://github.com/vineethkrishnan/vaultctl/commit/821f5c6e94ea5c619ba75589a898c81f01a9a76a))
+* **web:** one-click in-app upgrade for self-hosted deployments ([#234](https://github.com/vineethkrishnan/vaultctl/issues/234)) ([d0b9b31](https://github.com/vineethkrishnan/vaultctl/commit/d0b9b31d85e47d5960d9b6a9f8e0dc0eb48a0393))
+
+
+### Bug Fixes
+
+* **extension:** persist captures on submit, de-dupe OTP emblem, retry autofill-on-load ([#255](https://github.com/vineethkrishnan/vaultctl/issues/255)) ([8760dec](https://github.com/vineethkrishnan/vaultctl/commit/8760dec52c715c468c73bfcf1f8a14ab19a81f8c))
+* **mobile:** native dependency & bundler fixes so the app builds and bundles ([624d28c](https://github.com/vineethkrishnan/vaultctl/commit/624d28cfccc9df503c63957d7ad6e1fa74843398))
+
+
+### Documentation
+
+* expand the walkthrough's browser-extension coverage into a real install + onboarding section (Chrome and Firefox builds, load-unpacked, server URL + unlock) and document that autofill-on-load is off by default under Settings -&gt; Autofill & saving. ([8760dec](https://github.com/vineethkrishnan/vaultctl/commit/8760dec52c715c468c73bfcf1f8a14ab19a81f8c))
+* remove stray tool-call tags leaked into env template and setup docs ([#256](https://github.com/vineethkrishnan/vaultctl/issues/256)) ([e4e0418](https://github.com/vineethkrishnan/vaultctl/commit/e4e0418f6a7b16ffa08e070ad971747d2edcc105))
+
 ## [1.18.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.17.0...v1.18.0) (2026-06-08)
 
 
