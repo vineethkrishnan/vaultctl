@@ -84,7 +84,12 @@ interface ExtSettings {
 
 const BRAND = "#2dd4bf";
 
-const AUTOFILL_ON_LOAD_DELAY_MS = 2000;
+// Autofill-on-load polls for the login form: a short first delay fills static
+// pages quickly, then retries cover SPA forms that render or fade in later
+// (~6s total window before giving up).
+const AUTOFILL_ON_LOAD_DELAY_MS = 500;
+const AUTOFILL_RETRY_MS = 600;
+const AUTOFILL_MAX_ATTEMPTS = 10;
 
 // After the extension is reloaded/updated, content scripts injected by the old
 // instance keep running in already-open tabs with a dead runtime handle. Reading
@@ -106,6 +111,7 @@ export default defineContentScript({
 
   main(ctx) {
     const observedForms = new WeakSet<HTMLFormElement>();
+    let didAutofillOnLoad = false;
     let matches: CredMatch[] = [];
     let vaults: { id: string; name: string; type: string }[] = [];
     let settings: ExtSettings = {
@@ -501,9 +507,25 @@ export default defineContentScript({
         clearOtpFieldIcons();
         return;
       }
+      // A 2FA prompt is frequently a row of single-character boxes (one input
+      // per digit). Decorating every one stacks an emblem on each box, which
+      // looks broken and offers the same code N times. Decorate only the first
+      // code field of each scope (a form, or the document for unformed widgets)
+      // so a single emblem anchors the whole group.
+      const decoratedScopes = new WeakSet<HTMLElement>();
+      let documentScopeDecorated = false;
       for (const node of document.querySelectorAll("input")) {
         const input = node as HTMLInputElement;
-        if (isVisible(input) && isOtpInput(input)) decorateOtpField(input);
+        if (!isVisible(input) || !isOtpInput(input)) continue;
+        const scope = input.closest("form") as HTMLElement | null;
+        if (scope) {
+          if (decoratedScopes.has(scope)) continue;
+          decoratedScopes.add(scope);
+        } else {
+          if (documentScopeDecorated) continue;
+          documentScopeDecorated = true;
+        }
+        decorateOtpField(input);
       }
       repositionOtpFieldIcons();
     }
@@ -1797,26 +1819,36 @@ export default defineContentScript({
       // login form and exactly one matching credential. Anything else (multiple
       // forms, multiple matches) waits for the user to pick from the icon/picker,
       // so we never silently fill the wrong form or guess between credentials.
-      // The attempt is delayed because at document_idle SPA login pages often
-      // haven't rendered their form yet (or it is mid fade-in and fails the
-      // visibility check), so an immediate attempt finds zero forms and the
-      // fill silently never happens.
-      if (settings.autofill && matches.length === 1) {
-        ctx.setTimeout(() => {
-          const forms = findVisibleLoginForms();
-          if (forms.length !== 1) return;
-          const { usernameInput, passwordInput } = extractCredentialInputs(
-            forms[0]!,
-          );
+      if (settings.autofill && matches.length === 1) scheduleAutofillOnLoad();
+    }
+
+    // SPA login pages often haven't rendered (or finished fading in) their form
+    // at document_idle, so a single delayed attempt finds zero visible forms and
+    // the fill silently never happens. Poll a bounded number of times until the
+    // single login form appears, then fill it once. Stops as soon as the form is
+    // found (filled, or skipped because the user already typed) so it never keeps
+    // retrying or fills twice.
+    function scheduleAutofillOnLoad() {
+      let attempts = 0;
+      const tryFill = () => {
+        if (didAutofillOnLoad || matches.length !== 1) return;
+        const forms = findVisibleLoginForms();
+        if (forms.length === 1) {
+          const { usernameInput, passwordInput } = extractCredentialInputs(forms[0]!);
           // The user may have started typing during the delay - a field with a
           // value is theirs now, and a silent overwrite could swap in the wrong
           // credential mid-keystroke.
-          if (!isUntouched(usernameInput) || !isUntouched(passwordInput)) {
-            return;
+          if (isUntouched(usernameInput) && isUntouched(passwordInput)) {
+            didAutofillOnLoad = true;
+            void fillWithMatch(forms[0]!, matches[0]!);
           }
-          void fillWithMatch(forms[0]!, matches[0]!);
-        }, AUTOFILL_ON_LOAD_DELAY_MS);
-      }
+          return;
+        }
+        if (++attempts < AUTOFILL_MAX_ATTEMPTS) {
+          ctx.setTimeout(tryFill, AUTOFILL_RETRY_MS);
+        }
+      };
+      ctx.setTimeout(tryFill, AUTOFILL_ON_LOAD_DELAY_MS);
     }
 
     // A field is untouched when it holds no value. A field that is merely

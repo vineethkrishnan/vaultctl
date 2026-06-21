@@ -1300,6 +1300,11 @@ export default defineBackground(() => {
               while (capturedLogins.length > CAPTURE_MAX) {
                 capturedLogins.shift();
               }
+              // Persist before any further await: a login submit usually
+              // redirects, which can evict the MV3 worker before the landing
+              // page asks for the pending prompt. Without this write-through the
+              // capture lived only in memory and the save toast never reopened.
+              await syncBadge();
               await showCaptureNotification(capture.url, capture.username);
               sendResponse({ ok: true, id: capture.id, action, username });
               return;
@@ -1337,6 +1342,10 @@ export default defineBackground(() => {
               while (capturedLogins.length > CAPTURE_MAX) {
                 capturedLogins.shift();
               }
+              // Persist before any further await so a checkout redirect that
+              // evicts the worker still leaves the capture for the save toast to
+              // reopen on the landing page.
+              await syncBadge();
               await showCaptureNotification(
                 capture.url,
                 title ||
