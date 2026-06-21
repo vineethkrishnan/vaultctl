@@ -197,5 +197,3 @@ their client id/secret are set. See [backup-sync.md](backup-sync.md).
 | `VAULTCTL_LOG_FORMAT` | `json` | `json` or `text`. |
 | `VAULTCTL_LOG_IP_PRECISION` | `coarse` | `coarse`, `full`, or `none`. Controls how much of the client IP is logged. |
 | `VAULTCTL_LOG_REDACT_FIELDS` | `authHash,password,refresh_token,api_key,totp,masterKey,stretchedKey` | Field names scrubbed from structured logs. |
-</content>
-</invoke>
