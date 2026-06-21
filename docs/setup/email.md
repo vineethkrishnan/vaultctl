@@ -103,4 +103,3 @@ roughly one period after they set it, defaulting to 08:00 in their local zone.
 Every transactional message (verification, login alert, digest) is rendered in
 the recipient's locale. vaultctl ships English and German; the user's locale is
 stored on their profile and falls back to English for anything else.
-</content>

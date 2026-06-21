@@ -98,4 +98,3 @@ re-auth required, as with export), then re-import it into the target vault with
 your master password. Because the artifact is the client-encrypted export, the
 master password is what actually decrypts it; the server only unwraps the outer
 data-key seal.
-</content>
