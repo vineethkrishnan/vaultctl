@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.20.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.19.0...v1.20.0) (2026-06-26)
+
+
+### Features
+
+* **web:** confirm before locking vault from quick actions ([#263](https://github.com/vineethkrishnan/vaultctl/issues/263)) ([0ec9b08](https://github.com/vineethkrishnan/vaultctl/commit/0ec9b08f4084724eccd0d94f5072ee834ebc2b4a))
+
+
+### Bug Fixes
+
+* **web:** import Chrome and Firefox password CSVs as logins ([#264](https://github.com/vineethkrishnan/vaultctl/issues/264)) ([ff937cf](https://github.com/vineethkrishnan/vaultctl/commit/ff937cf3cd69e06b6238a6e3a71948204c3053de))
+
 ## [1.19.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.18.0...v1.19.0) (2026-06-21)
 
 
