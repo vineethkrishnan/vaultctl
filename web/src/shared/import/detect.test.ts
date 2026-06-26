@@ -54,6 +54,18 @@ describe("detectFormat", () => {
     ).toBe("keepass-xml");
   });
 
+  it("identifies Firefox CSV by its metadata columns", () => {
+    expect(
+      detectFromInput({ name: "logins.csv", sample: read("firefox.csv") }),
+    ).toBe("firefox-csv");
+  });
+
+  it("identifies Chrome CSV by its name/url/username/password header", () => {
+    expect(
+      detectFromInput({ name: "Chrome Passwords.csv", sample: read("chrome.csv") }),
+    ).toBe("chrome-csv");
+  });
+
   it("returns null for unknown formats", () => {
     expect(
       detectFromInput({ name: "unknown.dat", sample: "nothing matches" }),

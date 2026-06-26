@@ -1,0 +1,4 @@
+"url","username","password","httpRealm","formActionOrigin","guid","timeCreated","timeLastUsed","timePasswordChanged"
+"https://github.com","octocat","hunter2","","https://github.com","{abc-123}","1700000000000","1700000500000","1700000000000"
+"https://accounts.google.com","jane.doe@gmail.com","p@ss,word","","https://accounts.google.com","{def-456}","1700000000000","1700000500000","1700000000000"
+"https://example.com","user1","secret123","","https://example.com","{ghi-789}","1700000000000","1700000500000","1700000000000"

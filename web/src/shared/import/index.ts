@@ -10,6 +10,8 @@ import { importer as onepasswordCsv } from "./onepassword-csv.js";
 import { importer as onepassword1pux } from "./onepassword-1pux.js";
 import { importer as lastpassCsv } from "./lastpass-csv.js";
 import { importer as keepassXml } from "./keepass-xml.js";
+import { importer as chromeCsv } from "./chrome-csv.js";
+import { importer as firefoxCsv } from "./firefox-csv.js";
 
 import type { ImportFormat, Importer } from "./types.js";
 
@@ -23,6 +25,8 @@ const REGISTRY: Record<ImportFormat, Importer> = {
   "onepassword-1pux": onepassword1pux,
   "lastpass-csv": lastpassCsv,
   "keepass-xml": keepassXml,
+  "chrome-csv": chromeCsv,
+  "firefox-csv": firefoxCsv,
 };
 
 export function getImporter(format: ImportFormat): Importer {

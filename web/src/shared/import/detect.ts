@@ -49,6 +49,23 @@ export function detectFromInput(input: DetectInput): ImportFormat | null {
     if (header.startsWith("title,") || header.includes("otpauth")) {
       return "onepassword-csv";
     }
+    // Firefox about:logins export: url-first with its signature metadata columns.
+    if (
+      header.includes("httprealm") ||
+      header.includes("formactionorigin") ||
+      header.includes("timepasswordchanged")
+    ) {
+      return "firefox-csv";
+    }
+    // Chrome / Chromium password export: name,url,username,password[,note].
+    if (
+      header.includes("name") &&
+      header.includes("url") &&
+      header.includes("username") &&
+      header.includes("password")
+    ) {
+      return "chrome-csv";
+    }
     // Fall back to Bitwarden - the historical default.
     return "bitwarden-csv";
   }
