@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
@@ -10,6 +11,7 @@ import { lock as lockKeys } from "@/lib/key-holder";
 import { getNotifications } from "@/lib/system-api";
 import { useUpdateNotification } from "@/hooks/use-update-notification";
 import { useServerFeatures } from "@/hooks/use-server-features";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // QuickActions is the always-one-tap row: notifications (with unread badge),
 // theme toggle, and lock. Shared by the desktop sidebar footer and the mobile
@@ -29,6 +31,7 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
   });
   const { show: showUpdate } = useUpdateNotification(features.updates);
   const unread = (notifications?.unreadCount ?? 0) + (showUpdate ? 1 : 0);
+  const [confirmLock, setConfirmLock] = useState(false);
 
   function lockVault() {
     lockKeys();
@@ -69,13 +72,25 @@ export function QuickActions({ onNavigate }: { onNavigate?: () => void }) {
         {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </button>
       <button
-        onClick={lockVault}
+        onClick={() => setConfirmLock(true)}
         className={btn}
         title={t("chrome.lockVault")}
         aria-label={t("chrome.lockVault")}
       >
         <Lock className="h-5 w-5" />
       </button>
+
+      <ConfirmDialog
+        open={confirmLock}
+        title={t("chrome.lockConfirmTitle")}
+        message={t("chrome.lockConfirmBody")}
+        confirmLabel={t("chrome.lockVault")}
+        onConfirm={() => {
+          setConfirmLock(false);
+          lockVault();
+        }}
+        onCancel={() => setConfirmLock(false)}
+      />
     </div>
   );
 }

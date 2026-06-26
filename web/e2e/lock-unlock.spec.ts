@@ -34,8 +34,13 @@ test.describe.serial("Lock / unlock", () => {
     await loginViaUI(page);
     await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
 
-    // Click the lock button in the sidebar footer's quick-actions row.
+    // Click the lock button in the sidebar footer's quick-actions row, then
+    // confirm in the dialog that guards against accidental locks.
     await page.getByRole("button", { name: "Lock vault" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Lock vault" })
+      .click();
 
     // The auth store flips isLocked=true. Trigger an in-app navigation (a full
     // reload would drop the in-memory auth and land on /login instead) so the
