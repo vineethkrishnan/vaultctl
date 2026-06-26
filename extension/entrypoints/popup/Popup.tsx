@@ -1605,7 +1605,7 @@ function NotificationsTab({
                   e.stopPropagation();
                   onSave(capture.id, targetFor(capture.id));
                 }}
-                className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
+                className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {t("common:save")}
               </button>
