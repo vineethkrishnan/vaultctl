@@ -18,7 +18,9 @@ export type ImportFormat =
   | "onepassword-1pux"
   | "onepassword-csv"
   | "lastpass-csv"
-  | "keepass-xml";
+  | "keepass-xml"
+  | "chrome-csv"
+  | "firefox-csv";
 
 // ===========================================================================
 // ParsedItem - the common shape produced by every parser

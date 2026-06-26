@@ -1,0 +1,5 @@
+name,url,username,password,note
+github.com,https://github.com/login,octocat,hunter2,Primary GitHub account
+accounts.google.com,https://accounts.google.com/,jane.doe@gmail.com,"p@ss,word",
+Example,https://example.com/signin,user1,secret123,"Multi
+line note"
