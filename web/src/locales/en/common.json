@@ -18,7 +18,9 @@
     "notifications": "Notifications",
     "notificationsUnread": "Notifications, {{count}} unread",
     "toggleTheme": "Toggle theme",
-    "lockVault": "Lock vault"
+    "lockVault": "Lock vault",
+    "lockConfirmTitle": "Lock vault?",
+    "lockConfirmBody": "This locks your vault right away. You'll need your master password or Touch ID to unlock again."
   },
   "profileMenu": {
     "account": "Account",

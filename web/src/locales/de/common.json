@@ -18,7 +18,9 @@
     "notifications": "Benachrichtigungen",
     "notificationsUnread": "Benachrichtigungen, {{count}} ungelesen",
     "toggleTheme": "Design umschalten",
-    "lockVault": "Tresor sperren"
+    "lockVault": "Tresor sperren",
+    "lockConfirmTitle": "Tresor sperren?",
+    "lockConfirmBody": "Dadurch wird dein Tresor sofort gesperrt. Zum Entsperren benötigst du dein Master-Passwort oder Touch ID."
   },
   "profileMenu": {
     "account": "Konto",
