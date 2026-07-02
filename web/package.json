@@ -38,14 +38,14 @@
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
-    "@tailwindcss/vite": "^4.3.1",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/vite": "^4.3.2",
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.0.0",
     "@types/zxcvbn": "^4.4.5",
     "@vitejs/plugin-react": "^4.3.0",
-    "orval": "^8.17.0",
+    "orval": "^8.19.0",
     "svg2ttf": "^6.1.0",
     "svgicons2svgfont": "^16.0.0",
     "svgpath": "^2.6.0",
@@ -53,6 +53,6 @@
     "ttf2woff2": "^8.0.1",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }
