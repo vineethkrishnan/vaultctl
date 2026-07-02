@@ -64,7 +64,7 @@ jobs:
       VAULTCTL_REGISTRATION_MODE: open
       VAULTCTL_BACKUP_RETENTION_DAYS: '0'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:

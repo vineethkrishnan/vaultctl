@@ -65,7 +65,7 @@ jobs:
       VAULTCTL_BASE_URL: http://localhost:8080
       VAULTCTL_REGISTRATION_MODE: open
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
