@@ -16,7 +16,7 @@
  * refresh token) are left untouched and still land on /login.
  */
 
-import { useAuthStore } from "./auth-store";
+import { getAuthEpoch, useAuthStore } from "./auth-store";
 import { decodeAccessTokenClaims } from "./jwt-claims";
 
 let restorePromise: Promise<void> | null = null;
@@ -43,6 +43,7 @@ export async function restoreSession(): Promise<void> {
 }
 
 async function doRestore(refreshToken: string): Promise<void> {
+  const epoch = getAuthEpoch();
   let res: Response;
   try {
     res = await fetch("/api/v1/auth/refresh", {
@@ -64,6 +65,8 @@ async function doRestore(refreshToken: string): Promise<void> {
     refreshToken?: string;
   };
   if (!data.accessToken || !data.refreshToken) return;
+  // A logout raced this restore; don't re-authenticate a signed-out session.
+  if (getAuthEpoch() !== epoch) return;
 
   const claims = decodeAccessTokenClaims(data.accessToken);
   useAuthStore.getState().restoreLocked({

@@ -2,6 +2,12 @@
 
 import { create } from "zustand";
 
+// Bumped on every logout. In-flight token refreshes capture the epoch when they
+// start and drop their result if it changed, so a refresh that resolves after
+// the user signed out cannot write a rotated token back into sessionStorage.
+let authEpoch = 0;
+export const getAuthEpoch = (): number => authEpoch;
+
 interface AuthState {
   userId: string | null;
   role: string | null;
@@ -81,6 +87,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   unlock: () => set({ isLocked: false }),
 
   logout: () => {
+    authEpoch += 1;
     sessionStorage.removeItem("vaultctl_rt");
     sessionStorage.removeItem("vaultctl_sid");
     set({

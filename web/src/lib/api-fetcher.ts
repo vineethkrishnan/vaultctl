@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useAuthStore } from "./auth-store";
+import { getAuthEpoch, useAuthStore } from "./auth-store";
 
 const BASE_URL = "/api/v1";
 
 let refreshPromise: Promise<void> | null = null;
 
 async function refreshTokens(): Promise<void> {
+  const epoch = getAuthEpoch();
   const { refreshToken, setTokens, logout } = useAuthStore.getState();
   if (!refreshToken) {
     logout();
@@ -25,6 +26,10 @@ async function refreshTokens(): Promise<void> {
   }
 
   const body = await res.json();
+  // A logout while this refresh was in flight bumps the epoch. Applying the
+  // rotated token now would resurrect the session in sessionStorage after the
+  // user signed out, so drop the result.
+  if (getAuthEpoch() !== epoch) return;
   setTokens(body.accessToken, body.refreshToken);
 }
 
