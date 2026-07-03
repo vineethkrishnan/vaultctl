@@ -172,7 +172,11 @@ async function api<T>(
     res = await fetch(`${base}${path}`, {
       method: opts.method ?? "GET",
       headers: {
-        "Content-Type": "application/json",
+        // Only set Content-Type when there is a body. On a bodyless GET it is
+        // a non-safelisted header that forces a CORS preflight, which the
+        // health check does not need and some setups (Firefox without the
+        // host grant) reject.
+        ...(opts.body ? { "Content-Type": "application/json" } : {}),
         ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -433,8 +437,19 @@ export function Popup() {
   async function handleConnect(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const base = serverUrl.trim().replace(/\/$/, "");
-    if (!/^https?:\/\//i.test(base)) {
+    const raw = serverUrl.trim();
+    if (!/^https?:\/\//i.test(raw)) {
+      setError(t("connect.errors.invalidUrl"));
+      return;
+    }
+    // Reduce whatever the user pasted to its origin. A URL copied from the
+    // address bar carries a path (e.g. https://host/login), and appending
+    // /api/v1/health to that hits the SPA fallback, which returns index.html
+    // and surfaces as a confusing "unexpected response" error.
+    let base: string;
+    try {
+      base = new URL(raw).origin;
+    } catch {
       setError(t("connect.errors.invalidUrl"));
       return;
     }
