@@ -78,6 +78,7 @@ const IDENTITY_FIELD_TO_DATA: Partial<Record<FieldKind, string>> = {
 interface ExtSettings {
   autofill: boolean;
   fieldIcon: boolean;
+  showWhenLocked: boolean;
   savePrompt: boolean;
   toastMs: number;
   suggestPassword: boolean;
@@ -115,9 +116,17 @@ export default defineContentScript({
     let didAutofillOnLoad = false;
     let matches: CredMatch[] = [];
     let vaults: { id: string; name: string; type: string }[] = [];
+    // Lock state, refreshed with the matches. When locked, the field icon still
+    // appears (so the user can click to sign in) but there are no matches to
+    // fill; `isConfigured` gates that on the extension having a server set up.
+    let isUnlocked = false;
+    let isConfigured = false;
+    // The field the user clicked while locked, filled once the vault unlocks.
+    let pendingUnlockFill: HTMLInputElement | null = null;
     let settings: ExtSettings = {
       autofill: false,
       fieldIcon: true,
+      showWhenLocked: true,
       savePrompt: true,
       toastMs: 8000,
       suggestPassword: true,
@@ -344,6 +353,12 @@ export default defineContentScript({
       btn.addEventListener("mousedown", (e) => e.preventDefault());
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
+        // Locked: the click opens the sign-in window instead of the picker;
+        // the field is remembered and filled once the vault unlocks.
+        if (!isUnlocked) {
+          requestUnlock(input);
+          return;
+        }
         if (document.getElementById("vaultctl-picker-host")) removePicker();
         else openPicker(input);
       });
@@ -351,6 +366,14 @@ export default defineContentScript({
       topLayerMountFor(input).appendChild(host);
       fieldIcons.set(input, btn);
       positionFieldIcon(input, btn);
+    }
+
+    // Clicked the field icon while locked: remember the target and open the
+    // extension's sign-in window. On unlock the background broadcasts
+    // "vaultUnlocked", which re-matches and fills this field.
+    function requestUnlock(input: HTMLInputElement) {
+      pendingUnlockFill = input;
+      void bg({ type: "openUnlock" });
     }
 
     function removeIconHost(btn: HTMLButtonElement) {
@@ -378,35 +401,42 @@ export default defineContentScript({
     // matching login form. With no matches, there's nothing to offer, so no
     // icon is shown (matching Chrome's own key icon).
     function decorateLoginFields() {
-      if (!settings.fieldIcon || matches.length === 0) {
+      if (!settings.fieldIcon) {
         clearFieldIcons();
         return;
       }
+      // Unlocked: only decorate when there's a credential to offer for this site
+      // (nothing to fill otherwise). Locked: still show the icon so the user can
+      // click it to sign in, but only once the extension is set up (a server
+      // exists) and they haven't turned the locked-state icon off.
+      if (isUnlocked) {
+        if (matches.length === 0) {
+          clearFieldIcons();
+          return;
+        }
+      } else if (!isConfigured || !settings.showWhenLocked) {
+        clearFieldIcons();
+        return;
+      }
+      // Suppress the browser's native autofill / saved-password dropdown so it
+      // doesn't render on top of our picker - but only once we can actually fill
+      // (unlocked, with a match). While locked we leave the browser's own
+      // password manager working rather than blocking it with a dead icon.
+      const decorate = (input: HTMLInputElement) => {
+        decorateField(input);
+        if (isUnlocked) input.autocomplete = "off";
+      };
       for (const form of findLoginForms()) {
         const { usernameInput, passwordInput } = extractCredentialInputs(form);
-        // Suppress the browser's native autofill / saved-password dropdown on
-        // both fields so it doesn't render on top of our picker. We only reach
-        // here when there's a stored match (a sign-in), so turning off the
-        // password field's autocomplete can't clobber new-password detection
-        // (that path runs only when there are no matches).
-        if (usernameInput) {
-          decorateField(usernameInput);
-          usernameInput.autocomplete = "off";
-        }
-        if (passwordInput) {
-          decorateField(passwordInput);
-          passwordInput.autocomplete = "off";
-        }
+        if (usernameInput) decorate(usernameInput);
+        if (passwordInput) decorate(passwordInput);
       }
       // Split / multi-step logins show the email first with NO password field
       // yet, so findLoginForms misses them. Decorate the email field of those
       // first steps too, so the picker is reachable before the password step.
       for (const form of findUsernameOnlyForms()) {
         const { usernameInput } = extractCredentialInputs(form);
-        if (usernameInput) {
-          decorateField(usernameInput);
-          usernameInput.autocomplete = "off";
-        }
+        if (usernameInput) decorate(usernameInput);
       }
       // Re-auth prompts (e.g. a modal "confirm access") often render a lone
       // password field with NO wrapping <form>, which findLoginForms misses.
@@ -417,12 +447,8 @@ export default defineContentScript({
         if (password.closest("form") || !isVisible(password)) continue;
         const scope = password.closest("dialog") ?? document;
         const { usernameInput } = extractCredentialInputs(scope);
-        if (usernameInput && !usernameInput.closest("form")) {
-          decorateField(usernameInput);
-          usernameInput.autocomplete = "off";
-        }
-        decorateField(password);
-        password.autocomplete = "off";
+        if (usernameInput && !usernameInput.closest("form")) decorate(usernameInput);
+        decorate(password);
       }
       repositionFieldIcons();
     }
@@ -632,6 +658,9 @@ export default defineContentScript({
       (e) => {
         const target = e.target;
         if (!(target instanceof HTMLInputElement)) return;
+        // While locked the icon is present but there's nothing to auto-open;
+        // signing in is an explicit click, not a side effect of focusing.
+        if (!isUnlocked) return;
         if (otpFieldIcons.has(target)) {
           openTotpPicker(target);
           return;
@@ -1848,10 +1877,14 @@ export default defineContentScript({
         settings?: ExtSettings;
         matches?: CredMatch[];
         vaults?: { id: string; name: string; type: string }[];
+        unlocked?: boolean;
+        configured?: boolean;
       }>({ type: "matchCredentials", origin: window.location.href });
       if (res?.settings) settings = res.settings;
       matches = res?.matches ?? [];
       vaults = res?.vaults ?? [];
+      isUnlocked = res?.unlocked ?? false;
+      isConfigured = res?.configured ?? false;
       decorateLoginFields();
       decorateOtpFields();
       decorateSuggestFields();
@@ -1919,7 +1952,15 @@ export default defineContentScript({
         // against a locked vault and got no matches, so re-fetch now or the tab
         // shows no icons/autofill until a manual reload.
         if (message.type === "vaultUnlocked") {
-          void refreshMatches();
+          void refreshMatches().then(() => {
+            // If the user reached the sign-in window by clicking a field icon,
+            // open the picker on that field now so the unlock flows straight
+            // into a fill. Skip if the field is gone (SPA re-render) or the
+            // site has no saved login.
+            const target = pendingUnlockFill;
+            pendingUnlockFill = null;
+            if (target?.isConnected && matches.length > 0) openPicker(target);
+          });
           void refreshFillItems();
           return;
         }

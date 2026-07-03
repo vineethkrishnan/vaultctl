@@ -1631,6 +1631,7 @@ function NotificationsTab({
 interface ExtSettings {
   autofill: boolean;
   fieldIcon: boolean;
+  showWhenLocked: boolean;
   savePrompt: boolean;
   toastMs: number;
   relaxedMatch: boolean;
@@ -1912,6 +1913,12 @@ function SettingsTab({
             hint={t("settings.fieldIconHint")}
             checked={settings.fieldIcon}
             onChange={(v) => update({ fieldIcon: v })}
+          />
+          <Toggle
+            label={t("settings.showWhenLocked")}
+            hint={t("settings.showWhenLockedHint")}
+            checked={settings.showWhenLocked}
+            onChange={(v) => update({ showWhenLocked: v })}
           />
           <Toggle
             label={t("settings.autofill")}

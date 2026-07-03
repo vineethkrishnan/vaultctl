@@ -329,6 +329,7 @@ type UpdateNotifyLevel = "all" | "minor" | "major" | "off";
 interface ExtSettings {
   autofill: boolean; // fill credentials on page load without a click
   fieldIcon: boolean; // show the inline vaultctl icon inside login fields
+  showWhenLocked: boolean; // show the field icon even while locked (click to sign in)
   savePrompt: boolean; // offer to save/update after a login submit
   toastMs: number; // auto-dismiss timeout for toasts (ms)
   relaxedMatch: boolean; // match credentials by registrable domain, not exact host
@@ -353,6 +354,7 @@ interface ExtSettings {
 const DEFAULT_SETTINGS: ExtSettings = {
   autofill: false,
   fieldIcon: true,
+  showWhenLocked: true,
   savePrompt: true,
   toastMs: 8000,
   relaxedMatch: false,
@@ -1007,6 +1009,10 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   // Open the configured web vault in a new tab (no secret crosses the boundary;
   // the background just reads the stored server URL it already holds).
   "openWebVault",
+  // Open the extension popup as a window so the user can sign in / unlock after
+  // clicking the in-page icon while the vault is locked. Opens the extension's
+  // own page; no secret or key material crosses the boundary.
+  "openUnlock",
   // The in-page save toast's Save / Not-now buttons act on a capture the user
   // just submitted. Neither returns plaintext or key material - the dangerous
   // capture mutations (clear/dismiss/markAll) and every read stay page-only.
@@ -1650,6 +1656,24 @@ export default defineBackground(() => {
               return;
             }
 
+            case "openUnlock": {
+              // Open the popup as a standalone window so the user can sign in /
+              // unlock. `windows.create` is used rather than action.openPopup():
+              // the latter needs a user gesture that doesn't survive the
+              // content-script -> background hop and is unevenly supported.
+              // Master-password entry stays in this trusted extension page,
+              // never in the web page. On unlock, notifyTabsUnlocked() tells the
+              // tab to re-match and fill.
+              void browser.windows.create({
+                url: browser.runtime.getURL("/popup.html"),
+                type: "popup",
+                width: 400,
+                height: 620,
+              });
+              sendResponse({ ok: true });
+              return;
+            }
+
             // -----------------------------------------------------------
             // WebAuthn relay (v1 observer - see webauthn-relay.ts)
             // -----------------------------------------------------------
@@ -1687,8 +1711,18 @@ export default defineBackground(() => {
             // -----------------------------------------------------------
             case "matchCredentials": {
               const settings = await getSettings();
+              // `configured` lets the content script show the locked-state icon
+              // only once the extension has been set up (a server URL exists),
+              // so a brand-new install stays quiet.
+              const configured = (await getServerUrl()).length > 0;
               if (!unlocked) {
-                sendResponse({ ok: true, settings, matches: [] });
+                sendResponse({
+                  ok: true,
+                  settings,
+                  matches: [],
+                  unlocked: false,
+                  configured,
+                });
                 return;
               }
               const matches = await matchesForOrigin(String(message.origin ?? ""));
@@ -1701,6 +1735,8 @@ export default defineBackground(() => {
               sendResponse({
                 ok: true,
                 settings,
+                unlocked: true,
+                configured,
                 // Vault list (id/name/type only) so the save toast can offer a
                 // save target. No keys or secrets cross the boundary.
                 vaults: [...vaultMeta.entries()].map(([id, meta]) => ({

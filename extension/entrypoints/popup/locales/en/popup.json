@@ -157,6 +157,8 @@
     "autofillSaving": "Autofill & saving",
     "fieldIcon": "Show field icon",
     "fieldIconHint": "Inline icon inside login fields to fill",
+    "showWhenLocked": "Show icon when locked",
+    "showWhenLockedHint": "Show the field icon even when signed out; click it to sign in",
     "autofill": "Autofill on page load",
     "autofillHint": "Fill matching logins automatically, no click",
     "savePromptLabel": "Offer to save / update",
