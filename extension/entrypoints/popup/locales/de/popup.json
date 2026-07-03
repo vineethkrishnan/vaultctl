@@ -158,6 +158,8 @@
     "autofillSaving": "Automatisches Ausfüllen & Speichern",
     "fieldIcon": "Feld-Symbol anzeigen",
     "fieldIconHint": "Inline-Symbol in Anmeldefeldern zum Ausfüllen",
+    "showWhenLocked": "Symbol im gesperrten Zustand anzeigen",
+    "showWhenLockedHint": "Feld-Symbol auch im abgemeldeten Zustand anzeigen; zum Anmelden anklicken",
     "autofill": "Beim Laden der Seite automatisch ausfüllen",
     "autofillHint": "Passende Zugangsdaten automatisch ausfüllen, ohne Klick",
     "savePromptLabel": "Speichern / Aktualisieren anbieten",

@@ -29,6 +29,7 @@ import {
   type FieldKind,
   type ClassifiedValue,
 } from "../utils/form-fields";
+import { isOneTimeCodeText } from "../utils/otp-field";
 
 interface CredMatch {
   vaultId: string;
@@ -77,6 +78,7 @@ const IDENTITY_FIELD_TO_DATA: Partial<Record<FieldKind, string>> = {
 interface ExtSettings {
   autofill: boolean;
   fieldIcon: boolean;
+  showWhenLocked: boolean;
   savePrompt: boolean;
   toastMs: number;
   suggestPassword: boolean;
@@ -114,9 +116,17 @@ export default defineContentScript({
     let didAutofillOnLoad = false;
     let matches: CredMatch[] = [];
     let vaults: { id: string; name: string; type: string }[] = [];
+    // Lock state, refreshed with the matches. When locked, the field icon still
+    // appears (so the user can click to sign in) but there are no matches to
+    // fill; `isConfigured` gates that on the extension having a server set up.
+    let isUnlocked = false;
+    let isConfigured = false;
+    // The field the user clicked while locked, filled once the vault unlocks.
+    let pendingUnlockFill: HTMLInputElement | null = null;
     let settings: ExtSettings = {
       autofill: false,
       fieldIcon: true,
+      showWhenLocked: true,
       savePrompt: true,
       toastMs: 8000,
       suggestPassword: true,
@@ -172,10 +182,8 @@ export default defineContentScript({
     function isOneTimeCodeField(input: HTMLInputElement): boolean {
       const hay = `${input.name} ${input.id} ${input.autocomplete} ${
         input.getAttribute("aria-label") ?? ""
-      } ${input.placeholder ?? ""}`.toLowerCase();
-      return /otp|one[\s-]?time|2fa|two[\s-]?factor|\bmfa\b|\btoken\b|\bcode\b|authenticat|totp|passcode|verif/.test(
-        hay,
-      );
+      } ${input.placeholder ?? ""}`;
+      return isOneTimeCodeText(hay);
     }
 
     function isUsernameCandidate(input: HTMLInputElement): boolean {
@@ -185,14 +193,14 @@ export default defineContentScript({
       return !isOneTimeCodeField(input);
     }
 
-    function extractCredentialInputs(form: HTMLFormElement): {
+    function extractCredentialInputs(scope: ParentNode): {
       usernameInput: HTMLInputElement | null;
       passwordInput: HTMLInputElement | null;
     } {
       // Only consider visible inputs as fill targets: a hidden text input before
       // the password (honeypot, off-screen field) must never become the username
       // target, and a hidden password field must never be filled.
-      const inputs = ([...form.querySelectorAll("input")] as HTMLInputElement[]).filter(
+      const inputs = ([...scope.querySelectorAll("input")] as HTMLInputElement[]).filter(
         isVisible,
       );
       const passwordInput = inputs.find((i) => i.type === "password") ?? null;
@@ -284,12 +292,12 @@ export default defineContentScript({
       input.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
-    async function fillWithMatch(form: HTMLFormElement, match: CredMatch) {
+    async function fillWithMatch(scope: ParentNode, match: CredMatch) {
       const res = await bg<{ ok?: boolean; username?: string; password?: string }>(
         { type: "fillCredential", vaultId: match.vaultId, itemId: match.itemId },
       );
       if (!res?.ok) return;
-      const { usernameInput, passwordInput } = extractCredentialInputs(form);
+      const { usernameInput, passwordInput } = extractCredentialInputs(scope);
       if (usernameInput && res.username) setInputValue(usernameInput, res.username);
       if (passwordInput && res.password) setInputValue(passwordInput, res.password);
     }
@@ -299,7 +307,7 @@ export default defineContentScript({
     // permanently-visible vaultctl emblem (not just on hover/focus), so the
     // user always knows the extension is offering credentials here. Focusing
     // the field - or clicking the emblem - opens the suggestion picker.
-    let activeForm: HTMLFormElement | null = null;
+    let activeScope: ParentNode | null = null;
     let activeInput: HTMLInputElement | null = null;
     const fieldIcons = new Map<HTMLInputElement, HTMLButtonElement>();
 
@@ -311,6 +319,23 @@ export default defineContentScript({
       if (!visible) return;
       btn.style.left = `${r.right - 28}px`;
       btn.style.top = `${r.top + (r.height - 22) / 2}px`;
+    }
+
+    // A field inside an open modal <dialog> (showModal, e.g. a password re-auth
+    // "confirm access" prompt) is painted in the browser top layer, above any
+    // z-index. An emblem or picker appended to <body> is occluded by that modal,
+    // so mount it inside the dialog to share the top layer. Plain (non-modal)
+    // pages fall back to <body>, whose max z-index already sits above them.
+    function topLayerMountFor(input: HTMLInputElement): HTMLElement {
+      const dialog = input.closest("dialog");
+      if (dialog) {
+        try {
+          if (dialog.matches(":modal")) return dialog;
+        } catch {
+          if ((dialog as HTMLDialogElement).open) return dialog;
+        }
+      }
+      return document.body;
     }
 
     function decorateField(input: HTMLInputElement) {
@@ -328,13 +353,27 @@ export default defineContentScript({
       btn.addEventListener("mousedown", (e) => e.preventDefault());
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
+        // Locked: the click opens the sign-in window instead of the picker;
+        // the field is remembered and filled once the vault unlocks.
+        if (!isUnlocked) {
+          requestUnlock(input);
+          return;
+        }
         if (document.getElementById("vaultctl-picker-host")) removePicker();
         else openPicker(input);
       });
       root.appendChild(btn);
-      document.body.appendChild(host);
+      topLayerMountFor(input).appendChild(host);
       fieldIcons.set(input, btn);
       positionFieldIcon(input, btn);
+    }
+
+    // Clicked the field icon while locked: remember the target and open the
+    // extension's sign-in window. On unlock the background broadcasts
+    // "vaultUnlocked", which re-matches and fills this field.
+    function requestUnlock(input: HTMLInputElement) {
+      pendingUnlockFill = input;
+      void bg({ type: "openUnlock" });
     }
 
     function removeIconHost(btn: HTMLButtonElement) {
@@ -362,35 +401,54 @@ export default defineContentScript({
     // matching login form. With no matches, there's nothing to offer, so no
     // icon is shown (matching Chrome's own key icon).
     function decorateLoginFields() {
-      if (!settings.fieldIcon || matches.length === 0) {
+      if (!settings.fieldIcon) {
         clearFieldIcons();
         return;
       }
+      // Unlocked: only decorate when there's a credential to offer for this site
+      // (nothing to fill otherwise). Locked: still show the icon so the user can
+      // click it to sign in, but only once the extension is set up (a server
+      // exists) and they haven't turned the locked-state icon off.
+      if (isUnlocked) {
+        if (matches.length === 0) {
+          clearFieldIcons();
+          return;
+        }
+      } else if (!isConfigured || !settings.showWhenLocked) {
+        clearFieldIcons();
+        return;
+      }
+      // Suppress the browser's native autofill / saved-password dropdown so it
+      // doesn't render on top of our picker - but only once we can actually fill
+      // (unlocked, with a match). While locked we leave the browser's own
+      // password manager working rather than blocking it with a dead icon.
+      const decorate = (input: HTMLInputElement) => {
+        decorateField(input);
+        if (isUnlocked) input.autocomplete = "off";
+      };
       for (const form of findLoginForms()) {
         const { usernameInput, passwordInput } = extractCredentialInputs(form);
-        // Suppress the browser's native autofill / saved-password dropdown on
-        // both fields so it doesn't render on top of our picker. We only reach
-        // here when there's a stored match (a sign-in), so turning off the
-        // password field's autocomplete can't clobber new-password detection
-        // (that path runs only when there are no matches).
-        if (usernameInput) {
-          decorateField(usernameInput);
-          usernameInput.autocomplete = "off";
-        }
-        if (passwordInput) {
-          decorateField(passwordInput);
-          passwordInput.autocomplete = "off";
-        }
+        if (usernameInput) decorate(usernameInput);
+        if (passwordInput) decorate(passwordInput);
       }
       // Split / multi-step logins show the email first with NO password field
       // yet, so findLoginForms misses them. Decorate the email field of those
       // first steps too, so the picker is reachable before the password step.
       for (const form of findUsernameOnlyForms()) {
         const { usernameInput } = extractCredentialInputs(form);
-        if (usernameInput) {
-          decorateField(usernameInput);
-          usernameInput.autocomplete = "off";
-        }
+        if (usernameInput) decorate(usernameInput);
+      }
+      // Re-auth prompts (e.g. a modal "confirm access") often render a lone
+      // password field with NO wrapping <form>, which findLoginForms misses.
+      // Decorate those too, scoped to the enclosing dialog (or the document), so
+      // the picker is reachable and can fill the password.
+      for (const node of document.querySelectorAll('input[type="password"]')) {
+        const password = node as HTMLInputElement;
+        if (password.closest("form") || !isVisible(password)) continue;
+        const scope = password.closest("dialog") ?? document;
+        const { usernameInput } = extractCredentialInputs(scope);
+        if (usernameInput && !usernameInput.closest("form")) decorate(usernameInput);
+        decorate(password);
       }
       repositionFieldIcons();
     }
@@ -413,9 +471,11 @@ export default defineContentScript({
     }
 
     function openPicker(input: HTMLInputElement) {
-      const form = input.closest("form") as HTMLFormElement | null;
-      if (!form || matches.length === 0) return;
-      activeForm = form;
+      if (matches.length === 0) return;
+      // A re-auth prompt often renders a lone password field with no <form>
+      // (e.g. a modal "confirm access"); fall back to the enclosing dialog, then
+      // the document, so the picker still opens and can fill it.
+      activeScope = input.closest("form") ?? input.closest("dialog") ?? document;
       activeInput = input;
       showPicker();
     }
@@ -431,7 +491,9 @@ export default defineContentScript({
           openTotpPicker(active);
           return;
         }
-        if (active.closest("form")) {
+        // A field in a form, or a decorated formless re-auth field (a lone
+        // password inside a modal dialog), can open the picker directly.
+        if (active.closest("form") || fieldIcons.has(active)) {
           openPicker(active);
           return;
         }
@@ -497,7 +559,7 @@ export default defineContentScript({
         else openTotpPicker(input);
       });
       root.appendChild(btn);
-      document.body.appendChild(host);
+      topLayerMountFor(input).appendChild(host);
       otpFieldIcons.set(input, btn);
       positionFieldIcon(input, btn);
     }
@@ -586,7 +648,7 @@ export default defineContentScript({
         menu.appendChild(row);
       }
       root.appendChild(menu);
-      document.body.appendChild(host);
+      topLayerMountFor(anchor).appendChild(host);
       setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
     }
 
@@ -596,6 +658,9 @@ export default defineContentScript({
       (e) => {
         const target = e.target;
         if (!(target instanceof HTMLInputElement)) return;
+        // While locked the icon is present but there's nothing to auto-open;
+        // signing in is an explicit click, not a side effect of focusing.
+        if (!isUnlocked) return;
         if (otpFieldIcons.has(target)) {
           openTotpPicker(target);
           return;
@@ -651,8 +716,8 @@ export default defineContentScript({
 
     // ── Multi-match picker ───────────────────────────────────────────────
     function showPicker() {
-      if (!activeInput || !activeForm) return;
-      const form = activeForm;
+      if (!activeInput || !activeScope) return;
+      const scope = activeScope;
       const anchor = activeInput;
       removePicker();
       const host = document.createElement("div");
@@ -743,7 +808,7 @@ export default defineContentScript({
           // Synthetic page-dispatched clicks (isTrusted=false) must never
           // trigger a fill - only a real user gesture releases a secret.
           if (!e.isTrusted) return;
-          void fillWithMatch(form, m);
+          void fillWithMatch(scope, m);
           removePicker();
         });
         menu.appendChild(row);
@@ -753,15 +818,19 @@ export default defineContentScript({
       const footer = document.createElement("div");
       footer.style.cssText =
         "border-top:1px solid #26262b;display:flex;flex-direction:column;";
-      footer.append(
-        actionRow(
-          plusGlyph(),
-          "Save this site to vaultctl",
-          () => {
+      // "Save this site" captures what's typed in the form; it only applies when
+      // the fields live in a real <form>. A lone re-auth password field (scoped
+      // to a dialog or the document) has no form to capture as a new login.
+      if (scope instanceof HTMLFormElement) {
+        const form = scope;
+        footer.append(
+          actionRow(plusGlyph(), "Save this site to vaultctl", () => {
             captureCurrentForm(form);
             removePicker();
-          },
-        ),
+          }),
+        );
+      }
+      footer.append(
         actionRow(externalGlyph(), "Open vaultctl", () => {
           void bg({ type: "openWebVault" });
           removePicker();
@@ -769,7 +838,7 @@ export default defineContentScript({
       );
       menu.appendChild(footer);
       root.appendChild(menu);
-      document.body.appendChild(host);
+      topLayerMountFor(anchor).appendChild(host);
       setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
     }
 
@@ -1808,10 +1877,14 @@ export default defineContentScript({
         settings?: ExtSettings;
         matches?: CredMatch[];
         vaults?: { id: string; name: string; type: string }[];
+        unlocked?: boolean;
+        configured?: boolean;
       }>({ type: "matchCredentials", origin: window.location.href });
       if (res?.settings) settings = res.settings;
       matches = res?.matches ?? [];
       vaults = res?.vaults ?? [];
+      isUnlocked = res?.unlocked ?? false;
+      isConfigured = res?.configured ?? false;
       decorateLoginFields();
       decorateOtpFields();
       decorateSuggestFields();
@@ -1879,7 +1952,15 @@ export default defineContentScript({
         // against a locked vault and got no matches, so re-fetch now or the tab
         // shows no icons/autofill until a manual reload.
         if (message.type === "vaultUnlocked") {
-          void refreshMatches();
+          void refreshMatches().then(() => {
+            // If the user reached the sign-in window by clicking a field icon,
+            // open the picker on that field now so the unlock flows straight
+            // into a fill. Skip if the field is gone (SPA re-render) or the
+            // site has no saved login.
+            const target = pendingUnlockFill;
+            pendingUnlockFill = null;
+            if (target?.isConnected && matches.length > 0) openPicker(target);
+          });
           void refreshFillItems();
           return;
         }
