@@ -1657,14 +1657,27 @@ export default defineBackground(() => {
             }
 
             case "openUnlock": {
-              // Open the popup as a standalone window so the user can sign in /
-              // unlock. `windows.create` is used rather than action.openPopup():
-              // the latter needs a user gesture that doesn't survive the
-              // content-script -> background hop and is unevenly supported.
-              // Master-password entry stays in this trusted extension page,
-              // never in the web page. On unlock, notifyTabsUnlocked() tells the
-              // tab to re-match and fill.
-              void browser.windows.create({
+              // Prefer the real toolbar popup: it shares the exact same context
+              // as clicking the toolbar icon, so the already-configured server
+              // and Touch ID enrollment show (no fresh setup). Some browsers
+              // reject openPopup() outside a direct toolbar gesture, so fall
+              // back to a popup window - the same extension page against the
+              // same storage. Master-password entry stays in this trusted
+              // extension page, never in the web page; on unlock,
+              // notifyTabsUnlocked() tells the tab to re-match and fill.
+              const action = browser.action as unknown as
+                | { openPopup?: () => Promise<void> }
+                | undefined;
+              try {
+                if (action?.openPopup) {
+                  await action.openPopup();
+                  sendResponse({ ok: true });
+                  return;
+                }
+              } catch {
+                // openPopup unavailable / rejected - fall through to a window.
+              }
+              await browser.windows.create({
                 url: browser.runtime.getURL("/popup.html"),
                 type: "popup",
                 width: 400,
