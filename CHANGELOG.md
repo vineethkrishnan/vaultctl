@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.20.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.19.0...v1.20.0) (2026-07-06)
+
+
+### Features
+
+* **extension:** locked-state field icon, re-auth fill, and OTP emblem refinements ([#278](https://github.com/vineethkrishnan/vaultctl/issues/278)) ([2a1ae86](https://github.com/vineethkrishnan/vaultctl/commit/2a1ae86182f6e8ffc0a89243e19a099acd3c7210))
+* **web:** confirm before locking vault from quick actions ([#263](https://github.com/vineethkrishnan/vaultctl/issues/263)) ([0ec9b08](https://github.com/vineethkrishnan/vaultctl/commit/0ec9b08f4084724eccd0d94f5072ee834ebc2b4a))
+
+
+### Bug Fixes
+
+* **db:** base64-encode key blobs on password reset and change ([#287](https://github.com/vineethkrishnan/vaultctl/issues/287)) ([0f8e568](https://github.com/vineethkrishnan/vaultctl/commit/0f8e5681d2f0fc7e76d3a43ca86ae8738cc84dd1))
+* **extension:** normalize server URL to its origin before health check ([#276](https://github.com/vineethkrishnan/vaultctl/issues/276)) ([795e8ca](https://github.com/vineethkrishnan/vaultctl/commit/795e8ca5dbe4c46428eb70adf1a107c0febe7d27))
+* **extension:** open the toolbar popup when signing in from the field icon ([#279](https://github.com/vineethkrishnan/vaultctl/issues/279)) ([60ab2d8](https://github.com/vineethkrishnan/vaultctl/commit/60ab2d8a1af2f3cad174a35544a9383057be1db0))
+* **extension:** remove save button hover lift in alerts tab ([#262](https://github.com/vineethkrishnan/vaultctl/issues/262)) ([7497362](https://github.com/vineethkrishnan/vaultctl/commit/749736248d1b860da20bf907c278a624ceee7ab6))
+* **web:** don't let an in-flight token refresh survive logout ([#277](https://github.com/vineethkrishnan/vaultctl/issues/277)) ([0867807](https://github.com/vineethkrishnan/vaultctl/commit/08678074416d866560afff7dd7c68d46763292fe))
+* **web:** import Chrome and Firefox password CSVs as logins ([#264](https://github.com/vineethkrishnan/vaultctl/issues/264)) ([ff937cf](https://github.com/vineethkrishnan/vaultctl/commit/ff937cf3cd69e06b6238a6e3a71948204c3053de))
+* **web:** wait for item create before asserting vault list in walkthrough e2e ([#275](https://github.com/vineethkrishnan/vaultctl/issues/275)) ([051e283](https://github.com/vineethkrishnan/vaultctl/commit/051e283d51d03cb4b6bd645858b25197b7074e95))
+
+
+### CI/CD
+
+* **deps:** bump the actions group with 3 updates ([#273](https://github.com/vineethkrishnan/vaultctl/issues/273)) ([8edb313](https://github.com/vineethkrishnan/vaultctl/commit/8edb3131dbc88fcc2d3515d720deb099d549ecdb))
+
 ## [1.19.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.18.0...v1.19.0) (2026-06-21)
 
 
