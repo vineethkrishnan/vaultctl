@@ -18,6 +18,16 @@ func encodeBlob(b crypto.EncryptedBlob) string {
 	return base64.StdEncoding.EncodeToString(b.Bytes())
 }
 
+// encodeBlobBytes serializes an already-serialized blob's raw bytes to the
+// base64-TEXT representation stored in the DB, mirroring encodeBlob for the
+// update paths that carry ciphertext as []byte. Empty input returns "".
+func encodeBlobBytes(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(b)
+}
+
 // decodeBlob parses the base64-TEXT back into a domain EncryptedBlob.
 // Empty inputs yield zero-value blobs.
 func decodeBlob(s string) (crypto.EncryptedBlob, error) {

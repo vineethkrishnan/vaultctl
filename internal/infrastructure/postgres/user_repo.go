@@ -238,7 +238,7 @@ func (r *UserRepo) UpdatePasswordMaterial(ctx context.Context, id user.ID, authH
 		UPDATE users SET auth_hash = $1, encrypted_private_key = $2,
 		       encrypted_identity_private_key = $3, updated_at = NOW()
 		WHERE id = $4`,
-		authHash, encPrivKey, encIDPrivKey, string(id))
+		authHash, encodeBlobBytes(encPrivKey), encodeBlobBytes(encIDPrivKey), string(id))
 	if err != nil {
 		return err
 	}
@@ -338,7 +338,7 @@ func (r *UserRepo) UpdatePasswordMaterialAndHint(ctx context.Context, id user.ID
 		       encrypted_identity_private_key = $3, encrypted_password_hint = $4,
 		       updated_at = NOW()
 		WHERE id = $5`,
-		authHash, encPrivKey, encIDPrivKey, encHint, string(id))
+		authHash, encodeBlobBytes(encPrivKey), encodeBlobBytes(encIDPrivKey), encHint, string(id))
 	if err != nil {
 		return err
 	}
