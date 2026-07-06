@@ -45,7 +45,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/zxcvbn": "^4.4.5",
     "@vitejs/plugin-react": "^4.3.0",
-    "orval": "^8.19.0",
+    "orval": "^8.20.0",
     "svg2ttf": "^6.1.0",
     "svgicons2svgfont": "^16.0.0",
     "svgpath": "^2.6.0",
