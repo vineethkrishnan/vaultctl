@@ -61,36 +61,8 @@ func mapErr(err error) (code string, status int, field string) {
 	if errors.As(err, &inv) {
 		return "INVALID", http.StatusBadRequest, inv.Field
 	}
-	// Auth sentinels
-	switch {
-	case errors.Is(err, auth.ErrInvalidCredentials):
-		return "INVALID_CREDENTIALS", http.StatusUnauthorized, ""
-	case errors.Is(err, auth.ErrAccountLocked):
-		return "ACCOUNT_LOCKED", http.StatusLocked, ""
-	case errors.Is(err, auth.ErrEmailTaken):
-		return "CONFLICT", http.StatusConflict, "email"
-	case errors.Is(err, auth.ErrWeakMasterPassword):
-		return "WEAK_MASTER_PASSWORD", http.StatusBadRequest, "master_password"
-	case errors.Is(err, auth.ErrSessionExpired):
-		return "SESSION_EXPIRED", http.StatusUnauthorized, ""
-	case errors.Is(err, auth.ErrTokenReuse):
-		return "TOKEN_REUSE_DETECTED", http.StatusUnauthorized, ""
-	case errors.Is(err, auth.ErrStepUpRequired):
-		return "STEP_UP_REQUIRED", http.StatusForbidden, ""
-	case errors.Is(err, auth.ErrAPIKeyInvalid):
-		return "API_KEY_INVALID", http.StatusUnauthorized, ""
-	case errors.Is(err, auth.ErrAPIKeyExpired):
-		return "API_KEY_EXPIRED", http.StatusUnauthorized, ""
-	case errors.Is(err, auth.ErrInviteNotRedeemable):
-		return "INVITE_NOT_REDEEMABLE", http.StatusBadRequest, "token"
-	case errors.Is(err, auth.ErrRegistrationDisabled):
-		return "REGISTRATION_DISABLED", http.StatusForbidden, ""
-	case errors.Is(err, auth.ErrResendTooSoon):
-		return "RESEND_TOO_SOON", http.StatusTooManyRequests, ""
-	case errors.Is(err, auth.ErrInviteRequired):
-		return "INVITE_REQUIRED", http.StatusBadRequest, "inviteToken"
-	case errors.Is(err, user.ErrInvalidRole):
-		return "INVALID_ROLE", http.StatusBadRequest, "role"
+	if code, status, field, ok := mapAuthErr(err); ok {
+		return code, status, field
 	}
 	// Vault authorization
 	switch {
@@ -102,6 +74,43 @@ func mapErr(err error) (code string, status int, field string) {
 	}
 	// Unknown -> 500
 	return "INTERNAL", http.StatusInternalServerError, ""
+}
+
+// mapAuthErr maps the auth-package sentinels to their HTTP shape. Split out of
+// mapErr to keep each function's branching under the gocyclo ceiling. ok is
+// false when err is not an auth sentinel, so the caller falls through.
+func mapAuthErr(err error) (code string, status int, field string, ok bool) {
+	switch {
+	case errors.Is(err, auth.ErrInvalidCredentials):
+		return "INVALID_CREDENTIALS", http.StatusUnauthorized, "", true
+	case errors.Is(err, auth.ErrAccountLocked):
+		return "ACCOUNT_LOCKED", http.StatusLocked, "", true
+	case errors.Is(err, auth.ErrEmailTaken):
+		return "CONFLICT", http.StatusConflict, "email", true
+	case errors.Is(err, auth.ErrWeakMasterPassword):
+		return "WEAK_MASTER_PASSWORD", http.StatusBadRequest, "master_password", true
+	case errors.Is(err, auth.ErrSessionExpired):
+		return "SESSION_EXPIRED", http.StatusUnauthorized, "", true
+	case errors.Is(err, auth.ErrTokenReuse):
+		return "TOKEN_REUSE_DETECTED", http.StatusUnauthorized, "", true
+	case errors.Is(err, auth.ErrStepUpRequired):
+		return "STEP_UP_REQUIRED", http.StatusForbidden, "", true
+	case errors.Is(err, auth.ErrAPIKeyInvalid):
+		return "API_KEY_INVALID", http.StatusUnauthorized, "", true
+	case errors.Is(err, auth.ErrAPIKeyExpired):
+		return "API_KEY_EXPIRED", http.StatusUnauthorized, "", true
+	case errors.Is(err, auth.ErrInviteNotRedeemable):
+		return "INVITE_NOT_REDEEMABLE", http.StatusBadRequest, "token", true
+	case errors.Is(err, auth.ErrRegistrationDisabled):
+		return "REGISTRATION_DISABLED", http.StatusForbidden, "", true
+	case errors.Is(err, auth.ErrResendTooSoon):
+		return "RESEND_TOO_SOON", http.StatusTooManyRequests, "", true
+	case errors.Is(err, auth.ErrInviteRequired):
+		return "INVITE_REQUIRED", http.StatusBadRequest, "inviteToken", true
+	case errors.Is(err, user.ErrInvalidRole):
+		return "INVALID_ROLE", http.StatusBadRequest, "role", true
+	}
+	return "", 0, "", false
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
