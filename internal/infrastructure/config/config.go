@@ -176,8 +176,15 @@ type Config struct {
 	// leaves the box. Cloud providers activate only when their OAuth client
 	// credentials are configured; the local destination is always available.
 	// ===========================================================================
-	BackupSyncEnabled      bool   `env:"VAULTCTL_BACKUP_SYNC_ENABLED" envDefault:"true"`
-	BackupLocalDir         string `env:"VAULTCTL_BACKUP_LOCAL_DIR" envDefault:"/data/backups"`
+	BackupSyncEnabled bool   `env:"VAULTCTL_BACKUP_SYNC_ENABLED" envDefault:"true"`
+	BackupLocalDir    string `env:"VAULTCTL_BACKUP_LOCAL_DIR" envDefault:"/data/backups"`
+	// BackupAllowPrivate permits WebDAV/S3 backup destinations on RFC1918 / ULA
+	// private ranges. Default true for the common single-owner self-host (a LAN
+	// Nextcloud/MinIO is a first-class target). Set false on multi-user instances
+	// so a member can't aim a destination at internal LAN services and use dial
+	// timing/errors as a port scanner (loopback/link-local/metadata are always
+	// blocked regardless).
+	BackupAllowPrivate     bool   `env:"VAULTCTL_BACKUP_ALLOW_PRIVATE" envDefault:"true"`
 	BackupGoogleClientID   string `env:"VAULTCTL_BACKUP_GOOGLE_CLIENT_ID"`
 	BackupGoogleSecret     string `env:"VAULTCTL_BACKUP_GOOGLE_CLIENT_SECRET"`
 	BackupDropboxClientID  string `env:"VAULTCTL_BACKUP_DROPBOX_CLIENT_ID"`

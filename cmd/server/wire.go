@@ -177,7 +177,7 @@ func buildAdapters(ctx context.Context, cfg *config.Config) (*adapters, error) {
 		oauthClients := backupOAuthClients(cfg)
 		// Guarded client: destinations take user-supplied URLs, so block SSRF
 		// to metadata/loopback/link-local at dial time (see infrabackup/ssrf.go).
-		httpClient := infrabackup.NewGuardedHTTPClient(5 * time.Minute)
+		httpClient := infrabackup.NewGuardedHTTPClient(5*time.Minute, cfg.BackupAllowPrivate)
 		a.backupStores = &infrabackup.StoreFactory{
 			LocalBaseDir: cfg.BackupLocalDir,
 			HTTPClient:   httpClient,
