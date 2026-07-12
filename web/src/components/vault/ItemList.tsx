@@ -251,7 +251,7 @@ export function ItemList() {
         <Link
           to="/vault/$vaultId/items/new"
           params={{ vaultId }}
-          className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:-translate-y-0.5 hover:bg-primary/90"
+          className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           {t("vault:items.createItem")}
         </Link>

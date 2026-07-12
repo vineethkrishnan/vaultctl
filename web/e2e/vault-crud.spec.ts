@@ -103,7 +103,10 @@ test.describe.serial("Vault CRUD lifecycle", () => {
     await page.getByRole("button", { name: "Save" }).click();
     const response = await updateResponse;
     expect(response.status()).toBe(200);
-    await expect(page.getByText("Saved")).toBeVisible();
+
+    // Saving returns to the vault list with the updated name.
+    await expect(page).toHaveURL(/\/vault\/vault-1$/, { timeout: 10_000 });
+    await expect(page.getByRole("link", { name: /New Name/ })).toBeVisible();
   });
 
   test("moves an item to trash and then restores it", async ({ page }) => {

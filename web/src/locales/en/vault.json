@@ -108,7 +108,6 @@
     "removeFavorite": "Remove from favorites",
     "moveToTrash": "Move to trash",
     "saving": "Saving...",
-    "saved": "Saved",
     "saveFailed": "Save failed",
     "unknownType": "Unknown item type: {{type}}",
     "decryptionFailed": "[decryption failed]",
