@@ -4,7 +4,10 @@ Every server setting is an environment variable with the `VAULTCTL_` prefix. The
 server parses them once at startup (`internal/infrastructure/config/config.go`).
 In `VAULTCTL_ENV=production` the load-bearing secrets have no defaults and the
 server refuses to start if any is missing (fail-closed). Those are flagged
-**Required (prod)** below.
+**Required (prod)** below. In production the server also rejects secrets that
+are present but too short: JWT signing secrets must be at least 32 characters
+and the peppers at least 16. The generation commands below produce values well
+above those floors, so any setup following this guide clears them.
 
 Generate secret values with:
 
