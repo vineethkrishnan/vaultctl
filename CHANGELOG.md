@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.20.0...v1.21.0) (2026-07-12)
+
+
+### Features
+
+* item save redirect, extension detail view, and button hover polish ([#289](https://github.com/vineethkrishnan/vaultctl/issues/289)) ([6144435](https://github.com/vineethkrishnan/vaultctl/commit/614443540483a1eeb0c528dfe80f7d1aa4e6dca4))
+
 ## [1.20.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.19.0...v1.20.0) (2026-07-06)
 
 
