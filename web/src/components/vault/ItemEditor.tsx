@@ -50,7 +50,6 @@ export function ItemEditor({ vaultId, itemId }: Props) {
   // When the name can't be decrypted, the field is locked to an error message:
   // editing + saving would re-encrypt the placeholder and clobber the real name.
   const [nameDecryptFailed, setNameDecryptFailed] = useState(false);
-  const [showSaved, setShowSaved] = useState(false);
 
   // Decrypt item on load - gate on reprompt
   useEffect(() => {
@@ -135,21 +134,9 @@ export function ItemEditor({ vaultId, itemId }: Props) {
       queryClient.invalidateQueries({
         queryKey: queryKeys.items.detail(vaultId, itemId),
       });
-      setShowSaved(true);
+      navigate({ to: "/vault/$vaultId", params: { vaultId } });
     },
   });
-
-  // Time-box the "Saved" confirmation and clear it the moment the user edits
-  // again, so a stale "Saved" never lingers next to unsaved changes.
-  useEffect(() => {
-    if (!showSaved) return;
-    const handle = window.setTimeout(() => setShowSaved(false), 2500);
-    return () => window.clearTimeout(handle);
-  }, [showSaved]);
-
-  useEffect(() => {
-    setShowSaved(false);
-  }, [name, itemData]);
 
   const trashMutation = useMutation({
     mutationFn: () =>
@@ -263,11 +250,6 @@ export function ItemEditor({ vaultId, itemId }: Props) {
         {nameDecryptFailed && (
           <span className="self-center text-sm text-destructive">
             {t("vault:editor.saveDisabledDecryptFailed")}
-          </span>
-        )}
-        {showSaved && (
-          <span className="self-center text-sm text-success">
-            {t("vault:editor.saved")}
           </span>
         )}
         {updateMutation.isError && (

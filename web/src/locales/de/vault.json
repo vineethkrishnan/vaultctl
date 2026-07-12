@@ -108,7 +108,6 @@
     "removeFavorite": "Aus Favoriten entfernen",
     "moveToTrash": "In den Papierkorb verschieben",
     "saving": "Wird gespeichert...",
-    "saved": "Gespeichert",
     "saveFailed": "Speichern fehlgeschlagen",
     "unknownType": "Unbekannter Eintragstyp: {{type}}",
     "decryptionFailed": "[Entschlüsselung fehlgeschlagen]",
