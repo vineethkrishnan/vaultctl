@@ -73,6 +73,8 @@ func mapErr(err error) (code string, status int, field string) {
 		return "WEAK_MASTER_PASSWORD", http.StatusBadRequest, "master_password"
 	case errors.Is(err, auth.ErrSessionExpired):
 		return "SESSION_EXPIRED", http.StatusUnauthorized, ""
+	case errors.Is(err, auth.ErrTokenReuse):
+		return "TOKEN_REUSE_DETECTED", http.StatusUnauthorized, ""
 	case errors.Is(err, auth.ErrStepUpRequired):
 		return "STEP_UP_REQUIRED", http.StatusForbidden, ""
 	case errors.Is(err, auth.ErrAPIKeyInvalid):

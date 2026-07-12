@@ -240,6 +240,10 @@ type SessionStore interface {
 	// FindByTokenHash looks up a session by HMAC'd refresh token (C3). Raw
 	// tokens NEVER enter this method.
 	FindByTokenHash(ctx context.Context, hash user.RefreshTokenHash) (user.Session, error)
+	// FindBySupersededTokenHash looks up a session by the hash it was rotated
+	// away from. A hit means an already-rotated refresh token is being replayed
+	// - the reuse/theft signal (security M1).
+	FindBySupersededTokenHash(ctx context.Context, hash user.RefreshTokenHash) (user.Session, error)
 	// Revoke deletes a single session row.
 	Revoke(ctx context.Context, id user.SessionID) error
 	// Rotate replaces one refresh token hash with another, atomic with a

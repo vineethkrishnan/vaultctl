@@ -30,6 +30,11 @@ var ErrWeakMasterPassword = errors.New("auth: master password failed strength po
 // refresh TTL.
 var ErrSessionExpired = errors.New("auth: session expired")
 
+// ErrTokenReuse is returned when an already-rotated refresh token is presented
+// again. The session lineage is revoked before this is returned - it signals
+// probable token theft, and the client must re-authenticate (security M1).
+var ErrTokenReuse = errors.New("auth: refresh token reuse detected")
+
 // ErrStepUpRequired signals that the caller presented a valid access token
 // but lacks the fresh step-up claim required for a sensitive endpoint (H10).
 var ErrStepUpRequired = errors.New("auth: step-up required")

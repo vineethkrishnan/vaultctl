@@ -30,6 +30,7 @@ const (
 	ActionLoginFailedNoUser  = "login.failed.unknown_email"
 	ActionLogout             = "auth.logout"
 	ActionRefreshed          = "auth.refreshed"
+	ActionRefreshReuse       = "auth.refresh_reuse"
 	ActionStepUp             = "auth.step_up"
 	ActionPasswordChanged    = "auth.password_changed"
 	ActionRecoveryReset      = "auth.recovery_reset"

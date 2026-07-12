@@ -57,6 +57,15 @@ func (uc *Refresh) Execute(ctx context.Context, in RefreshInput) (RefreshOutput,
 	session, err := uc.Sessions.FindByTokenHash(ctx, hash)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
+			// The token is not a current one. If it matches a hash we already
+			// rotated away from, an old token is being replayed - treat it as
+			// theft: revoke the whole lineage (this session row, shared by the
+			// legitimate client and the attacker) and surface the identity so
+			// the caller can raise a security alert.
+			if superseded, rerr := uc.Sessions.FindBySupersededTokenHash(ctx, hash); rerr == nil {
+				_ = uc.Sessions.Revoke(ctx, superseded.ID)
+				return RefreshOutput{UserID: superseded.UserID, SessionID: superseded.ID}, ErrTokenReuse
+			}
 			return RefreshOutput{}, ErrInvalidCredentials
 		}
 		return RefreshOutput{}, fmt.Errorf("load session: %w", err)

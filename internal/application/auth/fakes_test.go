@@ -289,17 +289,19 @@ func (r *fakeUserRepo) MarkEmailVerified(_ context.Context, id user.ID, at time.
 
 // fakeSessionStore is an in-memory SessionStore.
 type fakeSessionStore struct {
-	mu      sync.Mutex
-	byID    map[user.SessionID]*user.Session
-	byHash  map[string]user.SessionID
-	failOps map[string]error
+	mu           sync.Mutex
+	byID         map[user.SessionID]*user.Session
+	byHash       map[string]user.SessionID
+	bySuperseded map[string]user.SessionID
+	failOps      map[string]error
 }
 
 func newFakeSessionStore() *fakeSessionStore {
 	return &fakeSessionStore{
-		byID:    map[user.SessionID]*user.Session{},
-		byHash:  map[string]user.SessionID{},
-		failOps: map[string]error{},
+		byID:         map[user.SessionID]*user.Session{},
+		byHash:       map[string]user.SessionID{},
+		bySuperseded: map[string]user.SessionID{},
+		failOps:      map[string]error{},
 	}
 }
 
@@ -323,6 +325,15 @@ func (s *fakeSessionStore) FindByTokenHash(_ context.Context, h user.RefreshToke
 	}
 	return *s.byID[id], nil
 }
+func (s *fakeSessionStore) FindBySupersededTokenHash(_ context.Context, h user.RefreshTokenHash) (user.Session, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id, ok := s.bySuperseded[string(h.Bytes())]
+	if !ok {
+		return user.Session{}, domain.ErrNotFound
+	}
+	return *s.byID[id], nil
+}
 func (s *fakeSessionStore) Revoke(_ context.Context, id user.SessionID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -331,6 +342,11 @@ func (s *fakeSessionStore) Revoke(_ context.Context, id user.SessionID) error {
 		return nil
 	}
 	delete(s.byHash, string(sess.TokenHash.Bytes()))
+	for hash, sid := range s.bySuperseded {
+		if sid == id {
+			delete(s.bySuperseded, hash)
+		}
+	}
 	delete(s.byID, id)
 	return nil
 }
@@ -341,7 +357,9 @@ func (s *fakeSessionStore) Rotate(_ context.Context, id user.SessionID, newHash 
 	if !ok {
 		return domain.ErrNotFound
 	}
-	delete(s.byHash, string(sess.TokenHash.Bytes()))
+	oldHash := string(sess.TokenHash.Bytes())
+	delete(s.byHash, oldHash)
+	s.bySuperseded[oldHash] = id
 	sess.TokenHash = newHash
 	sess.ExpiresAt = expiresAt
 	sess.LastRefreshAt = &at
