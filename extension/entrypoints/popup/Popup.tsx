@@ -35,6 +35,9 @@ import {
   Download,
   ShieldAlert,
   ChevronRight,
+  ArrowLeft,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   isWeakPassword,
@@ -233,6 +236,9 @@ export function Popup() {
   const [vaults, setVaults] = useState<VaultMeta[]>([]);
   const [activeVaultId, setActiveVaultId] = useState("");
   const [items, setItems] = useState<DecryptedItem[]>([]);
+  const [detailItem, setDetailItem] = useState<DecryptedItem | null>(null);
+  const [detailData, setDetailData] = useState<Record<string, unknown> | null>(null);
+  const [detailError, setDetailError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -616,6 +622,7 @@ export function Popup() {
       // ignore
     }
     setItems([]);
+    closeDetail();
     setToken("");
     setPhase(serverUrl ? "email" : "connect");
   }
@@ -640,10 +647,31 @@ export function Popup() {
     copyText(item.password, t("common:password"));
   }
 
+  async function openDetail(item: DecryptedItem) {
+    setDetailItem(item);
+    setDetailData(null);
+    setDetailError(false);
+    try {
+      const parsed = JSON.parse(
+        decoder.decode(await decryptForVault(activeVaultId, item.encryptedData)),
+      ) as Record<string, unknown>;
+      setDetailData(parsed);
+    } catch {
+      setDetailError(true);
+    }
+  }
+
+  function closeDetail() {
+    setDetailItem(null);
+    setDetailData(null);
+    setDetailError(false);
+  }
+
   async function handleSwitchVault(vaultId: string) {
     if (!vaultId || vaultId === activeVaultId) return;
     setActiveVaultId(vaultId);
     setSearchQuery("");
+    closeDetail();
     void bg({ type: "setActiveVault", vaultId });
     try {
       await loadItems(vaultId);
@@ -948,6 +976,17 @@ export function Popup() {
       <div className="flex-1 overflow-y-auto">
         {tab === "vault" && (
           <div className="animate-fade-in">
+      {detailItem ? (
+        <ItemDetail
+          item={detailItem}
+          data={detailData}
+          error={detailError}
+          onBack={closeDetail}
+          onCopy={copyText}
+          t={t}
+        />
+      ) : (
+        <>
 
       <PasswordCheckup items={items} breachCheck={breachCheck} serverUrl={serverUrl} />
 
@@ -993,7 +1032,16 @@ export function Popup() {
           filtered.map((item) => (
             <div
               key={item.id}
-              className="group flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-accent/60"
+              onClick={() => openDetail(item)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openDetail(item);
+                }
+              }}
+              className="group flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-accent/60"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white" style={avatarStyle(item.name)}>
                 <ItemTypeIcon itemType={item.itemType} />
@@ -1006,10 +1054,15 @@ export function Popup() {
                   </div>
                 )}
                 {item.totp && (
-                  <TotpChip secret={item.totp} onCopied={() => flashCopied(t("vault.totpCode"))} />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TotpChip secret={item.totp} onCopied={() => flashCopied(t("vault.totpCode"))} />
+                  </div>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100"
+              >
                 {item.username && (
                   <button
                     onClick={() => copyText(item.username, t("common:username"))}
@@ -1044,7 +1097,8 @@ export function Popup() {
           ))
         )}
       </div>
-
+        </>
+      )}
           </div>
         )}
 
@@ -2508,6 +2562,248 @@ function ItemTypeIcon({ itemType }: { itemType: string }) {
   if (itemType === "credit_card") return <CreditCard className="h-4 w-4" />;
   if (itemType === "identity") return <User className="h-4 w-4" />;
   return <KeyRound className="h-4 w-4" />;
+}
+
+interface DetailField {
+  key: string;
+  secret?: boolean;
+  multiline?: boolean;
+  uri?: boolean;
+}
+
+const DETAIL_FIELDS: Record<string, DetailField[]> = {
+  login: [
+    { key: "username" },
+    { key: "password", secret: true },
+    { key: "uri", uri: true },
+    { key: "totp", secret: true },
+    { key: "notes", multiline: true },
+  ],
+  secure_note: [
+    { key: "content", multiline: true },
+    { key: "notes", multiline: true },
+  ],
+  credit_card: [
+    { key: "cardholderName" },
+    { key: "number", secret: true },
+    { key: "expiry" },
+    { key: "cvv", secret: true },
+    { key: "cardType" },
+    { key: "notes", multiline: true },
+  ],
+  identity: [
+    { key: "firstName" },
+    { key: "lastName" },
+    { key: "email" },
+    { key: "phone" },
+    { key: "address" },
+    { key: "city" },
+    { key: "state" },
+    { key: "country" },
+    { key: "postalCode" },
+    { key: "ssn", secret: true },
+    { key: "passportNumber", secret: true },
+    { key: "licenseNumber", secret: true },
+    { key: "notes", multiline: true },
+  ],
+  api_key: [
+    { key: "key", secret: true },
+    { key: "environment" },
+    { key: "serviceUrl", uri: true },
+    { key: "expiresAt" },
+    { key: "notes", multiline: true },
+  ],
+  ssh_key: [
+    { key: "keyType" },
+    { key: "host" },
+    { key: "fingerprint" },
+    { key: "publicKey", multiline: true },
+    { key: "privateKey", secret: true, multiline: true },
+    { key: "passphrase", secret: true },
+    { key: "notes", multiline: true },
+  ],
+  passkey: [
+    { key: "rpName" },
+    { key: "rpId" },
+    { key: "userHandle" },
+    { key: "credentialId" },
+    { key: "notes", multiline: true },
+  ],
+};
+
+function ItemDetail({
+  item,
+  data,
+  error,
+  onBack,
+  onCopy,
+  t,
+}: {
+  item: DecryptedItem;
+  data: Record<string, unknown> | null;
+  error: boolean;
+  onBack: () => void;
+  onCopy: (text: string, label: string) => void;
+  t: TFunction;
+}) {
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const toggle = (key: string) =>
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const fields = DETAIL_FIELDS[item.itemType] ?? [];
+  const rows = fields
+    .map((field) => ({ field, value: String(data?.[field.key] ?? "") }))
+    .filter((row) => row.value.trim() !== "");
+  const customFields = Array.isArray(data?.customFields)
+    ? (data.customFields as { name?: string; value?: string }[]).filter(
+        (custom) => (custom.value ?? "").trim() !== "",
+      )
+    : [];
+
+  return (
+    <div className="animate-fade-in">
+      <div className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur-sm">
+        <button
+          onClick={onBack}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          title={t("common:cancel")}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white" style={avatarStyle(item.name)}>
+          <ItemTypeIcon itemType={item.itemType} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold">{item.name}</div>
+          <div className="text-xs text-muted-foreground">
+            {t(`vault.itemTypes.${item.itemType}`)}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2 p-3">
+        {error ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {t("vault.detail.decryptFailed")}
+          </p>
+        ) : !data ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {t("common:loading")}
+          </p>
+        ) : rows.length === 0 && customFields.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            {t("vault.detail.empty")}
+          </p>
+        ) : (
+          <>
+            {rows.map(({ field, value }) => (
+              <DetailRow
+                key={field.key}
+                label={t(`vault.detail.fields.${field.key}`)}
+                value={value}
+                secret={field.secret ?? false}
+                multiline={field.multiline ?? false}
+                uri={field.uri ?? false}
+                revealed={revealed.has(field.key)}
+                onToggle={() => toggle(field.key)}
+                onCopy={() => onCopy(value, t(`vault.detail.fields.${field.key}`))}
+                t={t}
+              />
+            ))}
+            {customFields.map((custom, index) => {
+              const label = custom.name || t("vault.detail.customField");
+              return (
+                <DetailRow
+                  key={`custom-${index}`}
+                  label={label}
+                  value={custom.value ?? ""}
+                  secret={false}
+                  multiline={false}
+                  uri={false}
+                  revealed
+                  onToggle={() => {}}
+                  onCopy={() => onCopy(custom.value ?? "", label)}
+                  t={t}
+                />
+              );
+            })}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  secret,
+  multiline,
+  uri,
+  revealed,
+  onToggle,
+  onCopy,
+  t,
+}: {
+  label: string;
+  value: string;
+  secret: boolean;
+  multiline: boolean;
+  uri: boolean;
+  revealed: boolean;
+  onToggle: () => void;
+  onCopy: () => void;
+  t: TFunction;
+}) {
+  const hidden = secret && !revealed;
+  const display = hidden ? "•".repeat(Math.min(value.length, 12)) : value;
+
+  return (
+    <div className="rounded-lg border border-border bg-card/40 px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {secret && (
+            <button
+              onClick={onToggle}
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title={revealed ? t("vault.detail.hide") : t("vault.detail.reveal")}
+            >
+              {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          )}
+          {uri && isSafeHttpUri(value) && (
+            <button
+              onClick={() => window.open(value, "_blank", "noopener,noreferrer")}
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title={t("vault.openSite")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            onClick={onCopy}
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title={t("common:copy")}
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      <div
+        className={`mt-1 text-sm ${
+          multiline && !hidden ? "whitespace-pre-wrap break-words" : "break-words"
+        } ${hidden ? "tracking-widest text-muted-foreground" : ""}`}
+      >
+        {display}
+      </div>
+    </div>
+  );
 }
 
 function avatarStyle(name: string): CSSProperties {
