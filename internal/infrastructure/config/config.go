@@ -216,7 +216,21 @@ func Load() (*Config, error) {
 
 var ErrMissingProdSecrets = errors.New("missing required production secrets")
 
+var ErrWeakProdSecrets = errors.New("production secrets too short")
+
 var ErrInvalidConfig = errors.New("invalid configuration")
+
+// Minimum lengths for production secrets. These are floors, not targets: the
+// documented generation commands (`openssl rand -base64 64` for JWT secrets,
+// `openssl rand -base64 32` for peppers) produce far longer values, so any
+// deployment following the setup docs clears these comfortably. A JWT signing
+// secret shorter than 32 chars is offline-brute-forceable, which would let an
+// attacker forge access tokens; a pepper shorter than 16 chars weakens the
+// HMAC keying it backs.
+const (
+	minJWTSecretLen = 32
+	minPepperLen    = 16
+)
 
 func (c *Config) validate() error {
 	// BaseURL is escaped into email CTA hrefs, so a non-http(s) scheme would
@@ -248,6 +262,23 @@ func (c *Config) validate() error {
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("%w: %s", ErrMissingProdSecrets, strings.Join(missing, ", "))
+	}
+
+	// Presence is not enough: a short signing secret or pepper is a weak key.
+	// Only reachable once the value is present (missing is returned above), so
+	// this checks strength, not existence.
+	var weak []string
+	checkLen := func(name, value string, min int) {
+		if v := strings.TrimSpace(value); v != "" && len(v) < min {
+			weak = append(weak, fmt.Sprintf("%s (need >= %d chars, got %d)", name, min, len(v)))
+		}
+	}
+	checkLen("VAULTCTL_JWT_SECRET_CURRENT", c.JWTSecretCurrent, minJWTSecretLen)
+	checkLen("VAULTCTL_JWT_SECRET_NEXT", c.JWTSecretNext, minJWTSecretLen)
+	checkLen("VAULTCTL_SERVER_PEPPER", c.ServerPepper, minPepperLen)
+	checkLen("VAULTCTL_ENUMERATION_PEPPER", c.EnumerationPepper, minPepperLen)
+	if len(weak) > 0 {
+		return fmt.Errorf("%w: %s", ErrWeakProdSecrets, strings.Join(weak, ", "))
 	}
 	return nil
 }

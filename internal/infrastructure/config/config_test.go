@@ -25,8 +25,8 @@ func productionMinimum() map[string]string {
 		"VAULTCTL_DB_PASSWORD":         "db-password",
 		"VAULTCTL_JWT_SECRET_CURRENT":  "jwt-secret-long-enough-to-matter-xxxxxxxxxxxxxxxxx",
 		"VAULTCTL_DATA_ENCRYPTION_KEY": "data-key-base64",
-		"VAULTCTL_SERVER_PEPPER":       "server-pepper",
-		"VAULTCTL_ENUMERATION_PEPPER":  "enum-pepper",
+		"VAULTCTL_SERVER_PEPPER":       "server-pepper-at-least-sixteen-chars",
+		"VAULTCTL_ENUMERATION_PEPPER":  "enumeration-pepper-at-least-sixteen-chars",
 		"VAULTCTL_BASE_URL":            "https://vault.example.com",
 	}
 }
@@ -77,6 +77,39 @@ func TestLoad_Production_RejectsMissingSecret(t *testing.T) {
 				t.Fatalf("error should name %q: %v", missing, err)
 			}
 		})
+	}
+}
+
+func TestLoad_Production_RejectsShortSecret(t *testing.T) {
+	cases := map[string]string{
+		"VAULTCTL_JWT_SECRET_CURRENT": "too-short",
+		"VAULTCTL_JWT_SECRET_NEXT":    "too-short",
+		"VAULTCTL_SERVER_PEPPER":      "short",
+		"VAULTCTL_ENUMERATION_PEPPER": "short",
+	}
+	for name, weak := range cases {
+		t.Run(name, func(t *testing.T) {
+			env := productionMinimum()
+			env[name] = weak
+			setEnv(t, env)
+			_, err := Load()
+			if !errors.Is(err, ErrWeakProdSecrets) {
+				t.Fatalf("expected ErrWeakProdSecrets for short %s, got %v", name, err)
+			}
+			if !strings.Contains(err.Error(), name) {
+				t.Fatalf("error should name %q: %v", name, err)
+			}
+		})
+	}
+}
+
+func TestLoad_Production_AllowsEmptyJWTNext(t *testing.T) {
+	// JWT_SECRET_NEXT is optional; an empty value must not trip the length floor.
+	env := productionMinimum()
+	env["VAULTCTL_JWT_SECRET_NEXT"] = ""
+	setEnv(t, env)
+	if _, err := Load(); err != nil {
+		t.Fatalf("empty optional JWT_SECRET_NEXT should be allowed, got %v", err)
 	}
 }
 
