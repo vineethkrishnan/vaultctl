@@ -356,7 +356,7 @@ func (h *VaultHandlers) HandlePurgeItem(w http.ResponseWriter, r *http.Request) 
 // @Param vaultId path string true "Vault ID"
 // @Param favorites query bool false "Filter favorites only"
 // @Param folderId query string false "Filter by folder ID"
-// @Param itemType query string false "Filter by item type (login, note, card, identity, api_key, ssh_key, passkey)"
+// @Param itemType query string false "Filter by item type (login, note, card, identity, api_key, ssh_key, passkey, gpg_key)"
 // @Success 200 {array} ItemResponse
 // @Failure 404 {object} ErrorBody
 // @Router /vaults/{vaultId}/items [get]

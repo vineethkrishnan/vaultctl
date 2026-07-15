@@ -207,6 +207,8 @@ func mapItemType(raw string) string {
 		return "credit_card"
 	case "identity", "4":
 		return "identity"
+	case "gpg", "gpg_key", "pgp", "pgp_key":
+		return "gpg_key"
 	default:
 		return itemTypeLogin
 	}
