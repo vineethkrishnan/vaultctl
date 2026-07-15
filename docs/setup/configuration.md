@@ -177,6 +177,7 @@ their client id/secret are set. See [backup-sync.md](backup-sync.md).
 | --- | --- | --- |
 | `VAULTCTL_BACKUP_SYNC_ENABLED` | `true` | Master switch for per-user backup destinations. |
 | `VAULTCTL_BACKUP_LOCAL_DIR` | `/data/backups` | Filesystem directory the local destination writes to. |
+| `VAULTCTL_BACKUP_ALLOW_PRIVATE` | `true` | Whether WebDAV/S3 destinations may target RFC1918 / ULA private addresses. Keep `true` for single-owner self-hosting (a LAN Nextcloud/MinIO is a valid target). Set `false` on multi-user instances so a member can't aim a destination at internal LAN services. Loopback, link-local, and cloud-metadata addresses are blocked either way. |
 | `VAULTCTL_BACKUP_GOOGLE_CLIENT_ID` | (none) | Google OAuth client id (enables the Google Drive destination). |
 | `VAULTCTL_BACKUP_GOOGLE_CLIENT_SECRET` | (none) | Google OAuth client secret. |
 | `VAULTCTL_BACKUP_DROPBOX_CLIENT_ID` | (none) | Dropbox OAuth app key (enables the Dropbox destination). |
