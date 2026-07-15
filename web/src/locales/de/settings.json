@@ -56,7 +56,6 @@
     "pastTitle": "Vergangene Sitzungen",
     "clearAll": "Alle löschen",
     "pastDescription": "Ältere Sitzungen, die kürzlich nicht aktiv waren. Widerrufen Sie alle, die Sie nicht erkennen.",
-    "revokeCurrentConfirm": "Wenn Sie dieses Gerät widerrufen, werden Sie hier abgemeldet. Fortfahren?",
     "thisDevice": "Dieses Gerät",
     "sessionCount_one": "{{count}} Sitzung",
     "sessionCount_other": "{{count}} Sitzungen",
@@ -66,7 +65,19 @@
     "logOut": "Abmelden",
     "revoke": "Widerrufen",
     "logOutTitle": "Von diesem Gerät abmelden",
-    "revokeTitle": "Gerät widerrufen"
+    "revokeTitle": "Gerät widerrufen",
+    "revokeConfirm": {
+      "currentTitle": "Von diesem Gerät abmelden",
+      "currentMessage": "Wenn Sie dieses Gerät widerrufen, werden Sie hier abgemeldet. Fortfahren?",
+      "deviceTitle": "Gerät widerrufen",
+      "deviceMessage": "Zugriff für \"{{device}}\" widerrufen? Dieses Gerät wird sofort abgemeldet.",
+      "othersTitle": "Andere Geräte abmelden",
+      "othersMessage_one": "{{count}} andere Sitzung abmelden? Dieses Gerät bleibt angemeldet.",
+      "othersMessage_other": "Alle {{count}} anderen Sitzungen abmelden? Dieses Gerät bleibt angemeldet.",
+      "pastTitle": "Frühere Sitzungen löschen",
+      "pastMessage_one": "{{count}} frühere Sitzung löschen? Entfernt nur den Eintrag.",
+      "pastMessage_other": "Alle {{count}} früheren Sitzungen löschen? Entfernt nur die Einträge."
+    }
   },
   "backup": {
     "title": "Sicherung & Synchronisierung",

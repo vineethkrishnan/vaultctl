@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Eye, EyeOff, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { useAutoResize } from "@/hooks/use-auto-resize";
+import { MarkdownEditor } from "./MarkdownEditor";
 import type { CustomField } from "@/shared/types/item-data";
 
 /**
@@ -93,6 +95,14 @@ function CustomFieldRow({
   const { t } = useTranslation(["vault", "common"]);
   const [revealed, setRevealed] = useState(false);
   const { copy } = useClipboard();
+  const markdownId = useId();
+  const valueRef = useRef<HTMLTextAreaElement>(null);
+  const isMarkdown = field.type === "markdown";
+  // url stays single-line; text/hidden accept pasted multi-line values, which an
+  // <input> would silently strip the newlines out of.
+  const isMultiline = field.type === "text" || field.type === "hidden";
+
+  useAutoResize(valueRef, isMultiline ? field.value : "");
 
   return (
     <div className="flex flex-wrap gap-2 rounded-md border border-border p-2">
@@ -115,8 +125,9 @@ function CustomFieldRow({
         <option value="hidden">{t("vault:customFields.typeHidden")}</option>
         <option value="boolean">{t("vault:customFields.typeBoolean")}</option>
         <option value="url">{t("vault:customFields.typeUrl")}</option>
+        <option value="markdown">{t("vault:customFields.typeMarkdown")}</option>
       </select>
-      {field.type === "boolean" ? (
+      {isMarkdown ? null : field.type === "boolean" ? (
         <label className="flex items-center gap-2 px-2 text-sm text-muted-foreground">
           <input
             type="checkbox"
@@ -127,9 +138,22 @@ function CustomFieldRow({
           />
           {field.value === "true" ? t("vault:customFields.yes") : t("vault:customFields.no")}
         </label>
+      ) : isMultiline ? (
+        <textarea
+          ref={valueRef}
+          value={field.value}
+          onChange={(e) => onChange({ value: e.target.value })}
+          placeholder={t("vault:customFields.valuePlaceholder")}
+          rows={1}
+          className={`max-h-80 min-w-0 flex-[2] resize-y overflow-y-auto rounded-md border border-input bg-background px-2 py-1 text-sm outline-none ring-ring focus:ring-2 ${
+            field.type === "hidden" && !revealed
+              ? "font-mono [-webkit-text-security:disc]"
+              : ""
+          }`}
+        />
       ) : (
         <input
-          type={field.type === "hidden" && !revealed ? "password" : "text"}
+          type="text"
           value={field.value}
           onChange={(e) => onChange({ value: e.target.value })}
           placeholder={t("vault:customFields.valuePlaceholder")}
@@ -152,7 +176,8 @@ function CustomFieldRow({
       )}
       {(field.type === "text" ||
         field.type === "hidden" ||
-        field.type === "url") &&
+        field.type === "url" ||
+        isMarkdown) &&
         field.value && (
           <button
             type="button"
@@ -171,6 +196,16 @@ function CustomFieldRow({
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
+      {isMarkdown && (
+        <div className="w-full">
+          <MarkdownEditor
+            id={markdownId}
+            value={field.value}
+            onChange={(value) => onChange({ value })}
+            placeholder={t("vault:customFields.valuePlaceholder")}
+          />
+        </div>
+      )}
     </div>
   );
 }

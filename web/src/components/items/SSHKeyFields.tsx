@@ -18,12 +18,12 @@ export function SSHKeyFields({ data, onChange }: Props) {
   return (
     <div className="space-y-4">
       <Field label={t("vault:fields.publicKey")} value={data.publicKey} onChange={(v) => set("publicKey", v)} type="textarea" copyable />
-      <Field label={t("vault:fields.privateKey")} value={data.privateKey} onChange={(v) => set("privateKey", v)} type="password" copyable />
+      <Field label={t("vault:fields.privateKey")} value={data.privateKey} onChange={(v) => set("privateKey", v)} type="secret-textarea" copyable />
       <Field label={t("vault:fields.passphrase")} value={data.passphrase} onChange={(v) => set("passphrase", v)} type="password" copyable />
       <Field label={t("vault:fields.keyType")} value={data.keyType} onChange={(v) => set("keyType", v)} placeholder={t("vault:fields.keyTypePlaceholder")} />
       <Field label={t("vault:fields.fingerprint")} value={data.fingerprint} onChange={(v) => set("fingerprint", v)} readOnly copyable />
       <Field label={t("vault:fields.host")} value={data.host} onChange={(v) => set("host", v)} />
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

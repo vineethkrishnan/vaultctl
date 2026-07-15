@@ -34,7 +34,7 @@ export function PasskeyFields({ data, onChange }: Props) {
           {t("vault:fields.discoverable")}
         </label>
       </div>
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

@@ -33,7 +33,7 @@ export function IdentityFields({ data, onChange }: Props) {
       <Field label={t("vault:fields.ssn")} value={data.ssn} onChange={(v) => set("ssn", v)} type="password" copyable />
       <Field label={t("vault:fields.passportNumber")} value={data.passportNumber} onChange={(v) => set("passportNumber", v)} type="password" />
       <Field label={t("vault:fields.licenseNumber")} value={data.licenseNumber} onChange={(v) => set("licenseNumber", v)} />
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

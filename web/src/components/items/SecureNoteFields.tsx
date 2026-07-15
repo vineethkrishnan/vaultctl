@@ -17,8 +17,8 @@ export function SecureNoteFields({ data, onChange }: Props) {
 
   return (
     <div className="space-y-4">
-      <Field label={t("vault:fields.content")} value={data.content} onChange={(v) => set("content", v)} type="textarea" />
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.content")} value={data.content} onChange={(v) => set("content", v)} type="markdown" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

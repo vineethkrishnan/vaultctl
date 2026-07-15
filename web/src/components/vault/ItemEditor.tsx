@@ -8,6 +8,7 @@ import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { decryptData, decryptName, encryptData, encryptName } from "@/lib/key-holder";
 import { RepromptDialog } from "@/components/vault/RepromptDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { LoginFields } from "@/components/items/LoginFields";
 import { SecureNoteFields } from "@/components/items/SecureNoteFields";
 import { CreditCardFields } from "@/components/items/CreditCardFields";
@@ -47,6 +48,7 @@ export function ItemEditor({ vaultId, itemId }: Props) {
   const [decrypted, setDecrypted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [repromptPending, setRepromptPending] = useState(false);
+  const [trashPending, setTrashPending] = useState(false);
   // When the name can't be decrypted, the field is locked to an error message:
   // editing + saving would re-encrypt the placeholder and clobber the real name.
   const [nameDecryptFailed, setNameDecryptFailed] = useState(false);
@@ -175,6 +177,16 @@ export function ItemEditor({ vaultId, itemId }: Props) {
         navigate({ to: "/vault/$vaultId", params: { vaultId } })
       }
     />
+    <ConfirmDialog
+      open={trashPending}
+      title={t("vault:items.trashConfirm.title")}
+      message={t("vault:items.trashConfirm.message", { name })}
+      confirmLabel={t("vault:items.trashConfirm.confirmLabel")}
+      destructive
+      busy={trashMutation.isPending}
+      onConfirm={() => trashMutation.mutate()}
+      onCancel={() => setTrashPending(false)}
+    />
     <form onSubmit={handleSave} className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -217,7 +229,7 @@ export function ItemEditor({ vaultId, itemId }: Props) {
         </button>
         <button
           type="button"
-          onClick={() => trashMutation.mutate()}
+          onClick={() => setTrashPending(true)}
           className="rounded-md p-1.5 text-muted-foreground hover:text-destructive"
           title={t("vault:editor.moveToTrash")}
         >

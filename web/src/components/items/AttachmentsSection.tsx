@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Paperclip, Download, Trash2, Loader2, Upload } from "lucide-react";
 import { queryKeys } from "@/lib/query-keys";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   type AttachmentMeta,
   listAttachments,
@@ -24,6 +25,10 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    filename: string;
+  } | null>(null);
 
   const { data: attachments, isLoading } = useQuery({
     queryKey: queryKeys.attachments.list(vaultId, itemId),
@@ -44,7 +49,10 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAttachment(vaultId, itemId, id),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      setPendingDelete(null);
+      invalidate();
+    },
   });
 
   async function handleFiles(files: FileList | null) {
@@ -101,7 +109,9 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
               vaultId={vaultId}
               itemId={itemId}
               attachment={attachment}
-              onDelete={() => deleteMutation.mutate(attachment.id)}
+              onDelete={(filename) =>
+                setPendingDelete({ id: attachment.id, filename })
+              }
               deleting={
                 deleteMutation.isPending &&
                 deleteMutation.variables === attachment.id
@@ -110,6 +120,25 @@ export function AttachmentsSection({ vaultId, itemId }: Props) {
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title={t("vault:attachments.deleteConfirm.title")}
+        message={
+          pendingDelete
+            ? t("vault:attachments.deleteConfirm.message", {
+                name: pendingDelete.filename,
+              })
+            : ""
+        }
+        confirmLabel={t("vault:attachments.deleteConfirm.confirmLabel")}
+        destructive
+        busy={deleteMutation.isPending}
+        onConfirm={() => {
+          if (pendingDelete) deleteMutation.mutate(pendingDelete.id);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
@@ -124,7 +153,7 @@ function AttachmentRow({
   vaultId: string;
   itemId: string;
   attachment: AttachmentMeta;
-  onDelete: () => void;
+  onDelete: (filename: string) => void;
   deleting: boolean;
 }) {
   const { t } = useTranslation(["vault", "common"]);
@@ -178,7 +207,7 @@ function AttachmentRow({
       </button>
       <button
         type="button"
-        onClick={onDelete}
+        onClick={() => onDelete(filename)}
         disabled={deleting}
         className="rounded-md p-1.5 text-muted-foreground hover:text-destructive disabled:opacity-50"
         title={t("vault:attachments.delete")}

@@ -58,9 +58,9 @@ test.describe.serial("Vault CRUD lifecycle", () => {
     const response = await itemCreated;
     expect(response.status()).toBe(201);
 
-    // After creation we navigate to detail - verify via the header input value.
-    await expect(page).toHaveURL(/\/vault\/vault-1\/items\/item-/, { timeout: 10_000 });
-    await expect(page.getByPlaceholder("Item name")).toHaveValue("GitHub");
+    // Creating returns to the vault list with the new item present.
+    await expect(page).toHaveURL(/\/vault\/vault-1$/, { timeout: 10_000 });
+    await expect(page.getByRole("link", { name: /GitHub/ })).toBeVisible();
   });
 
   test("edits an existing item name and saves", async ({ page }) => {
@@ -137,7 +137,11 @@ test.describe.serial("Vault CRUD lifecycle", () => {
           new URL(response.url()).pathname,
         ) && response.request().method() === "DELETE",
     );
-    await page.getByRole("button", { name: "Move to trash" }).click();
+    await page.getByRole("button", { name: "Move to trash" }).first().click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Move to trash" })
+      .click();
     await trashResponse;
 
     await expect(page).toHaveURL(/\/vault\/vault-1$/, { timeout: 10_000 });

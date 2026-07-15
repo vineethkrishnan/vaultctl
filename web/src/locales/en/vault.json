@@ -240,7 +240,13 @@
     "decrypting": "Decrypting...",
     "nameUnavailable": "[name unavailable]",
     "download": "Download and decrypt",
-    "delete": "Delete attachment"
+    "delete": "Delete attachment",
+    "pendingEmpty": "No files staged. Files are encrypted in your browser and uploaded once the item is created.",
+    "deleteConfirm": {
+      "title": "Delete attachment",
+      "message": "Permanently delete \"{{name}}\"? This cannot be undone.",
+      "confirmLabel": "Delete"
+    }
   },
   "fields": {
     "reveal": "Reveal",
@@ -307,9 +313,21 @@
     "typeBoolean": "Boolean",
     "typeUrl": "URL",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "typeMarkdown": "Markdown"
   },
   "passwordHistory": {
     "heading": "Password history"
+  },
+  "markdown": {
+    "bold": "Bold",
+    "italic": "Italic",
+    "code": "Code",
+    "link": "Link",
+    "heading": "Heading",
+    "bulletList": "Bulleted list",
+    "edit": "Edit",
+    "preview": "Preview",
+    "nothingToPreview": "Nothing to preview"
   }
 }

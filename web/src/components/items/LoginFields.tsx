@@ -47,7 +47,7 @@ export function LoginFields({ data, onChange }: Props) {
       {data.totp?.trim() && (
         <TotpField label={t("vault:totp.label")} value={data.totp} />
       )}
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}
