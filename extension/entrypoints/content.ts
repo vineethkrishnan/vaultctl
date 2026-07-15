@@ -1117,14 +1117,77 @@ export default defineContentScript({
           // click here would hand the page a full card number. Real user
           // gestures only.
           if (!e.isTrusted) return;
-          void fillItemEverywhere(item.vaultId, item.itemId, isCard);
-          removePicker();
+          // Unlike a login, a card/identity fill isn't tied to the site, so it
+          // would otherwise drop the full number/CVV onto whatever origin the
+          // user happens to be on (a lookalike/phishing page included). Surface
+          // the destination origin and require a second explicit confirmation
+          // before the sensitive value is requested and written.
+          renderFillConfirm(menu, item, isCard);
         });
         menu.appendChild(row);
       }
       root.appendChild(menu);
       document.body.appendChild(host);
       setTimeout(() => document.addEventListener("click", onDocClick, true), 0);
+    }
+
+    // Replace the picker rows with an origin-confirmation prompt. The user has
+    // already picked a specific card/identity; this makes them acknowledge WHICH
+    // site the sensitive fields will be filled into before any value leaves the
+    // background worker.
+    function renderFillConfirm(
+      menu: HTMLElement,
+      item: CardFillItem | IdentityFillItem,
+      isCard: boolean,
+    ) {
+      menu.textContent = "";
+      const wrap = document.createElement("div");
+      wrap.style.cssText = "display:flex;flex-direction:column;gap:10px;padding:12px;";
+
+      const heading = document.createElement("div");
+      heading.textContent = isCard ? "Fill this card into" : "Fill this identity into";
+      heading.style.cssText = "font-size:12px;color:#a1a1aa;";
+
+      const originEl = document.createElement("div");
+      originEl.textContent = window.location.host || window.location.origin;
+      originEl.style.cssText =
+        "font-weight:700;font-size:14px;color:#fafafa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+
+      const detail = document.createElement("div");
+      const last4 = isCard ? (item as CardFillItem).last4 : "";
+      detail.textContent = `${item.name || (isCard ? "Card" : "Identity")}${
+        last4 ? ` (•••• ${last4})` : ""
+      }`;
+      detail.style.cssText =
+        "font-size:12px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+
+      const actions = document.createElement("div");
+      actions.style.cssText = "display:flex;gap:8px;margin-top:2px;";
+
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "Cancel";
+      cancel.style.cssText =
+        "all:unset;flex:1;text-align:center;cursor:pointer;padding:7px 0;border-radius:6px;background:#1f1f23;color:#fafafa;font-size:13px;";
+      cancel.addEventListener("click", (e) => {
+        if (!e.isTrusted) return;
+        removePicker();
+      });
+
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.textContent = "Fill";
+      confirm.style.cssText = `all:unset;flex:1;text-align:center;cursor:pointer;padding:7px 0;border-radius:6px;background:${BRAND};color:#fff;font-weight:600;font-size:13px;`;
+      confirm.addEventListener("click", (e) => {
+        // Only a genuine user gesture releases the sensitive value.
+        if (!e.isTrusted) return;
+        void fillItemEverywhere(item.vaultId, item.itemId, isCard);
+        removePicker();
+      });
+
+      actions.append(cancel, confirm);
+      wrap.append(heading, originEl, detail, actions);
+      menu.appendChild(wrap);
     }
 
     // Fill every detected field of the chosen kind on the page from the picked
