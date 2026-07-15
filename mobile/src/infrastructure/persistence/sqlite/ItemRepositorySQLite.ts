@@ -23,12 +23,16 @@ interface ItemRow {
   updated_at: string;
 }
 
-function rowToItem(row: ItemRow): VaultItem {
+// Rows of a type this build cannot represent are dropped by toItems rather
+// than throwing: a stale cached row must not break every read query.
+function rowToItem(row: ItemRow): VaultItem | null {
+  const itemType = ItemType.parse(row.item_type);
+  if (!itemType) return null;
   return VaultItem.create({
     id: ItemId.of(row.id),
     vaultId: VaultId.of(row.vault_id),
     folderId: row.folder_id ? FolderId.of(row.folder_id) : undefined,
-    itemType: ItemType.of(row.item_type),
+    itemType,
     encryptedData: EncryptedBlob.of(row.encrypted_data),
     encryptedName: EncryptedBlob.of(row.encrypted_name),
     isFavorite: row.favorite === 1,
@@ -37,6 +41,15 @@ function rowToItem(row: ItemRow): VaultItem {
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   });
+}
+
+function toItems(rows: ItemRow[]): VaultItem[] {
+  const items: VaultItem[] = [];
+  for (const row of rows) {
+    const item = rowToItem(row);
+    if (item) items.push(item);
+  }
+  return items;
 }
 
 export class ItemRepositorySQLite implements IItemRepository {
@@ -69,7 +82,7 @@ export class ItemRepositorySQLite implements IItemRepository {
       'SELECT * FROM items WHERE trashed = ? ORDER BY updated_at DESC',
       [includetrashed ? 1 : 0],
     );
-    return rows.map(rowToItem);
+    return toItems(rows);
   }
 
   async findByVaultId(vaultId: VaultId, includetrashed = false): Promise<VaultItem[]> {
@@ -77,7 +90,7 @@ export class ItemRepositorySQLite implements IItemRepository {
       'SELECT * FROM items WHERE vault_id = ? AND trashed = ? ORDER BY updated_at DESC',
       [vaultId.value, includetrashed ? 1 : 0],
     );
-    return rows.map(rowToItem);
+    return toItems(rows);
   }
 
   async findById(id: ItemId): Promise<VaultItem | null> {
@@ -92,14 +105,14 @@ export class ItemRepositorySQLite implements IItemRepository {
     const rows = await getDatabase().getAllAsync<ItemRow>(
       'SELECT * FROM items WHERE favorite = 1 AND trashed = 0 ORDER BY updated_at DESC',
     );
-    return rows.map(rowToItem);
+    return toItems(rows);
   }
 
   async findTrashed(): Promise<VaultItem[]> {
     const rows = await getDatabase().getAllAsync<ItemRow>(
       'SELECT * FROM items WHERE trashed = 1 ORDER BY updated_at DESC',
     );
-    return rows.map(rowToItem);
+    return toItems(rows);
   }
 
   async deleteById(id: ItemId): Promise<void> {
