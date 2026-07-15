@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.23.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.22.0...v1.23.0) (2026-07-15)
+
+
+### Features
+
+* **auth:** detect refresh-token reuse and revoke the session lineage ([#300](https://github.com/vineethkrishnan/vaultctl/issues/300)) ([2ea7771](https://github.com/vineethkrishnan/vaultctl/commit/2ea7771627ded5597bc0de7f0db03fcc60890d19))
+
+
+### Bug Fixes
+
+* **backup:** add opt-out to block private-range SSRF for multi-user instances ([#301](https://github.com/vineethkrishnan/vaultctl/issues/301)) ([1775de6](https://github.com/vineethkrishnan/vaultctl/commit/1775de6aa79ed75b78b63c89966cab70f1c6ef55)), closes [#295](https://github.com/vineethkrishnan/vaultctl/issues/295)
+* **config:** enforce minimum length on production signing secrets ([#298](https://github.com/vineethkrishnan/vaultctl/issues/298)) ([a3a4411](https://github.com/vineethkrishnan/vaultctl/commit/a3a4411fad504bc414d2dfe551541b63138723c8)), closes [#294](https://github.com/vineethkrishnan/vaultctl/issues/294)
+* **extension:** confirm destination origin before card/identity autofill ([#299](https://github.com/vineethkrishnan/vaultctl/issues/299)) ([3c0b6ac](https://github.com/vineethkrishnan/vaultctl/commit/3c0b6acb6c9f3109fc29c27a289356717127eb92)), closes [#293](https://github.com/vineethkrishnan/vaultctl/issues/293)
+
 ## [1.22.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.21.0...v1.22.0) (2026-07-15)
 
 
