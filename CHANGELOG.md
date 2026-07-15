@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.21.0...v1.22.0) (2026-07-15)
+
+
+### Features
+
+* **web:** markdown notes, multi-line secret fields, and destructive-action confirms ([#305](https://github.com/vineethkrishnan/vaultctl/issues/305)) ([04926fe](https://github.com/vineethkrishnan/vaultctl/commit/04926fed7453d1710fd87eefb342ba83522ca47c)), closes [#275](https://github.com/vineethkrishnan/vaultctl/issues/275)
+
 ## [1.21.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.20.0...v1.21.0) (2026-07-12)
 
 
