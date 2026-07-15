@@ -24,7 +24,7 @@ export function CreditCardFields({ data, onChange }: Props) {
         <Field label={t("vault:fields.cvv")} value={data.cvv} onChange={(v) => set("cvv", v)} type="password" copyable />
       </div>
       <Field label={t("vault:fields.cardType")} value={data.cardType} onChange={(v) => set("cardType", v)} placeholder={t("vault:fields.cardTypePlaceholder")} />
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

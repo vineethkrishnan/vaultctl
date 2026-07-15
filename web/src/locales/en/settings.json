@@ -56,7 +56,6 @@
     "pastTitle": "Past sessions",
     "clearAll": "Clear all",
     "pastDescription": "Older sessions that have not been active recently. Revoke any you do not recognize.",
-    "revokeCurrentConfirm": "Revoking this device will log you out here. Continue?",
     "thisDevice": "This device",
     "sessionCount_one": "{{count}} session",
     "sessionCount_other": "{{count}} sessions",
@@ -66,7 +65,19 @@
     "logOut": "Log out",
     "revoke": "Revoke",
     "logOutTitle": "Log out of this device",
-    "revokeTitle": "Revoke device"
+    "revokeTitle": "Revoke device",
+    "revokeConfirm": {
+      "currentTitle": "Log out of this device",
+      "currentMessage": "Revoking this device will log you out here. Continue?",
+      "deviceTitle": "Revoke device",
+      "deviceMessage": "Revoke access for \"{{device}}\"? That device will be signed out immediately.",
+      "othersTitle": "Sign out other devices",
+      "othersMessage_one": "Sign out {{count}} other session? This device stays signed in.",
+      "othersMessage_other": "Sign out all {{count}} other sessions? This device stays signed in.",
+      "pastTitle": "Clear past sessions",
+      "pastMessage_one": "Clear {{count}} past session? This only removes the record.",
+      "pastMessage_other": "Clear all {{count}} past sessions? This only removes the records."
+    }
   },
   "backup": {
     "title": "Backup & Sync",

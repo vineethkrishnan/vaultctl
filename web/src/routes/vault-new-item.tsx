@@ -15,6 +15,9 @@ import { IdentityFields } from "@/components/items/IdentityFields";
 import { ApiKeyFields } from "@/components/items/ApiKeyFields";
 import { SSHKeyFields } from "@/components/items/SSHKeyFields";
 import { PasskeyFields } from "@/components/items/PasskeyFields";
+import { PendingAttachments } from "@/components/items/PendingAttachments";
+import { useServerFeatures } from "@/hooks/use-server-features";
+import { uploadAttachment } from "@/lib/attachments";
 import { itemDataSchemas, type ItemData } from "@/shared/types/item-data";
 import { ITEM_TYPES, type ItemType, type ItemResponse } from "@/shared/types/api";
 import { ArrowLeft } from "lucide-react";
@@ -37,9 +40,11 @@ export function VaultNewItemPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const features = useServerFeatures();
   const [selectedType, setSelectedType] = useState<ItemType | null>(null);
   const [name, setName] = useState("");
   const [itemData, setItemData] = useState<Record<string, unknown>>({});
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
 
   function selectType(type: ItemType) {
@@ -54,20 +59,37 @@ export function VaultNewItemPage() {
         encoder.encode(JSON.stringify(itemData)),
       );
       const encName = await encryptName(vaultId, name || t("vault:newItem.untitled"));
-      return apiPost<ItemResponse>(`/api/v1/vaults/${vaultId}/items`, {
+      const item = await apiPost<ItemResponse>(`/api/v1/vaults/${vaultId}/items`, {
         itemType: selectedType,
         encryptedData: encData,
         encryptedName: encName,
         favorite: false,
         reprompt: false,
       });
+
+      // The item now exists. A failed upload must not bubble as a create
+      // failure, or retrying the form would create a duplicate item.
+      const failed: string[] = [];
+      for (const file of pendingFiles) {
+        try {
+          await uploadAttachment(vaultId, item.id, file);
+        } catch {
+          failed.push(file.name);
+        }
+      }
+      return { item, failed };
     },
-    onSuccess: (item) => {
+    onSuccess: ({ item, failed }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) });
-      navigate({
-        to: "/vault/$vaultId/items/$itemId",
-        params: { vaultId, itemId: item.id },
-      });
+      if (failed.length > 0) {
+        // Send them to the item so the attachments can be retried there.
+        navigate({
+          to: "/vault/$vaultId/items/$itemId",
+          params: { vaultId, itemId: item.id },
+        });
+        return;
+      }
+      navigate({ to: "/vault/$vaultId", params: { vaultId } });
     },
   });
 
@@ -155,6 +177,14 @@ export function VaultNewItemPage() {
             onChange={setItemData}
           />
         </div>
+
+        {features.attachments && (
+          <PendingAttachments
+            files={pendingFiles}
+            onChange={setPendingFiles}
+            disabled={saving || createMutation.isPending}
+          />
+        )}
 
         <div className="flex gap-2">
           <button

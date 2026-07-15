@@ -10,7 +10,7 @@ import { z } from "zod";
 const customFieldSchema = z.object({
   name: z.string(),
   value: z.string(),
-  type: z.enum(["text", "hidden", "boolean", "url"]).default("text"),
+  type: z.enum(["text", "hidden", "boolean", "url", "markdown"]).default("text"),
 });
 
 export type CustomField = z.infer<typeof customFieldSchema>;

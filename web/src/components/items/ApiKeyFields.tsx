@@ -21,7 +21,7 @@ export function ApiKeyFields({ data, onChange }: Props) {
       <Field label={t("vault:fields.environment")} value={data.environment} onChange={(v) => set("environment", v)} placeholder={t("vault:fields.environmentPlaceholder")} />
       <Field label={t("vault:fields.serviceUrl")} value={data.serviceUrl} onChange={(v) => set("serviceUrl", v)} type="url" />
       <Field label={t("vault:fields.expiresAt")} value={data.expiresAt} onChange={(v) => set("expiresAt", v)} placeholder={t("vault:fields.expiresAtPlaceholder")} />
-      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="textarea" />
+      <Field label={t("vault:fields.notes")} value={data.notes} onChange={(v) => set("notes", v)} type="markdown" />
       <CustomFieldsEditor
         fields={data.customFields}
         onChange={(customFields) => set("customFields", customFields)}

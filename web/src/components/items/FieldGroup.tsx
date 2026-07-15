@@ -1,15 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Copy } from "lucide-react";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { useAutoResize } from "@/hooks/use-auto-resize";
+import { MarkdownEditor } from "./MarkdownEditor";
 
 interface FieldProps {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  type?: "text" | "password" | "email" | "url" | "textarea";
+  type?:
+    | "text"
+    | "password"
+    | "email"
+    | "url"
+    | "textarea"
+    | "secret-textarea"
+    | "markdown";
   placeholder?: string;
   readOnly?: boolean;
   copyable?: boolean;
@@ -28,8 +37,12 @@ export function Field({
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
   const { copy } = useClipboard();
-  const isSecret = type === "password";
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isSecret = type === "password" || type === "secret-textarea";
+  const isTextarea = type === "textarea" || type === "secret-textarea";
   const inputId = useId();
+
+  useAutoResize(textareaRef, isTextarea ? value : "");
 
   return (
     <div className="space-y-1.5">
@@ -39,16 +52,31 @@ export function Field({
       >
         {label}
       </label>
-      <div className="flex gap-1">
-        {type === "textarea" ? (
+      <div className="flex items-start gap-1">
+        {type === "markdown" ? (
+          <MarkdownEditor
+            id={inputId}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            readOnly={readOnly}
+          />
+        ) : isTextarea ? (
           <textarea
             id={inputId}
+            ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             readOnly={readOnly}
-            rows={4}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+            rows={2}
+            className={`max-h-80 w-full resize-y overflow-y-auto rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2 ${
+              type === "secret-textarea" ? "font-mono" : ""
+            } ${
+              type === "secret-textarea" && !revealed
+                ? "[-webkit-text-security:disc]"
+                : ""
+            }`}
           />
         ) : (
           <input

@@ -141,8 +141,15 @@ test.describe.serial("Sessions - UI", () => {
     const iphoneRow = page.locator("li", { hasText: "iPhone" });
     await iphoneRow.getByRole("button").click();
 
+    // Revoking is destructive, so it must confirm before any DELETE goes out.
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible();
+    expect(deletePaths).toEqual([]);
+    await dialog.getByRole("button", { name: "Revoke" }).click();
+    await expect(dialog).toBeHidden({ timeout: 5_000 });
+
     // iPhone row should disappear after revoke
-    await expect(page.getByText("iPhone")).not.toBeVisible({ timeout: 5_000 });
+    await expect(iphoneRow).toHaveCount(0, { timeout: 5_000 });
     expect(deletePaths).toContain("/api/v1/users/me/sessions/sess-phone");
 
     // "This Browser" and "Work Laptop" should still be visible

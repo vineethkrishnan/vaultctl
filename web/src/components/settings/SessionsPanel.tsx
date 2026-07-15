@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LogOut, Monitor, AlertTriangle, Check, History } from "lucide-react";
@@ -9,6 +9,7 @@ import {
   getGetUsersMeSessionsQueryKey,
   deleteUsersMeSessionsId,
 } from "@/api/users/users";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAuthStore } from "@/lib/auth-store";
 import { humanizeDeviceName } from "@/lib/device";
 import { relativeAge } from "@/lib/time";
@@ -20,6 +21,10 @@ interface RawSession {
   lastActiveAt?: string;
   createdAt: string;
 }
+
+type PendingRevoke =
+  | { kind: "current" | "device"; ids: string[]; deviceName: string }
+  | { kind: "others" | "past"; ids: string[] };
 
 interface DeviceGroup {
   key: string;
@@ -113,6 +118,8 @@ export function SessionsPanel() {
   );
   const pastIds = useMemo(() => past.flatMap((g) => g.ids), [past]);
 
+  const [pendingRevoke, setPendingRevoke] = useState<PendingRevoke | null>(null);
+
   const revokeMutation = useMutation({
     mutationFn: (ids: string[]) =>
       Promise.all(ids.map((id) => deleteUsersMeSessionsId(id))),
@@ -123,15 +130,10 @@ export function SessionsPanel() {
     },
   });
 
-  async function handleRevoke(group: DeviceGroup) {
-    if (group.isCurrent) {
-      const confirmed = window.confirm(
-        t("settings:sessions.revokeCurrentConfirm"),
-      );
-      if (!confirmed) return;
-    }
-    await revokeMutation.mutateAsync(group.ids);
-    if (group.isCurrent) {
+  async function runRevoke(pending: PendingRevoke) {
+    await revokeMutation.mutateAsync(pending.ids);
+    setPendingRevoke(null);
+    if (pending.kind === "current") {
       useAuthStore.getState().logout();
       window.location.reload();
     }
@@ -169,7 +171,7 @@ export function SessionsPanel() {
       {otherIds.length > 0 && (
         <button
           type="button"
-          onClick={() => revokeMutation.mutate(otherIds)}
+          onClick={() => setPendingRevoke({ kind: "others", ids: otherIds })}
           disabled={revokeMutation.isPending}
           className="rounded-md border border-input px-3 py-1.5 text-xs text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
         >
@@ -186,7 +188,13 @@ export function SessionsPanel() {
               key={group.key}
               group={group}
               pending={revokeMutation.isPending}
-              onRevoke={() => handleRevoke(group)}
+              onRevoke={() =>
+                setPendingRevoke({
+                  kind: group.isCurrent ? "current" : "device",
+                  ids: group.ids,
+                  deviceName: group.deviceName,
+                })
+              }
             />
           ))}
         </ul>
@@ -204,7 +212,7 @@ export function SessionsPanel() {
             </div>
             <button
               type="button"
-              onClick={() => revokeMutation.mutate(pastIds)}
+              onClick={() => setPendingRevoke({ kind: "past", ids: pastIds })}
               disabled={revokeMutation.isPending}
               className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
             >
@@ -220,13 +228,48 @@ export function SessionsPanel() {
                 key={group.key}
                 group={group}
                 pending={revokeMutation.isPending}
-                onRevoke={() => handleRevoke(group)}
+                onRevoke={() =>
+                setPendingRevoke({
+                  kind: group.isCurrent ? "current" : "device",
+                  ids: group.ids,
+                  deviceName: group.deviceName,
+                })
+              }
                 muted
               />
             ))}
           </ul>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingRevoke}
+        title={
+          pendingRevoke ? t(`settings:sessions.revokeConfirm.${pendingRevoke.kind}Title`) : ""
+        }
+        message={
+          pendingRevoke
+            ? t(`settings:sessions.revokeConfirm.${pendingRevoke.kind}Message`, {
+                device:
+                  pendingRevoke.kind === "current" || pendingRevoke.kind === "device"
+                    ? humanizeDeviceName(pendingRevoke.deviceName)
+                    : "",
+                count: pendingRevoke.ids.length,
+              })
+            : ""
+        }
+        confirmLabel={
+          pendingRevoke?.kind === "current"
+            ? t("settings:sessions.logOut")
+            : t("settings:sessions.revoke")
+        }
+        destructive
+        busy={revokeMutation.isPending}
+        onConfirm={() => {
+          if (pendingRevoke) void runRevoke(pendingRevoke);
+        }}
+        onCancel={() => setPendingRevoke(null)}
+      />
     </div>
   );
 }

@@ -240,7 +240,13 @@
     "decrypting": "Wird entschlüsselt...",
     "nameUnavailable": "[Name nicht verfügbar]",
     "download": "Herunterladen und entschlüsseln",
-    "delete": "Anhang löschen"
+    "delete": "Anhang löschen",
+    "pendingEmpty": "Keine Dateien ausgewählt. Dateien werden in Ihrem Browser verschlüsselt und hochgeladen, sobald der Eintrag erstellt wurde.",
+    "deleteConfirm": {
+      "title": "Anhang löschen",
+      "message": "\"{{name}}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+      "confirmLabel": "Löschen"
+    }
   },
   "fields": {
     "reveal": "Anzeigen",
@@ -307,9 +313,21 @@
     "typeBoolean": "Boolesch",
     "typeUrl": "URL",
     "yes": "Ja",
-    "no": "Nein"
+    "no": "Nein",
+    "typeMarkdown": "Markdown"
   },
   "passwordHistory": {
     "heading": "Passwortverlauf"
+  },
+  "markdown": {
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "code": "Code",
+    "link": "Link",
+    "heading": "Überschrift",
+    "bulletList": "Aufzählung",
+    "edit": "Bearbeiten",
+    "preview": "Vorschau",
+    "nothingToPreview": "Keine Vorschau verfügbar"
   }
 }
