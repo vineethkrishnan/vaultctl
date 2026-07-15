@@ -133,6 +133,20 @@ func (w *Writer) Refreshed(ctx context.Context, userID, sessionID, ip, userAgent
 	})
 }
 
+// RefreshReuseDetected records that an already-rotated refresh token was
+// replayed - a token-theft signal. The session lineage has been revoked by the
+// time this fires (security M1).
+func (w *Writer) RefreshReuseDetected(ctx context.Context, userID, sessionID, ip, userAgent string) {
+	w.write(ctx, auditlog.Entry{
+		UserID:       userID,
+		Action:       auditlog.ActionRefreshReuse,
+		ResourceType: auditlog.ResourceSession,
+		ResourceID:   sessionID,
+		IPAddress:    ip,
+		UserAgent:    userAgent,
+	})
+}
+
 // StepUp records a successful master-password reverification (H10).
 func (w *Writer) StepUp(ctx context.Context, userID, ip, userAgent string) {
 	w.write(ctx, auditlog.Entry{

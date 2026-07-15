@@ -24,11 +24,25 @@ func (s *SessionStore) Create(ctx context.Context, sess user.Session) error {
 }
 
 func (s *SessionStore) FindByTokenHash(ctx context.Context, h user.RefreshTokenHash) (user.Session, error) {
-	row := s.Pool.QueryRow(ctx, `
+	return s.scanSession(s.Pool.QueryRow(ctx, `
 		SELECT id, user_id, refresh_token_hash, COALESCE(device_name,''), COALESCE(ip_address::text,''),
 		       last_refresh_at, expires_at, created_at
 		FROM sessions WHERE refresh_token_hash = $1
-	`, h.Bytes())
+	`, h.Bytes()))
+}
+
+// FindBySupersededTokenHash looks up a session by the hash it was rotated AWAY
+// from (previous_token_hash). A hit means a refresh token that has already been
+// rotated is being presented again - the reuse/theft signal (security M1).
+func (s *SessionStore) FindBySupersededTokenHash(ctx context.Context, h user.RefreshTokenHash) (user.Session, error) {
+	return s.scanSession(s.Pool.QueryRow(ctx, `
+		SELECT id, user_id, refresh_token_hash, COALESCE(device_name,''), COALESCE(ip_address::text,''),
+		       last_refresh_at, expires_at, created_at
+		FROM sessions WHERE previous_token_hash = $1
+	`, h.Bytes()))
+}
+
+func (s *SessionStore) scanSession(row pgx.Row) (user.Session, error) {
 	var (
 		id, uid, device, ip  string
 		hashBytes            []byte
@@ -65,7 +79,12 @@ func (s *SessionStore) Revoke(ctx context.Context, id user.SessionID) error {
 
 func (s *SessionStore) Rotate(ctx context.Context, id user.SessionID, newHash user.RefreshTokenHash, at, expiresAt time.Time) error {
 	tag, err := s.Pool.Exec(ctx, `
-		UPDATE sessions SET refresh_token_hash = $1, last_refresh_at = $2, expires_at = $3 WHERE id = $4
+		UPDATE sessions
+		SET previous_token_hash = refresh_token_hash,
+		    refresh_token_hash = $1,
+		    last_refresh_at = $2,
+		    expires_at = $3
+		WHERE id = $4
 	`, newHash.Bytes(), at, expiresAt, string(id))
 	if err != nil {
 		return err

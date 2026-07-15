@@ -367,6 +367,11 @@ func (h *AuthHandlers) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.Refresh.Execute(r.Context(), auth.RefreshInput{RefreshToken: req.RefreshToken})
 	if err != nil {
+		// A reuse detection carries the affected identity so the revocation is
+		// recorded as a security event even though the request fails.
+		if errors.Is(err, auth.ErrTokenReuse) {
+			h.Audit.RefreshReuseDetected(r.Context(), string(out.UserID), string(out.SessionID), middleware.ClientIP(r), r.UserAgent())
+		}
 		writeError(w, r, err)
 		return
 	}

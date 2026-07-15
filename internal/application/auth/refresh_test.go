@@ -92,6 +92,35 @@ func TestRefresh_UnknownToken(t *testing.T) {
 	}
 }
 
+func TestRefresh_ReuseDetected_RevokesLineage(t *testing.T) {
+	t.Parallel()
+	uc, repo, sess := newRefresh(t)
+	seeded := seedSession(t, repo, sess, "rtok-old", time.Unix(1_700_000_000+3600, 0).UTC())
+
+	// First refresh rotates rtok-old -> rtok-new (the legitimate rotation).
+	out, err := uc.Execute(context.Background(), RefreshInput{RefreshToken: "rtok-old"})
+	if err != nil {
+		t.Fatalf("first refresh: %v", err)
+	}
+
+	// Replaying the now-superseded rtok-old is treated as theft, not a miss.
+	reuse, err := uc.Execute(context.Background(), RefreshInput{RefreshToken: "rtok-old"})
+	if !errors.Is(err, ErrTokenReuse) {
+		t.Fatalf("expected ErrTokenReuse on replay, got %v", err)
+	}
+	// Identity is surfaced so the caller can raise a security alert.
+	if reuse.UserID != seeded.UserID || reuse.SessionID != seeded.ID {
+		t.Fatalf("reuse output should carry identity: %+v", reuse)
+	}
+
+	// The whole lineage is revoked: even the freshly rotated token is dead now,
+	// which locks out both the thief and the legitimate client.
+	newHash, _ := user.NewRefreshTokenHash(fakeHMAC{}.HashString(out.RefreshToken))
+	if _, err := sess.FindByTokenHash(context.Background(), newHash); err == nil {
+		t.Fatalf("lineage should be revoked after reuse detection")
+	}
+}
+
 func TestRefresh_Expired(t *testing.T) {
 	t.Parallel()
 	uc, repo, sess := newRefresh(t)
