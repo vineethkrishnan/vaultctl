@@ -117,18 +117,12 @@ test("capture walkthrough screenshots", async ({ page, context }) => {
 
   // ----------------------------------------------------------- 08. Vault with item
   await page.getByRole("button", { name: /Create Item/i }).click();
-  // Creating persists via the crypto worker + POST, then the app lands on
-  // the new item's detail page. Wait for that navigation before leaving:
-  // clicking All Items straight away races the in-flight create, so the list
-  // loads before the item exists and the GitHub row never shows up.
-  await page.waitForURL(
-    (url) =>
-      /\/items\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith("/new"),
-    { timeout: 20_000 },
-  );
-  // Navigate back to the All Items list so the screenshot shows the
-  // populated vault.
-  await page.getByRole("link", { name: /All Items/i }).first().click();
+  // Creating persists via the crypto worker + POST, then the app returns to the
+  // vault list. Wait for that navigation before asserting: the GitHub row only
+  // exists once the in-flight create resolves.
+  await page.waitForURL((url) => /\/vault\/[^/]+$/.test(url.pathname), {
+    timeout: 20_000,
+  });
   await expect(
     page.getByRole("link", { name: /GitHub/i }).first(),
   ).toBeVisible({ timeout: 20_000 });
