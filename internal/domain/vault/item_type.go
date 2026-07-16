@@ -23,6 +23,7 @@ const (
 	ItemTypeAPIKey     ItemType = "api_key"
 	ItemTypeSSHKey     ItemType = "ssh_key"
 	ItemTypePasskey    ItemType = "passkey"
+	ItemTypeGPGKey     ItemType = "gpg_key"
 )
 
 // AllItemTypes returns every supported ItemType in a stable order.
@@ -35,6 +36,7 @@ func AllItemTypes() []ItemType {
 		ItemTypeAPIKey,
 		ItemTypeSSHKey,
 		ItemTypePasskey,
+		ItemTypeGPGKey,
 	}
 }
 
@@ -86,6 +88,8 @@ func (t ItemType) RequiredFields() []string {
 		return []string{"name", "private_key"}
 	case ItemTypePasskey:
 		return []string{"name", "rp_id", "credential_id", "public_key"}
+	case ItemTypeGPGKey:
+		return []string{"name", "private_key"}
 	}
 	return nil
 }

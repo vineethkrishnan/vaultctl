@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-func TestAllItemTypes_Seven(t *testing.T) {
+func TestAllItemTypes_Eight(t *testing.T) {
 	t.Parallel()
-	if got := len(AllItemTypes()); got != 7 {
-		t.Fatalf("expected 7 item types, got %d", got)
+	if got := len(AllItemTypes()); got != 8 {
+		t.Fatalf("expected 8 item types, got %d", got)
 	}
 	seen := map[ItemType]struct{}{}
 	for _, it := range AllItemTypes() {
@@ -49,6 +49,7 @@ func TestItemType_RequiredFields(t *testing.T) {
 		ItemTypeAPIKey:     {"name", "key"},
 		ItemTypeSSHKey:     {"name", "private_key"},
 		ItemTypePasskey:    {"name", "rp_id", "credential_id", "public_key"},
+		ItemTypeGPGKey:     {"name", "private_key"},
 	}
 	for it, want := range cases {
 		got := it.RequiredFields()
