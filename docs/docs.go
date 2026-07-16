@@ -2046,7 +2046,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by item type (login, note, card, identity, api_key, ssh_key, passkey)",
+                        "description": "Filter by item type (login, note, card, identity, api_key, ssh_key, passkey, gpg_key)",
                         "name": "itemType",
                         "in": "query"
                     }

@@ -56,7 +56,7 @@ Tick the confirmation, click **Continue to Login**, and re-enter your email and 
 
 ## 5. Add the first item
 
-Click **New Item**. Choose a type - Login, Secure Note, Credit Card, Identity, API Key, SSH Key, or Passkey.
+Click **New Item**. Choose a type - Login, Secure Note, Credit Card, Identity, API Key, SSH Key, Passkey, or GPG Key.
 
 ![Item type picker](screenshots/06-new-item-types.png)
 

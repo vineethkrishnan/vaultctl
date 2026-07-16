@@ -22,6 +22,11 @@ export default defineConfig({
     // otherwise picks up `prefers-color-scheme: dark` and the app's
     // theme variables flip every screenshot.
     colorScheme: "light",
+    // Entrance animations are still mid-fade when an element first reports
+    // visible, so a shot taken then catches a half-transparent panel. The app
+    // collapses its animations under prefers-reduced-motion (see app.css), so
+    // ask for it rather than sleeping and hoping.
+    reducedMotion: "reduce",
     screenshot: "off",
     trace: "retain-on-failure",
   },

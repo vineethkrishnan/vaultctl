@@ -28,7 +28,16 @@ const EMAIL = "alice@example.com";
 const NAME = "Alice";
 const PASSWORD = "Sandbox-Walkthrough-Demo-2026!";
 
+// Let route transitions finish painting. Playwright reports an element visible
+// as soon as it has a box, which is before the incoming route has faded in, so
+// a shot taken on the assertion alone catches a washed-out panel.
+async function settle(page: Page) {
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(500);
+}
+
 async function shot(page: Page, name: string) {
+  await settle(page);
   await page.screenshot({
     path: path.join(OUT_DIR, name),
     fullPage: false,
@@ -102,6 +111,14 @@ test("capture walkthrough screenshots", async ({ page, context }) => {
   // <Link> elements; both land on the item-type picker.
   await page.getByRole("link", { name: /Create Item/i }).first().click();
   await expect(page.getByText(/Choose an item type/i)).toBeVisible({
+    timeout: 10_000,
+  });
+  // Assert the first and last tile, not just the heading: shot() settles the
+  // route transition, but the grid must actually be there to be captured.
+  await expect(page.getByRole("button", { name: /^Login$/ })).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByRole("button", { name: /^GPG Key$/ })).toBeVisible({
     timeout: 10_000,
   });
   await shot(page, "06-new-item-types.png");
