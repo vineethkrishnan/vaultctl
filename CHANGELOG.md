@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.24.1...v1.25.0) (2026-07-16)
+
+
+### Features
+
+* **extension:** filter the login picker as you type ([#316](https://github.com/vineethkrishnan/vaultctl/issues/316)) ([7eb78c9](https://github.com/vineethkrishnan/vaultctl/commit/7eb78c9e7c21f4bb9ae35731e1a6f57e1ec4ae2a))
+
 ## [1.24.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.24.0...v1.24.1) (2026-07-16)
 
 
