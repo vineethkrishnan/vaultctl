@@ -65,7 +65,8 @@
       "identity": "Identität",
       "api_key": "API-Schlüssel",
       "ssh_key": "SSH-Schlüssel",
-      "passkey": "Passkey"
+      "passkey": "Passkey",
+      "gpg_key": "GPG-Schlüssel"
     },
     "detail": {
       "decryptFailed": "Dieser Eintrag konnte nicht entschlüsselt werden",
@@ -110,7 +111,9 @@
         "rpId": "Relying-Party-ID",
         "rpName": "Relying Party",
         "userHandle": "Benutzer-Handle",
-        "credentialId": "Anmeldedaten-ID"
+        "credentialId": "Anmeldedaten-ID",
+        "uid": "Benutzer-ID",
+        "keyId": "Schlüssel-ID"
       }
     },
     "errors": {

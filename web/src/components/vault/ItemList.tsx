@@ -27,6 +27,7 @@ import {
   Key,
   Terminal,
   Fingerprint,
+  FileKey,
   Star,
   Search,
   MoreVertical,
@@ -44,6 +45,7 @@ const ITEM_TYPE_ICONS: Record<string, typeof KeyRound> = {
   api_key: Key,
   ssh_key: Terminal,
   passkey: Fingerprint,
+  gpg_key: FileKey,
 };
 
 const decoder = new TextDecoder();

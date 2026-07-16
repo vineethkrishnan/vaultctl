@@ -24,6 +24,7 @@ const ITEM_TYPES = [
   { type: 'api_key', label: 'API Key', description: 'Service credentials' },
   { type: 'ssh_key', label: 'SSH Key', description: 'Public / private key pair' },
   { type: 'passkey', label: 'Passkey', description: 'WebAuthn credential' },
+  { type: 'gpg_key', label: 'GPG Key', description: 'Armored PGP key pair' },
 ];
 
 export default function NewItemScreen() {

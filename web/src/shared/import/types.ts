@@ -38,6 +38,7 @@ export const itemTypeSchema = z.enum([
   "api_key",
   "ssh_key",
   "passkey",
+  "gpg_key",
 ]);
 export type ItemType = z.infer<typeof itemTypeSchema>;
 

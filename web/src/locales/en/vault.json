@@ -6,7 +6,8 @@
     "identity": "Identity",
     "api_key": "API Key",
     "ssh_key": "SSH Key",
-    "passkey": "Passkey"
+    "passkey": "Passkey",
+    "gpg_key": "GPG Key"
   },
   "items": {
     "title": "All Items",
@@ -299,7 +300,13 @@
     "userHandle": "User Handle",
     "discoverable": "Discoverable credential",
     "generatePassword": "Generate password",
-    "hideGenerator": "Hide generator"
+    "hideGenerator": "Hide generator",
+    "uid": "User ID",
+    "uidPlaceholder": "Alice <alice@example.com>",
+    "keyId": "Key ID",
+    "keyIdPlaceholder": "0x1234ABCD5678EF90",
+    "gpgKeyTypePlaceholder": "RSA 4096, ed25519...",
+    "gpgExpiresPlaceholder": "YYYY-MM-DD (blank if it never expires)"
   },
   "customFields": {
     "heading": "Custom fields",

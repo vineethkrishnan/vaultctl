@@ -15,6 +15,7 @@ import { IdentityFields } from "@/components/items/IdentityFields";
 import { ApiKeyFields } from "@/components/items/ApiKeyFields";
 import { SSHKeyFields } from "@/components/items/SSHKeyFields";
 import { PasskeyFields } from "@/components/items/PasskeyFields";
+import { GPGKeyFields } from "@/components/items/GPGKeyFields";
 import { PendingAttachments } from "@/components/items/PendingAttachments";
 import { useServerFeatures } from "@/hooks/use-server-features";
 import { uploadAttachment } from "@/lib/attachments";
@@ -32,6 +33,7 @@ const DEFAULT_DATA: Record<ItemType, () => ItemData> = {
   api_key: () => itemDataSchemas.api_key!.parse({}),
   ssh_key: () => itemDataSchemas.ssh_key!.parse({}),
   passkey: () => itemDataSchemas.passkey!.parse({}),
+  gpg_key: () => itemDataSchemas.gpg_key!.parse({}),
 };
 
 export function VaultNewItemPage() {
@@ -231,6 +233,8 @@ function TypeFields({
       return <SSHKeyFields data={data as never} onChange={onChange as never} />;
     case "passkey":
       return <PasskeyFields data={data as never} onChange={onChange as never} />;
+    case "gpg_key":
+      return <GPGKeyFields data={data as never} onChange={onChange as never} />;
     default:
       return null;
   }

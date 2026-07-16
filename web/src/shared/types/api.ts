@@ -115,6 +115,7 @@ export const ITEM_TYPES = [
   "api_key",
   "ssh_key",
   "passkey",
+  "gpg_key",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 
