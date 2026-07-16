@@ -24,9 +24,22 @@ interface UAData {
   getHighEntropyValues?: (hints: string[]) => Promise<HighEntropy>;
 }
 
-function isRealBrand(brand: string): boolean {
-  // Chromium injects a "Not?A_Brand" / "(Not(A:Brand)" placeholder.
-  return !/not[?.\s]*a[\s)]*brand/i.test(brand);
+// Pick the brand to show from a client-hints list. Every Chromium browser lists
+// the generic engine name "Chromium" alongside its own product brand (Dia,
+// Google Chrome, Microsoft Edge), so prefer the specific one and fall back to
+// Chromium only when it is the sole real brand. GREASE placeholders are dropped.
+export function pickBrand(list: UADataBrand[]): UADataBrand | undefined {
+  const real = list.filter((b) => isRealBrand(b.brand));
+  return real.find((b) => !/^chromium$/i.test(b.brand.trim())) ?? real[0];
+}
+
+export function isRealBrand(brand: string): boolean {
+  // Chromium injects a GREASE placeholder brand whose letters always spell
+  // "Not A Brand" but joined by random punctuation and spacing, so the exact
+  // string varies by build: "Not;A=Brand" (Dia), "Not/A)Brand", " Not A;Brand",
+  // "(Not(A:Brand)", "Not?A_Brand", and so on. Reducing to just the letters
+  // catches every variant, where the old separator-specific regex missed most.
+  return brand.replace(/[^a-z]/gi, "").toLowerCase() !== "notabrand";
 }
 
 function major(version: string | undefined): string {
@@ -52,7 +65,7 @@ export async function deviceLabel(): Promise<string> {
         "fullVersionList",
       ]);
       const list = hints.fullVersionList ?? uaData.brands ?? [];
-      const brand = list.find((b) => isRealBrand(b.brand));
+      const brand = pickBrand(list);
       const os = formatOS(hints.platform, hints.platformVersion);
       if (brand) {
         const name = `${brand.brand} ${major(brand.version)}`.trim();
