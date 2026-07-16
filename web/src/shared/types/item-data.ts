@@ -116,6 +116,28 @@ export const sshKeyDataSchema = z.object({
 export type SSHKeyData = z.infer<typeof sshKeyDataSchema>;
 
 // ===========================================================================
+// GPG Key
+// ===========================================================================
+
+// publicKey/privateKey hold ASCII-armored blocks. They are multi-line and
+// whitespace-significant: an armored block whose line structure or trailing
+// CRC is altered will not import, so both must be rendered with a control
+// that preserves newlines verbatim (see GPGKeyFields).
+export const gpgKeyDataSchema = z.object({
+  uid: z.string().default(""),
+  keyId: z.string().default(""),
+  fingerprint: z.string().default(""),
+  keyType: z.string().default(""),
+  expiresAt: z.string().default(""),
+  publicKey: z.string().default(""),
+  privateKey: z.string().default(""),
+  passphrase: z.string().default(""),
+  notes: z.string().default(""),
+  customFields: z.array(customFieldSchema).default([]),
+});
+export type GPGKeyData = z.infer<typeof gpgKeyDataSchema>;
+
+// ===========================================================================
 // Passkey
 // ===========================================================================
 
@@ -142,7 +164,8 @@ export type ItemData =
   | IdentityData
   | ApiKeyData
   | SSHKeyData
-  | PasskeyData;
+  | PasskeyData
+  | GPGKeyData;
 
 export const itemDataSchemas: Record<string, z.ZodSchema> = {
   login: loginDataSchema,
@@ -152,4 +175,5 @@ export const itemDataSchemas: Record<string, z.ZodSchema> = {
   api_key: apiKeyDataSchema,
   ssh_key: sshKeyDataSchema,
   passkey: passkeyDataSchema,
+  gpg_key: gpgKeyDataSchema,
 };

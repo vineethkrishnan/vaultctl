@@ -14,6 +14,7 @@ import type {
   ApiKeyData,
   SSHKeyData,
   PasskeyData,
+  GPGKeyData,
 } from '@vaultctl/shared/types/item-data';
 
 function LoginDetail({ data }: { data: LoginData }) {
@@ -97,6 +98,25 @@ function ApiKeyDetail({ data }: { data: ApiKeyData }) {
   );
 }
 
+function GPGKeyDetail({ data }: { data: GPGKeyData }) {
+  return (
+    <>
+      <CopyField label="User ID" value={data.uid} />
+      <CopyField label="Key ID" value={data.keyId} />
+      <CopyField label="Fingerprint" value={data.fingerprint} />
+      <CopyField label="Key Type" value={data.keyType} />
+      <CopyField label="Expires" value={data.expiresAt} />
+      <CopyField label="Public Key" value={data.publicKey} />
+      <CopyField label="Private Key" value={data.privateKey} secret />
+      <CopyField label="Passphrase" value={data.passphrase} secret />
+      <CopyField label="Notes" value={data.notes} />
+      {data.customFields.map((f, i) => (
+        <CopyField key={i} label={f.name} value={f.value} secret={f.type === 'hidden'} />
+      ))}
+    </>
+  );
+}
+
 function SSHKeyDetail({ data }: { data: SSHKeyData }) {
   return (
     <>
@@ -147,6 +167,8 @@ function ItemFields({ itemType, data }: { itemType: string; data: unknown }) {
       return <SSHKeyDetail data={data as SSHKeyData} />;
     case 'passkey':
       return <PasskeyDetail data={data as PasskeyData} />;
+    case 'gpg_key':
+      return <GPGKeyDetail data={data as GPGKeyData} />;
     default:
       return (
         <View style={styles.unknownType}>

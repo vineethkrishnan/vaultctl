@@ -16,6 +16,7 @@ import { IdentityFields } from "@/components/items/IdentityFields";
 import { ApiKeyFields } from "@/components/items/ApiKeyFields";
 import { SSHKeyFields } from "@/components/items/SSHKeyFields";
 import { PasskeyFields } from "@/components/items/PasskeyFields";
+import { GPGKeyFields } from "@/components/items/GPGKeyFields";
 import { AttachmentsSection } from "@/components/items/AttachmentsSection";
 import { useServerFeatures } from "@/hooks/use-server-features";
 import { itemDataSchemas } from "@/shared/types/item-data";
@@ -301,6 +302,8 @@ function TypeFields({
       return <SSHKeyFields data={data as never} onChange={onChange as never} />;
     case "passkey":
       return <PasskeyFields data={data as never} onChange={onChange as never} />;
+    case "gpg_key":
+      return <GPGKeyFields data={data as never} onChange={onChange as never} />;
     default:
       return (
         <p className="text-sm text-muted-foreground">

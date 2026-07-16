@@ -2629,6 +2629,17 @@ const DETAIL_FIELDS: Record<string, DetailField[]> = {
     { key: "credentialId" },
     { key: "notes", multiline: true },
   ],
+  gpg_key: [
+    { key: "uid" },
+    { key: "keyId" },
+    { key: "fingerprint" },
+    { key: "keyType" },
+    { key: "expiresAt" },
+    { key: "publicKey", multiline: true },
+    { key: "privateKey", secret: true, multiline: true },
+    { key: "passphrase", secret: true },
+    { key: "notes", multiline: true },
+  ],
 };
 
 function ItemDetail({

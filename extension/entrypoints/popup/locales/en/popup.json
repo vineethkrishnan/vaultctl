@@ -64,7 +64,8 @@
       "identity": "Identity",
       "api_key": "API key",
       "ssh_key": "SSH key",
-      "passkey": "Passkey"
+      "passkey": "Passkey",
+      "gpg_key": "GPG Key"
     },
     "detail": {
       "decryptFailed": "Could not decrypt this item",
@@ -109,7 +110,9 @@
         "rpId": "Relying party ID",
         "rpName": "Relying party",
         "userHandle": "User handle",
-        "credentialId": "Credential ID"
+        "credentialId": "Credential ID",
+        "uid": "User ID",
+        "keyId": "Key ID"
       }
     },
     "errors": {

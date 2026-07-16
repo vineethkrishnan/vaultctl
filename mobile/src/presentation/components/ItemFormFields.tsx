@@ -44,6 +44,17 @@ export const DEFAULT_VALUES: Record<string, FormValues> = {
     discoverable: false,
     notes: '',
   },
+  gpg_key: {
+    uid: '',
+    keyId: '',
+    fingerprint: '',
+    keyType: '',
+    expiresAt: '',
+    publicKey: '',
+    privateKey: '',
+    passphrase: '',
+    notes: '',
+  },
 };
 
 interface Props {
@@ -157,6 +168,21 @@ export function ItemFormFields({ itemType, values, onChange }: Props) {
               thumbColor={bool(values['discoverable']) ? '#fff' : '#888'}
             />
           </View>
+          <FormField label="Notes" value={str(values['notes'])} onChangeText={set('notes')} multiline />
+        </>
+      );
+
+    case 'gpg_key':
+      return (
+        <>
+          <FormField label="User ID" value={str(values['uid'])} onChangeText={set('uid')} />
+          <FormField label="Key ID" value={str(values['keyId'])} onChangeText={set('keyId')} />
+          <FormField label="Fingerprint" value={str(values['fingerprint'])} onChangeText={set('fingerprint')} />
+          <FormField label="Key Type (e.g. RSA 4096)" value={str(values['keyType'])} onChangeText={set('keyType')} />
+          <FormField label="Expires" value={str(values['expiresAt'])} onChangeText={set('expiresAt')} />
+          <FormField label="Public Key" value={str(values['publicKey'])} onChangeText={set('publicKey')} multiline />
+          <FormField label="Private Key" value={str(values['privateKey'])} onChangeText={set('privateKey')} multiline secret />
+          <FormField label="Passphrase" value={str(values['passphrase'])} onChangeText={set('passphrase')} secret />
           <FormField label="Notes" value={str(values['notes'])} onChangeText={set('notes')} multiline />
         </>
       );
