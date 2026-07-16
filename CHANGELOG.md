@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.24.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.23.0...v1.24.0) (2026-07-16)
+
+
+### Features
+
+* **vault:** accept the gpg_key item type ([#309](https://github.com/vineethkrishnan/vaultctl/issues/309)) ([727253b](https://github.com/vineethkrishnan/vaultctl/commit/727253b053b35638d6fab6d4c8b4c057f030d7a2))
+* **vault:** add GPG key items ([#310](https://github.com/vineethkrishnan/vaultctl/issues/310)) ([1dcecfb](https://github.com/vineethkrishnan/vaultctl/commit/1dcecfb4f4d66f8e60d868f7d7498b5e88a0bc7d))
+
+
+### Bug Fixes
+
+* **mobile:** tolerate unknown item types instead of failing the whole sync ([#308](https://github.com/vineethkrishnan/vaultctl/issues/308)) ([f0ea767](https://github.com/vineethkrishnan/vaultctl/commit/f0ea767c206ad5e172bbeb20667cd01d56344c55))
+
+
+### Documentation
+
+* add GPG keys to the walkthrough and refresh its screenshots ([#312](https://github.com/vineethkrishnan/vaultctl/issues/312)) ([1c649bb](https://github.com/vineethkrishnan/vaultctl/commit/1c649bbb99473bfc22aef533faa206b9ff23bbd3))
+
 ## [1.23.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.22.0...v1.23.0) (2026-07-15)
 
 
