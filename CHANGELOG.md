@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.24.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.24.0...v1.24.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **web:** drop the no-op same-origin preconnect link ([#313](https://github.com/vineethkrishnan/vaultctl/issues/313)) ([98bc09c](https://github.com/vineethkrishnan/vaultctl/commit/98bc09c9679bbc889362ccfc96dcce0ac3189318)), closes [#285](https://github.com/vineethkrishnan/vaultctl/issues/285)
+* **web:** portal ConfirmDialog to body so it centers over the viewport ([#288](https://github.com/vineethkrishnan/vaultctl/issues/288)) ([d52fe07](https://github.com/vineethkrishnan/vaultctl/commit/d52fe07c7af09741241ae0a65f046047fb64ec50))
+
+
+### Documentation
+
+* warn that rate limits require a single instance ([#314](https://github.com/vineethkrishnan/vaultctl/issues/314)) ([88df0c5](https://github.com/vineethkrishnan/vaultctl/commit/88df0c50d1bb259f38c43a8b06d50037c60d1bb8)), closes [#296](https://github.com/vineethkrishnan/vaultctl/issues/296)
+
 ## [1.24.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.23.0...v1.24.0) (2026-07-16)
 
 
