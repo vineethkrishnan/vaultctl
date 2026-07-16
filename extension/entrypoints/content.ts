@@ -30,6 +30,7 @@ import {
   type ClassifiedValue,
 } from "../utils/form-fields";
 import { isOneTimeCodeText } from "../utils/otp-field";
+import { filterCredentials } from "../utils/credential-filter";
 
 interface CredMatch {
   vaultId: string;
@@ -309,6 +310,11 @@ export default defineContentScript({
     // the field - or clicking the emblem - opens the suggestion picker.
     let activeScope: ParentNode | null = null;
     let activeInput: HTMLInputElement | null = null;
+    // The field the picker's filter-as-you-type listener is attached to, and
+    // the pending debounce timer, tracked so teardown detaches from the right
+    // node even after activeInput moves on.
+    let pickerInputEl: HTMLInputElement | null = null;
+    let pickerInputTimer: number | null = null;
     const fieldIcons = new Map<HTMLInputElement, HTMLButtonElement>();
 
     function positionFieldIcon(input: HTMLInputElement, btn: HTMLButtonElement) {
@@ -470,6 +476,21 @@ export default defineContentScript({
       }) as HTMLFormElement[];
     }
 
+    // Re-render the (open) picker as the user types, so the list narrows to the
+    // typed username. Debounced so a burst of keystrokes rebuilds once, not per
+    // key. ctx.setTimeout is WXT-managed and auto-cleans on context teardown.
+    const PICKER_FILTER_DEBOUNCE_MS = 120;
+    function onPickerInput() {
+      if (pickerInputTimer !== null) clearTimeout(pickerInputTimer);
+      pickerInputTimer = ctx.setTimeout(() => {
+        pickerInputTimer = null;
+        // Only re-render if the picker is still open on this field.
+        if (activeInput && document.getElementById("vaultctl-picker-host")) {
+          showPicker();
+        }
+      }, PICKER_FILTER_DEBOUNCE_MS);
+    }
+
     function openPicker(input: HTMLInputElement) {
       if (matches.length === 0) return;
       // A re-auth prompt often renders a lone password field with no <form>
@@ -477,6 +498,11 @@ export default defineContentScript({
       // the document, so the picker still opens and can fill it.
       activeScope = input.closest("form") ?? input.closest("dialog") ?? document;
       activeInput = input;
+      if (pickerInputEl && pickerInputEl !== input) {
+        pickerInputEl.removeEventListener("input", onPickerInput);
+      }
+      input.addEventListener("input", onPickerInput);
+      pickerInputEl = input;
       showPicker();
     }
 
@@ -719,7 +745,9 @@ export default defineContentScript({
       if (!activeInput || !activeScope) return;
       const scope = activeScope;
       const anchor = activeInput;
-      removePicker();
+      // Tear down only the previous DOM, not the field's input listener: that
+      // listener must survive a re-render so typing keeps re-filtering.
+      teardownPickerDom();
       const host = document.createElement("div");
       host.id = "vaultctl-picker-host";
       const root = host.attachShadow({ mode: "closed" });
@@ -742,11 +770,15 @@ export default defineContentScript({
       // every row (same-origin lookup - no third-party favicon service, which
       // would leak the visited host).
       const faviconUrl = pageFaviconUrl();
-      // Only label rows with their vault when the matches span more than one
-      // vault, so the user can tell which vault each credential lives in.
-      const showVaultName =
-        new Set(matches.map((m) => m.vaultId)).size > 1;
-      for (const m of matches) {
+      // Narrow the list to what the user has typed into the field. A password
+      // field's value is a secret, not a username, so never filter by it - show
+      // every match there instead.
+      const query = anchor.type === "password" ? "" : anchor.value;
+      const shown = filterCredentials(matches, query);
+      // Only label rows with their vault when the visible matches span more than
+      // one vault, so the user can tell which vault each credential lives in.
+      const showVaultName = new Set(shown.map((m) => m.vaultId)).size > 1;
+      for (const m of shown) {
         const row = document.createElement("button");
         row.type = "button";
         row.style.cssText =
@@ -905,9 +937,24 @@ export default defineContentScript({
       if (el?.classList?.contains("vaultctl-field-icon")) return;
       removePicker();
     }
-    function removePicker() {
+    // Removes the picker DOM and its outside-click listener. Used both by a
+    // re-render (which then rebuilds) and by a full close.
+    function teardownPickerDom() {
       document.getElementById("vaultctl-picker-host")?.remove();
       document.removeEventListener("click", onDocClick, true);
+    }
+    function removePicker() {
+      teardownPickerDom();
+      // Full close: also detach the filter-as-you-type listener and cancel any
+      // pending debounce, so a closed picker stops reacting to typing.
+      if (pickerInputTimer !== null) {
+        clearTimeout(pickerInputTimer);
+        pickerInputTimer = null;
+      }
+      if (pickerInputEl) {
+        pickerInputEl.removeEventListener("input", onPickerInput);
+        pickerInputEl = null;
+      }
     }
 
     // ── Card / identity fill (strictly user-initiated) ────────────────────
