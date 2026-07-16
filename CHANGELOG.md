@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.25.0...v1.25.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* **web:** stop labelling devices with the Chromium GREASE brand ([#318](https://github.com/vineethkrishnan/vaultctl/issues/318)) ([ca7d304](https://github.com/vineethkrishnan/vaultctl/commit/ca7d30413d284b1532610fd5fd4f7ce4c00cabf7))
+
 ## [1.25.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.24.1...v1.25.0) (2026-07-16)
 
 
