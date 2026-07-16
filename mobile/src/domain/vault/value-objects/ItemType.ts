@@ -22,6 +22,15 @@ export class ItemType {
     return new ItemType(value as ItemTypeValue);
   }
 
+  // Non-throwing companion for data crossing the wire or coming back out of
+  // SQLite. A server that knows a type this build does not must degrade to a
+  // skipped row, never take the whole sync down with it.
+  static parse(value: string): ItemType | null {
+    return ITEM_TYPES.includes(value as ItemTypeValue)
+      ? new ItemType(value as ItemTypeValue)
+      : null;
+  }
+
   equals(other: ItemType): boolean {
     return this.value === other.value;
   }

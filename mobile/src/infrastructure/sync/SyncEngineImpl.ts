@@ -51,7 +51,7 @@ export class SyncEngineImpl implements ISyncEngine {
         this.vaultApiPort.fetchItems(vault.id.value),
         this.vaultApiPort.fetchFolders(vault.id.value),
       ]);
-      const items = rawItems.map(rawToItem);
+      const items = toItems(rawItems);
       const folders = rawFolders.map(rawToFolder);
       await this.itemRepository.saveAll(items);
       await this.folderRepository.saveAll(folders);
@@ -67,7 +67,7 @@ export class SyncEngineImpl implements ISyncEngine {
       this.vaultApiPort.fetchItems(vaultId.value),
       this.vaultApiPort.fetchFolders(vaultId.value),
     ]);
-    await this.itemRepository.saveAll(rawItems.map(rawToItem));
+    await this.itemRepository.saveAll(toItems(rawItems));
     await this.folderRepository.saveAll(rawFolders.map(rawToFolder));
     await this.updateSyncMeta(vaultId.value);
   }
@@ -105,12 +105,28 @@ function rawToVault(r: RawVaultData): Vault {
   });
 }
 
-function rawToItem(r: RawItemData): VaultItem {
+// Drops items this build cannot represent rather than rejecting the batch: a
+// single item of a type added after this build shipped must not stop the whole
+// vault from syncing.
+function toItems(raw: RawItemData[]): VaultItem[] {
+  const items: VaultItem[] = [];
+  for (const r of raw) {
+    const item = rawToItem(r);
+    if (item) items.push(item);
+    else console.warn(`sync: skipping item ${r.id} of unsupported type ${r.itemType}`);
+  }
+  return items;
+}
+
+// Returns null for an item this build cannot represent - see toItems.
+function rawToItem(r: RawItemData): VaultItem | null {
+  const itemType = ItemType.parse(r.itemType);
+  if (!itemType) return null;
   return VaultItem.create({
     id: ItemId.of(r.id),
     vaultId: VaultId.of(r.vaultId),
     folderId: r.folderId ? FolderId.of(r.folderId) : undefined,
-    itemType: ItemType.of(r.itemType),
+    itemType,
     encryptedData: EncryptedBlob.of(r.encryptedData),
     encryptedName: EncryptedBlob.of(r.encryptedName),
     isFavorite: r.favorite,
