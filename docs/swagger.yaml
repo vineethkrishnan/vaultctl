@@ -2050,7 +2050,7 @@ paths:
         name: folderId
         type: string
       - description: Filter by item type (login, note, card, identity, api_key, ssh_key,
-          passkey)
+          passkey, gpg_key)
         in: query
         name: itemType
         type: string
