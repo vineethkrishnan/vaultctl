@@ -83,6 +83,8 @@ artifacts and OAuth tokens. Store it somewhere different from your DB backups.
 | `VAULTCTL_STEP_UP_MAX_AGE` | `5m` | How long a step-up re-auth stays valid for sensitive actions (purge, export, password change). |
 | `VAULTCTL_CORS_ALLOWED_ORIGINS` | (none) | Comma-separated allowed CORS origins. Set this if the extension or a separate frontend origin needs cross-origin access. |
 
+> **Run a single instance.** The rate limits above (`RATE_LIMIT_RPM`, `AUTH_RATE_LIMIT_PER_EMAIL`, `AUTH_GLOBAL_ALERT_THRESHOLD`) are enforced from in-process counters, so each replica keeps its own. Behind a load balancer with N replicas an attacker effectively gets N times the budget, and the global auth-failure alert only ever sees one instance's share - the limits weaken silently, with nothing in the logs to say so. Scale vertically until the limiter is backed by a shared store.
+
 ## Update check
 
 | Variable | Default | Description |
