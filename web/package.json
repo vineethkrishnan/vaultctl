@@ -17,8 +17,8 @@
     "api:update": "npm run api:fetch && npm run api:generate"
   },
   "dependencies": {
-    "@fontsource-variable/geist-mono": "^5.2.8",
-    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
     "@tanstack/react-router": "^1.170.18",
@@ -30,8 +30,8 @@
     "lucide-react": "^0.577.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-hook-form": "^7.81.0",
-    "react-i18next": "^17.0.9",
+    "react-hook-form": "^7.82.0",
+    "react-i18next": "^17.0.10",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.6.0",
