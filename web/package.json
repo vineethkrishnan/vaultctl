@@ -40,14 +40,14 @@
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "@tailwindcss/vite": "^4.3.2",
+    "@playwright/test": "^1.62.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.0.0",
     "@types/zxcvbn": "^4.4.5",
     "@vitejs/plugin-react": "^4.3.0",
-    "orval": "^8.22.0",
+    "orval": "^8.23.0",
     "svg2ttf": "^6.1.0",
     "svgicons2svgfont": "^16.0.0",
     "svgpath": "^2.6.0",
