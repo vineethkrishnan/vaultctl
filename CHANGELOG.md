@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.26.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.25.1...v1.26.0) (2026-07-29)
+
+
+### Features
+
+* **extension:** fill the 2FA code when the entry carries a TOTP secret ([#328](https://github.com/vineethkrishnan/vaultctl/issues/328)) ([c55b74a](https://github.com/vineethkrishnan/vaultctl/commit/c55b74a8dfc4f67382eaab5b5f54fe49fad0ffbb))
+
 ## [1.25.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.25.0...v1.25.1) (2026-07-16)
 
 
