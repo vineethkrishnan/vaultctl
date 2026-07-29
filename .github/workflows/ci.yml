@@ -34,6 +34,16 @@ jobs:
         working-directory: web
         run: npm ci && npm run build
 
+      # Must stay ahead of `make test`. Beyond running the web unit suite, this
+      # regenerates testdata/crypto/*_fixtures.json from the current TypeScript
+      # crypto, which the Go interop tests then read back. Run the other way
+      # round (or not at all) and those tests only prove Go can still decrypt
+      # fixtures committed from someone's laptop, not that the two
+      # implementations currently agree.
+      - name: test web
+        working-directory: web
+        run: npm test
+
       - name: go mod download
         run: go mod download
 
