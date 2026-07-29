@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.26.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.26.0...v1.26.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **extension:** do not fill a 2FA code into a form with empty credentials ([#331](https://github.com/vineethkrishnan/vaultctl/issues/331)) ([8ca272b](https://github.com/vineethkrishnan/vaultctl/commit/8ca272b37e157d195ce9e9871b75cc60199d25f0))
+* **web:** smooth the sidebar nav hover nudge ([#330](https://github.com/vineethkrishnan/vaultctl/issues/330)) ([d93a39c](https://github.com/vineethkrishnan/vaultctl/commit/d93a39c36fb1afb09dfb374754a5e3b3164642b5))
+
+
+### CI/CD
+
+* build, typecheck and test the extension ([#333](https://github.com/vineethkrishnan/vaultctl/issues/333)) ([94bf3ac](https://github.com/vineethkrishnan/vaultctl/commit/94bf3ac24b2bf4b1df7341aaf20cbd640000b195))
+* run the web unit tests ([#334](https://github.com/vineethkrishnan/vaultctl/issues/334)) ([c06ab9a](https://github.com/vineethkrishnan/vaultctl/commit/c06ab9a043de0d6b74dcbc349e9f6a582e7ee0c6))
+
 ## [1.26.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.25.1...v1.26.0) (2026-07-29)
 
 
