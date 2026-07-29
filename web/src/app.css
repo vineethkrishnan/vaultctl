@@ -94,7 +94,10 @@ body {
     var(--color-background);
 }
 
-/* Interactive elements ease smoothly by default. */
+/* Interactive elements ease smoothly by default.
+   Tailwind v4 compiles translate-/scale-/rotate- utilities to the standalone
+   `translate`, `scale` and `rotate` properties rather than to `transform`, so
+   all four have to be listed or those utilities jump instead of easing. */
 a,
 button,
 input,
@@ -107,6 +110,9 @@ select,
     border-color 0.2s var(--ease),
     box-shadow 0.2s var(--ease),
     transform 0.2s var(--ease),
+    translate 0.2s var(--ease),
+    scale 0.2s var(--ease),
+    rotate 0.2s var(--ease),
     opacity 0.2s var(--ease);
 }
 
@@ -138,12 +144,20 @@ h1, h2, h3 {
   animation: vault-scale-in 0.28s var(--ease-out) both;
 }
 
-/* Row that reveals a brand bar + lifts on hover. */
+/* Row that reveals a brand bar + lifts on hover. The nudge rides on the
+   standalone `translate` property (see the note on the base rule above). */
 .row-interactive {
   position: relative;
   transition:
-    background-color 0.2s var(--ease),
-    transform 0.2s var(--ease);
+    background-color 0.22s var(--ease),
+    color 0.22s var(--ease),
+    transform 0.22s var(--ease-out),
+    translate 0.22s var(--ease-out);
+}
+/* Snappier arriving than leaving: the row answers the pointer immediately and
+   settles back gently, which reads as responsive rather than twitchy. */
+.row-interactive:hover {
+  transition-duration: 0.14s;
 }
 .row-interactive::before {
   content: "";
@@ -158,6 +172,7 @@ h1, h2, h3 {
   transition: height 0.25s var(--ease-out);
 }
 .row-interactive:hover::before,
+.row-interactive:focus-visible::before,
 .row-interactive.active::before {
   height: 60%;
 }
@@ -169,6 +184,13 @@ h1, h2, h3 {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  /* Zeroing the duration alone would still snap the row sideways on hover,
+     which is the jolt these users asked not to get. Drop the nudge entirely
+     and let the brand bar and background carry the hover state. */
+  .row-interactive:hover {
+    translate: none;
   }
 }
 
