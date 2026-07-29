@@ -30,6 +30,7 @@ import {
   type ClassifiedValue,
 } from "../utils/form-fields";
 import { isOneTimeCodeText } from "../utils/otp-field";
+import { shouldAutofillOtp } from "../utils/otp-autofill";
 import { filterCredentials } from "../utils/credential-filter";
 
 interface CredMatch {
@@ -617,20 +618,39 @@ export default defineContentScript({
     }
 
     // The 2FA step usually renders on its own page (or SPA view) with no password
-    // field, so the credential autofill never runs there. Fill the code under the
-    // same conditions autofill-on-load uses: the feature is on, the page is
-    // unambiguous (exactly one matching login carries a secret), and the user
-    // hasn't already typed into the field.
+    // field, so the credential autofill never runs there. Whether this pass may
+    // fire is decided by shouldAutofillOtp; this reads the page facts it needs.
     let didAutofillOtp = false;
 
+    // A visible login form whose password box is still empty is one the
+    // credential fill is about to handle (or the user is about to type into).
+    // That fill writes the username, password and code in one pass, so the
+    // standalone pass must not race it and drop a code into an otherwise empty
+    // form.
+    function hasPendingCredentialForm(): boolean {
+      return findVisibleLoginForms().some((form) => {
+        const { passwordInput } = extractCredentialInputs(form);
+        return passwordInput !== null && !passwordInput.value;
+      });
+    }
+
     function maybeAutofillOtp() {
-      if (didAutofillOtp || !settings.autofill || !isUnlocked) return;
-      const rows = totpMatches();
-      if (rows.length !== 1) return;
+      // Once-per-page latch, checked first so the steady state after a fill
+      // costs nothing on a busy page's mutation stream.
+      if (didAutofillOtp) return;
       const anchor = findOtpAnchor(document);
-      if (!anchor || !isUntouched(anchor)) return;
+      if (!anchor) return;
+      const mayFill = shouldAutofillOtp({
+        autofillEnabled: settings.autofill,
+        isUnlocked,
+        matchCount: matches.length,
+        matchHasTotp: Boolean(matches[0]?.hasTotp),
+        hasPendingCredentialForm: hasPendingCredentialForm(),
+        hasEmptyCodeField: isUntouched(anchor),
+      });
+      if (!mayFill) return;
       didAutofillOtp = true;
-      void fillTotpInto(anchor, rows[0]!);
+      void fillTotpInto(anchor, matches[0]!);
     }
 
     function clearOtpFieldIcons() {
