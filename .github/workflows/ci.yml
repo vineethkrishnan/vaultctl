@@ -55,3 +55,40 @@ jobs:
           name: coverage
           path: coverage.out
           if-no-files-found: ignore
+
+  extension:
+    name: extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      # No `npm ci` in web/ is needed here, unlike mobile.yml. The extension's
+      # tsconfig does compile files from web/src/shared/, but their only
+      # non-relative import is hash-wasm, which the same tsconfig maps to the
+      # extension's own node_modules. Verified from a clean checkout with no
+      # web/node_modules present.
+      - name: install
+        working-directory: extension
+        run: npm ci
+
+      - name: typecheck
+        working-directory: extension
+        run: npm run typecheck
+
+      - name: test
+        working-directory: extension
+        run: npm test
+
+      - name: build (chrome)
+        working-directory: extension
+        run: npm run build
+
+      - name: build (firefox)
+        working-directory: extension
+        run: npm run build:firefox
