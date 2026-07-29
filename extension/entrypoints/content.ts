@@ -301,6 +301,13 @@ export default defineContentScript({
       const { usernameInput, passwordInput } = extractCredentialInputs(scope);
       if (usernameInput && res.username) setInputValue(usernameInput, res.username);
       if (passwordInput && res.password) setInputValue(passwordInput, res.password);
+      // Single-step logins put the 2FA box next to the password, so the code
+      // belongs to this same fill. Sites that only reveal it after the password
+      // is submitted are covered by maybeAutofillOtp on the next view.
+      if (match.hasTotp) {
+        const anchor = findOtpAnchor(scope) ?? findOtpAnchor(document);
+        if (anchor && isUntouched(anchor)) await fillTotpInto(anchor, match);
+      }
     }
 
     // ── Persistent field icon (Google-password-manager style) ─────────────
@@ -544,10 +551,86 @@ export default defineContentScript({
 
     // A code-entry input: a one-time-code field that is not itself a password
     // field (those are handled by the credential picker).
+    function isCodeInputType(input: HTMLInputElement): boolean {
+      return ["text", "tel", "number", ""].includes(input.type);
+    }
+
     function isOtpInput(input: HTMLInputElement): boolean {
       if (input.type === "password") return false;
-      if (!["text", "tel", "number", ""].includes(input.type)) return false;
+      if (!isCodeInputType(input)) return false;
       return isOneTimeCodeField(input);
+    }
+
+    // The first visible code field of a scope. For the split "one box per digit"
+    // widgets this is the first box, which anchors the whole group.
+    function findOtpAnchor(scope: ParentNode): HTMLInputElement | null {
+      for (const node of scope.querySelectorAll("input")) {
+        const input = node as HTMLInputElement;
+        if (isVisible(input) && isOtpInput(input)) return input;
+      }
+      return null;
+    }
+
+    // The boxes of a split code widget, in DOM order from the anchor. Only the
+    // first box tends to carry a 2FA-ish name (the rest are "digit-2", "d3", …),
+    // so the group is the run of single-character inputs starting at the anchor
+    // rather than everything isOtpInput accepts. An empty result means the field
+    // takes the whole code.
+    function otpBoxGroup(anchor: HTMLInputElement): HTMLInputElement[] {
+      if (anchor.maxLength !== 1) return [];
+      const scope = anchor.closest("form") ?? document;
+      const inputs = ([...scope.querySelectorAll("input")] as HTMLInputElement[]).filter(
+        isVisible,
+      );
+      const start = inputs.indexOf(anchor);
+      if (start === -1) return [];
+      const group: HTMLInputElement[] = [];
+      for (let i = start; i < inputs.length; i++) {
+        const input = inputs[i]!;
+        if (input.maxLength !== 1 || !isCodeInputType(input)) break;
+        group.push(input);
+      }
+      return group;
+    }
+
+    function fillOtpCode(anchor: HTMLInputElement, code: string) {
+      const boxes = otpBoxGroup(anchor);
+      if (boxes.length < 2) {
+        setInputValue(anchor, code);
+        return;
+      }
+      const digits = [...code].slice(0, boxes.length);
+      digits.forEach((digit, index) => setInputValue(boxes[index]!, digit));
+      boxes[digits.length - 1]?.focus();
+    }
+
+    // Pull a fresh code for the match and write it into the field. The secret
+    // stays in the background; only the 6-digit code crosses into the page.
+    async function fillTotpInto(anchor: HTMLInputElement, match: CredMatch) {
+      const res = await bg<{ ok?: boolean; code?: string }>({
+        type: "generateTotp",
+        vaultId: match.vaultId,
+        itemId: match.itemId,
+      });
+      if (!res?.ok || !res.code) return;
+      fillOtpCode(anchor, res.code);
+    }
+
+    // The 2FA step usually renders on its own page (or SPA view) with no password
+    // field, so the credential autofill never runs there. Fill the code under the
+    // same conditions autofill-on-load uses: the feature is on, the page is
+    // unambiguous (exactly one matching login carries a secret), and the user
+    // hasn't already typed into the field.
+    let didAutofillOtp = false;
+
+    function maybeAutofillOtp() {
+      if (didAutofillOtp || !settings.autofill || !isUnlocked) return;
+      const rows = totpMatches();
+      if (rows.length !== 1) return;
+      const anchor = findOtpAnchor(document);
+      if (!anchor || !isUntouched(anchor)) return;
+      didAutofillOtp = true;
+      void fillTotpInto(anchor, rows[0]!);
     }
 
     function clearOtpFieldIcons() {
@@ -668,7 +751,7 @@ export default defineContentScript({
         row.addEventListener("click", (e) => {
           if (!e.isTrusted) return;
           const code = row.dataset.code;
-          if (code) setInputValue(anchor, code);
+          if (code) fillOtpCode(anchor, code);
           removePicker();
         });
         menu.appendChild(row);
@@ -2003,6 +2086,7 @@ export default defineContentScript({
       // forms, multiple matches) waits for the user to pick from the icon/picker,
       // so we never silently fill the wrong form or guess between credentials.
       if (settings.autofill && matches.length === 1) scheduleAutofillOnLoad();
+      maybeAutofillOtp();
     }
 
     // SPA login pages often haven't rendered (or finished fading in) their form
@@ -2124,6 +2208,7 @@ export default defineContentScript({
       decorateItemFields();
       decorateOtpFields();
       decorateSuggestFields();
+      maybeAutofillOtp();
       if (window.location.href !== lastHref) {
         lastHref = window.location.href;
         void maybeReopenSavePrompt();
