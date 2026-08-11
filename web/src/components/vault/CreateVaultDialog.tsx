@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -73,7 +74,9 @@ export function CreateVaultDialog({ onClose }: Props) {
     }
   }
 
-  return (
+  // Portaled like ConfirmDialog: the sidebar ancestor carries a transform for
+  // the mobile drawer, which would otherwise trap this fixed overlay inside it.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onMouseDown={(e) => {
@@ -193,6 +196,7 @@ export function CreateVaultDialog({ onClose }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
