@@ -68,7 +68,10 @@ test.describe("Item list actions", () => {
       data({ username: "work@vinelab.in", password: "pw-work", uri: "https://github.com" }),
     );
 
-    await expect(page).toHaveURL(/\/vault\/vault-1\/items\/item-4/);
+    const createdItem = (await created.json()) as { id: string };
+    await expect(page).toHaveURL(
+      new RegExp(`/vault/vault-1/items/${createdItem.id}$`),
+    );
     await expect(page.getByRole("textbox", { name: "Item name" })).toHaveValue("GitHub [Copy]");
     await expect(page.getByLabel("Username")).toHaveValue("work@vinelab.in");
   });
