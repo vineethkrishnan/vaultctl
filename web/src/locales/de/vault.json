@@ -31,11 +31,14 @@
       "password": "Passwort",
       "item": "Eintrag"
     },
+    "duplicateSuffix": "{{name}} [Kopie]",
+    "duplicateFailed": "Eintrag konnte nicht dupliziert werden",
     "rowMenu": {
       "actions": "Eintragsaktionen",
       "copyUsername": "Benutzername kopieren",
       "copyPassword": "Passwort kopieren",
       "copyItem": "Eintrag kopieren",
+      "duplicate": "Eintrag duplizieren",
       "addFavorite": "Zu Favoriten hinzufügen",
       "removeFavorite": "Favorit entfernen",
       "moveToTrash": "In den Papierkorb verschieben"

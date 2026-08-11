@@ -11,10 +11,10 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { apiGet, apiPost, apiPut, apiDelete } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { decryptData, decryptName } from "@/lib/key-holder";
+import { decryptData, decryptName, encryptName } from "@/lib/key-holder";
 import { relativeAge } from "@/lib/time";
 import { useClipboard } from "@/hooks/use-clipboard";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -32,6 +32,7 @@ import {
   Search,
   MoreVertical,
   Copy,
+  CopyPlus,
   ClipboardCopy,
   Trash2,
   Check,
@@ -83,6 +84,7 @@ export function ItemList() {
     folderId?: string;
   };
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { copy } = useClipboard();
 
   const queryParams = new URLSearchParams();
@@ -107,6 +109,7 @@ export function ItemList() {
   const [filter, setFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [copied, setCopied] = useState<string | null>(null);
+  const [duplicateFailed, setDuplicateFailed] = useState(false);
   const [pendingTrash, setPendingTrash] = useState<DecryptedItem | null>(null);
 
   useEffect(() => {
@@ -188,6 +191,37 @@ export function ItemList() {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) }),
   });
 
+  const duplicateMutation = useMutation({
+    // Reuses the original encryptedData verbatim (same vault key), so reprompt
+    // items duplicate without a step-up; only the name is re-encrypted.
+    mutationFn: async (item: DecryptedItem) => {
+      const fresh = await apiGet<ItemResponse>(
+        `/api/v1/vaults/${vaultId}/items/${item.id}`,
+      );
+      const originalName = await decryptName(vaultId, fresh.encryptedName);
+      const encryptedName = await encryptName(
+        vaultId,
+        t("vault:items.duplicateSuffix", { name: originalName }),
+      );
+      return apiPost<ItemResponse>(`/api/v1/vaults/${vaultId}/items`, {
+        folderId: fresh.folderId ?? undefined,
+        itemType: fresh.itemType,
+        encryptedData: fresh.encryptedData,
+        encryptedName,
+        favorite: fresh.favorite,
+        reprompt: fresh.reprompt,
+      });
+    },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) });
+      void navigate({
+        to: "/vault/$vaultId/items/$itemId",
+        params: { vaultId, itemId: created.id },
+      });
+    },
+    onError: () => flashDuplicateFailed(),
+  });
+
   const trashMutation = useMutation({
     mutationFn: (item: DecryptedItem) =>
       apiDelete(`/api/v1/vaults/${vaultId}/items/${item.id}`),
@@ -202,6 +236,11 @@ export function ItemList() {
 
   function handleCopy(text: string, label: string) {
     void copy(text).then(() => flashCopied(label));
+  }
+
+  function flashDuplicateFailed() {
+    setDuplicateFailed(true);
+    window.setTimeout(() => setDuplicateFailed(false), 1800);
   }
 
   function handleDelete(item: DecryptedItem) {
@@ -351,6 +390,7 @@ export function ItemList() {
                   onCopyItem={() =>
                     handleCopy(itemToText(item, t), t("vault:items.copyLabels.item"))
                   }
+                  onDuplicate={() => duplicateMutation.mutate(item)}
                   onToggleFavorite={() => favoriteMutation.mutate(item)}
                   onDelete={() => handleDelete(item)}
                 />
@@ -364,6 +404,12 @@ export function ItemList() {
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-foreground shadow-lg">
           <Check className="h-3.5 w-3.5 text-brand" />
           {t("vault:items.copiedToast", { label: copied })}
+        </div>
+      )}
+
+      {duplicateFailed && (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive shadow-lg">
+          {t("vault:items.duplicateFailed")}
         </div>
       )}
 
@@ -396,6 +442,7 @@ function RowMenu({
   onCopyUsername,
   onCopyPassword,
   onCopyItem,
+  onDuplicate,
   onToggleFavorite,
   onDelete,
 }: {
@@ -403,6 +450,7 @@ function RowMenu({
   onCopyUsername: () => void;
   onCopyPassword: () => void;
   onCopyItem: () => void;
+  onDuplicate: () => void;
   onToggleFavorite: () => void;
   onDelete: () => void;
 }) {
@@ -493,6 +541,7 @@ function RowMenu({
               <MenuItem icon={Copy} label={t("vault:items.rowMenu.copyPassword")} onClick={() => run(onCopyPassword)} />
             )}
             <MenuItem icon={ClipboardCopy} label={t("vault:items.rowMenu.copyItem")} onClick={() => run(onCopyItem)} />
+            <MenuItem icon={CopyPlus} label={t("vault:items.rowMenu.duplicate")} onClick={() => run(onDuplicate)} />
             <MenuItem
               icon={Star}
               label={item.favorite ? t("vault:items.rowMenu.removeFavorite") : t("vault:items.rowMenu.addFavorite")}
