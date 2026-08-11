@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.27.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.0...v1.27.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **extension:** restore popup body theme lost to a malformed media query ([#349](https://github.com/vineethkrishnan/vaultctl/issues/349)) ([c21e301](https://github.com/vineethkrishnan/vaultctl/commit/c21e301697a192988b05df9c44453070db0924f3))
+* **web:** portal the create-vault dialog out of the transformed sidebar ([#350](https://github.com/vineethkrishnan/vaultctl/issues/350)) ([d77cfca](https://github.com/vineethkrishnan/vaultctl/commit/d77cfca6fdfdde0f08cbbd1edcc4547492cf563e))
+
 ## [1.27.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.26.1...v1.27.0) (2026-08-11)
 
 
