@@ -34,6 +34,7 @@ import { generateSecret, type GenMode } from "../utils/password-gen";
 import { parseTotp, generateTotp, secondsRemaining } from "@shared/totp";
 import { breachCount } from "../utils/password-health";
 import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
+import { isContentScriptSender } from "../utils/message-sender";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
 // ===========================================================================
@@ -990,7 +991,7 @@ async function handleInit(payload: {
 // originate from any web page. Only a narrow autofill/capture set is reachable
 // from a content script; everything that returns plaintext, touches key
 // material, mutates the vault, or mutates the capture queue is reachable only
-// from the extension's own pages (popup / options), which have no sender.tab.
+// from the extension's own pages.
 const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "loginSubmitted",
   "getPendingPrompt",
@@ -1035,10 +1036,15 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "fillItemField",
 ]);
 
-// A content script always carries a sender.tab; the popup / extension pages do
-// not. A genuine same-extension message also has sender.id === runtime.id.
+// sender.tab alone cannot discriminate: an extension page opened via
+// windows.create (the openUnlock fallback) is hosted in a real tab, unlike the
+// toolbar popup. See isContentScriptSender for why the url check is spoof-proof.
 function isFromContentScript(sender: Browser.runtime.MessageSender): boolean {
-  return sender.tab !== undefined;
+  return isContentScriptSender(
+    sender.url,
+    sender.tab !== undefined,
+    browser.runtime.getURL(""),
+  );
 }
 
 function isFromExtension(sender: Browser.runtime.MessageSender): boolean {
@@ -1677,11 +1683,13 @@ export default defineBackground(() => {
               } catch {
                 // openPopup unavailable / rejected - fall through to a window.
               }
+              // 376x600 outer leaves the 360x540 popup body plus window
+              // chrome, so the window matches the toolbar popup's footprint.
               await browser.windows.create({
                 url: browser.runtime.getURL("/popup.html"),
                 type: "popup",
-                width: 400,
-                height: 620,
+                width: 376,
+                height: 600,
               });
               sendResponse({ ok: true });
               return;
