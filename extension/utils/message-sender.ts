@@ -1,19 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/**
- * Classifies a runtime message sender as a web-page content script or one of
- * the extension's own pages.
- *
- * The presence of sender.tab alone cannot distinguish the two: an extension
- * page opened via windows.create (the openUnlock fallback window) is hosted in
- * a real tab and carries sender.tab, unlike the toolbar action popup. The
- * sender.url scheme+origin is the reliable discriminator, and a web page can
- * never spoof it: popup.html is not listed in web_accessible_resources, so no
- * page can iframe an extension URL into a tab.
- *
- * Fails closed: a sender with a tab but no readable url is treated as a
- * content script.
- */
+// sender.tab alone cannot discriminate a content script from an extension page
+// (a page opened via windows.create is hosted in a real tab), so trust keys
+// off sender.url. That is spoof-proof only while no HTML resource is in
+// web_accessible_resources - nothing lets a web page put an extension URL in a
+// tab it controls - and a tab sender with no readable url fails closed.
 export function isContentScriptSender(
   senderUrl: string | undefined,
   hasTab: boolean,

@@ -220,6 +220,7 @@ function doLock(): void {
   genHistory = [];
   pendingUsernames.clear();
   breachCache.clear();
+  invalidateItemsCache();
   unlocked = false;
   void doLockAsync();
   if (autoLockTimer) {
@@ -1036,9 +1037,6 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "fillItemField",
 ]);
 
-// sender.tab alone cannot discriminate: an extension page opened via
-// windows.create (the openUnlock fallback) is hosted in a real tab, unlike the
-// toolbar popup. See isContentScriptSender for why the url check is spoof-proof.
 function isFromContentScript(sender: Browser.runtime.MessageSender): boolean {
   return isContentScriptSender(
     sender.url,
@@ -1683,13 +1681,15 @@ export default defineBackground(() => {
               } catch {
                 // openPopup unavailable / rejected - fall through to a window.
               }
-              // 376x600 outer leaves the 360x540 popup body plus window
-              // chrome, so the window matches the toolbar popup's footprint.
+              // Outer size leaves the 360x540 popup body enough slack for any
+              // platform's window chrome (Firefox popups add a location bar);
+              // style.css centers the body and scrolls if the viewport still
+              // falls short, so the unlock UI can never be clipped off.
               await browser.windows.create({
                 url: browser.runtime.getURL("/popup.html"),
                 type: "popup",
-                width: 376,
-                height: 600,
+                width: 384,
+                height: 640,
               });
               sendResponse({ ok: true });
               return;
@@ -1829,6 +1829,10 @@ export default defineBackground(() => {
             }
 
             case "fillCredential": {
+              if (!unlocked) {
+                sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
               const vaultId = String(message.vaultId ?? "");
               const itemId = String(message.itemId ?? "");
               const entry = (await loadLoginEntries()).find(
