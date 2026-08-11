@@ -34,6 +34,7 @@ import { generateSecret, type GenMode } from "../utils/password-gen";
 import { parseTotp, generateTotp, secondsRemaining } from "@shared/totp";
 import { breachCount } from "../utils/password-health";
 import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
+import { isContentScriptSender } from "../utils/message-sender";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 
 // ===========================================================================
@@ -219,6 +220,7 @@ function doLock(): void {
   genHistory = [];
   pendingUsernames.clear();
   breachCache.clear();
+  invalidateItemsCache();
   unlocked = false;
   void doLockAsync();
   if (autoLockTimer) {
@@ -990,7 +992,7 @@ async function handleInit(payload: {
 // originate from any web page. Only a narrow autofill/capture set is reachable
 // from a content script; everything that returns plaintext, touches key
 // material, mutates the vault, or mutates the capture queue is reachable only
-// from the extension's own pages (popup / options), which have no sender.tab.
+// from the extension's own pages.
 const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "loginSubmitted",
   "getPendingPrompt",
@@ -1035,10 +1037,12 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "fillItemField",
 ]);
 
-// A content script always carries a sender.tab; the popup / extension pages do
-// not. A genuine same-extension message also has sender.id === runtime.id.
 function isFromContentScript(sender: Browser.runtime.MessageSender): boolean {
-  return sender.tab !== undefined;
+  return isContentScriptSender(
+    sender.url,
+    sender.tab !== undefined,
+    browser.runtime.getURL(""),
+  );
 }
 
 function isFromExtension(sender: Browser.runtime.MessageSender): boolean {
@@ -1677,11 +1681,15 @@ export default defineBackground(() => {
               } catch {
                 // openPopup unavailable / rejected - fall through to a window.
               }
+              // Outer size leaves the 360x540 popup body enough slack for any
+              // platform's window chrome (Firefox popups add a location bar);
+              // style.css centers the body and scrolls if the viewport still
+              // falls short, so the unlock UI can never be clipped off.
               await browser.windows.create({
                 url: browser.runtime.getURL("/popup.html"),
                 type: "popup",
-                width: 400,
-                height: 620,
+                width: 384,
+                height: 640,
               });
               sendResponse({ ok: true });
               return;
@@ -1821,6 +1829,10 @@ export default defineBackground(() => {
             }
 
             case "fillCredential": {
+              if (!unlocked) {
+                sendResponse({ ok: false, error: "vault is locked" });
+                return;
+              }
               const vaultId = String(message.vaultId ?? "");
               const itemId = String(message.itemId ?? "");
               const entry = (await loadLoginEntries()).find(

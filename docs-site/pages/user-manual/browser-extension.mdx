@@ -62,6 +62,8 @@ When you open a page with a login form, the extension matches the page's host ag
 
 If a stored login matches, a small teal vaultctl icon appears inside the username and password fields. Click it to fill the form. When more than one login matches the page, the icon opens a short list so you can pick the right account; choosing one fills it.
 
+The icon also appears while the vault is **locked**, once the extension has been set up (controlled by **Show icon when locked** in Settings). Clicking it opens the unlock prompt -- the toolbar popup where the browser allows it, otherwise a small extension window -- with your server and account already in place, so you only enter your master password (or use Touch ID). After unlocking, the account picker reopens on the field you clicked so you can fill it right away.
+
 ### Autofill on load
 
 With **Autofill on page load** enabled (Settings, off by default), the first matching login is filled automatically as soon as the page loads, with no click. Leave it off if you prefer to fill explicitly via the field icon.
@@ -140,6 +142,7 @@ Open the extension popup and go to the **Settings** tab to configure behavior:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | **Show field icon** | On | Show the inline vaultctl icon inside matching login fields. |
+| **Show icon when locked** | On | Show the field icon even while the vault is locked; clicking it opens the unlock prompt. |
 | **Autofill on page load** | Off | Fill the first matching login automatically, without a click. |
 | **Offer to save / update** | On | Show the save/update toast after a login submit. |
 | **Suggest strong passwords** | On | Offer a generated password on new-password fields. |
