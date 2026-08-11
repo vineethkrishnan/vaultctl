@@ -49,6 +49,12 @@ body {
   /* Centers the fixed-width body when popup.html is hosted in a windows.create
      window slightly wider than 360px; a no-op in the toolbar popup. */
   margin: 0 auto;
+  background:
+    radial-gradient(40rem 24rem at 20% -20%, color-mix(in srgb, var(--color-brand) 10%, transparent), transparent 60%),
+    var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Window chrome (title bar, Firefox's popup location bar, HiDPI rounding) can
@@ -58,12 +64,6 @@ body {
   body {
     overflow: auto;
   }
-  background:
-    radial-gradient(40rem 24rem at 20% -20%, color-mix(in srgb, var(--color-brand) 10%, transparent), transparent 60%),
-    var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
 }
 
 a, button, input {
