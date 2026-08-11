@@ -22,7 +22,7 @@ RUN npm run build
 # ===========================================================================
 # Stage 2: Build
 # ===========================================================================
-FROM golang:1.26.4-alpine AS builder
+FROM golang:1.26.5-alpine AS builder
 
 WORKDIR /src
 
