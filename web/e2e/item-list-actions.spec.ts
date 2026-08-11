@@ -53,6 +53,29 @@ test.describe("Item list actions", () => {
     await expect(page.getByText(/Copied password/)).toBeVisible();
   });
 
+  test("kebab menu duplicates the item and opens the pre-populated editor", async ({ page }) => {
+    const postResp = page.waitForResponse(
+      (r) =>
+        /\/items$/.test(new URL(r.url()).pathname) &&
+        r.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Item actions" }).first().click();
+    await page.getByRole("menuitem", { name: "Duplicate item" }).click();
+    const created = await postResp;
+
+    const postBody = created.request().postDataJSON() as Record<string, string>;
+    expect(postBody.encryptedData).toBe(
+      data({ username: "work@vinelab.in", password: "pw-work", uri: "https://github.com" }),
+    );
+
+    const createdItem = (await created.json()) as { id: string };
+    await expect(page).toHaveURL(
+      new RegExp(`/vault/vault-1/items/${createdItem.id}$`),
+    );
+    await expect(page.getByRole("textbox", { name: "Item name" })).toHaveValue("GitHub [Copy]");
+    await expect(page.getByLabel("Username")).toHaveValue("work@vinelab.in");
+  });
+
   test("kebab menu toggles favorite (PUT) and moves to trash (DELETE)", async ({ page }) => {
     const putResp = page.waitForResponse(
       (r) =>

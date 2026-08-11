@@ -11,14 +11,17 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { apiGet, apiPut, apiDelete } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { decryptData, decryptName } from "@/lib/key-holder";
+import { decryptData, decryptName, encryptName } from "@/lib/key-holder";
+import { createItem } from "@/lib/items";
+import { listAttachments } from "@/lib/attachments";
 import { relativeAge } from "@/lib/time";
 import { useClipboard } from "@/hooks/use-clipboard";
+import { useServerFeatures } from "@/hooks/use-server-features";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import type { ItemResponse } from "@/shared/types/api";
+import type { ItemResponse, ItemType } from "@/shared/types/api";
 import {
   KeyRound,
   FileText,
@@ -32,9 +35,11 @@ import {
   Search,
   MoreVertical,
   Copy,
+  CopyPlus,
   ClipboardCopy,
   Trash2,
   Check,
+  Loader2,
 } from "lucide-react";
 
 const ITEM_TYPE_ICONS: Record<string, typeof KeyRound> = {
@@ -55,6 +60,11 @@ interface DecryptedItem extends ItemResponse {
   username?: string;
   password?: string;
   uri?: string;
+}
+
+interface Flash {
+  message: string;
+  variant: "success" | "error" | "pending";
 }
 
 // Deterministic gradient per item name - gives each row a scannable identity.
@@ -83,6 +93,8 @@ export function ItemList() {
     folderId?: string;
   };
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const features = useServerFeatures();
   const { copy } = useClipboard();
 
   const queryParams = new URLSearchParams();
@@ -106,8 +118,10 @@ export function ItemList() {
   const [decryptedItems, setDecryptedItems] = useState<DecryptedItem[]>([]);
   const [filter, setFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [copied, setCopied] = useState<string | null>(null);
+  const [flash, setFlash] = useState<Flash | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
   const [pendingTrash, setPendingTrash] = useState<DecryptedItem | null>(null);
+  const [pendingDuplicate, setPendingDuplicate] = useState<DecryptedItem | null>(null);
 
   useEffect(() => {
     if (!items) return;
@@ -188,6 +202,43 @@ export function ItemList() {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) }),
   });
 
+  const duplicateMutation = useMutation({
+    // Reuses the original encryptedData verbatim (same vault key), so reprompt
+    // items duplicate without a step-up; only the name is re-encrypted.
+    mutationFn: async (item: DecryptedItem) => {
+      const fresh = await apiGet<ItemResponse>(
+        `/api/v1/vaults/${vaultId}/items/${item.id}`,
+      );
+      const originalName = await decryptName(vaultId, fresh.encryptedName);
+      const encryptedName = await encryptName(
+        vaultId,
+        t("vault:items.duplicateSuffix", { name: originalName }),
+      );
+      return createItem(vaultId, {
+        folderId: fresh.folderId ?? undefined,
+        itemType: fresh.itemType as ItemType,
+        encryptedData: fresh.encryptedData,
+        encryptedName,
+        favorite: fresh.favorite,
+        reprompt: fresh.reprompt,
+      });
+    },
+    onMutate: () => showFlash(t("vault:items.duplicating"), "pending"),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) });
+      // Don't yank the user into the editor if they left the list mid-flight.
+      if (window.location.pathname !== `/vault/${vaultId}`) return;
+      void navigate({
+        to: "/vault/$vaultId/items/$itemId",
+        params: { vaultId, itemId: created.id },
+      });
+    },
+    onError: (error) => {
+      console.error("duplicate item failed", error);
+      showFlash(t("vault:items.duplicateFailed"), "error");
+    },
+  });
+
   const trashMutation = useMutation({
     mutationFn: (item: DecryptedItem) =>
       apiDelete(`/api/v1/vaults/${vaultId}/items/${item.id}`),
@@ -195,13 +246,28 @@ export function ItemList() {
       queryClient.invalidateQueries({ queryKey: queryKeys.items.all(vaultId) }),
   });
 
-  function flashCopied(label: string) {
-    setCopied(label);
-    window.setTimeout(() => setCopied((c) => (c === label ? null : c)), 1800);
+  function showFlash(message: string, variant: Flash["variant"] = "success") {
+    window.clearTimeout(flashTimer.current);
+    setFlash({ message, variant });
+    flashTimer.current = window.setTimeout(() => setFlash(null), 1800);
   }
 
   function handleCopy(text: string, label: string) {
-    void copy(text).then(() => flashCopied(label));
+    void copy(text).then(() =>
+      showFlash(t("vault:items.copiedToast", { label })),
+    );
+  }
+
+  async function handleDuplicate(item: DecryptedItem) {
+    if (duplicateMutation.isPending) return;
+    const attachments = features.attachments
+      ? await listAttachments(vaultId, item.id).catch(() => [])
+      : [];
+    if (attachments.length > 0) {
+      setPendingDuplicate(item);
+      return;
+    }
+    duplicateMutation.mutate(item);
   }
 
   function handleDelete(item: DecryptedItem) {
@@ -351,6 +417,7 @@ export function ItemList() {
                   onCopyItem={() =>
                     handleCopy(itemToText(item, t), t("vault:items.copyLabels.item"))
                   }
+                  onDuplicate={() => void handleDuplicate(item)}
                   onToggleFavorite={() => favoriteMutation.mutate(item)}
                   onDelete={() => handleDelete(item)}
                 />
@@ -360,10 +427,19 @@ export function ItemList() {
         </div>
       )}
 
-      {copied && (
-        <div className="pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-foreground shadow-lg">
-          <Check className="h-3.5 w-3.5 text-brand" />
-          {t("vault:items.copiedToast", { label: copied })}
+      {flash && (
+        <div
+          className={`pointer-events-none fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs shadow-lg ${
+            flash.variant === "error"
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-border bg-popover text-foreground"
+          }`}
+        >
+          {flash.variant === "success" && <Check className="h-3.5 w-3.5 text-brand" />}
+          {flash.variant === "pending" && (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
+          )}
+          {flash.message}
         </div>
       )}
 
@@ -387,6 +463,26 @@ export function ItemList() {
         }}
         onCancel={() => setPendingTrash(null)}
       />
+
+      <ConfirmDialog
+        open={!!pendingDuplicate}
+        title={t("vault:items.duplicateConfirm.title")}
+        message={
+          pendingDuplicate
+            ? t("vault:items.duplicateConfirm.message", {
+                name: pendingDuplicate.decryptedName,
+              })
+            : ""
+        }
+        confirmLabel={t("vault:items.duplicateConfirm.confirmLabel")}
+        busy={duplicateMutation.isPending}
+        onConfirm={() => {
+          const target = pendingDuplicate;
+          setPendingDuplicate(null);
+          if (target) duplicateMutation.mutate(target);
+        }}
+        onCancel={() => setPendingDuplicate(null)}
+      />
     </div>
   );
 }
@@ -396,6 +492,7 @@ function RowMenu({
   onCopyUsername,
   onCopyPassword,
   onCopyItem,
+  onDuplicate,
   onToggleFavorite,
   onDelete,
 }: {
@@ -403,6 +500,7 @@ function RowMenu({
   onCopyUsername: () => void;
   onCopyPassword: () => void;
   onCopyItem: () => void;
+  onDuplicate: () => void;
   onToggleFavorite: () => void;
   onDelete: () => void;
 }) {
@@ -493,6 +591,7 @@ function RowMenu({
               <MenuItem icon={Copy} label={t("vault:items.rowMenu.copyPassword")} onClick={() => run(onCopyPassword)} />
             )}
             <MenuItem icon={ClipboardCopy} label={t("vault:items.rowMenu.copyItem")} onClick={() => run(onCopyItem)} />
+            <MenuItem icon={CopyPlus} label={t("vault:items.rowMenu.duplicate")} onClick={() => run(onDuplicate)} />
             <MenuItem
               icon={Star}
               label={item.favorite ? t("vault:items.rowMenu.removeFavorite") : t("vault:items.rowMenu.addFavorite")}

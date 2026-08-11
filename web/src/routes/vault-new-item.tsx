@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiPost } from "@/lib/api-client";
+import { createItem } from "@/lib/items";
 import { queryKeys } from "@/lib/query-keys";
 import { encryptData, encryptName } from "@/lib/key-holder";
 import { ITEM_TYPE_ICONS } from "@/components/vault/ItemList";
@@ -20,7 +20,7 @@ import { PendingAttachments } from "@/components/items/PendingAttachments";
 import { useServerFeatures } from "@/hooks/use-server-features";
 import { uploadAttachment } from "@/lib/attachments";
 import { itemDataSchemas, type ItemData } from "@/shared/types/item-data";
-import { ITEM_TYPES, type ItemType, type ItemResponse } from "@/shared/types/api";
+import { ITEM_TYPES, type ItemType } from "@/shared/types/api";
 import { ArrowLeft } from "lucide-react";
 
 const encoder = new TextEncoder();
@@ -56,12 +56,13 @@ export function VaultNewItemPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (!selectedType) throw new Error("no item type selected");
       const encData = await encryptData(
         vaultId,
         encoder.encode(JSON.stringify(itemData)),
       );
       const encName = await encryptName(vaultId, name || t("vault:newItem.untitled"));
-      const item = await apiPost<ItemResponse>(`/api/v1/vaults/${vaultId}/items`, {
+      const item = await createItem(vaultId, {
         itemType: selectedType,
         encryptedData: encData,
         encryptedName: encName,

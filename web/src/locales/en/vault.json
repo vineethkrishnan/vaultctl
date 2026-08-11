@@ -31,11 +31,20 @@
       "password": "password",
       "item": "item"
     },
+    "duplicateSuffix": "{{name}} [Copy]",
+    "duplicateFailed": "Couldn't duplicate item",
+    "duplicating": "Duplicating item...",
+    "duplicateConfirm": {
+      "title": "Duplicate item",
+      "message": "\"{{name}}\" has attachments that will not be copied to the duplicate. Duplicate anyway?",
+      "confirmLabel": "Duplicate"
+    },
     "rowMenu": {
       "actions": "Item actions",
       "copyUsername": "Copy username",
       "copyPassword": "Copy password",
       "copyItem": "Copy item",
+      "duplicate": "Duplicate item",
       "addFavorite": "Add to favorites",
       "removeFavorite": "Remove favorite",
       "moveToTrash": "Move to trash"

@@ -31,11 +31,20 @@
       "password": "Passwort",
       "item": "Eintrag"
     },
+    "duplicateSuffix": "{{name}} [Kopie]",
+    "duplicateFailed": "Eintrag konnte nicht dupliziert werden",
+    "duplicating": "Eintrag wird dupliziert...",
+    "duplicateConfirm": {
+      "title": "Eintrag duplizieren",
+      "message": "\"{{name}}\" hat Anhänge, die nicht in das Duplikat kopiert werden. Trotzdem duplizieren?",
+      "confirmLabel": "Duplizieren"
+    },
     "rowMenu": {
       "actions": "Eintragsaktionen",
       "copyUsername": "Benutzername kopieren",
       "copyPassword": "Passwort kopieren",
       "copyItem": "Eintrag kopieren",
+      "duplicate": "Eintrag duplizieren",
       "addFavorite": "Zu Favoriten hinzufügen",
       "removeFavorite": "Favorit entfernen",
       "moveToTrash": "In den Papierkorb verschieben"

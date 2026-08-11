@@ -4,11 +4,10 @@ import { useState, useRef } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { useParams } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiPost } from "@/lib/api-client";
+import { createItem } from "@/lib/items";
 import { queryKeys } from "@/lib/query-keys";
 import { encryptData, encryptName } from "@/lib/key-holder";
 import { useGetVaults } from "@/api/vaults/vaults";
-import type { ItemResponse } from "@/shared/types/api";
 import {
   detectFormat,
   getImporter,
@@ -87,7 +86,7 @@ export function ImportDialog() {
             encoder.encode(JSON.stringify(item.data)),
           );
           const encName = await encryptName(vaultId, item.name);
-          await apiPost<ItemResponse>(`/api/v1/vaults/${vaultId}/items`, {
+          await createItem(vaultId, {
             itemType: item.type,
             encryptedData: encData,
             encryptedName: encName,
