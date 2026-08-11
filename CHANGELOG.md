@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.27.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.26.1...v1.27.0) (2026-08-11)
+
+
+### Features
+
+* **vault:** add duplicate item action to the row menu ([#346](https://github.com/vineethkrishnan/vaultctl/issues/346)) ([c49c704](https://github.com/vineethkrishnan/vaultctl/commit/c49c7048b6628e003b4cc31992ffdfcd51061c4f))
+
+
+### Bug Fixes
+
+* **extension:** recognize the unlock window as an extension page ([#347](https://github.com/vineethkrishnan/vaultctl/issues/347)) ([96fc4af](https://github.com/vineethkrishnan/vaultctl/commit/96fc4af1e8a59c1ebfad0c20928bfa6f027abf13))
+
+
+### CI/CD
+
+* **deps:** bump the actions group with 3 updates ([#339](https://github.com/vineethkrishnan/vaultctl/issues/339)) ([37e6a96](https://github.com/vineethkrishnan/vaultctl/commit/37e6a96ab68f1a6c9cc1e9050d83a3eb00efcfd8))
+
 ## [1.26.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.26.0...v1.26.1) (2026-07-29)
 
 
