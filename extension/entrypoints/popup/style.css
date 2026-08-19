@@ -37,7 +37,14 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-html,
+/* Pinned on the root element too so the popup's width can never be inferred
+   from the viewport the browser hands the page. */
+html {
+  width: 360px;
+  height: 100%;
+  margin: 0 auto;
+}
+
 #root {
   height: 100%;
 }
@@ -46,9 +53,6 @@ body {
   width: 360px;
   height: 540px;
   overflow: hidden;
-  /* Centers the fixed-width body when popup.html is hosted in a windows.create
-     window slightly wider than 360px; a no-op in the toolbar popup. */
-  margin: 0 auto;
   background:
     radial-gradient(40rem 24rem at 20% -20%, color-mix(in srgb, var(--color-brand) 10%, transparent), transparent 60%),
     var(--color-background);
