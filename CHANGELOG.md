@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.27.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.1...v1.27.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* **deps:** bump the go toolchain to 1.26.6 for the stdlib advisories ([#359](https://github.com/vineethkrishnan/vaultctl/issues/359)) ([1b6cd2e](https://github.com/vineethkrishnan/vaultctl/commit/1b6cd2e8954c96a6f2dcdbe2cae64a728b3471a7))
+* **extension:** pin the popup width to 360px on the root element ([#358](https://github.com/vineethkrishnan/vaultctl/issues/358)) ([691720e](https://github.com/vineethkrishnan/vaultctl/commit/691720e591a161e25e93650a142f55f31333ae48))
+
 ## [1.27.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.0...v1.27.1) (2026-08-11)
 
 
