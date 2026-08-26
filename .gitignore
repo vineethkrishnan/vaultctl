@@ -38,6 +38,7 @@ coverage.html
 /web/test-results/
 /extension/node_modules/
 /extension/.output/
+/extension/.wxt/
 /docs-site/node_modules/
 /docs-site/out/
 /docs-site/.next/
