@@ -78,6 +78,10 @@ jobs:
           cache: npm
           cache-dependency-path: extension/package-lock.json
 
+      # This also runs the `postinstall` hook (`wxt prepare`), which generates
+      # the extension/.wxt type declarations that typecheck and both builds
+      # need. That directory is gitignored, so this step is not optional.
+      #
       # No `npm ci` in web/ is needed here, unlike mobile.yml. The extension's
       # tsconfig does compile files from web/src/shared/, but their only
       # non-relative import is hash-wasm, which the same tsconfig maps to the
