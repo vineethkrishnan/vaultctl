@@ -2282,6 +2282,17 @@ export default defineContentScript({
         return bg<Record<string, unknown>>({ type: "webauthnReady" });
       }
 
+      // The relay checks this before asking, but these messages arrive over
+      // window.postMessage, which any page script can send. Without its own
+      // check the bridge would raise a vaultctl prompt on demand for a locked
+      // vault, or one with the feature turned off.
+      if (kind === "create" || kind === "get") {
+        const ready = await bg<{ ok?: boolean; ready?: boolean }>({
+          type: "webauthnReady",
+        });
+        if (!ready?.ok || !ready.ready) return { ok: false, error: "not ready" };
+      }
+
       if (kind === "create") {
         // excludeCredentials is the relying party saying "this authenticator
         // already has one". Checked before prompting, so the user is not asked
@@ -2291,13 +2302,11 @@ export default defineContentScript({
         const excluded = await hasExcludedCredential(payload);
         if (excluded) return { ok: false, error: "excluded" };
 
-        const rpLabel =
-          String(payload.rpName || payload.rpId || window.location.hostname);
         const account = String(payload.userName || payload.userDisplayName || "");
         const choice = await showWebauthnPrompt({
           requestId: id,
           title: "Create a passkey",
-          site: rpLabel,
+          declaredName: String(payload.rpName ?? ""),
           detail: account,
           confirmLabel: "Create passkey",
           vaults: vaults.length > 1 ? vaults : [],
@@ -2321,13 +2330,10 @@ export default defineContentScript({
           return { ok: false, error: "no passkey" };
         }
 
-        const rpLabel = String(
-          passkeys[0]!.rpName || payload.rpId || window.location.hostname,
-        );
         const choice = await showWebauthnPrompt({
           requestId: id,
           title: "Sign in with a passkey",
-          site: rpLabel,
+          declaredName: passkeys[0]!.rpName,
           confirmLabel: "Sign in",
           accounts: passkeys,
         });
@@ -2405,7 +2411,7 @@ export default defineContentScript({
     function showWebauthnPrompt(options: {
       requestId: string;
       title: string;
-      site: string;
+      declaredName?: string;
       detail?: string;
       confirmLabel: string;
       accounts?: PasskeyChoice[];
@@ -2456,12 +2462,24 @@ export default defineContentScript({
         heading.textContent = options.title;
         heading.style.cssText = "font-weight:600;font-size:14px;";
 
+        // The host comes from window.location, which the page cannot forge.
+        // A relying party's own rp.name can say anything at all, so it never
+        // stands in for the site's identity - it sits underneath, clearly
+        // subordinate, exactly as a browser's own passkey UI shows the origin.
         const site = document.createElement("div");
-        site.textContent = options.site;
+        site.textContent = window.location.hostname;
         site.style.cssText =
-          "font-size:12px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-
+          "font-size:13px;font-weight:600;color:#fafafa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
         panel.append(heading, site);
+
+        const declared = (options.declaredName ?? "").trim();
+        if (declared && declared !== window.location.hostname) {
+          const claim = document.createElement("div");
+          claim.textContent = `calls itself "${declared}"`;
+          claim.style.cssText =
+            "font-size:11px;color:#a1a1aa;margin-top:-6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          panel.appendChild(claim);
+        }
 
         if (options.detail) {
           const detail = document.createElement("div");
@@ -2482,7 +2500,9 @@ export default defineContentScript({
               "all:unset;display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;";
             const primary = document.createElement("span");
             primary.textContent =
-              account.userName || account.userDisplayName || options.site;
+              account.userName ||
+              account.userDisplayName ||
+              window.location.hostname;
             primary.style.cssText = "font-weight:600;font-size:13px;";
             const secondary = document.createElement("span");
             secondary.textContent = account.userDisplayName || "";
