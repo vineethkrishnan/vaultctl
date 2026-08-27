@@ -114,3 +114,18 @@ export function assertionCredentialJSON(
     },
   };
 }
+
+/**
+ * Whether the vault already holds a credential the relying party excluded.
+ *
+ * excludeCredentials is how a relying party says "this authenticator already
+ * has one, do not make a second". An empty list is not a restriction.
+ */
+export function holdsExcludedCredential(
+  heldCredentialIds: readonly string[],
+  excludedCredentialIds: readonly string[],
+): boolean {
+  if (excludedCredentialIds.length === 0) return false;
+  const held = new Set(heldCredentialIds);
+  return excludedCredentialIds.some((credentialId) => held.has(credentialId));
+}

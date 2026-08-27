@@ -32,6 +32,7 @@ import {
 import { isOneTimeCodeText } from "../utils/otp-field";
 import { shouldAutofillOtp } from "../utils/otp-autofill";
 import { filterCredentials } from "../utils/credential-filter";
+import { holdsExcludedCredential } from "../utils/webauthn-request";
 
 interface CredMatch {
   vaultId: string;
@@ -2259,6 +2260,11 @@ export default defineContentScript({
     // ---------------------------------------------------------------
     const WEBAUTHN_REQUEST = "vaultctl:webauthn:request";
     const WEBAUTHN_RESPONSE = "vaultctl:webauthn:response";
+    const WEBAUTHN_ABORT = "vaultctl:webauthn:abort";
+
+    // Prompts still on screen, by request id, so an abort from the relying
+    // party can take the right one down.
+    const openPrompts = new Map<string, () => void>();
 
     interface PasskeyChoice {
       credentialId: string;
@@ -2268,6 +2274,7 @@ export default defineContentScript({
     }
 
     async function handleWebauthnRequest(
+      id: string,
       kind: string,
       payload: Record<string, unknown>,
     ): Promise<Record<string, unknown>> {
@@ -2276,10 +2283,19 @@ export default defineContentScript({
       }
 
       if (kind === "create") {
+        // excludeCredentials is the relying party saying "this authenticator
+        // already has one". Checked before prompting, so the user is not asked
+        // to approve a passkey that would be a duplicate. Handing the ceremony
+        // back rather than failing it also leaves them free to register a
+        // different authenticator, which an InvalidStateError would deny.
+        const excluded = await hasExcludedCredential(payload);
+        if (excluded) return { ok: false, error: "excluded" };
+
         const rpLabel =
           String(payload.rpName || payload.rpId || window.location.hostname);
         const account = String(payload.userName || payload.userDisplayName || "");
         const choice = await showWebauthnPrompt({
+          requestId: id,
           title: "Create a passkey",
           site: rpLabel,
           detail: account,
@@ -2309,6 +2325,7 @@ export default defineContentScript({
           passkeys[0]!.rpName || payload.rpId || window.location.hostname,
         );
         const choice = await showWebauthnPrompt({
+          requestId: id,
           title: "Sign in with a passkey",
           site: rpLabel,
           confirmLabel: "Sign in",
@@ -2327,6 +2344,27 @@ export default defineContentScript({
       return { ok: false, error: "unknown request" };
     }
 
+    async function hasExcludedCredential(
+      payload: Record<string, unknown>,
+    ): Promise<boolean> {
+      const excluded = Array.isArray(payload.excludeCredentials)
+        ? payload.excludeCredentials.map(String)
+        : [];
+      if (excluded.length === 0) return false;
+      // An empty allowCredentials asks for every passkey held for this rpId,
+      // which is exactly the set the exclusion list is compared against.
+      const listed = await bg<{ ok?: boolean; passkeys?: PasskeyChoice[] }>({
+        type: "webauthnList",
+        rpId: payload.rpId,
+        allowCredentials: [],
+      });
+      if (!listed?.ok) return false;
+      return holdsExcludedCredential(
+        (listed.passkeys ?? []).map((p) => p.credentialId),
+        excluded,
+      );
+    }
+
     window.addEventListener("message", (event) => {
       if (event.source !== window) return;
       const data = event.data as
@@ -2337,13 +2375,18 @@ export default defineContentScript({
             payload?: Record<string, unknown>;
           }
         | undefined;
-      if (!data || data.channel !== WEBAUTHN_REQUEST) return;
+      if (!data) return;
+      if (data.channel === WEBAUTHN_ABORT && typeof data.id === "string") {
+        openPrompts.get(data.id)?.();
+        return;
+      }
+      if (data.channel !== WEBAUTHN_REQUEST) return;
       if (typeof data.id !== "string" || typeof data.kind !== "string") return;
       const { id, kind } = data;
       void (async () => {
         let reply: Record<string, unknown>;
         try {
-          reply = await handleWebauthnRequest(kind, data.payload ?? {});
+          reply = await handleWebauthnRequest(id, kind, data.payload ?? {});
         } catch {
           reply = { ok: false, error: "failed" };
         }
@@ -2360,6 +2403,7 @@ export default defineContentScript({
     // letting it time out would drop the user into the browser's own WebAuthn
     // dialog seconds later.
     function showWebauthnPrompt(options: {
+      requestId: string;
       title: string;
       site: string;
       detail?: string;
@@ -2385,10 +2429,12 @@ export default defineContentScript({
         }) => {
           if (settled) return;
           settled = true;
+          openPrompts.delete(options.requestId);
           document.removeEventListener("keydown", onKeyDown, true);
           host.remove();
           resolve(result);
         };
+        openPrompts.set(options.requestId, () => close({ approved: false }));
         const onKeyDown = (event: KeyboardEvent) => {
           if (event.key === "Escape") close({ approved: false });
         };
@@ -2521,6 +2567,7 @@ export default defineContentScript({
     }
 
     ctx.onInvalidated(() => {
+      for (const close of [...openPrompts.values()]) close();
       document.getElementById("vaultctl-webauthn-host")?.remove();
     });
 
