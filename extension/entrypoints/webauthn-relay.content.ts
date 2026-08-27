@@ -21,6 +21,13 @@
 
 import { ContentScriptContext } from "wxt/utils/content-script-context";
 import { fromBase64Url, toBase64Url } from "@shared/webauthn";
+import {
+  assertionCredentialJSON,
+  attestationCredentialJSON,
+  isSupportedRequest,
+  ATTACHMENT,
+  TRANSPORTS,
+} from "../utils/webauthn-request";
 
 const REQUEST_CHANNEL = "vaultctl:webauthn:request";
 const RESPONSE_CHANNEL = "vaultctl:webauthn:response";
@@ -83,9 +90,16 @@ export default defineContentScript({
             userDisplayName: publicKey.user?.displayName ?? "",
             discoverable: wantsDiscoverable(publicKey),
           });
-          if (!reply?.ok) return originalCreate(options);
+          if (!reply?.ok) {
+            if (reply?.error === "cancelled") throw cancelled();
+            return originalCreate(options);
+          }
           return buildAttestationCredential(reply, publicKey);
-        } catch {
+        } catch (err) {
+          // A cancel is the user's answer, not a failure to serve: falling back
+          // here would pop the browser's own dialog the moment they dismissed
+          // ours. Every other error still hands the ceremony over.
+          if (isCancellation(err)) throw err;
           return originalCreate(options);
         }
       };
@@ -107,9 +121,13 @@ export default defineContentScript({
               (descriptor) => encode(descriptor.id),
             ),
           });
-          if (!reply?.ok) return originalGet(options);
+          if (!reply?.ok) {
+            if (reply?.error === "cancelled") throw cancelled();
+            return originalGet(options);
+          }
           return buildAssertionCredential(reply);
-        } catch {
+        } catch (err) {
+          if (isCancellation(err)) throw err;
           return originalGet(options);
         }
       };
@@ -152,19 +170,17 @@ export default defineContentScript({
 async function canServe(
   options: CredentialCreationOptions | CredentialRequestOptions,
 ): Promise<boolean> {
-  if ("mediation" in options && options.mediation === "conditional") {
-    return false;
-  }
-  if (options.signal?.aborted) return false;
-  if ("publicKey" in options && options.publicKey) {
-    const params = (options.publicKey as PublicKeyCredentialCreationOptions)
-      .pubKeyCredParams;
-    // Absent means the relying party accepts the spec defaults, which include
-    // ES256; a present list must actually name it.
-    if (params?.length && !params.some((p) => p.alg === COSE_ES256)) {
-      return false;
-    }
-  }
+  const creation = ("publicKey" in options ? options.publicKey : undefined) as
+    | PublicKeyCredentialCreationOptions
+    | undefined;
+  const supported = isSupportedRequest({
+    mediation: "mediation" in options ? options.mediation : undefined,
+    aborted: options.signal?.aborted,
+    pubKeyCredParams: creation?.pubKeyCredParams,
+    authenticatorAttachment:
+      creation?.authenticatorSelection?.authenticatorAttachment,
+  });
+  if (!supported) return false;
   return isReady();
 }
 
@@ -214,6 +230,24 @@ function ask(
       window.location.origin,
     );
   });
+}
+
+/**
+ * The error WebAuthn defines for a ceremony the user refused.
+ *
+ * Relying parties already handle NotAllowedError as "the user said no", and
+ * the spec deliberately gives the same error for a refusal and a timeout so a
+ * page cannot tell which happened.
+ */
+function cancelled(): DOMException {
+  return new DOMException(
+    "The operation either timed out or was not allowed.",
+    "NotAllowedError",
+  );
+}
+
+function isCancellation(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "NotAllowedError";
 }
 
 function wantsDiscoverable(
@@ -272,7 +306,7 @@ function buildAttestationCredential(
     getAuthenticatorData: () => authenticatorData,
     getPublicKey: () => publicKeyBytes,
     getPublicKeyAlgorithm: () => algorithm,
-    getTransports: () => ["internal", "hybrid"],
+    getTransports: () => [...TRANSPORTS],
   });
 
   const credentialId = String(reply.credentialId ?? "");
@@ -280,7 +314,20 @@ function buildAttestationCredential(
     ? { credProps: { rk: wantsDiscoverable(publicKey) } }
     : {};
 
-  return finishCredential(credentialId, response, extensions);
+  return finishCredential(
+    credentialId,
+    response,
+    extensions,
+    attestationCredentialJSON({
+      credentialId,
+      clientDataJSON: String(reply.clientDataJSON ?? ""),
+      attestationObject: String(reply.attestationObject ?? ""),
+      authenticatorData: String(reply.authenticatorData ?? ""),
+      publicKey: String(reply.publicKey ?? ""),
+      publicKeyAlgorithm: algorithm,
+      extensions,
+    }),
+  );
 }
 
 function buildAssertionCredential(reply: BridgeReply): PublicKeyCredential {
@@ -295,13 +342,27 @@ function buildAssertionCredential(reply: BridgeReply): PublicKeyCredential {
     userHandle: userHandle ? decode(userHandle) : null,
   });
 
-  return finishCredential(String(reply.credentialId ?? ""), response, {});
+  const credentialId = String(reply.credentialId ?? "");
+  return finishCredential(
+    credentialId,
+    response,
+    {},
+    assertionCredentialJSON({
+      credentialId,
+      clientDataJSON: String(reply.clientDataJSON ?? ""),
+      authenticatorData: String(reply.authenticatorData ?? ""),
+      signature: String(reply.signature ?? ""),
+      userHandle,
+      extensions: {},
+    }),
+  );
 }
 
 function finishCredential(
   credentialId: string,
   response: AuthenticatorResponse,
   extensions: AuthenticationExtensionsClientOutputs,
+  credentialJSON: Record<string, unknown>,
 ): PublicKeyCredential {
   const credential = Object.create(
     PublicKeyCredential.prototype,
@@ -310,9 +371,15 @@ function finishCredential(
     id: credentialId,
     rawId: decode(credentialId),
     type: "public-key",
-    authenticatorAttachment: "platform",
+    authenticatorAttachment: ATTACHMENT,
     response,
     getClientExtensionResults: () => extensions,
+    // Must be defined, not inherited. PublicKeyCredential.prototype.toJSON is
+    // a native method that needs internal slots this object does not have, so
+    // leaving it inherited makes both credential.toJSON() and
+    // JSON.stringify(credential) throw - and stringify is how relying parties
+    // usually serialise a credential for their server.
+    toJSON: () => structuredClone(credentialJSON),
   });
   return credential;
 }
