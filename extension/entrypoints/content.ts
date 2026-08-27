@@ -32,6 +32,7 @@ import {
 import { isOneTimeCodeText } from "../utils/otp-field";
 import { shouldAutofillOtp } from "../utils/otp-autofill";
 import { filterCredentials } from "../utils/credential-filter";
+import { holdsExcludedCredential } from "../utils/webauthn-request";
 
 interface CredMatch {
   vaultId: string;
@@ -2259,6 +2260,11 @@ export default defineContentScript({
     // ---------------------------------------------------------------
     const WEBAUTHN_REQUEST = "vaultctl:webauthn:request";
     const WEBAUTHN_RESPONSE = "vaultctl:webauthn:response";
+    const WEBAUTHN_ABORT = "vaultctl:webauthn:abort";
+
+    // Prompts still on screen, by request id, so an abort from the relying
+    // party can take the right one down.
+    const openPrompts = new Map<string, () => void>();
 
     interface PasskeyChoice {
       credentialId: string;
@@ -2268,6 +2274,7 @@ export default defineContentScript({
     }
 
     async function handleWebauthnRequest(
+      id: string,
       kind: string,
       payload: Record<string, unknown>,
     ): Promise<Record<string, unknown>> {
@@ -2275,13 +2282,31 @@ export default defineContentScript({
         return bg<Record<string, unknown>>({ type: "webauthnReady" });
       }
 
+      // The relay checks this before asking, but these messages arrive over
+      // window.postMessage, which any page script can send. Without its own
+      // check the bridge would raise a vaultctl prompt on demand for a locked
+      // vault, or one with the feature turned off.
+      if (kind === "create" || kind === "get") {
+        const ready = await bg<{ ok?: boolean; ready?: boolean }>({
+          type: "webauthnReady",
+        });
+        if (!ready?.ok || !ready.ready) return { ok: false, error: "not ready" };
+      }
+
       if (kind === "create") {
-        const rpLabel =
-          String(payload.rpName || payload.rpId || window.location.hostname);
+        // excludeCredentials is the relying party saying "this authenticator
+        // already has one". Checked before prompting, so the user is not asked
+        // to approve a passkey that would be a duplicate. Handing the ceremony
+        // back rather than failing it also leaves them free to register a
+        // different authenticator, which an InvalidStateError would deny.
+        const excluded = await hasExcludedCredential(payload);
+        if (excluded) return { ok: false, error: "excluded" };
+
         const account = String(payload.userName || payload.userDisplayName || "");
         const choice = await showWebauthnPrompt({
+          requestId: id,
           title: "Create a passkey",
-          site: rpLabel,
+          declaredName: String(payload.rpName ?? ""),
           detail: account,
           confirmLabel: "Create passkey",
           vaults: vaults.length > 1 ? vaults : [],
@@ -2305,12 +2330,10 @@ export default defineContentScript({
           return { ok: false, error: "no passkey" };
         }
 
-        const rpLabel = String(
-          passkeys[0]!.rpName || payload.rpId || window.location.hostname,
-        );
         const choice = await showWebauthnPrompt({
+          requestId: id,
           title: "Sign in with a passkey",
-          site: rpLabel,
+          declaredName: passkeys[0]!.rpName,
           confirmLabel: "Sign in",
           accounts: passkeys,
         });
@@ -2327,6 +2350,27 @@ export default defineContentScript({
       return { ok: false, error: "unknown request" };
     }
 
+    async function hasExcludedCredential(
+      payload: Record<string, unknown>,
+    ): Promise<boolean> {
+      const excluded = Array.isArray(payload.excludeCredentials)
+        ? payload.excludeCredentials.map(String)
+        : [];
+      if (excluded.length === 0) return false;
+      // An empty allowCredentials asks for every passkey held for this rpId,
+      // which is exactly the set the exclusion list is compared against.
+      const listed = await bg<{ ok?: boolean; passkeys?: PasskeyChoice[] }>({
+        type: "webauthnList",
+        rpId: payload.rpId,
+        allowCredentials: [],
+      });
+      if (!listed?.ok) return false;
+      return holdsExcludedCredential(
+        (listed.passkeys ?? []).map((p) => p.credentialId),
+        excluded,
+      );
+    }
+
     window.addEventListener("message", (event) => {
       if (event.source !== window) return;
       const data = event.data as
@@ -2337,13 +2381,18 @@ export default defineContentScript({
             payload?: Record<string, unknown>;
           }
         | undefined;
-      if (!data || data.channel !== WEBAUTHN_REQUEST) return;
+      if (!data) return;
+      if (data.channel === WEBAUTHN_ABORT && typeof data.id === "string") {
+        openPrompts.get(data.id)?.();
+        return;
+      }
+      if (data.channel !== WEBAUTHN_REQUEST) return;
       if (typeof data.id !== "string" || typeof data.kind !== "string") return;
       const { id, kind } = data;
       void (async () => {
         let reply: Record<string, unknown>;
         try {
-          reply = await handleWebauthnRequest(kind, data.payload ?? {});
+          reply = await handleWebauthnRequest(id, kind, data.payload ?? {});
         } catch {
           reply = { ok: false, error: "failed" };
         }
@@ -2360,8 +2409,9 @@ export default defineContentScript({
     // letting it time out would drop the user into the browser's own WebAuthn
     // dialog seconds later.
     function showWebauthnPrompt(options: {
+      requestId: string;
       title: string;
-      site: string;
+      declaredName?: string;
       detail?: string;
       confirmLabel: string;
       accounts?: PasskeyChoice[];
@@ -2385,10 +2435,12 @@ export default defineContentScript({
         }) => {
           if (settled) return;
           settled = true;
+          openPrompts.delete(options.requestId);
           document.removeEventListener("keydown", onKeyDown, true);
           host.remove();
           resolve(result);
         };
+        openPrompts.set(options.requestId, () => close({ approved: false }));
         const onKeyDown = (event: KeyboardEvent) => {
           if (event.key === "Escape") close({ approved: false });
         };
@@ -2410,12 +2462,24 @@ export default defineContentScript({
         heading.textContent = options.title;
         heading.style.cssText = "font-weight:600;font-size:14px;";
 
+        // The host comes from window.location, which the page cannot forge.
+        // A relying party's own rp.name can say anything at all, so it never
+        // stands in for the site's identity - it sits underneath, clearly
+        // subordinate, exactly as a browser's own passkey UI shows the origin.
         const site = document.createElement("div");
-        site.textContent = options.site;
+        site.textContent = window.location.hostname;
         site.style.cssText =
-          "font-size:12px;color:#a1a1aa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
-
+          "font-size:13px;font-weight:600;color:#fafafa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
         panel.append(heading, site);
+
+        const declared = (options.declaredName ?? "").trim();
+        if (declared && declared !== window.location.hostname) {
+          const claim = document.createElement("div");
+          claim.textContent = `calls itself "${declared}"`;
+          claim.style.cssText =
+            "font-size:11px;color:#a1a1aa;margin-top:-6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          panel.appendChild(claim);
+        }
 
         if (options.detail) {
           const detail = document.createElement("div");
@@ -2436,7 +2500,9 @@ export default defineContentScript({
               "all:unset;display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;";
             const primary = document.createElement("span");
             primary.textContent =
-              account.userName || account.userDisplayName || options.site;
+              account.userName ||
+              account.userDisplayName ||
+              window.location.hostname;
             primary.style.cssText = "font-weight:600;font-size:13px;";
             const secondary = document.createElement("span");
             secondary.textContent = account.userDisplayName || "";
@@ -2521,6 +2587,7 @@ export default defineContentScript({
     }
 
     ctx.onInvalidated(() => {
+      for (const close of [...openPrompts.values()]) close();
       document.getElementById("vaultctl-webauthn-host")?.remove();
     });
 

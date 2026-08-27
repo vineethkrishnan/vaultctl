@@ -20,17 +20,18 @@
  */
 
 import { ContentScriptContext } from "wxt/utils/content-script-context";
-import { fromBase64Url, toBase64Url } from "@shared/webauthn";
+import { toBase64Url } from "@shared/webauthn";
+import { isSupportedRequest } from "../utils/webauthn-request";
 import {
-  assertionCredentialJSON,
-  attestationCredentialJSON,
-  isSupportedRequest,
-  ATTACHMENT,
-  TRANSPORTS,
-} from "../utils/webauthn-request";
+  buildAssertionCredential,
+  buildAttestationCredential,
+  wantsDiscoverable,
+  type BridgeReply,
+} from "../utils/webauthn-credential";
 
 const REQUEST_CHANNEL = "vaultctl:webauthn:request";
 const RESPONSE_CHANNEL = "vaultctl:webauthn:response";
+const ABORT_CHANNEL = "vaultctl:webauthn:abort";
 
 // How long to wait for the isolated-world bridge to answer a readiness probe.
 // If our own content script is not there, this is the fallback path, so it has
@@ -41,13 +42,6 @@ const READY_TIMEOUT_MS = 1500;
 // a floor, rather than the probe's.
 const MIN_CEREMONY_TIMEOUT_MS = 60_000;
 
-const COSE_ES256 = -7;
-
-interface BridgeReply {
-  ok?: boolean;
-  error?: string;
-  [key: string]: unknown;
-}
 
 export default defineContentScript({
   matches: ["https://*/*"],
@@ -81,15 +75,23 @@ export default defineContentScript({
           if (!publicKey || !(await canServe(options))) {
             return originalCreate(options);
           }
-          const reply = await requestCeremony("create", publicKey.timeout, {
-            rpId: publicKey.rp?.id ?? "",
-            rpName: publicKey.rp?.name ?? "",
-            challenge: encode(publicKey.challenge),
-            userHandle: encode(publicKey.user?.id),
-            userName: publicKey.user?.name ?? "",
-            userDisplayName: publicKey.user?.displayName ?? "",
-            discoverable: wantsDiscoverable(publicKey),
-          });
+          const reply = await requestCeremony(
+            "create",
+            publicKey.timeout,
+            {
+              rpId: publicKey.rp?.id ?? "",
+              rpName: publicKey.rp?.name ?? "",
+              challenge: encode(publicKey.challenge),
+              userHandle: encode(publicKey.user?.id),
+              userName: publicKey.user?.name ?? "",
+              userDisplayName: publicKey.user?.displayName ?? "",
+              discoverable: wantsDiscoverable(publicKey),
+              excludeCredentials: (publicKey.excludeCredentials ?? []).map(
+                (descriptor) => encode(descriptor.id),
+              ),
+            },
+            options?.signal ?? undefined,
+          );
           if (!reply?.ok) {
             if (reply?.error === "cancelled") throw cancelled();
             return originalCreate(options);
@@ -99,7 +101,7 @@ export default defineContentScript({
           // A cancel is the user's answer, not a failure to serve: falling back
           // here would pop the browser's own dialog the moment they dismissed
           // ours. Every other error still hands the ceremony over.
-          if (isCancellation(err)) throw err;
+          if (isDecisive(err)) throw err;
           return originalCreate(options);
         }
       };
@@ -114,20 +116,25 @@ export default defineContentScript({
           if (!publicKey || !(await canServe(options))) {
             return originalGet(options);
           }
-          const reply = await requestCeremony("get", publicKey.timeout, {
-            rpId: publicKey.rpId ?? "",
-            challenge: encode(publicKey.challenge),
-            allowCredentials: (publicKey.allowCredentials ?? []).map(
-              (descriptor) => encode(descriptor.id),
-            ),
-          });
+          const reply = await requestCeremony(
+            "get",
+            publicKey.timeout,
+            {
+              rpId: publicKey.rpId ?? "",
+              challenge: encode(publicKey.challenge),
+              allowCredentials: (publicKey.allowCredentials ?? []).map(
+                (descriptor) => encode(descriptor.id),
+              ),
+            },
+            options?.signal ?? undefined,
+          );
           if (!reply?.ok) {
             if (reply?.error === "cancelled") throw cancelled();
             return originalGet(options);
           }
           return buildAssertionCredential(reply);
         } catch (err) {
-          if (isCancellation(err)) throw err;
+          if (isDecisive(err)) throw err;
           return originalGet(options);
         }
       };
@@ -194,42 +201,58 @@ function requestCeremony(
   kind: "create" | "get",
   relyingPartyTimeout: number | undefined,
   payload: Record<string, unknown>,
+  signal: AbortSignal | undefined,
 ): Promise<BridgeReply | null> {
   const timeout = Math.max(
     relyingPartyTimeout ?? 0,
     MIN_CEREMONY_TIMEOUT_MS,
   );
-  return ask(kind, payload, timeout);
+  return ask(kind, payload, timeout, signal);
 }
 
 function ask(
   kind: string,
   payload: Record<string, unknown>,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<BridgeReply | null> {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let timer = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      signal?.removeEventListener("abort", onAbort);
+    };
     const onMessage = (event: MessageEvent) => {
       if (event.source !== window) return;
       const data = event.data as
         | { channel?: string; id?: string; reply?: BridgeReply }
         | undefined;
       if (!data || data.channel !== RESPONSE_CHANNEL || data.id !== id) return;
-      window.clearTimeout(timer);
-      window.removeEventListener("message", onMessage);
+      cleanup();
       resolve(data.reply ?? null);
     };
+    // A page routinely aborts a ceremony when the user switches to another
+    // sign-in method. Tell the bridge to take the prompt down, then reject with
+    // the relying party's own reason so its catch block sees what it expects.
+    const onAbort = () => {
+      cleanup();
+      post({ channel: ABORT_CHANNEL, id });
+      reject(signal?.reason ?? aborted());
+    };
     window.addEventListener("message", onMessage);
+    signal?.addEventListener("abort", onAbort, { once: true });
     timer = window.setTimeout(() => {
-      window.removeEventListener("message", onMessage);
+      cleanup();
       resolve(null);
     }, timeoutMs);
-    window.postMessage(
-      { channel: REQUEST_CHANNEL, id, kind, payload },
-      window.location.origin,
-    );
+    post({ channel: REQUEST_CHANNEL, id, kind, payload });
   });
+}
+
+function post(message: Record<string, unknown>): void {
+  window.postMessage(message, window.location.origin);
 }
 
 /**
@@ -246,18 +269,25 @@ function cancelled(): DOMException {
   );
 }
 
-function isCancellation(err: unknown): boolean {
-  return err instanceof DOMException && err.name === "NotAllowedError";
+function aborted(): DOMException {
+  return new DOMException("The operation was aborted.", "AbortError");
 }
 
-function wantsDiscoverable(
-  publicKey: PublicKeyCredentialCreationOptions,
-): boolean {
-  const selection = publicKey.authenticatorSelection;
-  if (!selection) return false;
-  if (selection.residentKey) return selection.residentKey !== "discouraged";
-  return Boolean(selection.requireResidentKey);
+/**
+ * Errors that are an answer rather than a failure to serve.
+ *
+ * These reach the relying party untouched. Anything else falls through to the
+ * browser, which is the safe default when vaultctl simply could not help.
+ */
+function isDecisive(err: unknown): boolean {
+  if (err instanceof DOMException) {
+    return err.name === "NotAllowedError" || err.name === "AbortError";
+  }
+  // An AbortSignal can carry any reason the page chose; once the signal has
+  // fired, that reason is the answer whatever its type.
+  return err instanceof Error && err.name === "AbortError";
 }
+
 
 function encode(source: BufferSource | undefined): string {
   if (!source) return "";
@@ -270,126 +300,4 @@ function encode(source: BufferSource | undefined): string {
           source.byteLength,
         );
   return toBase64Url(bytes);
-}
-
-function decode(value: unknown): ArrayBuffer {
-  const bytes = fromBase64Url(String(value ?? ""));
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-}
-
-/**
- * Shape the return value as a real PublicKeyCredential.
- *
- * Relying parties routinely test the result with instanceof or read it off the
- * prototype, so the object is built on the genuine prototypes rather than as a
- * plain literal.
- */
-function buildAttestationCredential(
-  reply: BridgeReply,
-  publicKey: PublicKeyCredentialCreationOptions,
-): PublicKeyCredential {
-  const clientDataJSON = decode(reply.clientDataJSON);
-  const attestationObject = decode(reply.attestationObject);
-  const authenticatorData = decode(reply.authenticatorData);
-  const publicKeyBytes = decode(reply.publicKey);
-  const algorithm = Number(reply.algorithm ?? COSE_ES256);
-
-  const response = Object.create(
-    AuthenticatorAttestationResponse.prototype,
-  ) as AuthenticatorAttestationResponse;
-  define(response, {
-    clientDataJSON,
-    attestationObject,
-    getAuthenticatorData: () => authenticatorData,
-    getPublicKey: () => publicKeyBytes,
-    getPublicKeyAlgorithm: () => algorithm,
-    getTransports: () => [...TRANSPORTS],
-  });
-
-  const credentialId = String(reply.credentialId ?? "");
-  const extensions = publicKey.extensions?.credProps
-    ? { credProps: { rk: wantsDiscoverable(publicKey) } }
-    : {};
-
-  return finishCredential(
-    credentialId,
-    response,
-    extensions,
-    attestationCredentialJSON({
-      credentialId,
-      clientDataJSON: String(reply.clientDataJSON ?? ""),
-      attestationObject: String(reply.attestationObject ?? ""),
-      authenticatorData: String(reply.authenticatorData ?? ""),
-      publicKey: String(reply.publicKey ?? ""),
-      publicKeyAlgorithm: algorithm,
-      extensions,
-    }),
-  );
-}
-
-function buildAssertionCredential(reply: BridgeReply): PublicKeyCredential {
-  const userHandle = String(reply.userHandle ?? "");
-  const response = Object.create(
-    AuthenticatorAssertionResponse.prototype,
-  ) as AuthenticatorAssertionResponse;
-  define(response, {
-    clientDataJSON: decode(reply.clientDataJSON),
-    authenticatorData: decode(reply.authenticatorData),
-    signature: decode(reply.signature),
-    userHandle: userHandle ? decode(userHandle) : null,
-  });
-
-  const credentialId = String(reply.credentialId ?? "");
-  return finishCredential(
-    credentialId,
-    response,
-    {},
-    assertionCredentialJSON({
-      credentialId,
-      clientDataJSON: String(reply.clientDataJSON ?? ""),
-      authenticatorData: String(reply.authenticatorData ?? ""),
-      signature: String(reply.signature ?? ""),
-      userHandle,
-      extensions: {},
-    }),
-  );
-}
-
-function finishCredential(
-  credentialId: string,
-  response: AuthenticatorResponse,
-  extensions: AuthenticationExtensionsClientOutputs,
-  credentialJSON: Record<string, unknown>,
-): PublicKeyCredential {
-  const credential = Object.create(
-    PublicKeyCredential.prototype,
-  ) as PublicKeyCredential;
-  define(credential, {
-    id: credentialId,
-    rawId: decode(credentialId),
-    type: "public-key",
-    authenticatorAttachment: ATTACHMENT,
-    response,
-    getClientExtensionResults: () => extensions,
-    // Must be defined, not inherited. PublicKeyCredential.prototype.toJSON is
-    // a native method that needs internal slots this object does not have, so
-    // leaving it inherited makes both credential.toJSON() and
-    // JSON.stringify(credential) throw - and stringify is how relying parties
-    // usually serialise a credential for their server.
-    toJSON: () => structuredClone(credentialJSON),
-  });
-  return credential;
-}
-
-function define(target: object, properties: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(properties)) {
-    Object.defineProperty(target, key, {
-      value,
-      enumerable: typeof value !== "function",
-      configurable: true,
-    });
-  }
 }

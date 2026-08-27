@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertionCredentialJSON,
   attestationCredentialJSON,
+  holdsExcludedCredential,
   isSupportedRequest,
 } from "./webauthn-request";
 
@@ -138,5 +139,21 @@ describe("assertionCredentialJSON", () => {
       extensions: {},
     });
     expect((json.response as { userHandle: unknown }).userHandle).toBeNull();
+  });
+});
+
+describe("holdsExcludedCredential", () => {
+  it("treats an empty exclusion list as no restriction", () => {
+    expect(holdsExcludedCredential(["aaa"], [])).toBe(false);
+    expect(holdsExcludedCredential([], [])).toBe(false);
+  });
+
+  it("reports a match so a duplicate passkey is never created", () => {
+    expect(holdsExcludedCredential(["aaa", "bbb"], ["bbb"])).toBe(true);
+  });
+
+  it("lets the ceremony proceed when nothing held is excluded", () => {
+    expect(holdsExcludedCredential(["aaa"], ["zzz"])).toBe(false);
+    expect(holdsExcludedCredential([], ["zzz"])).toBe(false);
   });
 });
