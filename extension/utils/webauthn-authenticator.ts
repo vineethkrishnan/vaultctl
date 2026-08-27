@@ -69,6 +69,7 @@ export interface StoredPasskey {
 export interface AttestationResult {
   credentialId: string;
   attestationObject: string;
+  authenticatorData: string;
   clientDataJSON: string;
   publicKey: string;
   algorithm: number;
@@ -140,6 +141,10 @@ export async function createCredential(
     attestation: {
       credentialId: toBase64Url(credentialId),
       attestationObject: toBase64Url(attestationObject),
+      // Also surfaced on its own: an attestation response exposes
+      // getAuthenticatorData(), and callers should not have to decode CBOR to
+      // reach bytes we already hold.
+      authenticatorData: toBase64Url(authData),
       clientDataJSON: toBase64Url(clientDataJSON),
       publicKey: toBase64Url(keyPair.publicKey),
       algorithm: COSE_ALG_ES256,

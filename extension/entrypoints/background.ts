@@ -1124,6 +1124,7 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   // sender.tab.url and refuses an rpId the page does not own, so a hostile
   // page can only ever act for itself. The list response carries no key
   // material, and the private key never leaves the worker.
+  "webauthnReady",
   "webauthnCreate",
   "webauthnGet",
   "webauthnList",
@@ -1823,6 +1824,15 @@ export default defineBackground(() => {
             // trusted for that decision, only echoed back into clientDataJSON
             // after the tab URL has vouched for it.
             // -----------------------------------------------------------
+            // Cheap probe the MAIN-world relay makes before taking over a
+            // ceremony. Reports only whether the vault could serve one, so a
+            // page learns nothing beyond what the next call would tell it.
+            case "webauthnReady": {
+              const { passkeys } = await getSettings();
+              sendResponse({ ok: true, ready: passkeys && unlocked });
+              return;
+            }
+
             case "webauthnCreate": {
               const tabUrl = sender.tab?.url ?? "";
               const gate = await checkPasskeyGate(tabUrl, message.rpId);

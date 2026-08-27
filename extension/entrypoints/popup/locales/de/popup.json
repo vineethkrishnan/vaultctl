@@ -228,6 +228,8 @@
     "relaxedMatchHint": "Logins auf jeder Subdomain derselben Seite ausfüllen (z. B. accounts. und mail.)",
     "breachCheck": "Auf kompromittierte Passwörter prüfen",
     "breachCheckHint": "Passwörter über Have I Been Pwned prüfen (nur ein Teil-Hash wird gesendet)",
+    "passkeys": "Passkeys aus dem Tresor verwenden",
+    "passkeysHint": "Passkeys in vaultctl erstellen und damit anmelden statt über Browser oder Gerät",
     "promptTimeout": "Anzeigedauer der Nachfrage",
     "promptTimeoutHint": "Wie lange die Speichern-/Aktualisieren-Nachfrage angezeigt bleibt, bevor sie ausgeblendet wird",
     "autoLock": "Automatische Sperre",
