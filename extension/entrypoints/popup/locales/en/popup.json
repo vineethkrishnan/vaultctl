@@ -227,6 +227,8 @@
     "relaxedMatchHint": "Fill logins on any subdomain of the same site (e.g. accounts. and mail.)",
     "breachCheck": "Check for compromised passwords",
     "breachCheckHint": "Look up passwords against Have I Been Pwned (only a partial hash is sent)",
+    "passkeys": "Use passkeys from your vault",
+    "passkeysHint": "Create and sign in with passkeys stored in vaultctl instead of your browser or device",
     "promptTimeout": "Prompt timeout",
     "promptTimeoutHint": "How long the save/update prompt stays before it fades",
     "autoLock": "Auto-lock",

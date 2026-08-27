@@ -1705,6 +1705,7 @@ interface ExtSettings {
   toastMs: number;
   relaxedMatch: boolean;
   breachCheck: boolean;
+  passkeys: boolean;
   suggestPassword: boolean;
   updateNotify: UpdateNotifyLevel;
   genMode: GenMode;
@@ -2018,6 +2019,12 @@ function SettingsTab({
             hint={t("settings.breachCheckHint")}
             checked={settings.breachCheck}
             onChange={(v) => update({ breachCheck: v })}
+          />
+          <Toggle
+            label={t("settings.passkeys")}
+            hint={t("settings.passkeysHint")}
+            checked={settings.passkeys}
+            onChange={(v) => update({ passkeys: v })}
           />
           <label className="flex items-center justify-between gap-3 pt-1">
             <span className="min-w-0">

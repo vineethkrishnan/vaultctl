@@ -12,6 +12,9 @@ const sharedCryptoDir = resolve(thisDir, "../web/src/shared/crypto");
 // The RFC-6238 TOTP generator is shared with the web client (same secret wire
 // shape), reused here rather than reimplemented.
 const sharedTotpEntry = resolve(thisDir, "../web/src/shared/totp/totp.ts");
+// WebAuthn wire-format encoders, shared so the authenticator in the background
+// produces the same bytes the web and mobile clients would.
+const sharedWebauthnDir = resolve(thisDir, "../web/src/shared/webauthn");
 // hash-wasm is declared as a dep of extension/package.json but the shared
 // crypto module lives outside extension/, so the bundler cannot walk
 // node_modules from the importer - alias it explicitly.
@@ -30,6 +33,8 @@ export default defineConfig({
         "@shared/crypto": resolve(sharedCryptoDir, "index.ts"),
         "@shared/crypto/": `${sharedCryptoDir}/`,
         "@shared/totp": sharedTotpEntry,
+        "@shared/webauthn": resolve(sharedWebauthnDir, "index.ts"),
+        "@shared/webauthn/": `${sharedWebauthnDir}/`,
         "hash-wasm": hashWasmEntry,
       },
     },

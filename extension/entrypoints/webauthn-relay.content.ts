@@ -1,38 +1,47 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /**
- * WebAuthn relay - v1 observer stub.
+ * WebAuthn relay.
  *
- * Runs at document_start in the MAIN world so it can monkey-patch
- * `navigator.credentials.create` and `navigator.credentials.get` before
- * any page script captures a reference to them.
+ * Runs at document_start in the MAIN world so it can replace
+ * navigator.credentials.create/get before any page script captures a
+ * reference to them. When the vault can serve a ceremony it does; otherwise
+ * every path falls back to the browser's own implementation, so turning the
+ * feature off, locking the vault, or meeting an unsupported request leaves the
+ * page exactly as it would have been.
  *
- * v1 behaviour: observe the call, dispatch a CustomEvent with the options,
- * and PROXY through to the real browser WebAuthn API unchanged. We do not
- * yet handle the credential ourselves - that is a v1.1 item once the relay
- * channel and passkey storage have been designed. The acceptance bar for
- * this milestone is "the interceptor is reached and observed".
- *
- * Notes on world isolation:
- *   - MAIN-world content scripts do not have access to `browser.runtime`,
- *     so we cannot call `sendMessage` from here. We dispatch a CustomEvent
- *     that the isolated-world content script (content.ts) will pick up
- *     and forward to the background in v1.1.
- *   - A `window.__vaultctlWebAuthnSeen` array is exposed so DevTools and
- *     tests can verify the interception path ran.
+ * World isolation: a MAIN-world script has no access to browser.runtime, so it
+ * talks to the isolated-world content script over window.postMessage and that
+ * script relays to the background. The page can read those messages, but they
+ * carry nothing it is not already entitled to - the attestation object and the
+ * assertion are the return values of the very call it made, and the private key
+ * never leaves the service worker. A forged reply would only let a page lie to
+ * itself.
  */
 
 import { ContentScriptContext } from "wxt/utils/content-script-context";
+import { toBase64Url } from "@shared/webauthn";
+import { isSupportedRequest } from "../utils/webauthn-request";
+import {
+  buildAssertionCredential,
+  buildAttestationCredential,
+  wantsDiscoverable,
+  type BridgeReply,
+} from "../utils/webauthn-credential";
 
-declare global {
-  interface Window {
-    __vaultctlWebAuthnSeen?: Array<{
-      method: "create" | "get";
-      timestamp: number;
-      origin: string;
-    }>;
-  }
-}
+const REQUEST_CHANNEL = "vaultctl:webauthn:request";
+const RESPONSE_CHANNEL = "vaultctl:webauthn:response";
+const ABORT_CHANNEL = "vaultctl:webauthn:abort";
+
+// How long to wait for the isolated-world bridge to answer a readiness probe.
+// If our own content script is not there, this is the fallback path, so it has
+// to be short enough that the page does not visibly stall.
+const READY_TIMEOUT_MS = 1500;
+
+// A ceremony waits on a human, so it gets the relying party's own timeout with
+// a floor, rather than the probe's.
+const MIN_CEREMONY_TIMEOUT_MS = 60_000;
+
 
 export default defineContentScript({
   matches: ["https://*/*"],
@@ -44,36 +53,57 @@ export default defineContentScript({
     // to hook onInvalidated and restore the original WebAuthn API on reload.
     const ctx = new ContentScriptContext("webauthn-relay");
 
-    // The relay is a v1 observer stub with no current feature value. It
-    // monkey-patches navigator.credentials on every https page and exposes a
-    // page-readable install fingerprint, so it ships DISABLED by default and
-    // only runs in a dev build. Production users get the unmodified browser API.
-    if (!import.meta.env.DEV) return;
     if (typeof navigator === "undefined" || !navigator.credentials) return;
-
-    const observed: NonNullable<Window["__vaultctlWebAuthnSeen"]> = [];
-    // Only exposed in dev so production pages cannot read it as an install
-    // fingerprint.
-    window.__vaultctlWebAuthnSeen = observed;
 
     const originalCreate = navigator.credentials.create?.bind(
       navigator.credentials,
     );
     const originalGet = navigator.credentials.get?.bind(navigator.credentials);
+    const originalIsUvpaa =
+      typeof PublicKeyCredential !== "undefined"
+        ? PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.bind(
+            PublicKeyCredential,
+          )
+        : undefined;
 
     if (originalCreate) {
       navigator.credentials.create = async function patchedCreate(
         options?: CredentialCreationOptions,
       ): Promise<Credential | null> {
-        if (options && "publicKey" in options && options.publicKey) {
-          observed.push({
-            method: "create",
-            timestamp: Date.now(),
-            origin: window.location.origin,
-          });
-          dispatchRelayEvent("create", options.publicKey);
+        const publicKey = options?.publicKey;
+        try {
+          if (!publicKey || !(await canServe(options))) {
+            return originalCreate(options);
+          }
+          const reply = await requestCeremony(
+            "create",
+            publicKey.timeout,
+            {
+              rpId: publicKey.rp?.id ?? "",
+              rpName: publicKey.rp?.name ?? "",
+              challenge: encode(publicKey.challenge),
+              userHandle: encode(publicKey.user?.id),
+              userName: publicKey.user?.name ?? "",
+              userDisplayName: publicKey.user?.displayName ?? "",
+              discoverable: wantsDiscoverable(publicKey),
+              excludeCredentials: (publicKey.excludeCredentials ?? []).map(
+                (descriptor) => encode(descriptor.id),
+              ),
+            },
+            options?.signal ?? undefined,
+          );
+          if (!reply?.ok) {
+            if (reply?.error === "cancelled") throw cancelled();
+            return originalCreate(options);
+          }
+          return buildAttestationCredential(reply, publicKey);
+        } catch (err) {
+          // A cancel is the user's answer, not a failure to serve: falling back
+          // here would pop the browser's own dialog the moment they dismissed
+          // ours. Every other error still hands the ceremony over.
+          if (isDecisive(err)) throw err;
+          return originalCreate(options);
         }
-        return originalCreate(options);
       };
     }
 
@@ -81,44 +111,193 @@ export default defineContentScript({
       navigator.credentials.get = async function patchedGet(
         options?: CredentialRequestOptions,
       ): Promise<Credential | null> {
-        if (options && "publicKey" in options && options.publicKey) {
-          observed.push({
-            method: "get",
-            timestamp: Date.now(),
-            origin: window.location.origin,
-          });
-          dispatchRelayEvent("get", options.publicKey);
+        const publicKey = options?.publicKey;
+        try {
+          if (!publicKey || !(await canServe(options))) {
+            return originalGet(options);
+          }
+          const reply = await requestCeremony(
+            "get",
+            publicKey.timeout,
+            {
+              rpId: publicKey.rpId ?? "",
+              challenge: encode(publicKey.challenge),
+              allowCredentials: (publicKey.allowCredentials ?? []).map(
+                (descriptor) => encode(descriptor.id),
+              ),
+            },
+            options?.signal ?? undefined,
+          );
+          if (!reply?.ok) {
+            if (reply?.error === "cancelled") throw cancelled();
+            return originalGet(options);
+          }
+          return buildAssertionCredential(reply);
+        } catch (err) {
+          if (isDecisive(err)) throw err;
+          return originalGet(options);
         }
-        return originalGet(options);
       };
     }
 
-    // On extension reload/update the patched functions would otherwise outlive
-    // the relay, leaking the override into a dead context. Restore the originals
-    // and remove the global when the content script is invalidated.
+    if (typeof PublicKeyCredential !== "undefined") {
+      // Relying parties gate the whole passkey path on these, so a browser with
+      // no platform authenticator of its own would otherwise never offer to use
+      // ours. Both stay truthful: the browser's answer still wins when it is
+      // yes, and ours only adds a yes when the vault can actually serve.
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable =
+        async function patchedIsUvpaa(): Promise<boolean> {
+          try {
+            if (await isReady()) return true;
+          } catch {
+            // fall through to the browser's own answer
+          }
+          return originalIsUvpaa ? originalIsUvpaa() : false;
+        };
+    }
+
     ctx.onInvalidated(() => {
       if (originalCreate) navigator.credentials.create = originalCreate;
       if (originalGet) navigator.credentials.get = originalGet;
-      try {
-        delete window.__vaultctlWebAuthnSeen;
-      } catch {
-        window.__vaultctlWebAuthnSeen = undefined;
+      if (typeof PublicKeyCredential !== "undefined" && originalIsUvpaa) {
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable =
+          originalIsUvpaa;
       }
     });
   },
 });
 
-function dispatchRelayEvent(
-  method: "create" | "get",
-  publicKey: unknown,
-): void {
-  try {
-    window.dispatchEvent(
-      new CustomEvent("vaultctl:webauthn", {
-        detail: { method, origin: window.location.origin, publicKey },
-      }),
-    );
-  } catch {
-    // swallow - some pages freeze CustomEvent; non-fatal for the stub
+/**
+ * Whether this specific request is one the vault should take over.
+ *
+ * Conditional mediation (passkey-in-autofill) is deliberately not handled yet:
+ * it needs the browser's own autofill surface, so it goes straight through
+ * rather than degrading into a blocking prompt.
+ */
+async function canServe(
+  options: CredentialCreationOptions | CredentialRequestOptions,
+): Promise<boolean> {
+  const creation = ("publicKey" in options ? options.publicKey : undefined) as
+    | PublicKeyCredentialCreationOptions
+    | undefined;
+  const supported = isSupportedRequest({
+    mediation: "mediation" in options ? options.mediation : undefined,
+    aborted: options.signal?.aborted,
+    pubKeyCredParams: creation?.pubKeyCredParams,
+    authenticatorAttachment:
+      creation?.authenticatorSelection?.authenticatorAttachment,
+  });
+  if (!supported) return false;
+  return isReady();
+}
+
+function isReady(): Promise<boolean> {
+  return ask("ready", {}, READY_TIMEOUT_MS).then((reply) =>
+    Boolean(reply?.ok && reply.ready),
+  );
+}
+
+function requestCeremony(
+  kind: "create" | "get",
+  relyingPartyTimeout: number | undefined,
+  payload: Record<string, unknown>,
+  signal: AbortSignal | undefined,
+): Promise<BridgeReply | null> {
+  const timeout = Math.max(
+    relyingPartyTimeout ?? 0,
+    MIN_CEREMONY_TIMEOUT_MS,
+  );
+  return ask(kind, payload, timeout, signal);
+}
+
+function ask(
+  kind: string,
+  payload: Record<string, unknown>,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<BridgeReply | null> {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return new Promise((resolve, reject) => {
+    let timer = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window) return;
+      const data = event.data as
+        | { channel?: string; id?: string; reply?: BridgeReply }
+        | undefined;
+      if (!data || data.channel !== RESPONSE_CHANNEL || data.id !== id) return;
+      cleanup();
+      resolve(data.reply ?? null);
+    };
+    // A page routinely aborts a ceremony when the user switches to another
+    // sign-in method. Tell the bridge to take the prompt down, then reject with
+    // the relying party's own reason so its catch block sees what it expects.
+    const onAbort = () => {
+      cleanup();
+      post({ channel: ABORT_CHANNEL, id });
+      reject(signal?.reason ?? aborted());
+    };
+    window.addEventListener("message", onMessage);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    timer = window.setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, timeoutMs);
+    post({ channel: REQUEST_CHANNEL, id, kind, payload });
+  });
+}
+
+function post(message: Record<string, unknown>): void {
+  window.postMessage(message, window.location.origin);
+}
+
+/**
+ * The error WebAuthn defines for a ceremony the user refused.
+ *
+ * Relying parties already handle NotAllowedError as "the user said no", and
+ * the spec deliberately gives the same error for a refusal and a timeout so a
+ * page cannot tell which happened.
+ */
+function cancelled(): DOMException {
+  return new DOMException(
+    "The operation either timed out or was not allowed.",
+    "NotAllowedError",
+  );
+}
+
+function aborted(): DOMException {
+  return new DOMException("The operation was aborted.", "AbortError");
+}
+
+/**
+ * Errors that are an answer rather than a failure to serve.
+ *
+ * These reach the relying party untouched. Anything else falls through to the
+ * browser, which is the safe default when vaultctl simply could not help.
+ */
+function isDecisive(err: unknown): boolean {
+  if (err instanceof DOMException) {
+    return err.name === "NotAllowedError" || err.name === "AbortError";
   }
+  // An AbortSignal can carry any reason the page chose; once the signal has
+  // fired, that reason is the answer whatever its type.
+  return err instanceof Error && err.name === "AbortError";
+}
+
+
+function encode(source: BufferSource | undefined): string {
+  if (!source) return "";
+  const bytes =
+    source instanceof ArrayBuffer
+      ? new Uint8Array(source)
+      : new Uint8Array(
+          source.buffer,
+          source.byteOffset,
+          source.byteLength,
+        );
+  return toBase64Url(bytes);
 }

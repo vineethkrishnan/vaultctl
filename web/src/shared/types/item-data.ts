@@ -7,6 +7,8 @@
 
 import { z } from "zod";
 
+import { COSE_ALG_ES256 } from "../webauthn/cose.js";
+
 const customFieldSchema = z.object({
   name: z.string(),
   value: z.string(),
@@ -141,12 +143,21 @@ export type GPGKeyData = z.infer<typeof gpgKeyDataSchema>;
 // Passkey
 // ===========================================================================
 
+// credentialId, userHandle, publicKey and privateKey are base64url, the
+// encoding WebAuthn uses on the wire, not the standard base64 the vault's key
+// hierarchy uses. privateKey is the credential itself: whoever holds it can
+// authenticate as this user, so it must never be rendered in any client.
 export const passkeyDataSchema = z.object({
   rpId: z.string().default(""),
   rpName: z.string().default(""),
   credentialId: z.string().default(""),
   userHandle: z.string().default(""),
+  userName: z.string().default(""),
+  userDisplayName: z.string().default(""),
   publicKey: z.string().default(""),
+  privateKey: z.string().default(""),
+  algorithm: z.number().default(COSE_ALG_ES256),
+  createdAt: z.string().default(""),
   discoverable: z.boolean().default(false),
   notes: z.string().default(""),
   customFields: z.array(customFieldSchema).default([]),

@@ -32,6 +32,7 @@ import {
 import { isOneTimeCodeText } from "../utils/otp-field";
 import { shouldAutofillOtp } from "../utils/otp-autofill";
 import { filterCredentials } from "../utils/credential-filter";
+import { holdsExcludedCredential } from "../utils/webauthn-request";
 
 interface CredMatch {
   vaultId: string;
@@ -2246,6 +2247,348 @@ export default defineContentScript({
       clearSuggestIcons();
       removePicker();
       removeSuggestion();
+    });
+
+    // ---------------------------------------------------------------
+    // WebAuthn bridge
+    //
+    // The relay runs in the MAIN world and cannot reach browser.runtime, so it
+    // posts requests here and this forwards them to the background. Consent
+    // lives on this side: the background signs only what the user picked, and
+    // a request the user cancels resolves as a plain failure so the relay
+    // hands the ceremony back to the browser.
+    // ---------------------------------------------------------------
+    const WEBAUTHN_REQUEST = "vaultctl:webauthn:request";
+    const WEBAUTHN_RESPONSE = "vaultctl:webauthn:response";
+    const WEBAUTHN_ABORT = "vaultctl:webauthn:abort";
+
+    // Prompts still on screen, by request id, so an abort from the relying
+    // party can take the right one down.
+    const openPrompts = new Map<string, () => void>();
+
+    interface PasskeyChoice {
+      credentialId: string;
+      rpName: string;
+      userName: string;
+      userDisplayName: string;
+    }
+
+    async function handleWebauthnRequest(
+      id: string,
+      kind: string,
+      payload: Record<string, unknown>,
+    ): Promise<Record<string, unknown>> {
+      if (kind === "ready") {
+        return bg<Record<string, unknown>>({ type: "webauthnReady" });
+      }
+
+      // The relay checks this before asking, but these messages arrive over
+      // window.postMessage, which any page script can send. Without its own
+      // check the bridge would raise a vaultctl prompt on demand for a locked
+      // vault, or one with the feature turned off.
+      if (kind === "create" || kind === "get") {
+        const ready = await bg<{ ok?: boolean; ready?: boolean }>({
+          type: "webauthnReady",
+        });
+        if (!ready?.ok || !ready.ready) return { ok: false, error: "not ready" };
+      }
+
+      if (kind === "create") {
+        // excludeCredentials is the relying party saying "this authenticator
+        // already has one". Checked before prompting, so the user is not asked
+        // to approve a passkey that would be a duplicate. Handing the ceremony
+        // back rather than failing it also leaves them free to register a
+        // different authenticator, which an InvalidStateError would deny.
+        const excluded = await hasExcludedCredential(payload);
+        if (excluded) return { ok: false, error: "excluded" };
+
+        const account = String(payload.userName || payload.userDisplayName || "");
+        const choice = await showWebauthnPrompt({
+          requestId: id,
+          title: "Create a passkey",
+          declaredName: String(payload.rpName ?? ""),
+          detail: account,
+          confirmLabel: "Create passkey",
+          vaults: vaults.length > 1 ? vaults : [],
+        });
+        if (!choice.approved) return { ok: false, error: "cancelled" };
+        return bg<Record<string, unknown>>({
+          type: "webauthnCreate",
+          ...payload,
+          ...(choice.vaultId ? { vaultId: choice.vaultId } : {}),
+        });
+      }
+
+      if (kind === "get") {
+        const listed = await bg<{ ok?: boolean; passkeys?: PasskeyChoice[] }>({
+          type: "webauthnList",
+          rpId: payload.rpId,
+          allowCredentials: payload.allowCredentials,
+        });
+        const passkeys = listed?.passkeys ?? [];
+        if (!listed?.ok || passkeys.length === 0) {
+          return { ok: false, error: "no passkey" };
+        }
+
+        const choice = await showWebauthnPrompt({
+          requestId: id,
+          title: "Sign in with a passkey",
+          declaredName: passkeys[0]!.rpName,
+          confirmLabel: "Sign in",
+          accounts: passkeys,
+        });
+        if (!choice.approved || !choice.credentialId) {
+          return { ok: false, error: "cancelled" };
+        }
+        return bg<Record<string, unknown>>({
+          type: "webauthnGet",
+          ...payload,
+          credentialId: choice.credentialId,
+        });
+      }
+
+      return { ok: false, error: "unknown request" };
+    }
+
+    async function hasExcludedCredential(
+      payload: Record<string, unknown>,
+    ): Promise<boolean> {
+      const excluded = Array.isArray(payload.excludeCredentials)
+        ? payload.excludeCredentials.map(String)
+        : [];
+      if (excluded.length === 0) return false;
+      // An empty allowCredentials asks for every passkey held for this rpId,
+      // which is exactly the set the exclusion list is compared against.
+      const listed = await bg<{ ok?: boolean; passkeys?: PasskeyChoice[] }>({
+        type: "webauthnList",
+        rpId: payload.rpId,
+        allowCredentials: [],
+      });
+      if (!listed?.ok) return false;
+      return holdsExcludedCredential(
+        (listed.passkeys ?? []).map((p) => p.credentialId),
+        excluded,
+      );
+    }
+
+    window.addEventListener("message", (event) => {
+      if (event.source !== window) return;
+      const data = event.data as
+        | {
+            channel?: string;
+            id?: string;
+            kind?: string;
+            payload?: Record<string, unknown>;
+          }
+        | undefined;
+      if (!data) return;
+      if (data.channel === WEBAUTHN_ABORT && typeof data.id === "string") {
+        openPrompts.get(data.id)?.();
+        return;
+      }
+      if (data.channel !== WEBAUTHN_REQUEST) return;
+      if (typeof data.id !== "string" || typeof data.kind !== "string") return;
+      const { id, kind } = data;
+      void (async () => {
+        let reply: Record<string, unknown>;
+        try {
+          reply = await handleWebauthnRequest(id, kind, data.payload ?? {});
+        } catch {
+          reply = { ok: false, error: "failed" };
+        }
+        window.postMessage(
+          { channel: WEBAUTHN_RESPONSE, id, reply },
+          window.location.origin,
+        );
+      })();
+    });
+
+    // A centred, shadow-rooted prompt. Unlike the fill picker there is no field
+    // to anchor to - the ceremony is started by script, not by focusing an
+    // input - and unlike the save toast it never auto-dismisses, because
+    // letting it time out would drop the user into the browser's own WebAuthn
+    // dialog seconds later.
+    function showWebauthnPrompt(options: {
+      requestId: string;
+      title: string;
+      declaredName?: string;
+      detail?: string;
+      confirmLabel: string;
+      accounts?: PasskeyChoice[];
+      vaults?: { id: string; name: string; type: string }[];
+    }): Promise<{
+      approved: boolean;
+      credentialId?: string;
+      vaultId?: string;
+    }> {
+      document.getElementById("vaultctl-webauthn-host")?.remove();
+      return new Promise((resolve) => {
+        const host = document.createElement("div");
+        host.id = "vaultctl-webauthn-host";
+        const root = host.attachShadow({ mode: "closed" });
+
+        let settled = false;
+        const close = (result: {
+          approved: boolean;
+          credentialId?: string;
+          vaultId?: string;
+        }) => {
+          if (settled) return;
+          settled = true;
+          openPrompts.delete(options.requestId);
+          document.removeEventListener("keydown", onKeyDown, true);
+          host.remove();
+          resolve(result);
+        };
+        openPrompts.set(options.requestId, () => close({ approved: false }));
+        const onKeyDown = (event: KeyboardEvent) => {
+          if (event.key === "Escape") close({ approved: false });
+        };
+
+        const overlay = document.createElement("div");
+        overlay.style.cssText =
+          "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:2147483647;font:13px system-ui,sans-serif;";
+        overlay.addEventListener("click", (event) => {
+          if (event.target === overlay && event.isTrusted) {
+            close({ approved: false });
+          }
+        });
+
+        const panel = document.createElement("div");
+        panel.style.cssText =
+          "display:flex;flex-direction:column;gap:12px;width:min(340px,90vw);max-height:80vh;overflow-y:auto;padding:16px;background:#101013;color:#fafafa;border:1px solid #26262b;border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.55);";
+
+        const heading = document.createElement("div");
+        heading.textContent = options.title;
+        heading.style.cssText = "font-weight:600;font-size:14px;";
+
+        // The host comes from window.location, which the page cannot forge.
+        // A relying party's own rp.name can say anything at all, so it never
+        // stands in for the site's identity - it sits underneath, clearly
+        // subordinate, exactly as a browser's own passkey UI shows the origin.
+        const site = document.createElement("div");
+        site.textContent = window.location.hostname;
+        site.style.cssText =
+          "font-size:13px;font-weight:600;color:#fafafa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        panel.append(heading, site);
+
+        const declared = (options.declaredName ?? "").trim();
+        if (declared && declared !== window.location.hostname) {
+          const claim = document.createElement("div");
+          claim.textContent = `calls itself "${declared}"`;
+          claim.style.cssText =
+            "font-size:11px;color:#a1a1aa;margin-top:-6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          panel.appendChild(claim);
+        }
+
+        if (options.detail) {
+          const detail = document.createElement("div");
+          detail.textContent = options.detail;
+          detail.style.cssText =
+            "font-size:13px;padding:8px 10px;background:#1f1f23;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          panel.appendChild(detail);
+        }
+
+        let chosenCredentialId = options.accounts?.[0]?.credentialId ?? "";
+        if (options.accounts?.length) {
+          const list = document.createElement("div");
+          list.style.cssText = "display:flex;flex-direction:column;gap:6px;";
+          for (const account of options.accounts) {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.style.cssText =
+              "all:unset;display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;";
+            const primary = document.createElement("span");
+            primary.textContent =
+              account.userName ||
+              account.userDisplayName ||
+              window.location.hostname;
+            primary.style.cssText = "font-weight:600;font-size:13px;";
+            const secondary = document.createElement("span");
+            secondary.textContent = account.userDisplayName || "";
+            secondary.style.cssText = "font-size:12px;color:#a1a1aa;";
+            row.append(primary, secondary);
+            const paint = () => {
+              for (const sibling of list.children) {
+                (sibling as HTMLElement).style.background = "transparent";
+                (sibling as HTMLElement).style.borderColor = "transparent";
+              }
+              row.style.background = "#1f1f23";
+              row.style.borderColor = "#3f3f46";
+            };
+            row.addEventListener("click", (event) => {
+              if (!event.isTrusted) return;
+              chosenCredentialId = account.credentialId;
+              paint();
+            });
+            list.appendChild(row);
+            if (account.credentialId === chosenCredentialId) paint();
+          }
+          panel.appendChild(list);
+        }
+
+        let chosenVaultId = options.vaults?.[0]?.id ?? "";
+        if (options.vaults?.length) {
+          const label = document.createElement("label");
+          label.textContent = "Save to";
+          label.style.cssText = "font-size:12px;color:#a1a1aa;";
+          const select = document.createElement("select");
+          select.style.cssText =
+            "width:100%;box-sizing:border-box;padding:6px 8px;background:#1f1f23;color:#fafafa;border:1px solid #26262b;border-radius:6px;font:13px system-ui,sans-serif;";
+          for (const vault of options.vaults) {
+            const option = document.createElement("option");
+            option.value = vault.id;
+            option.textContent = vault.name;
+            select.appendChild(option);
+          }
+          select.addEventListener("change", () => {
+            chosenVaultId = select.value;
+          });
+          panel.append(label, select);
+        }
+
+        const actions = document.createElement("div");
+        actions.style.cssText =
+          "display:flex;justify-content:flex-end;gap:8px;margin-top:4px;";
+
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.textContent = "Cancel";
+        cancel.style.cssText =
+          "all:unset;padding:7px 12px;border-radius:6px;cursor:pointer;color:#a1a1aa;font-size:13px;";
+        cancel.addEventListener("click", (event) => {
+          if (event.isTrusted) close({ approved: false });
+        });
+
+        const confirm = document.createElement("button");
+        confirm.type = "button";
+        confirm.textContent = options.confirmLabel;
+        confirm.style.cssText =
+          "all:unset;padding:7px 12px;border-radius:6px;cursor:pointer;background:#fafafa;color:#101013;font-weight:600;font-size:13px;";
+        confirm.addEventListener("click", (event) => {
+          // A synthetic click here would let a page approve its own ceremony
+          // without the user, so only a real gesture counts.
+          if (!event.isTrusted) return;
+          close({
+            approved: true,
+            credentialId: chosenCredentialId || undefined,
+            vaultId: chosenVaultId || undefined,
+          });
+        });
+
+        actions.append(cancel, confirm);
+        panel.appendChild(actions);
+        overlay.appendChild(panel);
+        root.appendChild(overlay);
+        document.body.appendChild(host);
+        document.addEventListener("keydown", onKeyDown, true);
+        confirm.focus();
+      });
+    }
+
+    ctx.onInvalidated(() => {
+      for (const close of [...openPrompts.values()]) close();
+      document.getElementById("vaultctl-webauthn-host")?.remove();
     });
 
     if (findLoginForms().length > 0) {
