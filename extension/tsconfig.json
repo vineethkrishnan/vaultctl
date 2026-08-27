@@ -14,6 +14,8 @@
       "@shared/crypto": ["../web/src/shared/crypto/index.ts"],
       "@shared/crypto/*": ["../web/src/shared/crypto/*"],
       "@shared/totp": ["../web/src/shared/totp/totp.ts"],
+      "@shared/webauthn": ["../web/src/shared/webauthn/index.ts"],
+      "@shared/webauthn/*": ["../web/src/shared/webauthn/*"],
       "hash-wasm": ["./node_modules/hash-wasm/dist/lib/index.d.ts"]
     }
   },
@@ -37,7 +39,15 @@
     "../web/src/shared/crypto/padding.ts",
     "../web/src/shared/crypto/recovery-kit.ts",
     "../web/src/shared/crypto/rsa-oaep.ts",
-    "../web/src/shared/crypto/utils.ts"
+    "../web/src/shared/crypto/utils.ts",
+    "../web/src/shared/webauthn/aaguid.ts",
+    "../web/src/shared/webauthn/authdata.ts",
+    "../web/src/shared/webauthn/base64url.ts",
+    "../web/src/shared/webauthn/cbor.ts",
+    "../web/src/shared/webauthn/cose.ts",
+    "../web/src/shared/webauthn/der.ts",
+    "../web/src/shared/webauthn/index.ts",
+    "../web/src/shared/webauthn/p256.ts"
   ],
   "exclude": [".output", "node_modules", "**/*.test.ts"]
 }

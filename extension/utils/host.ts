@@ -72,6 +72,18 @@ function publicSuffixLength(labels: string[]): number {
   return 1;
 }
 
+// True when a host is nothing but a public suffix ("com", "co.uk",
+// "github.io"), so no single party owns it. Used to reject a WebAuthn rpId that
+// would otherwise claim every site under a shared suffix. "localhost" is the
+// one single-label name a party can legitimately own.
+export function isPublicSuffix(host: string): boolean {
+  const clean = (host.split(":")[0] ?? host).toLowerCase();
+  const labels = clean.split(".").filter(Boolean);
+  if (labels.length === 0) return true;
+  if (labels.length === 1) return clean !== "localhost";
+  return KNOWN_SUFFIXES.has(clean);
+}
+
 // The registrable domain (eTLD+1) of a host, e.g. "mail.google.com" ->
 // "google.com", "shop.foo.co.uk" -> "foo.co.uk", and "bar.github.io" ->
 // "bar.github.io" (each platform tenant isolated). Port and a leading "www."

@@ -36,6 +36,14 @@ import { breachCount } from "../utils/password-health";
 import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
 import { isContentScriptSender } from "../utils/message-sender";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
+import { COSE_ALG_ES256 } from "@shared/webauthn";
+import { defaultRpId, isRpIdAllowed } from "../utils/webauthn-rp";
+import {
+  createCredential,
+  selectCredentials,
+  signAssertion,
+  type StoredPasskey,
+} from "../utils/webauthn-authenticator";
 
 // ===========================================================================
 // Types
@@ -336,6 +344,7 @@ interface ExtSettings {
   toastMs: number; // auto-dismiss timeout for toasts (ms)
   relaxedMatch: boolean; // match credentials by registrable domain, not exact host
   breachCheck: boolean; // check passwords against HIBP (k-anonymity, opt-in)
+  passkeys: boolean; // act as a WebAuthn authenticator for passkey items
   suggestPassword: boolean; // suggest a strong password on new-password fields
   updateNotify: UpdateNotifyLevel; // which update severities raise the alert
   genMode: GenMode; // "password" (random charset) or "passphrase" (memorable)
@@ -361,6 +370,7 @@ const DEFAULT_SETTINGS: ExtSettings = {
   toastMs: 8000,
   relaxedMatch: false,
   breachCheck: false,
+  passkeys: false,
   suggestPassword: true,
   updateNotify: "all",
   genMode: "password",
@@ -613,6 +623,7 @@ const ITEMS_CACHE_MS = 15_000;
 function invalidateItemsCache(): void {
   itemsCache = null;
   fillableCache = null;
+  passkeyCache = null;
 }
 
 async function loadLoginEntries(): Promise<LoginEntry[]> {
@@ -766,6 +777,108 @@ async function loadFillableEntries(): Promise<{
   return { cards, identities };
 }
 
+/**
+ * Everything that must hold before a passkey ceremony can run.
+ *
+ * The rpId arrives from the page, so it is only ever accepted when the tab's
+ * own URL entitles the page to it. The returned origin is likewise rebuilt
+ * from the tab URL rather than echoed from the message.
+ */
+async function checkPasskeyGate(
+  tabUrl: string,
+  claimedRpId: unknown,
+): Promise<
+  { ok: true; rpId: string; origin: string } | { ok: false; error: string }
+> {
+  const { passkeys } = await getSettings();
+  if (!passkeys) return { ok: false, error: "passkeys disabled" };
+  if (!unlocked) return { ok: false, error: "vault is locked" };
+
+  const rpId =
+    typeof claimedRpId === "string" && claimedRpId.trim()
+      ? claimedRpId.trim().toLowerCase()
+      : defaultRpId(tabUrl);
+  if (!isRpIdAllowed(rpId, tabUrl)) {
+    return { ok: false, error: "rp id mismatch" };
+  }
+
+  let origin: string;
+  try {
+    origin = new URL(tabUrl).origin;
+  } catch {
+    return { ok: false, error: "rp id mismatch" };
+  }
+
+  return { ok: true, rpId, origin };
+}
+
+// ===========================================================================
+// Passkey items (for the WebAuthn authenticator)
+//
+// Unlike logins, a passkey is bound to a relying party ID rather than a URI,
+// and the match is exact - WebAuthn does its own rpId-to-origin check, so the
+// relaxed-match setting deliberately plays no part here.
+// ===========================================================================
+
+interface PasskeyEntry {
+  vaultId: string;
+  itemId: string;
+  passkey: StoredPasskey;
+}
+
+let passkeyCache: { at: number; entries: PasskeyEntry[] } | null = null;
+const PASSKEY_CACHE_MS = 15_000;
+
+async function loadPasskeyEntries(): Promise<PasskeyEntry[]> {
+  if (passkeyCache && Date.now() - passkeyCache.at < PASSKEY_CACHE_MS) {
+    return passkeyCache.entries;
+  }
+  const entries: PasskeyEntry[] = [];
+  for (const vaultId of vaultKeys.keys()) {
+    let res: Response;
+    try {
+      res = await apiFetch(`/api/v1/vaults/${vaultId}/items`, { method: "GET" });
+    } catch {
+      continue;
+    }
+    if (!res.ok) continue;
+    const items = (await res.json()) as Array<{
+      id: string;
+      itemType: string;
+      encryptedName: string;
+      encryptedData: string;
+      trashed: boolean;
+    }>;
+    for (const it of items) {
+      if (it.trashed || it.itemType !== "passkey") continue;
+      try {
+        const data = await decData(vaultId, it.encryptedData);
+        entries.push({
+          vaultId,
+          itemId: it.id,
+          passkey: {
+            rpId: String(data.rpId ?? ""),
+            rpName: String(data.rpName ?? ""),
+            credentialId: String(data.credentialId ?? ""),
+            userHandle: String(data.userHandle ?? ""),
+            userName: String(data.userName ?? ""),
+            userDisplayName: String(data.userDisplayName ?? ""),
+            publicKey: String(data.publicKey ?? ""),
+            privateKey: String(data.privateKey ?? ""),
+            algorithm: Number(data.algorithm ?? COSE_ALG_ES256),
+            createdAt: String(data.createdAt ?? ""),
+            discoverable: Boolean(data.discoverable ?? false),
+          },
+        });
+      } catch {
+        // skip items that fail to decrypt or parse
+      }
+    }
+  }
+  passkeyCache = { at: Date.now(), entries };
+  return entries;
+}
+
 // ===========================================================================
 // Update check - compares THIS extension's version against the latest release
 // the server reports (GET /api/v1/updates), so "update available" reflects the
@@ -863,12 +976,12 @@ async function createLogin(
   invalidateItemsCache();
 }
 
-// Persist a pre-built credit_card / identity payload as a new vault item. The
-// payload is already in the exact web-editor JSON shape, so it round-trips with
-// the web credit-card / identity editors. encryptedName is the masked title
-// (card: brand + last4; identity: full name).
+// Persist a pre-built credit_card / identity / passkey payload as a new vault
+// item. The payload is already in the exact web-editor JSON shape, so it
+// round-trips with the web editors. encryptedName is the masked title (card:
+// brand + last4; identity: full name; passkey: the relying party).
 async function createItem(
-  itemType: "credit_card" | "identity",
+  itemType: "credit_card" | "identity" | "passkey",
   title: string,
   data: unknown,
   targetVaultId?: string,
@@ -1007,7 +1120,13 @@ const CONTENT_SCRIPT_ALLOWED = new Set<string>([
   "generatePassword",
   "logGeneratedPassword",
   "loginFormDetected",
-  "webauthnObserved",
+  // The WebAuthn ceremonies. Each re-derives the tab host from
+  // sender.tab.url and refuses an rpId the page does not own, so a hostile
+  // page can only ever act for itself. The list response carries no key
+  // material, and the private key never leaves the worker.
+  "webauthnCreate",
+  "webauthnGet",
+  "webauthnList",
   // Open the configured web vault in a new tab (no secret crosses the boundary;
   // the background just reads the stored server URL it already holds).
   "openWebVault",
@@ -1696,15 +1815,121 @@ export default defineBackground(() => {
             }
 
             // -----------------------------------------------------------
-            // WebAuthn relay (v1 observer - see webauthn-relay.ts)
+            // WebAuthn authenticator (see webauthn-relay.content.ts)
+            //
+            // Both cases are reachable from a content script, so the rpId the
+            // page asked for is re-checked against sender.tab.url before any
+            // key is generated or used. The relay's own "origin" is never
+            // trusted for that decision, only echoed back into clientDataJSON
+            // after the tab URL has vouched for it.
             // -----------------------------------------------------------
-            case "webauthnObserved": {
-              devLog(
-                "webauthn call observed",
-                message.method,
-                message.origin,
+            case "webauthnCreate": {
+              const tabUrl = sender.tab?.url ?? "";
+              const gate = await checkPasskeyGate(tabUrl, message.rpId);
+              if (!gate.ok) {
+                sendResponse({ ok: false, error: gate.error });
+                return;
+              }
+
+              const { passkey, attestation } = await createCredential({
+                rpId: gate.rpId,
+                rpName: String(message.rpName ?? gate.rpId),
+                origin: gate.origin,
+                challenge: String(message.challenge ?? ""),
+                userHandle: String(message.userHandle ?? ""),
+                userName: String(message.userName ?? ""),
+                userDisplayName: String(message.userDisplayName ?? ""),
+                discoverable: Boolean(message.discoverable ?? false),
+              });
+
+              try {
+                await createItem(
+                  "passkey",
+                  passkey.userName
+                    ? `${gate.rpId} (${passkey.userName})`
+                    : gate.rpId,
+                  passkey,
+                  typeof message.vaultId === "string" ? message.vaultId : undefined,
+                );
+              } catch (err) {
+                sendResponse({ ok: false, error: String(err) });
+                return;
+              }
+
+              sendResponse({ ok: true, ...attestation });
+              return;
+            }
+
+            case "webauthnGet": {
+              const tabUrl = sender.tab?.url ?? "";
+              const gate = await checkPasskeyGate(tabUrl, message.rpId);
+              if (!gate.ok) {
+                sendResponse({ ok: false, error: gate.error });
+                return;
+              }
+
+              const allowCredentials = Array.isArray(message.allowCredentials)
+                ? message.allowCredentials.map(String)
+                : [];
+              const entries = await loadPasskeyEntries();
+              const usable = selectCredentials(
+                entries.map((entry) => entry.passkey),
+                gate.rpId,
+                allowCredentials,
               );
-              sendResponse({ ok: true });
+              if (usable.length === 0) {
+                sendResponse({ ok: false, error: "no passkey" });
+                return;
+              }
+
+              // The content script picks which credential the user chose; with
+              // one match there is nothing to pick.
+              const chosen =
+                usable.find(
+                  (passkey) => passkey.credentialId === message.credentialId,
+                ) ?? usable[0]!;
+
+              sendResponse({
+                ok: true,
+                ...(await signAssertion(
+                  {
+                    rpId: gate.rpId,
+                    origin: gate.origin,
+                    challenge: String(message.challenge ?? ""),
+                  },
+                  chosen,
+                )),
+              });
+              return;
+            }
+
+            // List the passkeys that could satisfy a get() so the content
+            // script can show a picker. Carries no key material: the private
+            // key never leaves this worker, and signing happens above.
+            case "webauthnList": {
+              const tabUrl = sender.tab?.url ?? "";
+              const gate = await checkPasskeyGate(tabUrl, message.rpId);
+              if (!gate.ok) {
+                sendResponse({ ok: false, error: gate.error });
+                return;
+              }
+              const allowCredentials = Array.isArray(message.allowCredentials)
+                ? message.allowCredentials.map(String)
+                : [];
+              const entries = await loadPasskeyEntries();
+              sendResponse({
+                ok: true,
+                passkeys: selectCredentials(
+                  entries.map((entry) => entry.passkey),
+                  gate.rpId,
+                  allowCredentials,
+                ).map((passkey) => ({
+                  credentialId: passkey.credentialId,
+                  rpName: passkey.rpName,
+                  userName: passkey.userName,
+                  userDisplayName: passkey.userDisplayName,
+                })),
+              });
               return;
             }
 
