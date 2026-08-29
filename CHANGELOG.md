@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.28.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.1...v1.28.0) (2026-08-27)
+
+
+### Features
+
+* **extension:** use vault passkeys as a WebAuthn authenticator ([#369](https://github.com/vineethkrishnan/vaultctl/issues/369)) ([700d41e](https://github.com/vineethkrishnan/vaultctl/commit/700d41e6270aec9e6fd3912c685afa10ae8b61b4))
+
+
+### Bug Fixes
+
+* **deps:** bump the go toolchain to 1.26.6 for the stdlib advisories ([#359](https://github.com/vineethkrishnan/vaultctl/issues/359)) ([1b6cd2e](https://github.com/vineethkrishnan/vaultctl/commit/1b6cd2e8954c96a6f2dcdbe2cae64a728b3471a7))
+* **extension:** pin the popup width to 360px on the root element ([#358](https://github.com/vineethkrishnan/vaultctl/issues/358)) ([691720e](https://github.com/vineethkrishnan/vaultctl/commit/691720e591a161e25e93650a142f55f31333ae48))
+
+
+### Build System
+
+* **extension:** generate .wxt types on install instead of committing them ([#368](https://github.com/vineethkrishnan/vaultctl/issues/368)) ([2f1cc2c](https://github.com/vineethkrishnan/vaultctl/commit/2f1cc2cf36895468443bbf07ebb81e2757010038))
+
 ## [1.27.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.0...v1.27.1) (2026-08-11)
 
 
