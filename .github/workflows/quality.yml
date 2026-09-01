@@ -51,6 +51,6 @@ jobs:
       # newer rules that flag already-justified pre-existing code. G101/G304/G402
       # are excluded here because every occurrence already carries a justified
       # //nolint:gosec, and golangci-lint's gosec still scans those rules.
-      - uses: securego/gosec@v2.28.0
+      - uses: securego/gosec@v2.29.0
         with:
           args: "-quiet -exclude=G104,G107,G115,G204,G101,G304,G402 ./..."
