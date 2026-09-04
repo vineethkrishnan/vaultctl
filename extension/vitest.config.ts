@@ -18,6 +18,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@shared/crypto": resolve(sharedDir, "crypto/index.ts"),
+      "@shared/host": resolve(sharedDir, "host/index.ts"),
       "@shared/totp": resolve(sharedDir, "totp/totp.ts"),
       "@shared/webauthn": resolve(sharedDir, "webauthn/index.ts"),
     },

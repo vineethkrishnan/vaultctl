@@ -33,7 +33,7 @@ import {
 import { generateSecret, type GenMode } from "../utils/password-gen";
 import { parseTotp, generateTotp, secondsRemaining } from "@shared/totp";
 import { breachCount } from "../utils/password-health";
-import { safeHost, safeHostname, hostMatches, domainMatches } from "../utils/host";
+import { safeHost, safeHostname, hostMatches, domainMatches } from "@shared/host";
 import { isContentScriptSender } from "../utils/message-sender";
 import type { CreditCardData, IdentityData } from "../utils/form-fields";
 import { COSE_ALG_ES256 } from "@shared/webauthn";
