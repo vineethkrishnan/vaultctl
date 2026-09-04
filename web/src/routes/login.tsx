@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
+import { useVaultTrustStore } from "@/lib/vault-trust-store";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
 import { initKeys } from "@/lib/key-holder";
 import { deriveKeys, fromBase64, toBase64 } from "@/shared/crypto";
@@ -24,6 +25,7 @@ export function LoginPage() {
   const { t } = useTranslation(["auth", "common"]);
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setRejectedVaultIds = useVaultTrustStore((s) => s.setRejectedVaultIds);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -130,15 +132,19 @@ export function LoginPage() {
       res.encryptedIdentityPrivateKey,
     );
 
-    await initKeys({
+    const rejectedVaultIds = await initKeys({
+      userId: res.userId,
       stretchedKey,
       encryptedPrivateKey: res.encryptedPrivateKey,
       encryptedIdentityPrivateKey: res.encryptedIdentityPrivateKey,
       publicKey: res.publicKey,
       vaults: res.vaults,
     });
+    setRejectedVaultIds(rejectedVaultIds);
 
-    const firstVault = res.vaults[0];
+    const firstVault = res.vaults.find(
+      (vault) => !rejectedVaultIds.includes(vault.vaultId),
+    );
     navigate({
       to: "/vault/$vaultId",
       params: { vaultId: firstVault ? firstVault.vaultId : "none" },

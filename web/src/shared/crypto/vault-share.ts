@@ -46,6 +46,45 @@ export async function verifyRecipientPublicKey(params: {
   );
 }
 
+/**
+ * Verify that the sender really produced this wrap before the recipient
+ * trusts the vault key inside it (H1).
+ *
+ * Checks the sender's Ed25519 identity key over the same H1 message
+ * buildSharePayload signed: vault_id || recipient_user_id || encrypted_vault_key.
+ * Binding the recipient id is what stops a wrap made for one member being
+ * replayed at another, and binding the vault id stops it moving between vaults.
+ *
+ * Skipping this check would let the server substitute a vault key of its own
+ * choosing and have the client silently adopt it. Callers MUST fail closed on
+ * false: drop the vault, never fall back to using the key unverified.
+ */
+export async function verifyWrapSignature(params: {
+  vaultId: string;
+  recipientUserId: string;
+  encryptedVaultKey: Uint8Array; // wire bytes, as signed
+  wrapSignature: Uint8Array;
+  senderIdentityPublicKey: Uint8Array; // raw 32-byte Ed25519
+}): Promise<boolean> {
+  if (params.senderIdentityPublicKey.length === 0) {
+    return false;
+  }
+
+  let senderKey: CryptoKey;
+  try {
+    senderKey = await importEd25519PublicKey(params.senderIdentityPublicKey);
+  } catch {
+    return false;
+  }
+
+  const message = buildWrapSignatureMessage(
+    params.vaultId,
+    params.recipientUserId,
+    params.encryptedVaultKey,
+  );
+  return ed25519Verify(senderKey, params.wrapSignature, message);
+}
+
 export interface SharePayload {
   encryptedVaultKey: string; // base64 wire blob (alg=RSA-OAEP-SHA256)
   wrapSignature: string; // base64 Ed25519 signature

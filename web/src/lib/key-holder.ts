@@ -32,6 +32,7 @@ import type {
 import type { VaultMembership } from "@/shared/types/api";
 
 export interface InitParams {
+  userId: string;
   stretchedKey: Uint8Array;
   encryptedPrivateKey: string; // base64 wire blob
   encryptedIdentityPrivateKey: string; // base64 wire blob
@@ -39,9 +40,16 @@ export interface InitParams {
   vaults: VaultMembership[];
 }
 
-/** Initialize key custody after login - delegates to Worker. */
-export async function initKeys(params: InitParams): Promise<void> {
-  await workerInit({
+/**
+ * Initialize key custody after login - delegates to Worker.
+ *
+ * Returns the ids of vaults whose wrap signature failed verification. Their
+ * keys are not loaded, so the caller must surface them rather than let the
+ * vaults quietly vanish from the list.
+ */
+export async function initKeys(params: InitParams): Promise<string[]> {
+  const rejected = await workerInit({
+    userId: params.userId,
     stretchedKey: params.stretchedKey,
     encryptedPrivateKey: params.encryptedPrivateKey,
     encryptedIdentityPrivateKey: params.encryptedIdentityPrivateKey,
@@ -50,8 +58,12 @@ export async function initKeys(params: InitParams): Promise<void> {
       vaultId: v.vaultId,
       encryptedVaultKey: v.encryptedVaultKey,
       vaultType: v.vaultType,
+      senderId: v.senderId,
+      wrapSignature: v.wrapSignature,
+      senderIdentityPublicKey: v.senderIdentityPublicKey,
     })),
   });
+  return rejected ?? [];
 }
 
 /** Check if keys are loaded in the Worker. */

@@ -74,6 +74,82 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/email/resend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Issues a fresh verification code to the caller's email.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Resend email verification",
+                "responses": {
+                    "204": {
+                        "description": "Sent"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/email/verify": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Confirms the caller's email address using the emailed one-time code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify email",
+                "parameters": [
+                    {
+                        "description": "Verification code",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.VerifyEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Verified"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/invites/redeem": {
             "post": {
                 "description": "New user redeems an invite token during registration",
@@ -807,7 +883,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "Returns server health status",
+                "description": "Reports liveness and pings the database. Returns 503 when the database is unreachable.",
                 "produces": [
                     "application/json"
                 ],
@@ -820,9 +896,14 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -959,6 +1040,38 @@ const docTemplate = `{
             }
         },
         "/orgs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List the organizations the authenticated caller is an active member of, with their role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organizations"
+                ],
+                "summary": "List my organizations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_presenters_api.MyOrgResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1440,6 +1553,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/updates/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Triggers the configured upgrade hook and streams progress as newline-delimited JSON events. The server will become temporarily unreachable once the \"restarting\" event is sent.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Apply in-app upgrade",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "503": {
+                        "description": "upgrade not configured",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -1655,6 +1802,117 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/audit": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated user's audit entries (newest first), keyset-paginated via ?before= and ?limit=.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List own audit trail",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Max entries (1-200, default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 cursor; return entries strictly older than this",
+                        "name": "before",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.AuditListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/email-preferences": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get email preferences",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.EmailPreferencesResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update email preferences",
+                "parameters": [
+                    {
+                        "description": "Preference",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.UpdateEmailPreferencesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.EmailPreferencesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/sessions": {
             "get": {
                 "security": [
@@ -1805,6 +2063,58 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/vaults/{vaultId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Irreversibly delete a vault, its items, folders, members, and attachments. Owner-only; requires a fresh step-up.",
+                "tags": [
+                    "Vaults"
+                ],
+                "summary": "Delete vault",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Vault ID",
+                        "name": "vaultId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "deleted"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_presenters_api.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/internal_presenters_api.ErrorBody"
                         }
@@ -2727,6 +3037,40 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_presenters_api.AuditEntryDTO": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "ipAddress": {
+                    "type": "string"
+                },
+                "resourceType": {
+                    "type": "string"
+                },
+                "userAgent": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.AuditListResponse": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_presenters_api.AuditEntryDTO"
+                    }
+                },
+                "nextBefore": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_presenters_api.BackupInfoDTO": {
             "type": "object",
             "properties": {
@@ -2804,6 +3148,38 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.EmailPreferencesResponse": {
+            "type": "object",
+            "properties": {
+                "digestFrequency": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "loginAlerts": {
+                    "type": "boolean"
+                },
+                "schedDay": {
+                    "type": "integer"
+                },
+                "schedHour": {
+                    "type": "integer"
+                },
+                "schedMinute": {
+                    "type": "integer"
+                },
+                "schedMonth": {
+                    "type": "integer"
+                },
+                "schedWeekday": {
+                    "type": "integer"
+                },
+                "timezone": {
                     "type": "string"
                 }
             }
@@ -3091,6 +3467,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.MyOrgResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "joinedAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }
@@ -3424,6 +3817,10 @@ const docTemplate = `{
                 "kdfParallelism": {
                     "type": "integer"
                 },
+                "locale": {
+                    "description": "\"en\"/\"de\"; defaults to \"en\"",
+                    "type": "string"
+                },
                 "masterPasswordPreflight": {
                     "type": "string"
                 },
@@ -3599,6 +3996,38 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_presenters_api.UpdateEmailPreferencesRequest": {
+            "type": "object",
+            "properties": {
+                "digestFrequency": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "loginAlerts": {
+                    "type": "boolean"
+                },
+                "schedDay": {
+                    "type": "integer"
+                },
+                "schedHour": {
+                    "type": "integer"
+                },
+                "schedMinute": {
+                    "type": "integer"
+                },
+                "schedMonth": {
+                    "type": "integer"
+                },
+                "schedWeekday": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_presenters_api.UpdateMemberRoleRequest": {
             "type": "object",
             "properties": {
@@ -3654,6 +4083,12 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "emailVerified": {
+                    "type": "boolean"
+                },
+                "emailVerifiedAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3695,6 +4130,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "senderId": {
+                    "type": "string"
+                },
+                "senderIdentityPublicKey": {
+                    "description": "SenderIdentityPublicKey is the Ed25519 key the client checks\nWrapSignature against before trusting EncryptedVaultKey. (H1)",
                     "type": "string"
                 },
                 "vaultId": {
@@ -3739,6 +4178,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "wrapSignature": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_presenters_api.VerifyEmailRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
                     "type": "string"
                 }
             }

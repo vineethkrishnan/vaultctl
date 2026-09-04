@@ -3,12 +3,17 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/vineethkrishnan/vaultctl/internal/domain/crypto"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
+	"github.com/vineethkrishnan/vaultctl/internal/domain/vault"
 )
 
 func newLogin(t *testing.T) (*Login, *fakeUserRepo, *fakeSessionStore, *fakeHasher) {
@@ -207,5 +212,103 @@ func TestLogin_AuthHashNotInOutput_C4(t *testing.T) {
 	dump := fmt.Sprintf("%+v", out)
 	if strings.Contains(dump, "SECRET-AUTH-HASH") {
 		t.Fatalf("authHash leaked into LoginOutput: %s", dump)
+	}
+}
+
+// sharedVaultRepo serves one shared vault whose key was wrapped by senderID.
+type sharedVaultRepo struct {
+	emptyVaultRepo
+	senderID user.ID
+}
+
+func (r sharedVaultRepo) ListForUser(_ context.Context, _ user.ID) ([]vault.Vault, error) {
+	return []vault.Vault{{ID: vault.ID("v1"), Name: "Team", Type: vault.TypeShared}}, nil
+}
+
+func (r sharedVaultRepo) MemberForUser(_ context.Context, vaultID vault.ID, userID user.ID) (vault.Member, error) {
+	return vault.Member{
+		VaultID:  vaultID,
+		UserID:   userID,
+		SenderID: r.senderID,
+		Role:     user.RoleMember,
+	}, nil
+}
+
+func seedSender(t *testing.T, repo *fakeUserRepo, id user.ID, email string, identityKey crypto.PublicKey) {
+	t.Helper()
+	e, _ := user.NewEmail(email)
+	u := user.User{
+		ID:                          id,
+		Email:                       e,
+		Name:                        "Bob",
+		Salt:                        bytes.Repeat([]byte{0x5B}, 16),
+		KDFParams:                   user.KDFParams{Iterations: 4, MemoryKB: 32768, Parallelism: 2},
+		EncryptedPrivateKey:         validBlob(t),
+		EncryptedIdentityPrivateKey: validBlob(t),
+		PublicKey:                   validPublicKey(t),
+		PublicKeySignature:          validSignature(t),
+		IdentityPublicKey:           identityKey,
+		Role:                        user.RoleMember,
+		CreatedAt:                   time.Unix(1_700_000_000, 0).UTC(),
+	}
+	if err := repo.Create(context.Background(), u, "$fake$authhash"); err != nil {
+		t.Fatalf("seed sender: %v", err)
+	}
+}
+
+func TestLogin_AttachesSenderIdentityKeyForSharedVault(t *testing.T) {
+	t.Parallel()
+	uc, repo, _, _ := newLogin(t)
+	seedUser(t, repo, "alice@example.com")
+	senderKey, _ := crypto.NewPublicKey(bytes.Repeat([]byte{0x33}, 32))
+	seedSender(t, repo, user.ID("u2"), "bob@example.com", senderKey)
+	uc.Vaults = sharedVaultRepo{senderID: user.ID("u2")}
+
+	out, err := uc.Execute(context.Background(), LoginInput{
+		Email: "alice@example.com", AuthHash: []byte("authhash"),
+		DeviceName: "laptop", IPAddress: "10.0.0.0/24",
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if len(out.Vaults) != 1 {
+		t.Fatalf("want 1 vault, got %d", len(out.Vaults))
+	}
+	// Without this the client cannot check the wrap signature at all (H1).
+	if !bytes.Equal(out.Vaults[0].SenderIdentityPublicKey.Bytes(), senderKey.Bytes()) {
+		t.Fatalf("wrong sender identity key: %x", out.Vaults[0].SenderIdentityPublicKey.Bytes())
+	}
+}
+
+func TestLogin_SelfWrappedVaultUsesOwnIdentityKey(t *testing.T) {
+	t.Parallel()
+	uc, repo, _, _ := newLogin(t)
+	u := seedUser(t, repo, "alice@example.com")
+	uc.Vaults = sharedVaultRepo{senderID: u.ID}
+
+	out, err := uc.Execute(context.Background(), LoginInput{
+		Email: "alice@example.com", AuthHash: []byte("authhash"),
+		DeviceName: "laptop", IPAddress: "10.0.0.0/24",
+	})
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if !bytes.Equal(out.Vaults[0].SenderIdentityPublicKey.Bytes(), u.IdentityPublicKey.Bytes()) {
+		t.Fatalf("self-wrap should reuse the caller's own identity key")
+	}
+}
+
+func TestLogin_UnknownSenderFailsClosed(t *testing.T) {
+	t.Parallel()
+	uc, repo, _, _ := newLogin(t)
+	seedUser(t, repo, "alice@example.com")
+	uc.Vaults = sharedVaultRepo{senderID: user.ID("ghost")}
+
+	_, err := uc.Execute(context.Background(), LoginInput{
+		Email: "alice@example.com", AuthHash: []byte("authhash"),
+		DeviceName: "laptop", IPAddress: "10.0.0.0/24",
+	})
+	if err == nil {
+		t.Fatal("want an error when the sender cannot be resolved")
 	}
 }

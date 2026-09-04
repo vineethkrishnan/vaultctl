@@ -21,6 +21,7 @@ export const VaultMembershipSchema = z.object({
   encryptedVaultKey: z.string(),
   senderId: z.string(),
   wrapSignature: z.string(),
+  senderIdentityPublicKey: z.string(),
   role: z.string(),
 });
 export type VaultMembership = z.infer<typeof VaultMembershipSchema>;

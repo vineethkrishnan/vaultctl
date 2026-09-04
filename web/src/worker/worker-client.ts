@@ -64,7 +64,7 @@ function ensureWorker(): Worker {
           if (msg.op === "result") p.resolve(msg.data);
           else if (msg.op === "resultString") p.resolve(msg.value);
           else if (msg.op === "resultBool") p.resolve(msg.value);
-          else p.resolve(undefined);
+          else p.resolve(msg.rejectedVaultIds);
         }
         break;
       }
@@ -121,20 +121,22 @@ export async function waitReady(): Promise<void> {
 
 /** Initialize key custody. stretchedKey is transferred (zeroed on main thread). */
 export async function workerInit(params: {
+  userId: string;
   stretchedKey: Uint8Array;
   encryptedPrivateKey: string;
   encryptedIdentityPrivateKey: string;
   publicKey: string;
   vaults: VaultKeyMaterial[];
-}): Promise<void> {
+}): Promise<string[]> {
   await waitReady();
   // Transfer stretchedKey to Worker (zero-copy), main thread loses access
   const skBuffer = params.stretchedKey.buffer.slice(
     params.stretchedKey.byteOffset,
     params.stretchedKey.byteOffset + params.stretchedKey.byteLength,
   );
-  await send({
+  return send<string[]>({
     op: "init",
+    userId: params.userId,
     stretchedKey: skBuffer,
     encryptedPrivateKey: params.encryptedPrivateKey,
     encryptedIdentityPrivateKey: params.encryptedIdentityPrivateKey,

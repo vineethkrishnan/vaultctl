@@ -73,6 +73,28 @@ definitions:
       name:
         type: string
     type: object
+  internal_presenters_api.AuditEntryDTO:
+    properties:
+      action:
+        type: string
+      createdAt:
+        type: string
+      ipAddress:
+        type: string
+      resourceType:
+        type: string
+      userAgent:
+        type: string
+    type: object
+  internal_presenters_api.AuditListResponse:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/internal_presenters_api.AuditEntryDTO'
+        type: array
+      nextBefore:
+        type: string
+    type: object
   internal_presenters_api.BackupInfoDTO:
     properties:
       createdAt:
@@ -124,6 +146,27 @@ definitions:
   internal_presenters_api.CreateOrgRequest:
     properties:
       name:
+        type: string
+    type: object
+  internal_presenters_api.EmailPreferencesResponse:
+    properties:
+      digestFrequency:
+        type: string
+      locale:
+        type: string
+      loginAlerts:
+        type: boolean
+      schedDay:
+        type: integer
+      schedHour:
+        type: integer
+      schedMinute:
+        type: integer
+      schedMonth:
+        type: integer
+      schedWeekday:
+        type: integer
+      timezone:
         type: string
     type: object
   internal_presenters_api.ErrorBody:
@@ -312,6 +355,17 @@ definitions:
   internal_presenters_api.LogoutRequest:
     properties:
       refreshToken:
+        type: string
+    type: object
+  internal_presenters_api.MyOrgResponse:
+    properties:
+      id:
+        type: string
+      joinedAt:
+        type: string
+      name:
+        type: string
+      role:
         type: string
     type: object
   internal_presenters_api.NotificationDTO:
@@ -532,6 +586,9 @@ definitions:
         type: integer
       kdfParallelism:
         type: integer
+      locale:
+        description: '"en"/"de"; defaults to "en"'
+        type: string
       masterPasswordPreflight:
         type: string
       name:
@@ -649,6 +706,27 @@ definitions:
         description: base32 for manual entry
         type: string
     type: object
+  internal_presenters_api.UpdateEmailPreferencesRequest:
+    properties:
+      digestFrequency:
+        type: string
+      locale:
+        type: string
+      loginAlerts:
+        type: boolean
+      schedDay:
+        type: integer
+      schedHour:
+        type: integer
+      schedMinute:
+        type: integer
+      schedMonth:
+        type: integer
+      schedWeekday:
+        type: integer
+      timezone:
+        type: string
+    type: object
   internal_presenters_api.UpdateMemberRoleRequest:
     properties:
       role:
@@ -685,6 +763,10 @@ definitions:
         type: string
       email:
         type: string
+      emailVerified:
+        type: boolean
+      emailVerifiedAt:
+        type: string
       id:
         type: string
       name:
@@ -712,6 +794,11 @@ definitions:
       role:
         type: string
       senderId:
+        type: string
+      senderIdentityPublicKey:
+        description: |-
+          SenderIdentityPublicKey is the Ed25519 key the client checks
+          WrapSignature against before trusting EncryptedVaultKey. (H1)
         type: string
       vaultId:
         type: string
@@ -743,6 +830,11 @@ definitions:
       wrapSignature:
         type: string
     type: object
+  internal_presenters_api.VerifyEmailRequest:
+    properties:
+      code:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -756,7 +848,7 @@ paths:
         HTTP API. Use the CLI instead.
       responses:
         "501":
-          description: Not implemented — use CLI
+          description: Not implemented - use CLI
           schema:
             $ref: '#/definitions/internal_presenters_api.ErrorBody'
       security:
@@ -788,6 +880,54 @@ paths:
       summary: List backups
       tags:
       - Admin
+  /auth/email/resend:
+    post:
+      description: Issues a fresh verification code to the caller's email.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sent
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Resend email verification
+      tags:
+      - Auth
+  /auth/email/verify:
+    post:
+      consumes:
+      - application/json
+      description: Confirms the caller's email address using the emailed one-time
+        code.
+      parameters:
+      - description: Verification code
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Verified
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Verify email
+      tags:
+      - Auth
   /auth/invites/redeem:
     post:
       consumes:
@@ -1266,15 +1406,20 @@ paths:
       - Import/Export
   /health:
     get:
-      description: Returns server health status
+      description: Reports liveness and pings the database. Returns 503 when the database
+        is unreachable.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
             type: object
       summary: Health check
       tags:
@@ -1361,6 +1506,27 @@ paths:
       tags:
       - System
   /orgs:
+    get:
+      description: List the organizations the authenticated caller is an active member
+        of, with their role.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/internal_presenters_api.MyOrgResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List my organizations
+      tags:
+      - Organizations
     post:
       consumes:
       - application/json
@@ -1671,6 +1837,29 @@ paths:
       summary: Update check
       tags:
       - System
+  /updates/apply:
+    post:
+      description: Triggers the configured upgrade hook and streams progress as newline-delimited
+        JSON events. The server will become temporarily unreachable once the "restarting"
+        event is sent.
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "503":
+          description: upgrade not configured
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Apply in-app upgrade
+      tags:
+      - System
   /users/me:
     get:
       description: Returns the profile of the authenticated user
@@ -1808,6 +1997,75 @@ paths:
       summary: Delete API key
       tags:
       - API Keys
+  /users/me/audit:
+    get:
+      description: Returns the authenticated user's audit entries (newest first),
+        keyset-paginated via ?before= and ?limit=.
+      parameters:
+      - description: Max entries (1-200, default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: RFC3339 cursor; return entries strictly older than this
+        in: query
+        name: before
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.AuditListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: List own audit trail
+      tags:
+      - Users
+  /users/me/email-preferences:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.EmailPreferencesResponse'
+      security:
+      - BearerAuth: []
+      summary: Get email preferences
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Preference
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_presenters_api.UpdateEmailPreferencesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_presenters_api.EmailPreferencesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Update email preferences
+      tags:
+      - Users
   /users/me/sessions:
     get:
       description: Returns all active sessions for the authenticated user
@@ -1904,6 +2162,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Create vault
+      tags:
+      - Vaults
+  /vaults/{vaultId}:
+    delete:
+      description: Irreversibly delete a vault, its items, folders, members, and attachments.
+        Owner-only; requires a fresh step-up.
+      parameters:
+      - description: Vault ID
+        in: path
+        name: vaultId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: deleted
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_presenters_api.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Delete vault
       tags:
       - Vaults
   /vaults/{vaultId}/folders:

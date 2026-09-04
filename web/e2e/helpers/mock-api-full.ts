@@ -26,6 +26,7 @@ export interface MockVault {
   encryptedVaultKey: string;
   senderId: string;
   wrapSignature: string;
+  senderIdentityPublicKey: string;
   createdAt: string;
 }
 
@@ -113,6 +114,8 @@ function makeVault(seed: Partial<MockVault>, index: number): MockVault {
     wrapSignature:
       seed.wrapSignature ??
       "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    // 32 bytes, the real Ed25519 length the client checks wraps against.
+    senderIdentityPublicKey: seed.senderIdentityPublicKey ?? "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     createdAt: seed.createdAt ?? ISO_NOW,
   };
 }
@@ -756,7 +759,7 @@ export async function stubCryptoWorker(page: Page): Promise<void> {
         queueMicrotask(() => {
           switch (op) {
             case "init":
-              this.dispatch({ op: "initDone", requestId });
+              this.dispatch({ op: "initDone", requestId, rejectedVaultIds: [] });
               return;
 
             case "lock":

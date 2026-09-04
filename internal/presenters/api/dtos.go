@@ -98,6 +98,9 @@ type VaultMembershipDTO struct {
 	SenderID          string `json:"senderId"`
 	WrapSignature     string `json:"wrapSignature"`
 	Role              string `json:"role"`
+	// SenderIdentityPublicKey is the Ed25519 key the client checks
+	// WrapSignature against before trusting EncryptedVaultKey. (H1)
+	SenderIdentityPublicKey string `json:"senderIdentityPublicKey"`
 }
 
 type RefreshRequest struct {

@@ -58,6 +58,7 @@ export { aesKeyWrap, aesKeyUnwrap } from "./aes-kw.js";
 export {
   type SharePayload,
   verifyRecipientPublicKey,
+  verifyWrapSignature,
   buildSharePayload,
 } from "./vault-share.js";
 
