@@ -14,6 +14,7 @@
       "@shared/crypto": ["../web/src/shared/crypto/index.ts"],
       "@shared/crypto/*": ["../web/src/shared/crypto/*"],
       "@shared/totp": ["../web/src/shared/totp/totp.ts"],
+      "@shared/host": ["../web/src/shared/host/index.ts"],
       "@shared/webauthn": ["../web/src/shared/webauthn/index.ts"],
       "@shared/webauthn/*": ["../web/src/shared/webauthn/*"],
       "hash-wasm": ["./node_modules/hash-wasm/dist/lib/index.d.ts"]

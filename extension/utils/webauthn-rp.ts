@@ -18,7 +18,7 @@
  * effective domains.
  */
 
-import { isPublicSuffix, safeHostname } from "./host";
+import { isPublicSuffix, safeHostname } from "@shared/host";
 
 export function isRpIdAllowed(rpId: string, tabUrl: string): boolean {
   const host = safeHostname(tabUrl).trim().toLowerCase();

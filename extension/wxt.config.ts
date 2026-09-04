@@ -14,6 +14,7 @@ const sharedCryptoDir = resolve(thisDir, "../web/src/shared/crypto");
 const sharedTotpEntry = resolve(thisDir, "../web/src/shared/totp/totp.ts");
 // WebAuthn wire-format encoders, shared so the authenticator in the background
 // produces the same bytes the web and mobile clients would.
+const sharedHostDir = resolve(thisDir, "../web/src/shared/host");
 const sharedWebauthnDir = resolve(thisDir, "../web/src/shared/webauthn");
 // hash-wasm is declared as a dep of extension/package.json but the shared
 // crypto module lives outside extension/, so the bundler cannot walk
@@ -33,6 +34,7 @@ export default defineConfig({
         "@shared/crypto": resolve(sharedCryptoDir, "index.ts"),
         "@shared/crypto/": `${sharedCryptoDir}/`,
         "@shared/totp": sharedTotpEntry,
+        "@shared/host": resolve(sharedHostDir, "index.ts"),
         "@shared/webauthn": resolve(sharedWebauthnDir, "index.ts"),
         "@shared/webauthn/": `${sharedWebauthnDir}/`,
         "hash-wasm": hashWasmEntry,

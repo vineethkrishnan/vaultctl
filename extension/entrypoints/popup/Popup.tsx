@@ -58,7 +58,7 @@ import {
   GEN_WORDS_MAX,
   type GenMode,
 } from "../../utils/password-gen";
-import { isSafeHttpUri } from "../../utils/host";
+import { isSafeHttpUri } from "@shared/host";
 import { copySecret } from "../../utils/clipboard";
 import {
   isBiometricAvailable,

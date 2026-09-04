@@ -55,7 +55,8 @@
             "deploymentTarget": "16.0"
           }
         }
-      ]
+      ],
+      "./plugins/withAndroidAutofill"
     ],
     "experiments": {
       "typedRoutes": true
