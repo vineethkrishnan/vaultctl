@@ -166,37 +166,9 @@ func (uc *Login) Execute(ctx context.Context, in LoginInput) (LoginOutput, error
 		return LoginOutput{}, fmt.Errorf("persist session: %w", err)
 	}
 
-	// Load vault memberships so the client can hydrate its key custody.
-	vaults, err := uc.Vaults.ListForUser(ctx, u.ID)
+	memberships, err := uc.loadMemberships(ctx, u)
 	if err != nil {
-		return LoginOutput{}, fmt.Errorf("list vaults: %w", err)
-	}
-	memberships := make([]VaultMembership, 0, len(vaults))
-	senderKeys := map[user.ID]crypto.PublicKey{u.ID: u.IdentityPublicKey}
-	for _, v := range vaults {
-		m, err := uc.Vaults.MemberForUser(ctx, v.ID, u.ID)
-		if err != nil {
-			return LoginOutput{}, fmt.Errorf("load membership for vault %s: %w", v.ID, err)
-		}
-		senderKey, cached := senderKeys[m.SenderID]
-		if !cached {
-			sender, err := uc.Users.FindByID(ctx, m.SenderID)
-			if err != nil {
-				return LoginOutput{}, fmt.Errorf("load sender %s for vault %s: %w", m.SenderID, v.ID, err)
-			}
-			senderKey = sender.IdentityPublicKey
-			senderKeys[m.SenderID] = senderKey
-		}
-		memberships = append(memberships, VaultMembership{
-			VaultID:                 v.ID,
-			VaultName:               v.Name,
-			VaultType:               v.Type,
-			EncryptedVaultKey:       m.EncryptedVaultKey,
-			SenderID:                m.SenderID,
-			WrapSignature:           m.WrapSignature,
-			Role:                    m.Role,
-			SenderIdentityPublicKey: senderKey,
-		})
+		return LoginOutput{}, err
 	}
 
 	return LoginOutput{
@@ -216,6 +188,46 @@ func (uc *Login) Execute(ctx context.Context, in LoginInput) (LoginOutput, error
 		IdentityPublicKey:           u.IdentityPublicKey,
 		Vaults:                      memberships,
 	}, nil
+}
+
+// loadMemberships gathers the vault key material the client hydrates its key
+// custody with, including the identity key of whoever wrapped each key. The
+// client verifies WrapSignature against it before trusting a vault key (H1),
+// so a missing sender is fatal rather than an empty field.
+func (uc *Login) loadMemberships(ctx context.Context, u user.User) ([]VaultMembership, error) {
+	vaults, err := uc.Vaults.ListForUser(ctx, u.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list vaults: %w", err)
+	}
+
+	memberships := make([]VaultMembership, 0, len(vaults))
+	senderKeys := map[user.ID]crypto.PublicKey{u.ID: u.IdentityPublicKey}
+	for _, v := range vaults {
+		m, err := uc.Vaults.MemberForUser(ctx, v.ID, u.ID)
+		if err != nil {
+			return nil, fmt.Errorf("load membership for vault %s: %w", v.ID, err)
+		}
+		senderKey, cached := senderKeys[m.SenderID]
+		if !cached {
+			sender, err := uc.Users.FindByID(ctx, m.SenderID)
+			if err != nil {
+				return nil, fmt.Errorf("load sender %s for vault %s: %w", m.SenderID, v.ID, err)
+			}
+			senderKey = sender.IdentityPublicKey
+			senderKeys[m.SenderID] = senderKey
+		}
+		memberships = append(memberships, VaultMembership{
+			VaultID:                 v.ID,
+			VaultName:               v.Name,
+			VaultType:               v.Type,
+			EncryptedVaultKey:       m.EncryptedVaultKey,
+			SenderID:                m.SenderID,
+			WrapSignature:           m.WrapSignature,
+			Role:                    m.Role,
+			SenderIdentityPublicKey: senderKey,
+		})
+	}
+	return memberships, nil
 }
 
 // persistSession collapses any prior session for the same device before

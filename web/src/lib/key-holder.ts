@@ -48,7 +48,7 @@ export interface InitParams {
  * vaults quietly vanish from the list.
  */
 export async function initKeys(params: InitParams): Promise<string[]> {
-  return workerInit({
+  const rejected = await workerInit({
     userId: params.userId,
     stretchedKey: params.stretchedKey,
     encryptedPrivateKey: params.encryptedPrivateKey,
@@ -63,6 +63,7 @@ export async function initKeys(params: InitParams): Promise<string[]> {
       senderIdentityPublicKey: v.senderIdentityPublicKey,
     })),
   });
+  return rejected ?? [];
 }
 
 /** Check if keys are loaded in the Worker. */
