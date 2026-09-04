@@ -136,6 +136,15 @@
       "title": "Delete permanently",
       "message": "Permanently delete \"{{name}}\"? This cannot be undone, and you will be asked for your master password.",
       "confirmLabel": "Delete forever"
+    },
+    "emptyExpired": "Empty expired",
+    "purgedExpired_one": "Deleted 1 expired item.",
+    "purgedExpired_other": "Deleted {{count}} expired items.",
+    "purgedExpired_zero": "Nothing was old enough to delete. Items are only removed after 30 days in the trash.",
+    "purgeExpiredConfirm": {
+      "title": "Empty expired trash",
+      "message": "Permanently delete every item that has been in the trash for more than 30 days? Newer items stay. This cannot be undone, and you will be asked for your master password.",
+      "confirmLabel": "Delete expired"
     }
   },
   "reprompt": {

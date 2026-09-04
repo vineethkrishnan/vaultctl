@@ -92,19 +92,41 @@ test.describe.serial("Trash lifecycle", () => {
     await expect(page.getByText("First Trashed")).toBeHidden({ timeout: 10_000 });
   });
 
-  // TODO: Empty trash UI does not exist yet - no global "Empty trash" button
-  // in VaultTrashPage. Verify the route mock contract instead.
-  test("empty trash route contract returns 204 for DELETE /vaults/:id/trash", async ({
-    page,
-  }) => {
-    await page.goto("/login");
-    // Dispatch from the page context so page.route() intercepts fire.
-    const result = await page.evaluate(async () => {
-      const response = await fetch("/api/v1/vaults/vault-1/trash", {
-        method: "DELETE",
-      });
-      return { status: response.status };
+  test("empties expired trash after confirming", async ({ page }) => {
+    await loginViaUI(page);
+    await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
+    await page.getByRole("link", { name: "Trash" }).first().click();
+    await expect(page.getByText("First Trashed")).toBeVisible({ timeout: 10_000 });
+
+    const purgeResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/v1/vaults/vault-1/trash" &&
+        response.request().method() === "DELETE",
+    );
+
+    await page.getByRole("button", { name: "Empty expired" }).click();
+    // Destructive actions confirm through ConfirmDialog, never window.confirm.
+    await expect(page.getByText(/more than 30 days/)).toBeVisible();
+    await page.getByRole("button", { name: "Delete expired" }).click();
+    await purgeResponse;
+
+    await expect(page.getByText("Deleted 2 expired items.")).toBeVisible({
+      timeout: 10_000,
     });
-    expect(result.status).toBe(204);
+    await expect(page.getByText("First Trashed")).toBeHidden();
+    await expect(page.getByText("Second Trashed")).toBeHidden();
+  });
+
+  test("leaves the trash alone when the confirm is dismissed", async ({ page }) => {
+    await loginViaUI(page);
+    await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
+    await page.getByRole("link", { name: "Trash" }).first().click();
+    await expect(page.getByText("First Trashed")).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole("button", { name: "Empty expired" }).click();
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    await expect(page.getByText("First Trashed")).toBeVisible();
+    expect(state.items.filter((item) => item.trashed)).toHaveLength(2);
   });
 });

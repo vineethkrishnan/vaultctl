@@ -23,6 +23,7 @@ export interface MockVault {
   name: string;
   type: "personal" | "shared";
   role: string;
+  orgId: string | null;
   encryptedVaultKey: string;
   senderId: string;
   wrapSignature: string;
@@ -73,6 +74,7 @@ export interface MockState {
   folders: MockFolder[];
   sessions: MockSession[];
   members: Record<string, MockMember[]>;
+  orgMembers: Record<string, MockMember[]>;
   rekeyCalls: number;
   importCalls: number;
   exportCalls: number;
@@ -85,6 +87,7 @@ export interface MockStateSeed {
   folders?: Partial<MockFolder>[];
   sessions?: Partial<MockSession>[];
   members?: Record<string, MockMember[]>;
+  orgMembers?: Record<string, MockMember[]>;
 }
 
 // ===========================================================================
@@ -107,6 +110,7 @@ function makeVault(seed: Partial<MockVault>, index: number): MockVault {
     name: seed.name ?? `Vault ${index + 1}`,
     type: seed.type ?? "personal",
     role: seed.role ?? "owner",
+    orgId: seed.orgId ?? null,
     encryptedVaultKey:
       seed.encryptedVaultKey ??
       "AQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
@@ -164,6 +168,7 @@ export function createMockState(seed: MockStateSeed = {}): MockState {
     folders: (seed.folders ?? []).map(makeFolder),
     sessions: (seed.sessions ?? []).map(makeSession),
     members: seed.members ?? {},
+    orgMembers: seed.orgMembers ?? {},
     rekeyCalls: 0,
     importCalls: 0,
     exportCalls: 0,
@@ -196,7 +201,9 @@ function buildLoginResponse(state: MockState) {
     publicKey: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
     publicKeySignature:
       "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-    identityPublicKey: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    // Must be a real 32-byte Ed25519 length: importEd25519PublicKey throws
+    // otherwise, and the restore path never reaches its signature check.
+    identityPublicKey: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     vaults: state.vaults.map((vault) => ({
       vaultId: vault.id,
       vaultName: vault.name,
@@ -559,10 +566,12 @@ export async function mockApiFull(page: Page, state: MockState): Promise<void> {
       }
 
       if (!routeMatch.itemId && method === "DELETE") {
+        const before = state.items.length;
         state.items = state.items.filter(
           (item) => !(item.vaultId === routeMatch.vaultId && item.trashed),
         );
-        return route.fulfill({ status: 204 });
+        // The real handler answers 200 with the count it purged.
+        return route.fulfill(json({ purged: before - state.items.length }));
       }
 
       if (method === "GET") {
@@ -596,12 +605,25 @@ export async function mockApiFull(page: Page, state: MockState): Promise<void> {
           const body = await parseBody(route);
           const member: MockMember = {
             userId:
-              (body.userId as string | undefined) ?? `user-${members.length + 1}`,
+              (body.recipientUserId as string | undefined) ??
+              (body.userId as string | undefined) ??
+              `user-${members.length + 1}`,
             role: (body.role as string | undefined) ?? "member",
             email: (body.email as string | undefined) ?? "new@example.com",
           };
           members.push(member);
-          return route.fulfill(json(member, 201));
+          const orgId = state.vaults.find(
+            (vault) => vault.id === routeMatch.vaultId,
+          )?.orgId;
+          if (orgId) {
+            const orgRoster = state.orgMembers[orgId] ?? [];
+            if (!orgRoster.some((m) => m.userId === member.userId)) {
+              orgRoster.push(member);
+            }
+            state.orgMembers[orgId] = orgRoster;
+          }
+          // The real handler answers 204 with no body (see SharingPanel).
+          return route.fulfill({ status: 204, body: "" });
         }
       }
 
@@ -659,6 +681,28 @@ export async function mockApiFull(page: Page, state: MockState): Promise<void> {
   );
 
   // Org members (stub)
+  // Recipient key lookup for a share. The three fields are what SharingPanel
+  // needs before it will wrap a vault key.
+  await page.route(
+    /\/api\/v1\/orgs\/[^/]+\/members\/[^/?]+\/pubkey(\?.*)?$/,
+    (route) =>
+      route.fulfill(
+        json({
+          publicKey: "AQI=",
+          publicKeySignature: "AQI=",
+          identityPublicKey: "AQI=",
+        }),
+      ),
+  );
+
+  await page.route(
+    /\/api\/v1\/orgs\/([^/]+)\/members(\?.*)?$/,
+    (route) => {
+      const orgId = new URL(route.request().url()).pathname.split("/")[4] ?? "";
+      return route.fulfill(json(state.orgMembers[orgId] ?? []));
+    },
+  );
+
   await page.route(
     /\/api\/v1\/orgs\/[^/]+\/members\/[^/?]+(\?.*)?$/,
     (route) => route.fulfill(json({ ok: true })),
@@ -814,6 +858,29 @@ export async function stubCryptoWorker(page: Page): Promise<void> {
 
             case "verifyPassword":
               this.dispatch({ op: "resultBool", requestId, value: true });
+              return;
+
+            case "signIdentity": {
+              // Fixed 64-byte signature. Nothing in a mocked run verifies it;
+              // the point is that the export path gets a signature back.
+              const signature = new Uint8Array(64).fill(7);
+              this.dispatch({
+                op: "result",
+                requestId,
+                data: signature.buffer,
+              });
+              return;
+            }
+
+            case "wrapVaultKey":
+              this.dispatch({
+                op: "resultString",
+                requestId,
+                value: JSON.stringify({
+                  encryptedVaultKey: "AQI=",
+                  wrapSignature: "AQI=",
+                }),
+              });
               return;
 
             default:

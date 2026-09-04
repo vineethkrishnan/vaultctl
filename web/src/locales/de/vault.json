@@ -136,6 +136,15 @@
       "title": "Endgültig löschen",
       "message": "\"{{name}}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden, und Sie werden nach Ihrem Master-Passwort gefragt.",
       "confirmLabel": "Endgültig löschen"
+    },
+    "emptyExpired": "Abgelaufene löschen",
+    "purgedExpired_one": "1 abgelaufener Eintrag gelöscht.",
+    "purgedExpired_other": "{{count}} abgelaufene Einträge gelöscht.",
+    "purgedExpired_zero": "Nichts war alt genug zum Löschen. Einträge werden erst nach 30 Tagen im Papierkorb entfernt.",
+    "purgeExpiredConfirm": {
+      "title": "Abgelaufene Einträge löschen",
+      "message": "Alle Einträge endgültig löschen, die länger als 30 Tage im Papierkorb liegen? Neuere bleiben erhalten. Das kann nicht rückgängig gemacht werden, und du wirst nach deinem Master-Passwort gefragt.",
+      "confirmLabel": "Abgelaufene löschen"
     }
   },
   "reprompt": {
