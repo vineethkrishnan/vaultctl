@@ -31,12 +31,12 @@ async function pageFetch(
 
 // Import / Export / Restore flows.
 //
-// NOTE: ExportDialog and RestoreDialog do not exist in the current UI.
-// Only ImportDialog exists, and it is embedded directly in the Settings
-// route - not a modal. We drive the visible import flow end-to-end and
-// verify that a POST per item fires through the mocked backend. For
-// export / restore we verify the API route contract only until the UI
-// components land. Documented as a UI gap.
+// All three panels live inline in the Settings "Data" tab (they are sections,
+// not modals) and are driven through the UI below. The one gap left is a
+// successful restore: RestoreDialog runs a real Ed25519 verification against
+// the identity key in sessionStorage, which the stubbed crypto worker cannot
+// produce a valid signature for. The rejection path is covered instead, and
+// the import route contract is pinned separately.
 
 const BITWARDEN_CSV = [
   "folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp",
@@ -44,6 +44,20 @@ const BITWARDEN_CSV = [
   ',,login,GitLab,,,0,https://gitlab.com,octocat,p@ss,',
   ',,note,Meeting Notes,some secret note,,0,,,,',
 ].join("\n");
+
+async function openDataSettings(page: Page): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("test@example.com");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Master Password").fill("test-master-password-123");
+  await page.getByRole("button", { name: "Unlock" }).click();
+  await expect(page).toHaveURL(/\/vault\/vault-1/, { timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("menuitem", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/settings/);
+  await page.getByRole("button", { name: "Data" }).click();
+}
 
 test.describe.serial("Import / Export / Restore", () => {
   let state: MockState;
@@ -112,26 +126,52 @@ test.describe.serial("Import / Export / Restore", () => {
     expect(itemPosts.length).toBe(3);
   });
 
-  // TODO: ExportDialog component does not yet exist. Verify the mock contract
-  // for POST /api/v1/export instead of clicking through a dialog.
-  test("export API contract returns a signed bundle", async ({ page }) => {
-    await page.goto("/login");
+  test("downloads a signed backup from the export panel", async ({ page }) => {
+    await openDataSettings(page);
 
-    const response = await pageFetch(page, "/api/v1/export", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vaultId: "vault-1" }),
-    });
-    expect(response.status).toBe(200);
-    const body = response.body as { version: number; signature: string };
-    expect(body.version).toBe(1);
-    expect(body.signature).toBeTruthy();
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download encrypted backup" }).click();
+
+    const saved = await download;
+    expect(saved.suggestedFilename()).toMatch(/^vaultctl-backup-\d{4}-\d{2}-\d{2}\.json$/);
+    await expect(page.getByText(/^Saved /)).toBeVisible({ timeout: 10_000 });
     expect(state.exportCalls).toBe(1);
   });
 
-  // TODO: RestoreDialog component does not yet exist. Round-trip
-  // export -> import is blocked on the UI landing. Verify the API
-  // contract for POST /api/v1/import separately.
+  test("restore panel refuses a tampered backup before any network call", async ({
+    page,
+  }) => {
+    await openDataSettings(page);
+
+    // Structurally complete and addressed to this account, so verification
+    // gets all the way to the Ed25519 check and fails there.
+    const tampered = JSON.stringify({
+      version: 1,
+      createdAt: "2026-01-01T00:00:00Z",
+      userId: "test-user-id",
+      vaults: [],
+      items: [],
+      folders: [],
+      envelopeMac: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    });
+
+    await page
+      .locator('input[type="file"]')
+      .last()
+      .setInputFiles({
+        name: "tampered-backup.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(tampered, "utf-8"),
+      });
+
+    await expect(
+      page.getByText(/Signature verification failed/),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Signature verified")).toBeHidden();
+    // Refusing before the network is the whole point of the check.
+    expect(state.importCalls).toBe(0);
+  });
+
   test("import API contract accepts a bundle and returns a count", async ({
     page,
   }) => {

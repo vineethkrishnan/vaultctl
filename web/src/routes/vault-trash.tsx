@@ -11,11 +11,19 @@ import { ITEM_TYPE_ICONS } from "@/components/vault/ItemList";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { StepUpModal } from "@/components/auth/StepUpModal";
 import type { ItemResponse } from "@/shared/types/api";
-import { RotateCcw, Trash2, KeyRound, AlertTriangle } from "lucide-react";
+import { RotateCcw, Trash2, KeyRound, AlertTriangle, Trash } from "lucide-react";
 
 interface DecryptedItem extends ItemResponse {
   decryptedName: string;
 }
+
+interface PurgeTrashResponse {
+  purged: number;
+}
+
+// Both purge paths can bounce off a step-up challenge, so the retry has to
+// remember which one was interrupted.
+type PurgeAction = { kind: "item"; itemId: string } | { kind: "expired" };
 
 export function VaultTrashPage() {
   const { t } = useTranslation(["vault", "common"]);
@@ -62,9 +70,11 @@ export function VaultTrashPage() {
   });
 
   const [pendingPurge, setPendingPurge] = useState<DecryptedItem | null>(null);
+  const [pendingPurgeExpired, setPendingPurgeExpired] = useState(false);
   const [stepUpOpen, setStepUpOpen] = useState(false);
   const [purgeError, setPurgeError] = useState<string | null>(null);
-  const purgeTargetId = useRef<string | null>(null);
+  const [purgedCount, setPurgedCount] = useState<number | null>(null);
+  const pendingAction = useRef<PurgeAction | null>(null);
 
   const purgeMutation = useMutation({
     mutationFn: (itemId: string) =>
@@ -75,19 +85,33 @@ export function VaultTrashPage() {
     },
   });
 
+  const purgeExpiredMutation = useMutation({
+    mutationFn: () =>
+      apiDelete<PurgeTrashResponse>(`/api/v1/vaults/${vaultId}/trash`),
+    onSuccess: (result) => {
+      setPurgedCount(result.purged);
+      queryClient.invalidateQueries({ queryKey: queryKeys.trash.list(vaultId) });
+    },
+  });
+
   // Permanent delete requires a step-up (master password). On the 403 the server
   // returns, prompt for it and retry once the elevated token is in the store.
-  async function runPurge(itemId: string) {
+  async function runPurge(action: PurgeAction) {
     setPurgeError(null);
+    setPurgedCount(null);
     try {
-      await purgeMutation.mutateAsync(itemId);
-      purgeTargetId.current = null;
+      if (action.kind === "item") {
+        await purgeMutation.mutateAsync(action.itemId);
+      } else {
+        await purgeExpiredMutation.mutateAsync();
+      }
+      pendingAction.current = null;
     } catch (err) {
       if (
         err instanceof ApiRequestError &&
         err.error.code === "STEP_UP_REQUIRED"
       ) {
-        purgeTargetId.current = itemId;
+        pendingAction.current = action;
         setStepUpOpen(true);
         return;
       }
@@ -110,7 +134,24 @@ export function VaultTrashPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 text-xl font-bold">{t("vault:trash.title")}</h1>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold">{t("vault:trash.title")}</h1>
+        {decryptedItems.length > 0 && (
+          <button
+            onClick={() => setPendingPurgeExpired(true)}
+            className="flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+          >
+            <Trash className="h-3.5 w-3.5" />
+            {t("vault:trash.emptyExpired")}
+          </button>
+        )}
+      </div>
+
+      {purgedCount !== null && (
+        <div className="mb-3 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+          {t("vault:trash.purgedExpired", { count: purgedCount })}
+        </div>
+      )}
 
       {purgeError && (
         <div className="mb-3 flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -177,21 +218,35 @@ export function VaultTrashPage() {
         onConfirm={() => {
           const target = pendingPurge;
           setPendingPurge(null);
-          if (target) void runPurge(target.id);
+          if (target) void runPurge({ kind: "item", itemId: target.id });
         }}
         onCancel={() => setPendingPurge(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingPurgeExpired}
+        title={t("vault:trash.purgeExpiredConfirm.title")}
+        message={t("vault:trash.purgeExpiredConfirm.message")}
+        confirmLabel={t("vault:trash.purgeExpiredConfirm.confirmLabel")}
+        destructive
+        busy={purgeExpiredMutation.isPending}
+        onConfirm={() => {
+          setPendingPurgeExpired(false);
+          void runPurge({ kind: "expired" });
+        }}
+        onCancel={() => setPendingPurgeExpired(false)}
       />
 
       <StepUpModal
         open={stepUpOpen}
         onSuccess={() => {
           setStepUpOpen(false);
-          const id = purgeTargetId.current;
-          if (id) void runPurge(id);
+          const action = pendingAction.current;
+          if (action) void runPurge(action);
         }}
         onCancel={() => {
           setStepUpOpen(false);
-          purgeTargetId.current = null;
+          pendingAction.current = null;
         }}
       />
     </div>
