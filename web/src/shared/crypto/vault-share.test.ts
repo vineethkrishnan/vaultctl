@@ -17,7 +17,11 @@ import {
 import { parseBlob } from "./blob.js";
 import { AlgID } from "./algorithm.js";
 import { fromBase64 } from "./utils.js";
-import { verifyRecipientPublicKey, buildSharePayload } from "./vault-share.js";
+import {
+  verifyRecipientPublicKey,
+  verifyWrapSignature,
+  buildSharePayload,
+} from "./vault-share.js";
 
 async function makeRecipient() {
   const rsa = await generateRSAKeyPair();
@@ -116,5 +120,116 @@ describe("buildSharePayload", () => {
       expectedMessage,
     );
     expect(ok).toBe(true);
+  });
+});
+
+describe("verifyWrapSignature", () => {
+  const vaultId = "vault-123";
+  const recipientUserId = "user-abc";
+
+  async function makeWrap() {
+    const recipient = await makeRecipient();
+    const senderIdentity = await generateEd25519KeyPair();
+    const senderPriv = await importEd25519PrivateKey(senderIdentity.privateKey);
+    const payload = await buildSharePayload({
+      vaultId,
+      recipientUserId,
+      rawVaultKey: crypto.getRandomValues(new Uint8Array(32)),
+      recipientRsaPublicKey: recipient.rsa.publicKey,
+      signWrap: (message) => ed25519Sign(senderPriv, message),
+    });
+    return {
+      senderIdentityPublicKey: senderIdentity.publicKey,
+      encryptedVaultKey: fromBase64(payload.encryptedVaultKey),
+      wrapSignature: fromBase64(payload.wrapSignature),
+    };
+  }
+
+  it("accepts a wrap the named sender actually signed", async () => {
+    const wrap = await makeWrap();
+    const ok = await verifyWrapSignature({
+      vaultId,
+      recipientUserId,
+      encryptedVaultKey: wrap.encryptedVaultKey,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: wrap.senderIdentityPublicKey,
+    });
+    expect(ok).toBe(true);
+  });
+
+  it("rejects a vault key the server swapped underneath the signature", async () => {
+    const wrap = await makeWrap();
+    const tampered = Uint8Array.from(wrap.encryptedVaultKey);
+    const lastByte = tampered.length - 1;
+    tampered[lastByte] = (tampered[lastByte] ?? 0) ^ 0xff;
+    const ok = await verifyWrapSignature({
+      vaultId,
+      recipientUserId,
+      encryptedVaultKey: tampered,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: wrap.senderIdentityPublicKey,
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("rejects a wrap signed by someone other than the named sender", async () => {
+    const wrap = await makeWrap();
+    const impostor = await generateEd25519KeyPair();
+    const ok = await verifyWrapSignature({
+      vaultId,
+      recipientUserId,
+      encryptedVaultKey: wrap.encryptedVaultKey,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: impostor.publicKey,
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("rejects a wrap replayed onto a different vault", async () => {
+    const wrap = await makeWrap();
+    const ok = await verifyWrapSignature({
+      vaultId: "vault-999",
+      recipientUserId,
+      encryptedVaultKey: wrap.encryptedVaultKey,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: wrap.senderIdentityPublicKey,
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("rejects a wrap replayed onto a different recipient", async () => {
+    const wrap = await makeWrap();
+    const ok = await verifyWrapSignature({
+      vaultId,
+      recipientUserId: "user-zzz",
+      encryptedVaultKey: wrap.encryptedVaultKey,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: wrap.senderIdentityPublicKey,
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("rejects rather than throws when the sender identity key is missing", async () => {
+    const wrap = await makeWrap();
+    const ok = await verifyWrapSignature({
+      vaultId,
+      recipientUserId,
+      encryptedVaultKey: wrap.encryptedVaultKey,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: new Uint8Array(0),
+    });
+    expect(ok).toBe(false);
+  });
+
+  it("rejects rather than throws on a malformed sender identity key", async () => {
+    const wrap = await makeWrap();
+    const ok = await verifyWrapSignature({
+      vaultId,
+      recipientUserId,
+      encryptedVaultKey: wrap.encryptedVaultKey,
+      wrapSignature: wrap.wrapSignature,
+      senderIdentityPublicKey: new Uint8Array([1, 2, 3]),
+    });
+    expect(ok).toBe(false);
   });
 });

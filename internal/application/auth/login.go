@@ -36,6 +36,11 @@ type VaultMembership struct {
 	SenderID          user.ID
 	WrapSignature     crypto.Signature
 	Role              user.Role
+
+	// SenderIdentityPublicKey lets the client verify WrapSignature without a
+	// round trip per shared vault. Trust in this key still rests on the
+	// server; the out-of-band safety number is what hardens that. (H1)
+	SenderIdentityPublicKey crypto.PublicKey
 }
 
 // LoginOutput is returned on success. encrypted_private_key + vault key
@@ -167,19 +172,30 @@ func (uc *Login) Execute(ctx context.Context, in LoginInput) (LoginOutput, error
 		return LoginOutput{}, fmt.Errorf("list vaults: %w", err)
 	}
 	memberships := make([]VaultMembership, 0, len(vaults))
+	senderKeys := map[user.ID]crypto.PublicKey{u.ID: u.IdentityPublicKey}
 	for _, v := range vaults {
 		m, err := uc.Vaults.MemberForUser(ctx, v.ID, u.ID)
 		if err != nil {
 			return LoginOutput{}, fmt.Errorf("load membership for vault %s: %w", v.ID, err)
 		}
+		senderKey, cached := senderKeys[m.SenderID]
+		if !cached {
+			sender, err := uc.Users.FindByID(ctx, m.SenderID)
+			if err != nil {
+				return LoginOutput{}, fmt.Errorf("load sender %s for vault %s: %w", m.SenderID, v.ID, err)
+			}
+			senderKey = sender.IdentityPublicKey
+			senderKeys[m.SenderID] = senderKey
+		}
 		memberships = append(memberships, VaultMembership{
-			VaultID:           v.ID,
-			VaultName:         v.Name,
-			VaultType:         v.Type,
-			EncryptedVaultKey: m.EncryptedVaultKey,
-			SenderID:          m.SenderID,
-			WrapSignature:     m.WrapSignature,
-			Role:              m.Role,
+			VaultID:                 v.ID,
+			VaultName:               v.Name,
+			VaultType:               v.Type,
+			EncryptedVaultKey:       m.EncryptedVaultKey,
+			SenderID:                m.SenderID,
+			WrapSignature:           m.WrapSignature,
+			Role:                    m.Role,
+			SenderIdentityPublicKey: senderKey,
 		})
 	}
 

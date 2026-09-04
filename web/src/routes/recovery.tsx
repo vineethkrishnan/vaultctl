@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/lib/auth-store";
+import { useVaultTrustStore } from "@/lib/vault-trust-store";
 import { apiGet, apiPost, ApiRequestError } from "@/lib/api-client";
 import { initKeys } from "@/lib/key-holder";
 import {
@@ -45,6 +46,7 @@ export function RecoveryPage() {
   const { t } = useTranslation(["auth", "common"]);
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setRejectedVaultIds = useVaultTrustStore((s) => s.setRejectedVaultIds);
 
   const [step, setStep] = useState<"email" | "reset" | "nokit">("email");
   const [email, setEmail] = useState("");
@@ -179,15 +181,19 @@ export function RecoveryPage() {
         loginRes.encryptedIdentityPrivateKey,
       );
 
-      await initKeys({
+      const rejectedVaultIds = await initKeys({
+        userId: loginRes.userId,
         stretchedKey: newStretchedKey,
         encryptedPrivateKey: loginRes.encryptedPrivateKey,
         encryptedIdentityPrivateKey: loginRes.encryptedIdentityPrivateKey,
         publicKey: loginRes.publicKey,
         vaults: loginRes.vaults,
       });
+      setRejectedVaultIds(rejectedVaultIds);
 
-      const firstVault = loginRes.vaults[0];
+      const firstVault = loginRes.vaults.find(
+        (vault) => !rejectedVaultIds.includes(vault.vaultId),
+      );
       navigate({
         to: "/vault/$vaultId",
         params: { vaultId: firstVault ? firstVault.vaultId : "none" },

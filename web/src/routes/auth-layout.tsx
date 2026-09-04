@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { VaultSidebar } from "@/components/vault/VaultSidebar";
 import { UpdateBanner } from "@/components/system/UpdateBanner";
 import { VerifyEmailBanner } from "@/components/system/VerifyEmailBanner";
+import { UntrustedVaultBanner } from "@/components/system/UntrustedVaultBanner";
 import { QuickActions } from "@/components/layout/QuickActions";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { useAutoLock } from "@/hooks/use-auto-lock";
@@ -73,6 +74,7 @@ export function AuthLayout() {
           className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8"
           role="main"
         >
+          <UntrustedVaultBanner />
           {features.mailer && features.emailVerification && <VerifyEmailBanner />}
           {features.updates && <UpdateBanner />}
           <div key={pathname} className="animate-fade-up">

@@ -12,7 +12,8 @@ import { CreateVaultDialog } from "@/components/vault/CreateVaultDialog";
 import { BrandMark } from "@/components/BrandMark";
 import { QuickActions } from "@/components/layout/QuickActions";
 import { ProfileMenu } from "@/components/layout/ProfileMenu";
-import { KeyRound, Star, Trash2, FolderClosed, Plus, X } from "lucide-react";
+import { KeyRound, Star, Trash2, FolderClosed, Plus, X, ShieldAlert } from "lucide-react";
+import { useVaultTrustStore } from "@/lib/vault-trust-store";
 
 const navLink =
   "row-interactive flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-0.5 [&.active]:bg-accent [&.active]:text-foreground";
@@ -32,7 +33,10 @@ export function VaultSidebar({ open = false, onClose }: Props) {
     queryFn: () => apiGet<VaultResponse[]>("/api/v1/vaults"),
   });
 
-  const activeVault = vaults?.find((v) => v.id === vaultId) ?? vaults?.[0];
+  const rejectedVaultIds = useVaultTrustStore((s) => s.rejectedVaultIds);
+  const activeVault =
+    vaults?.find((v) => v.id === vaultId) ??
+    vaults?.find((v) => !rejectedVaultIds.includes(v.id));
 
   return (
     <aside
@@ -71,17 +75,31 @@ export function VaultSidebar({ open = false, onClose }: Props) {
           </button>
         </div>
         <div className="mt-1.5 space-y-0.5">
-          {vaults?.map((v) => (
-            <Link
-              key={v.id}
-              to="/vault/$vaultId"
-              params={{ vaultId: v.id }}
-              className={`${navLink} ${v.id === activeVault?.id ? "active" : ""}`}
-            >
-              <KeyRound className="h-4 w-4 shrink-0" />
-              <span className="truncate">{v.name}</span>
-            </Link>
-          ))}
+          {vaults?.map((v) =>
+            rejectedVaultIds.includes(v.id) ? (
+              <div
+                key={v.id}
+                title={t("vault:sidebar.untrustedVaultHint")}
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-destructive"
+              >
+                <ShieldAlert className="h-4 w-4 shrink-0" />
+                <span className="truncate line-through">{v.name}</span>
+                <span className="sr-only">
+                  {t("vault:sidebar.untrustedVaultHint")}
+                </span>
+              </div>
+            ) : (
+              <Link
+                key={v.id}
+                to="/vault/$vaultId"
+                params={{ vaultId: v.id }}
+                className={`${navLink} ${v.id === activeVault?.id ? "active" : ""}`}
+              >
+                <KeyRound className="h-4 w-4 shrink-0" />
+                <span className="truncate">{v.name}</span>
+              </Link>
+            ),
+          )}
         </div>
       </div>
 

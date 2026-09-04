@@ -9,6 +9,9 @@ export interface VaultKeyMaterial {
   vaultId: string;
   encryptedVaultKey: string; // base64 wire blob
   vaultType: "personal" | "shared";
+  senderId: string;
+  wrapSignature: string; // base64 Ed25519 signature over the H1 message
+  senderIdentityPublicKey: string; // base64 raw Ed25519 identity key
 }
 
 // ===========================================================================
@@ -19,6 +22,7 @@ export type WorkerRequest =
   | {
       op: "init";
       requestId: string;
+      userId: string; // recipient id bound into every wrap signature (H1)
       stretchedKey: ArrayBuffer;
       encryptedPrivateKey: string;
       encryptedIdentityPrivateKey: string;
@@ -94,7 +98,9 @@ export type WorkerRequest =
 
 export type WorkerResponse =
   | { op: "ready" }
-  | { op: "initDone"; requestId: string }
+  // rejectedVaultIds carries vaults whose wrap signature failed verification.
+  // Their keys are NOT loaded; the UI surfaces them instead of hiding the gap.
+  | { op: "initDone"; requestId: string; rejectedVaultIds: string[] }
   | { op: "result"; requestId: string; data: ArrayBuffer }
   | { op: "resultString"; requestId: string; value: string }
   | { op: "resultBool"; requestId: string; value: boolean }

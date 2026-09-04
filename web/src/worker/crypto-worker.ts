@@ -29,6 +29,7 @@ import {
   ed25519Sign,
   rsaOaepDecrypt,
   verifyRecipientPublicKey,
+  verifyWrapSignature,
   buildSharePayload,
   buildSelfVaultKeyWrap,
   buildSelfSharedVaultKeyWrap,
@@ -130,14 +131,29 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         zero(ed25519PrivBytes);
 
         // Decrypt vault keys
+        const rejectedVaultIds: string[] = [];
         for (const vm of msg.vaults) {
-          const blob = parseBlob(fromBase64(vm.encryptedVaultKey));
+          const wireBytes = fromBase64(vm.encryptedVaultKey);
+          const blob = parseBlob(wireBytes);
           let vaultKeyBytes: Uint8Array;
 
           if (blob.alg === AlgID.AES_256_KW) {
             vaultKeyBytes = await aesKeyUnwrap(sk, blob);
           } else if (blob.alg === AlgID.RSA_OAEP_SHA256) {
             if (!rsaPrivateKey) throw new Error("RSA private key not loaded");
+
+            const signed = await verifyWrapSignature({
+              vaultId: vm.vaultId,
+              recipientUserId: msg.userId,
+              encryptedVaultKey: wireBytes,
+              wrapSignature: fromBase64(vm.wrapSignature),
+              senderIdentityPublicKey: fromBase64(vm.senderIdentityPublicKey),
+            });
+            if (!signed) {
+              rejectedVaultIds.push(vm.vaultId);
+              continue;
+            }
+
             vaultKeyBytes = await rsaOaepDecrypt(rsaPrivateKey, blob);
           } else {
             throw new Error(`Unsupported vault key alg: 0x${blob.alg.toString(16)}`);
@@ -146,7 +162,7 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
           vaultKeys.set(vm.vaultId, vaultKeyBytes);
         }
 
-        respond({ op: "initDone", requestId: msg.requestId });
+        respond({ op: "initDone", requestId: msg.requestId, rejectedVaultIds });
         break;
       }
 

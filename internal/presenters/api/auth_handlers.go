@@ -332,6 +332,8 @@ func (h *AuthHandlers) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			SenderID:          string(v.SenderID),
 			WrapSignature:     encodeB64(v.WrapSignature.Bytes()),
 			Role:              string(v.Role),
+
+			SenderIdentityPublicKey: encodeB64(v.SenderIdentityPublicKey.Bytes()),
 		})
 	}
 	writeJSON(w, http.StatusOK, LoginResponse{

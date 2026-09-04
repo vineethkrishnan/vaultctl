@@ -66,7 +66,8 @@
     "allItems": "Alle Einträge",
     "favorites": "Favoriten",
     "trash": "Papierkorb",
-    "newItem": "Neuer Eintrag"
+    "newItem": "Neuer Eintrag",
+    "untrustedVaultHint": "Nicht geöffnet: Die Signatur des Tresorschlüssels passte nicht zum Absender."
   },
   "createVault": {
     "title": "Neuer Tresor",
@@ -348,5 +349,9 @@
     "edit": "Bearbeiten",
     "preview": "Vorschau",
     "nothingToPreview": "Keine Vorschau verfügbar"
+  },
+  "untrustedVaults": {
+    "banner_one": "{{vaults}} blieb gesperrt: Der Schlüssel wurde nicht von dem Absender signiert, den der Server nennt. Bitte diese Person, ihn erneut zu teilen, und prüfe ihre Sicherheitsnummer, bevor du ihm vertraust.",
+    "banner_other": "{{count}} Tresore blieben gesperrt ({{vaults}}): Ihre Schlüssel wurden nicht von den Absendern signiert, die der Server nennt. Bitte diese Personen, sie erneut zu teilen, und prüfe ihre Sicherheitsnummern, bevor du ihnen vertraust."
   }
 }
