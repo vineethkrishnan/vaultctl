@@ -24,15 +24,9 @@ config.resolver.extraNodeModules = {
   '@vaultctl/shared': path.resolve(repoRoot, 'web/src/shared'),
 };
 
-config.resolver.sourceExts = [
-  'ts',
-  'tsx',
-  'mts',
-  'js',
-  'jsx',
-  'json',
-  'cjs',
-];
+// Keep Expo's defaults. Replacing this list wholesale silently drops the
+// extensions Expo relies on (mjs, css and friends).
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'mts'];
 
 // The shared crypto package (web/src/shared) uses ESM-style ".js" import
 // specifiers that actually point at ".ts" sources. tsc and jest resolve those,

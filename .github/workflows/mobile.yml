@@ -45,3 +45,67 @@ jobs:
       - name: Unit tests
         working-directory: mobile
         run: npm test -- --no-coverage --ci
+
+      - name: Expo config and dependency check
+        working-directory: mobile
+        run: npx expo-doctor
+
+  android-build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            mobile/package-lock.json
+            web/package-lock.json
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # The app module builds native code, so the NDK and CMake have to match
+      # what the generated project asks for or Gradle stops to download them.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.1.12297006 cmake;3.22.1'
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci --legacy-peer-deps
+
+      # Metro resolves @vaultctl/shared to ../web/src/shared, and those files
+      # import zod and hash-wasm from web's own node_modules.
+      - name: Install shared web dependencies
+        working-directory: web
+        run: npm ci
+
+      # android/ is gitignored and regenerated, so the native project has to be
+      # built from the config plugins on every run. This is the only job that
+      # compiles withAndroidAutofill's Kotlin at all.
+      - name: Generate the native project
+        working-directory: mobile
+        run: npx expo prebuild --platform android --clean
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Assemble release APK
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Lint the native project
+        working-directory: mobile/android
+        run: ./gradlew :app:lintRelease --no-daemon
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vaultctl-android-apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+          retention-days: 7
+          if-no-files-found: error
