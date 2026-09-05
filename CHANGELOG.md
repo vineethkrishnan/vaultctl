@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.29.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.28.0...v1.29.0) (2026-09-05)
+
+
+### Features
+
+* **mobile:** implement the declared android autofill service ([#385](https://github.com/vineethkrishnan/vaultctl/issues/385)) ([96048b7](https://github.com/vineethkrishnan/vaultctl/commit/96048b756421195ac7535b02f73b698275b1807c))
+* **mobile:** scaffold autofill with a shared host matcher and a config plugin ([#383](https://github.com/vineethkrishnan/vaultctl/issues/383)) ([e158936](https://github.com/vineethkrishnan/vaultctl/commit/e15893645f8793edbc6c5efe4acfc41790ff2687))
+* **web:** add the missing empty-trash action and drive three panels from e2e ([#382](https://github.com/vineethkrishnan/vaultctl/issues/382)) ([7f580cf](https://github.com/vineethkrishnan/vaultctl/commit/7f580cf86ec4fdb1f1f4c84a93d6c8d8162c61f6))
+
+
+### Bug Fixes
+
+* **crypto:** verify the sender's wrap signature before loading a vault key ([#381](https://github.com/vineethkrishnan/vaultctl/issues/381)) ([f414269](https://github.com/vineethkrishnan/vaultctl/commit/f4142696daa1fdacf81ceade9cec38f2d205bb93))
+
 ## [1.28.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.1...v1.28.0) (2026-08-27)
 
 
