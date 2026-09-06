@@ -66,6 +66,18 @@ updates:
     labels:
       - dependencies
       - docs
+    # next 14 and nextra 2 peer on react 18, and next 14 cannot load typescript 7,
+    # which has no main entry. These move only as one next 15 + nextra 3 migration.
+    ignore:
+      - dependency-name: react
+        update-types:
+          - version-update:semver-major
+      - dependency-name: react-dom
+        update-types:
+          - version-update:semver-major
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: docker
     directory: /
