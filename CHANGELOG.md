@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.29.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.28.0...v1.29.0) (2026-09-06)
+
+
+### Features
+
+* **mobile:** implement the declared android autofill service ([#385](https://github.com/vineethkrishnan/vaultctl/issues/385)) ([96048b7](https://github.com/vineethkrishnan/vaultctl/commit/96048b756421195ac7535b02f73b698275b1807c))
+* **mobile:** scaffold autofill with a shared host matcher and a config plugin ([#383](https://github.com/vineethkrishnan/vaultctl/issues/383)) ([e158936](https://github.com/vineethkrishnan/vaultctl/commit/e15893645f8793edbc6c5efe4acfc41790ff2687))
+* **web:** add the missing empty-trash action and drive three panels from e2e ([#382](https://github.com/vineethkrishnan/vaultctl/issues/382)) ([7f580cf](https://github.com/vineethkrishnan/vaultctl/commit/7f580cf86ec4fdb1f1f4c84a93d6c8d8162c61f6))
+
+
+### Bug Fixes
+
+* **crypto:** verify the sender's wrap signature before loading a vault key ([#381](https://github.com/vineethkrishnan/vaultctl/issues/381)) ([f414269](https://github.com/vineethkrishnan/vaultctl/commit/f4142696daa1fdacf81ceade9cec38f2d205bb93))
+
+
+### Build System
+
+* **ci:** move golangci-lint to v2.13 and clear its new findings ([#400](https://github.com/vineethkrishnan/vaultctl/issues/400)) ([ee7d856](https://github.com/vineethkrishnan/vaultctl/commit/ee7d8563e74627ef8d7ec15fdd91bc8867ad9318))
+* **go:** bump the go directive to 1.27.0 to match the docker builder ([#401](https://github.com/vineethkrishnan/vaultctl/issues/401)) ([798506d](https://github.com/vineethkrishnan/vaultctl/commit/798506d5d2b021dd6bdce602447dc25e8c05be8c))
+
+
+### CI/CD
+
+* **deps:** bump securego/gosec from 2.28.0 to 2.29.0 in the actions group ([#380](https://github.com/vineethkrishnan/vaultctl/issues/380)) ([e51f0ba](https://github.com/vineethkrishnan/vaultctl/commit/e51f0ba31110a45efd2f4f47d7d06ffdff1759f3))
+
 ## [1.28.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.27.1...v1.28.0) (2026-08-27)
 
 
