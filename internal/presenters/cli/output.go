@@ -15,6 +15,9 @@ import (
 // structured JSON or human-oriented tables. Accessed via isJSON(cmd).
 const outputJSONFlag = "json"
 
+// jsonKeyStatus is the outcome key every command's JSON payload carries.
+const jsonKeyStatus = "status"
+
 func isJSON(cmd *cobra.Command) bool {
 	v, _ := cmd.Root().PersistentFlags().GetBool(outputJSONFlag)
 	return v

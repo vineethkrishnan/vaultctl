@@ -34,11 +34,11 @@ func (e *WebhookExecutor) Execute(ctx context.Context) <-chan Event {
 	go func() {
 		defer close(ch)
 
-		ch <- Event{Type: "log", Msg: "Triggering upgrade hook..."}
+		ch <- Event{Type: EventLog, Msg: "Triggering upgrade hook..."}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.URL, nil)
 		if err != nil {
-			ch <- Event{Type: "error", Msg: fmt.Sprintf("build request: %v", err)}
+			ch <- Event{Type: EventError, Msg: fmt.Sprintf("build request: %v", err)}
 			return
 		}
 		if e.Token != "" {
@@ -47,18 +47,18 @@ func (e *WebhookExecutor) Execute(ctx context.Context) <-chan Event {
 
 		resp, err := e.client().Do(req)
 		if err != nil {
-			ch <- Event{Type: "error", Msg: fmt.Sprintf("hook call failed: %v", err)}
+			ch <- Event{Type: EventError, Msg: fmt.Sprintf("hook call failed: %v", err)}
 			return
 		}
 		_ = resp.Body.Close()
 
 		if resp.StatusCode >= 400 {
-			ch <- Event{Type: "error", Msg: fmt.Sprintf("hook returned HTTP %d", resp.StatusCode)}
+			ch <- Event{Type: EventError, Msg: fmt.Sprintf("hook returned HTTP %d", resp.StatusCode)}
 			return
 		}
 
-		ch <- Event{Type: "log", Msg: "Upgrade triggered. Pulling new image and running migrations..."}
-		ch <- Event{Type: "restarting", Msg: "Server is restarting. The page will reconnect automatically."}
+		ch <- Event{Type: EventLog, Msg: "Upgrade triggered. Pulling new image and running migrations..."}
+		ch <- Event{Type: EventRestarting, Msg: "Server is restarting. The page will reconnect automatically."}
 	}()
 	return ch
 }

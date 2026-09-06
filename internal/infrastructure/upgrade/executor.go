@@ -15,11 +15,16 @@ import "context"
 
 // Event is a single streamed message sent to the client during an upgrade.
 type Event struct {
-	// Type is one of: "log", "restarting", "error".
 	Type string `json:"type"`
 	// Msg is a human-readable line to display in the UI.
 	Msg string `json:"msg,omitempty"`
 }
+
+const (
+	EventLog        = "log"
+	EventRestarting = "restarting"
+	EventError      = "error"
+)
 
 // Executor runs the host-level upgrade and emits Event values on the
 // returned channel. The channel is closed when the executor is done or has

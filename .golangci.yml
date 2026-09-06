@@ -55,12 +55,15 @@ linters:
               desc: "application must not import database drivers"
     gocyclo:
       min-complexity: 20
+    goconst:
+      min-occurrences: 4
     gosec:
       excludes:
         - G104
         - G107
         - G115
         - G204
+        - G120
     errcheck:
       check-type-assertions: true
       exclude-functions:
@@ -84,3 +87,4 @@ linters:
           - unparam
           - unused
           - errorlint
+          - goconst

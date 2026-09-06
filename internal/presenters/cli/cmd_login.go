@@ -25,7 +25,7 @@ func newLoginCmd() *cobra.Command {
 			if os.Getenv(envAPIKey) != "" {
 				session := &Session{APIKey: os.Getenv(envAPIKey)}
 				if isJSON(cmd) {
-					return printJSON(cmd, map[string]string{"status": "api-key-mode"})
+					return printJSON(cmd, map[string]string{jsonKeyStatus: "api-key-mode"})
 				}
 				_ = session
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "VAULTCTL_API_KEY detected - using API-key auth (no password prompt).")
@@ -147,7 +147,7 @@ func newLoginCmd() *cobra.Command {
 
 			if isJSON(cmd) {
 				return printJSON(cmd, map[string]any{
-					"status": "ok", "userId": session.UserID,
+					jsonKeyStatus: "ok", "userId": session.UserID,
 					"email": session.Email, "vaultCount": len(session.Vaults),
 				})
 			}

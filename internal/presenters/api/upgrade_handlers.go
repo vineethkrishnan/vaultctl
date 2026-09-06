@@ -57,7 +57,7 @@ func (h *UpgradeHandlers) HandleApply(w http.ResponseWriter, r *http.Request) {
 		if !sendEvent(ev) {
 			return
 		}
-		if ev.Type == "restarting" || ev.Type == "error" {
+		if ev.Type == upgrade.EventRestarting || ev.Type == upgrade.EventError {
 			return
 		}
 	}
