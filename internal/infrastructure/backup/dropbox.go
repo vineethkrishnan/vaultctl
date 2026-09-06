@@ -35,7 +35,7 @@ func (s *DropboxStore) Put(ctx context.Context, name string, r io.Reader, _ int6
 	if !artifactName.MatchString(name) {
 		return fmt.Errorf("backup/dropbox: invalid artifact name %q", name)
 	}
-	arg, _ := json.Marshal(map[string]any{"path": "/" + name, "mode": "overwrite", "mute": true})
+	arg, _ := json.Marshal(map[string]any{"path": "/" + name, "mode": "overwrite", "mute": true}) //nolint:goconst // dropbox api argument names
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://content.dropboxapi.com/2/files/upload", r)
 	if err != nil {
 		return err

@@ -60,7 +60,7 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "trashed", "id": match.ID})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "trashed", "id": match.ID})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Trashed %s\n", args[0])
 			return nil

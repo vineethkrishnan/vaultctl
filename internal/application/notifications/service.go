@@ -19,35 +19,42 @@ const feedListLimit = 50
 // meta describes how an audit action is rendered in the feed.
 type meta struct {
 	title    string
-	category string // security | vault | account | backup
+	category string
 }
+
+const (
+	categorySecurity = "security"
+	categoryVault    = "vault"
+	categoryAccount  = "account"
+	categoryBackup   = "backup"
+)
 
 // feedActions is the curated allow-list: noisy/internal actions (token
 // refresh, step-up, unknown-email failures) are intentionally excluded.
 var feedActions = map[string]meta{
-	auditlog.ActionLoginSuccess:       {"New sign-in", "security"},
-	auditlog.ActionLoginFailed:        {"Failed sign-in attempt", "security"},
-	auditlog.ActionLogout:             {"Signed out", "security"},
-	auditlog.ActionPasswordChanged:    {"Master password changed", "security"},
-	auditlog.ActionRecoveryReset:      {"Password reset via recovery key", "security"},
-	auditlog.ActionRecoveryKitRotated: {"Recovery kit regenerated", "security"},
-	auditlog.ActionTOTPEnabled:        {"Two-factor authentication enabled", "security"},
-	auditlog.ActionTOTPDisabled:       {"Two-factor authentication disabled", "security"},
-	auditlog.ActionSessionRevoked:     {"A session was signed out", "security"},
-	auditlog.ActionVaultCreated:       {"Vault created", "vault"},
-	auditlog.ActionVaultRekeyed:       {"Vault re-keyed", "vault"},
-	auditlog.ActionVaultMemberAdded:   {"Member added to a vault", "vault"},
-	auditlog.ActionVaultMemberRemoved: {"Member removed from a vault", "vault"},
-	auditlog.ActionOrgCreated:         {"Organisation created", "account"},
-	auditlog.ActionOrgRoleChanged:     {"A member's role changed", "account"},
-	auditlog.ActionOrgMemberRemoved:   {"A member was removed", "account"},
-	auditlog.ActionAPIKeyCreated:      {"API key created", "account"},
-	auditlog.ActionAPIKeyRevoked:      {"API key revoked", "account"},
-	auditlog.ActionInviteCreated:      {"Invite created", "account"},
-	auditlog.ActionInviteRevoked:      {"Invite revoked", "account"},
-	auditlog.ActionBackupConfigured:   {"Backup destination configured", "backup"},
-	auditlog.ActionBackupRemoved:      {"Backup destination removed", "backup"},
-	auditlog.ActionBackupRestored:     {"Backup restored", "backup"},
+	auditlog.ActionLoginSuccess:       {"New sign-in", categorySecurity},
+	auditlog.ActionLoginFailed:        {"Failed sign-in attempt", categorySecurity},
+	auditlog.ActionLogout:             {"Signed out", categorySecurity},
+	auditlog.ActionPasswordChanged:    {"Master password changed", categorySecurity},
+	auditlog.ActionRecoveryReset:      {"Password reset via recovery key", categorySecurity},
+	auditlog.ActionRecoveryKitRotated: {"Recovery kit regenerated", categorySecurity},
+	auditlog.ActionTOTPEnabled:        {"Two-factor authentication enabled", categorySecurity},
+	auditlog.ActionTOTPDisabled:       {"Two-factor authentication disabled", categorySecurity},
+	auditlog.ActionSessionRevoked:     {"A session was signed out", categorySecurity},
+	auditlog.ActionVaultCreated:       {"Vault created", categoryVault},
+	auditlog.ActionVaultRekeyed:       {"Vault re-keyed", categoryVault},
+	auditlog.ActionVaultMemberAdded:   {"Member added to a vault", categoryVault},
+	auditlog.ActionVaultMemberRemoved: {"Member removed from a vault", categoryVault},
+	auditlog.ActionOrgCreated:         {"Organisation created", categoryAccount},
+	auditlog.ActionOrgRoleChanged:     {"A member's role changed", categoryAccount},
+	auditlog.ActionOrgMemberRemoved:   {"A member was removed", categoryAccount},
+	auditlog.ActionAPIKeyCreated:      {"API key created", categoryAccount},
+	auditlog.ActionAPIKeyRevoked:      {"API key revoked", categoryAccount},
+	auditlog.ActionInviteCreated:      {"Invite created", categoryAccount},
+	auditlog.ActionInviteRevoked:      {"Invite revoked", categoryAccount},
+	auditlog.ActionBackupConfigured:   {"Backup destination configured", categoryBackup},
+	auditlog.ActionBackupRemoved:      {"Backup destination removed", categoryBackup},
+	auditlog.ActionBackupRestored:     {"Backup restored", categoryBackup},
 }
 
 func curatedActions() []string {

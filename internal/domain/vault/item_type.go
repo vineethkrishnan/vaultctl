@@ -75,7 +75,7 @@ func (t ItemType) String() string { return string(t) }
 func (t ItemType) RequiredFields() []string {
 	switch t {
 	case ItemTypeLogin:
-		return []string{"name", "username", "password"}
+		return []string{"name", "username", "password"} //nolint:goconst // field names read better inline than as constants
 	case ItemTypeSecureNote:
 		return []string{"name", "content"}
 	case ItemTypeCreditCard:

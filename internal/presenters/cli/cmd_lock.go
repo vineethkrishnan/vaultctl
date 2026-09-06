@@ -19,7 +19,7 @@ exits - so there is nothing persistent to wipe. This command exists for
 API parity with the browser and extension clients. It succeeds silently.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "locked"})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "locked"})
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Vault locked.")
 			return nil

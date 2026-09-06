@@ -130,7 +130,7 @@ func newTrashRestoreCmd() *cobra.Command {
 				return err
 			}
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "restored", "id": match.ID})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "restored", "id": match.ID})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Restored %s\n", args[0])
 			return nil
@@ -176,7 +176,7 @@ func newTrashPurgeCmd() *cobra.Command {
 					if uerr := unmarshalJSON(raw, &resp); uerr == nil {
 						return printJSON(cmd, resp)
 					}
-					return printJSON(cmd, map[string]string{"status": "purged"})
+					return printJSON(cmd, map[string]string{jsonKeyStatus: "purged"})
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Trash purged.")
 				return nil
@@ -219,7 +219,7 @@ func newTrashPurgeCmd() *cobra.Command {
 				return err
 			}
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "purged", "id": match.ID})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "purged", "id": match.ID})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Permanently deleted %s\n", args[0])
 			return nil

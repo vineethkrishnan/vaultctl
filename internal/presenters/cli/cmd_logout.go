@@ -17,7 +17,7 @@ func newLogoutCmd() *cobra.Command {
 			session, err := LoadSession()
 			if errors.Is(err, ErrNoSession) {
 				if isJSON(cmd) {
-					return printJSON(cmd, map[string]string{"status": "already-logged-out"})
+					return printJSON(cmd, map[string]string{jsonKeyStatus: "already-logged-out"})
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No active session.")
 				return nil
@@ -29,7 +29,7 @@ func newLogoutCmd() *cobra.Command {
 				// API-key mode: nothing to revoke on the server, nothing
 				// to wipe in the keychain.
 				if isJSON(cmd) {
-					return printJSON(cmd, map[string]string{"status": "api-key-mode"})
+					return printJSON(cmd, map[string]string{jsonKeyStatus: "api-key-mode"})
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "API-key mode - no session to revoke.")
 				return nil
@@ -46,7 +46,7 @@ func newLogoutCmd() *cobra.Command {
 				return err
 			}
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "ok"})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "ok"})
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Logged out.")
 			return nil

@@ -72,7 +72,7 @@ password?" without running a destructive command.`,
 			defer keys.Zero()
 
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "unlocked"})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "unlocked"})
 			}
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Master password verified - vault unlocked for this process.")
 			return nil

@@ -121,7 +121,7 @@ func newEditCmd() *cobra.Command {
 				return err
 			}
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{"status": "updated", "id": match.ID})
+				return printJSON(cmd, map[string]string{jsonKeyStatus: "updated", "id": match.ID})
 			}
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Updated %s\n", updated.Name)
 			return nil
