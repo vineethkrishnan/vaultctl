@@ -26,5 +26,6 @@ func newClientCmds() []*cobra.Command {
 		newTotpCmd(),
 		newLockCmd(),
 		newUnlockCmd(),
+		newAgentCmd(),
 	}
 }
