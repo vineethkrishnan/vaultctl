@@ -3,11 +3,9 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/pquerna/otp/totp"
 	"github.com/spf13/cobra"
 )
 
@@ -51,10 +49,7 @@ func newTotpCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if data.TOTP == "" {
-				return errors.New("item has no TOTP secret")
-			}
-			code, err := totp.GenerateCode(data.TOTP, time.Now())
+			code, err := totpCodeAt(data.TOTP, time.Now())
 			if err != nil {
 				return err
 			}
