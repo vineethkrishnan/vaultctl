@@ -16,6 +16,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -27,6 +28,12 @@ var (
 	Version = "dev"
 	Commit  = "dev"
 )
+
+// exitCodeError carries a wrapped program's exit status so `vaultctl run`
+// exits with it instead of a generic 1.
+type exitCodeError struct{ code int }
+
+func (e exitCodeError) Error() string { return fmt.Sprintf("exit status %d", e.code) }
 
 // NewRootCmd builds the full command tree.
 func NewRootCmd() *cobra.Command {
@@ -51,6 +58,10 @@ func NewRootCmd() *cobra.Command {
 // exit code. Exit codes come from PRD §12.2.
 func Execute() {
 	if err := NewRootCmd().Execute(); err != nil {
+		var exitErr exitCodeError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.code)
+		}
 		fmt.Fprintln(os.Stderr, "error:", err)
 		// Cobra will not have already printed since SilenceErrors=true.
 		os.Exit(1)

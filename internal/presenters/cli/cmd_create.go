@@ -88,12 +88,7 @@ func newCreateCmd() *cobra.Command {
 				return err
 			}
 
-			body := map[string]any{
-				"itemType":      itemType,
-				"encryptedName": encryptedName,
-				"encryptedData": encryptedData,
-			}
-			raw, err := httpPost("/vaults/"+vaultMeta.ID+"/items", body, session)
+			raw, err := httpPost("/vaults/"+vaultMeta.ID+"/items", sealedItemBody(itemType, encryptedName, encryptedData), session)
 			if err != nil {
 				return err
 			}
