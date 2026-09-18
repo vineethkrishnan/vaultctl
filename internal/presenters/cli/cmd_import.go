@@ -79,13 +79,9 @@ All data is encrypted client-side before being sent to the server.`,
 					failed++
 					continue
 				}
-				body := map[string]any{
-					"itemType":      item.Type,
-					"encryptedData": encData,
-					"encryptedName": encName,
-					"favorite":      false,
-					"reprompt":      false,
-				}
+				body := sealedItemBody(item.Type, encName, encData)
+				body["favorite"] = false
+				body["reprompt"] = false
 				if _, err := httpPost("/vaults/"+vaultMeta.ID+"/items", body, session); err != nil {
 					failed++
 					continue

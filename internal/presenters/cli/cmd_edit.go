@@ -113,11 +113,7 @@ func newEditCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			body := map[string]any{
-				"encryptedName": encryptedName,
-				"encryptedData": encryptedData,
-			}
-			if _, err := httpPut("/vaults/"+vaultMeta.ID+"/items/"+match.ID, body, session); err != nil {
+			if _, err := httpPut("/vaults/"+vaultMeta.ID+"/items/"+match.ID, sealedItemBody("", encryptedName, encryptedData), session); err != nil {
 				return err
 			}
 			if isJSON(cmd) {

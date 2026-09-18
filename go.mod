@@ -6,6 +6,7 @@ require (
 	github.com/awnumar/memguard v0.23.0
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/charmbracelet/huh v1.0.0
+	github.com/creack/pty v1.1.24
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
@@ -20,7 +21,8 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/crypto v0.55.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/term v0.46.0
 )
 
 require (

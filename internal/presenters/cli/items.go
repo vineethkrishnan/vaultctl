@@ -39,6 +39,17 @@ type ItemData struct {
 	Notes    string `json:"notes,omitempty"`
 }
 
+// sealedItemBody is the JSON body the item endpoints expect for a sealed
+// name and payload. itemType is left out when empty (updates keep the
+// existing type).
+func sealedItemBody(itemType, encryptedName, encryptedData string) map[string]any {
+	body := map[string]any{"encryptedName": encryptedName, "encryptedData": encryptedData}
+	if itemType != "" {
+		body["itemType"] = itemType
+	}
+	return body
+}
+
 // decryptItemName opens the padded name blob and returns the plaintext
 // string. The vault key is used as the AEAD key and no AAD is bound - this
 // matches the TS encryption path in web/src/shared/crypto.
