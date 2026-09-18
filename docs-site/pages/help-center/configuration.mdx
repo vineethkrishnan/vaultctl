@@ -135,8 +135,10 @@ The `vaultctl` CLI reads its own variables, separate from the server:
 |----------|-------------|
 | `VAULTCTL_SERVER` | Base URL of the server to talk to. |
 | `VAULTCTL_API_KEY` | API key for non-interactive auth (CI, scripts). |
-| `VAULTCTL_ACTIVE_VAULT` | Default vault ID for commands that take one. |
+| `VAULTCTL_VAULT` | Default vault ID for commands that take one. |
 | `VAULTCTL_INSECURE_SKIP_VERIFY` | Set truthy to skip TLS verification (development only). |
+| `VAULTCTL_RUN_PROGRAMS` | Programs `vaultctl shell-init` aliases through `vaultctl run` (default `tsh mysql mariadb ssh psql`). |
+| `XDG_RUNTIME_DIR` | Where the key agent's socket lives, under `vaultctl/`; the user cache directory is used when unset. |
 
 ## Upgrades & migrations
 

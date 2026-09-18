@@ -9,5 +9,6 @@
   "password-change": "Changing Your Password",
   "import-export": "Import & Export",
   "browser-extension": "Browser Extension",
+  "cli": "Command Line (CLI)",
   "auto-lock": "Auto-Lock & Security"
 }

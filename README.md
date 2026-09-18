@@ -56,15 +56,31 @@ The bundled compose sets `VAULTCTL_DB_SSL_INSECURE_OK=true` because Postgres liv
 go install github.com/vineethkrishnan/vaultctl/cmd/server@latest
 # or grab a signed binary from the latest release
 
-export VAULTCTL_API_URL=https://vault.example.com
+export VAULTCTL_SERVER=https://vault.example.com
 vaultctl login
-vaultctl ls
-vaultctl get GitHub
-vaultctl add login --name Reddit
+vaultctl unlock                 # keeps the vault open in a per-user agent (macOS/Linux)
+vaultctl list
+vaultctl get GitHub --field password
+vaultctl totp GitHub
+vaultctl create --name Reddit --username me --password ... --uri https://reddit.com
 vaultctl backup --output /var/backups/vaultctl
 ```
 
 The same binary runs the server (`vaultctl server`), applies migrations (`vaultctl migrate up|down`), and runs the client commands. `--json` is honored on every read command.
+
+### Filling terminal logins
+
+`vaultctl run -- <command>` runs an interactive program in a pseudo-terminal and answers its username, password and one-time-code prompts from the login item whose URI matches the host on the command line, the way the extension fills a web form. It does not need to know the program: a password prompt is recognised by the program turning terminal echo off, and a value you already passed on the command line is never filled because the program does not ask for it.
+
+```bash
+vaultctl run -- tsh login --proxy=teleport.example.com   # password + OTP from the item for that host
+vaultctl run -- mysql -h db.example.com -p               # -u from the item, password at the prompt
+vaultctl run -- ssh deploy@web01.example.com
+eval "$(vaultctl shell-init zsh)"                         # aliases tsh/mysql/ssh/psql through vaultctl run
+git config --global credential.helper '!vaultctl git-credential'
+```
+
+With no matching item the command runs as usual and, on success, offers to save what you typed. Details, the threat model and what is remembered where: [`docs-site/pages/user-manual/cli.mdx`](docs-site/pages/user-manual/cli.mdx).
 
 ## Browser extension (MV3)
 

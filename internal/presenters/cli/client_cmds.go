@@ -29,5 +29,6 @@ func newClientCmds() []*cobra.Command {
 		newAgentCmd(),
 		newRunCmd(),
 		newGitCredentialCmd(),
+		newShellInitCmd(),
 	}
 }

@@ -1,0 +1,115 @@
+# Command Line (CLI)
+
+import { Callout } from 'nextra/components'
+
+The `vaultctl` binary that runs the server is also a full client. Every command talks to the same API as the web app and the extension, and all decryption happens on your machine.
+
+---
+
+## Setup
+
+```bash
+export VAULTCTL_SERVER=https://vault.example.com
+vaultctl login            # email, master password, 2FA code if enabled
+vaultctl status
+```
+
+The session (tokens and the encrypted private key) is kept in the OS keychain. The stretched key derived from your master password is never written to disk.
+
+| Command | What it does |
+|---------|--------------|
+| `vaultctl list` / `get <name>` / `totp <name>` | Read items. `--field password` prints one field for piping. |
+| `vaultctl create` / `edit` / `delete` / `trash` | Change items. |
+| `vaultctl import` / `export` | Move data in and out (encrypted JSON or CSV). |
+| `vaultctl unlock` / `lock` / `agent` | Keep the vault open between commands (below). |
+| `vaultctl run -- <command>` | Fill a terminal login from the vault (below). |
+| `vaultctl git-credential` | Act as a git credential helper (below). |
+| `vaultctl shell-init` | Print aliases that route login commands through `vaultctl run`. |
+
+Every read command accepts `--json`. Commands that touch a vault accept `--vault <id>`, or use `VAULTCTL_VAULT`, or the sticky choice from the last picker.
+
+---
+
+## Staying unlocked: the agent
+
+Without an agent every decrypting command asks for the master password and re-runs Argon2id. `vaultctl unlock` starts a per-user background agent (macOS and Linux) that holds the 32-byte stretched key in memory, and later commands take the key from it.
+
+```bash
+vaultctl unlock --timeout 1h    # default 1h of inactivity
+vaultctl status                 # "Vault: unlocked until 14:32:10"
+vaultctl lock                   # forget the key now
+```
+
+- The agent listens on a `0600` unix socket in `$XDG_RUNTIME_DIR/vaultctl/` (or the user cache directory) and refuses connections from other users.
+- The key is forgotten after the idle timeout, on `vaultctl lock`, on `vaultctl logout`, and when the agent exits. Nothing is written to disk.
+- Items marked **Master password re-prompt** still ask for the master password before use.
+- Windows keeps the single-shot behaviour: each command prompts.
+
+<Callout type="warning">
+Like `ssh-agent` and `gpg-agent`, any process running as your user can ask the agent for the key while it is unlocked. Pick a timeout that matches how you use the machine, and lock before walking away from a shared one.
+</Callout>
+
+---
+
+## Filling terminal logins: `vaultctl run`
+
+```bash
+vaultctl run -- tsh login --proxy=teleport.example.com
+vaultctl run -- mysql -h db.example.com -p
+vaultctl run -- ssh deploy@web01.example.com
+vaultctl run --item "GitHub" -- git push
+```
+
+`vaultctl run` starts the command in a pseudo-terminal, keeps it fully interactive, and answers the prompts it can from a login item. It does not know the programs; it watches two things:
+
+1. **Echo off.** When the program switches the terminal to line mode with echo off, it is reading a secret. That is how `getpass`, `tsh`, `mysql`, `ssh`, `sudo` and `git` all read passwords. The last line of output is the prompt; it is a one-time code if it mentions a code or token, otherwise a password.
+2. **A visible question.** Output that stops without a newline, ends with `:` or `?`, and names a username, login, email, or a code.
+
+Each kind (username, password, code) is filled once per run. If the same prompt comes back, the value was rejected and the wrapper hands the prompt over to you instead of retrying, so a stale password cannot lock the account.
+
+### Which item is used
+
+1. `--item <name>` when given.
+2. The item remembered for this exact command line (see below).
+3. The host on the command line: `--proxy=HOST`, `-h HOST`, `user@HOST`, `https://HOST/...`, `HOST:PORT`. It is matched against each login's URI with the same strict rule as the extension: the exact host including any non-default port; only a leading `www.` is ignored. A username on the command line (`--user`, `-u`, `-l`, `user@`) narrows several matches down; if more than one remains you get a picker and the choice is remembered.
+
+### What is never filled
+
+A value that is already on the command line. The program does not prompt for it, so nothing happens: `tsh login --user=admin` fills only the password and code; `mysql -u root -psecret` is run untouched (the wrapper says so on stderr). A few programs default to the local user instead of asking, so the item's username is appended for them: `--user=` for `tsh login`, `-u` for `mysql`, `-l` for `ssh`, `-U` for `psql`. `mysql` also gets `-p` when the item has a password so the prompt appears.
+
+### First login: save it
+
+When no item matches, the command runs as usual and the wrapper keeps what you type into the recognised prompts, in memory only. If the command exits successfully you are asked whether to save it as a new login, with the host as its URI. A one-time code you typed is not saved (it is not a secret); add the TOTP secret to the item in the web app and it fills next time.
+
+Commands whose arguments name no host (`sudo`, a tool that reads its host from a config file) are remembered per command line in `~/.config/vaultctl/run-map.json` (macOS: `~/Library/Application Support/vaultctl/`). The file holds item ids only.
+
+### Flags
+
+| Flag | Effect |
+|------|--------|
+| `--item <name>` | Use this item instead of matching by host. |
+| `--dry-run` | Print the item, the fields that would be filled, and the rewritten command line, then exit. |
+| `--no-fill` | Run in the pseudo-terminal without answering anything. |
+| `--no-save` | Never offer to save typed credentials. |
+| `--vault <id>` | Vault to save a new login into. |
+
+The wrapped program's exit code is passed through.
+
+### Aliases
+
+```bash
+eval "$(vaultctl shell-init zsh)"       # ~/.zshrc or ~/.bashrc
+vaultctl shell-init fish | source       # fish
+```
+
+This defines `tsh`, `mysql`, `mariadb`, `ssh` and `psql` as `vaultctl run -- <program>`. Set `VAULTCTL_RUN_PROGRAMS="tsh ssh"` to change the list.
+
+---
+
+## git over https: the credential helper
+
+```bash
+git config --global credential.helper '!vaultctl git-credential'
+```
+
+git then asks vaultctl for the username and password of the remote's host and never prompts. Only `https` requests are answered; `store` and `erase` are ignored so git never writes into the vault and a rejected token is not deleted. If no item matches, vaultctl prints why on stderr and git falls back to its own prompt.
