@@ -85,19 +85,93 @@ func do(method, path string, body any, session *Session) ([]byte, error) {
 			req.Header.Set("Authorization", "Bearer "+session.AccessToken)
 		}
 	}
+	status, responseBody, err := send(req)
+	if err != nil {
+		return nil, err
+	}
+	if status == http.StatusUnauthorized && canRefresh(session, path) {
+		if err := refreshSession(session); err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+session.AccessToken)
+		if req.GetBody != nil {
+			if req.Body, err = req.GetBody(); err != nil {
+				return nil, err
+			}
+		}
+		status, responseBody, err = send(req)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if status < 200 || status >= 300 {
+		return responseBody, parseAPIError(status, responseBody)
+	}
+	return responseBody, nil
+}
+
+func send(req *http.Request) (int, []byte, error) {
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("http: %w", err)
+		return 0, nil, fmt.Errorf("http: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read body: %w", err)
+		return 0, nil, fmt.Errorf("read body: %w", err)
 	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return responseBody, parseAPIError(resp.StatusCode, responseBody)
+	return resp.StatusCode, responseBody, nil
+}
+
+// canRefresh limits the transparent retry to keychain sessions that hold a
+// refresh token, and never to the auth endpoints themselves (a 401 from
+// /auth/login or /auth/refresh is the real answer, not a stale token).
+func canRefresh(session *Session, path string) bool {
+	if session == nil || session.APIKey != "" || session.RefreshToken == "" {
+		return false
 	}
-	return responseBody, nil
+	return !strings.HasPrefix(path, "/auth/")
+}
+
+// ErrSessionExpired is returned when the refresh token itself was rejected,
+// which means the user has to log in again.
+var ErrSessionExpired = errors.New("session expired; run `vaultctl login`")
+
+// refreshSession rotates the access/refresh token pair and persists the new
+// pair in the keychain so the next invocation starts from the fresh tokens.
+func refreshSession(session *Session) error {
+	raw, err := json.Marshal(map[string]string{"refreshToken": session.RefreshToken})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, ServerURL()+"/api/v1/auth/refresh", bytes.NewReader(raw))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	status, responseBody, err := send(req)
+	if err != nil {
+		return err
+	}
+	if status == http.StatusUnauthorized {
+		return ErrSessionExpired
+	}
+	if status < 200 || status >= 300 {
+		return parseAPIError(status, responseBody)
+	}
+	var rotated struct {
+		AccessToken      string `json:"accessToken"`
+		RefreshToken     string `json:"refreshToken"`
+		RefreshExpiresAt string `json:"refreshExpiresAt"`
+	}
+	if err := unmarshalJSON(responseBody, &rotated); err != nil {
+		return err
+	}
+	session.AccessToken = rotated.AccessToken
+	session.RefreshToken = rotated.RefreshToken
+	session.RefreshExpiresAt = rotated.RefreshExpiresAt
+	return SaveSession(session)
 }
 
 // Get issues GET {path} with the session's bearer token.
