@@ -79,7 +79,7 @@ func TestHTTP_APIErrorStructured(t *testing.T) {
 }
 
 func TestServerURL_DefaultAndOverride(t *testing.T) {
-	t.Setenv(envServer, "")
+	useTempConfig(t)
 	if got := ServerURL(); got != defaultServerURL {
 		t.Errorf("default = %q, want %q", got, defaultServerURL)
 	}
