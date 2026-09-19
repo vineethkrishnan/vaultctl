@@ -15,7 +15,7 @@ func TestParseArgv(t *testing.T) {
 		users []string
 	}{
 		{"tsh proxy flag", []string{"tsh", "login", "--proxy=teleport.locaboo.de"}, []string{"teleport.locaboo.de"}, nil},
-		{"tsh proxy with port and user", []string{"/opt/homebrew/bin/tsh", "login", "--proxy", "teleport.locaboo.de:443", "--user=vineeth"}, []string{"teleport.locaboo.de:443"}, []string{"vineeth"}},
+		{"tsh proxy with port and user", []string{"/opt/homebrew/bin/tsh", "login", "--proxy", "teleport.locaboo.de:443", "--user=vineeth"}, []string{"teleport.locaboo.de"}, []string{"vineeth"}},
 		{"mysql", []string{"mysql", "-h", "db.example.com", "-u", "root", "-p"}, []string{"db.example.com"}, []string{"root"}},
 		{"mysql glued user and port", []string{"mysql", "-uroot", "-h", "127.0.0.1", "-P", "3307"}, []string{"127.0.0.1"}, []string{"root"}},
 		{"ssh user@host", []string{"ssh", "deploy@web01.example.com"}, []string{"web01.example.com"}, []string{"deploy"}},
@@ -29,9 +29,10 @@ func TestParseArgv(t *testing.T) {
 		{"nothing host-like", []string{"sudo", "ls", "-la", "/tmp"}, nil, nil},
 		{"empty", nil, nil, nil},
 	}
+	noTsh := fakeEnv(map[string]string{"TELEPORT_HOME": t.TempDir()})
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ParseArgv(tc.argv)
+			got := ParseArgvWithEnv(tc.argv, noTsh)
 			if !reflect.DeepEqual(got.Hosts, tc.hosts) {
 				t.Errorf("hosts = %v, want %v", got.Hosts, tc.hosts)
 			}
@@ -49,7 +50,7 @@ func TestTarget_HostRequiresExactlyOne(t *testing.T) {
 	if _, ok := ParseArgv([]string{"sudo", "ls"}).Host(); ok {
 		t.Error("no host should not resolve")
 	}
-	host, ok := ParseArgv([]string{"tsh", "login", "--proxy=Teleport.Locaboo.DE"}).Host()
+	host, ok := ParseArgvWithEnv([]string{"tsh", "login", "--proxy=Teleport.Locaboo.DE"}, fakeEnv(nil)).Host()
 	if !ok || host != "teleport.locaboo.de" {
 		t.Errorf("host = %q ok=%v", host, ok)
 	}

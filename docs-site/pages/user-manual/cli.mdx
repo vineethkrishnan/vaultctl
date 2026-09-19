@@ -75,7 +75,7 @@ Each kind (username, password, code) is filled once per run. If the same prompt 
 
 1. `--item <name>` when given.
 2. The item remembered for this exact command line (see below).
-3. The host on the command line: `--proxy=HOST`, `-h HOST`, `user@HOST`, `https://HOST/...`, `HOST:PORT`. It is matched against each login's URI with the same strict rule as the extension: the exact host including any non-default port; only a leading `www.` is ignored. A username on the command line (`--user`, `-u`, `-l`, `user@`) narrows several matches down; if more than one remains you get a picker and the choice is remembered.
+3. The host on the command line: `--proxy=HOST`, `-h HOST`, `user@HOST`, `https://HOST/...`, `HOST:PORT`. For `tsh` the host is the Teleport proxy (`--proxy`, then `TELEPORT_PROXY`, then the current profile in `~/.tsh`) and the user is `--user` or the profile's user; `user@node` in `tsh ssh` is the login on the node, not the credential, and is ignored. It is matched against each login's URI with the same strict rule as the extension: the exact host including any non-default port; only a leading `www.` is ignored. A username on the command line (`--user`, `-u`, `-l`, `user@`) narrows several matches down; if more than one remains you get a picker and the choice is remembered.
 
 ### What is never filled
 

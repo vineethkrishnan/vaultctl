@@ -6,6 +6,7 @@ package run
 
 import (
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -52,11 +53,20 @@ var (
 // flag (`--proxy=host`, `-h host`) take precedence over bare positional
 // tokens, because a positional dotted token is as likely to be a file name.
 func ParseArgv(argv []string) Target {
+	return ParseArgvWithEnv(argv, os.Getenv)
+}
+
+// ParseArgvWithEnv is ParseArgv with an explicit environment, for programs
+// whose target comes from their own configuration rather than argv.
+func ParseArgvWithEnv(argv []string, getenv func(string) string) Target {
 	target := Target{}
 	if len(argv) == 0 {
 		return target
 	}
 	target.Program = filepath.Base(argv[0])
+	if target.Program == "tsh" {
+		return tshTarget(argv, getenv)
+	}
 
 	var flagged, bare []string
 	addUser := func(user string) { target.Usernames = appendUnique(target.Usernames, user) }
