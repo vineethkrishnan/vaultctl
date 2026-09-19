@@ -91,6 +91,7 @@ func TestServerURL_DefaultAndOverride(t *testing.T) {
 
 func TestHTTP_RefreshesOnceOn401AndPersistsRotatedTokens(t *testing.T) {
 	keyring.MockInit()
+	useTempConfig(t)
 	var authHeaders []string
 	var refreshBodies []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +147,7 @@ func TestHTTP_RefreshesOnceOn401AndPersistsRotatedTokens(t *testing.T) {
 
 func TestHTTP_RefreshRejectedMeansLoginAgain(t *testing.T) {
 	keyring.MockInit()
+	useTempConfig(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error":{"code":"unauthorized","message":"gone"}}`))
