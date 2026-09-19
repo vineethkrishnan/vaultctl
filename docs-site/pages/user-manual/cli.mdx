@@ -17,7 +17,7 @@ vaultctl status
 
 TLS certificates are verified unless the server is `localhost`, where a local `vaultctl server` runs on a self-signed certificate. `vaultctl config set insecure-skip-verify true` (or `VAULTCTL_INSECURE_SKIP_VERIFY=1`) opts out for another host.
 
-The session (tokens and the encrypted private key) is kept in the OS keychain. The stretched key derived from your master password is never written to disk.
+The session's bearer tokens are kept in the OS keychain. The encrypted private keys and wrapped vault keys, which are ciphertext under your master key (the same bytes the server and the web app hold), sit in `session.json` next to the config file, 0600. The stretched key derived from your master password is never written to disk.
 
 | Command | What it does |
 |---------|--------------|

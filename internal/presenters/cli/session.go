@@ -7,11 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/zalando/go-keyring"
 )
 
-// keychainService / keychainUser identify the vaultctl session blob inside
+// keychainService / keychainUser identify the vaultctl session tokens inside
 // the OS keychain. Only one session is kept at a time; multi-account users
 // should rely on the VAULTCTL_API_KEY env var instead.
 const (
@@ -36,9 +37,10 @@ type SessionVault struct {
 	SenderID          string `json:"senderId"`
 }
 
-// Session is what we persist inside the OS keychain (JSON-encoded). The
-// stretched key is NEVER written to disk; it lives only in the in-memory
-// Keys cache attached to one CLI invocation.
+// Session is what we persist between invocations: tokens in the OS
+// keychain, everything else (all ciphertext or public data) in the session
+// file. The stretched key is NEVER written to disk; it lives in memory in
+// one invocation or in the agent.
 type Session struct {
 	UserID                      string         `json:"userId"`
 	Email                       string         `json:"email"`
@@ -63,9 +65,43 @@ type Session struct {
 // nor a VAULTCTL_API_KEY were found).
 var ErrNoSession = errors.New("no active vaultctl session; run `vaultctl login` or set VAULTCTL_API_KEY")
 
+// sessionTokens is the part of the session that lives in the OS keychain.
+// The macOS keychain backend refuses entries over ~4 KB, and the encrypted
+// key blobs alone exceed that, so only the bearer tokens go there. The
+// blobs are ciphertext under the master key (the same bytes the server and
+// the web app hold) and live in a 0600 file next to the config.
+type sessionTokens struct {
+	AccessToken      string `json:"accessToken"`
+	RefreshToken     string `json:"refreshToken"`
+	RefreshExpiresAt string `json:"refreshExpiresAt"`
+}
+
+// sessionRecord is the on-disk part: identity, public keys, the encrypted
+// private keys and the wrapped vault keys. It has no token fields, so the
+// bearer tokens cannot end up in the file.
+type sessionRecord struct {
+	UserID                      string         `json:"userId"`
+	Email                       string         `json:"email"`
+	Role                        string         `json:"role"`
+	EncryptedPrivateKey         string         `json:"encryptedPrivateKey"`
+	EncryptedIdentityPrivateKey string         `json:"encryptedIdentityPrivateKey"`
+	PublicKey                   string         `json:"publicKey"`
+	IdentityPublicKey           string         `json:"identityPublicKey"`
+	Vaults                      []SessionVault `json:"vaults"`
+	ActiveVaultID               string         `json:"activeVaultId,omitempty"`
+}
+
+func sessionPath() (string, error) {
+	path, err := configPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(path), "session.json"), nil
+}
+
 // LoadSession returns the current session, honouring VAULTCTL_API_KEY first
-// and the OS keychain second. ErrNoSession is returned when neither is
-// available.
+// and the keychain + session file second. ErrNoSession is returned when
+// neither is available.
 func LoadSession() (*Session, error) {
 	if apiKey := os.Getenv(envAPIKey); apiKey != "" {
 		return &Session{APIKey: apiKey}, nil
@@ -77,16 +113,55 @@ func LoadSession() (*Session, error) {
 		}
 		return nil, fmt.Errorf("keychain: %w", err)
 	}
-	var session Session
-	if err := json.Unmarshal([]byte(raw), &session); err != nil {
-		return nil, fmt.Errorf("decode session: %w", err)
+	var tokens sessionTokens
+	if err := json.Unmarshal([]byte(raw), &tokens); err != nil {
+		return nil, fmt.Errorf("decode session tokens: %w", err)
 	}
-	return &session, nil
+	session, err := readSessionFile()
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		// A keychain entry written before the split holds the whole
+		// session; keep honouring it until the next save migrates it.
+		session = &Session{}
+		if err := json.Unmarshal([]byte(raw), session); err != nil || session.UserID == "" {
+			return nil, ErrNoSession
+		}
+	}
+	session.AccessToken = tokens.AccessToken
+	session.RefreshToken = tokens.RefreshToken
+	session.RefreshExpiresAt = tokens.RefreshExpiresAt
+	return session, nil
 }
 
-// SaveSession persists the session to the OS keychain, overwriting any
-// previous entry. Does not touch the keychain when the caller is
-// API-key-driven.
+func readSessionFile() (*Session, error) {
+	path, err := sessionPath()
+	if err != nil {
+		return nil, err
+	}
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: fixed path under the user config dir
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read session: %w", err)
+	}
+	var record sessionRecord
+	if err := json.Unmarshal(raw, &record); err != nil {
+		return nil, fmt.Errorf("decode session: %w", err)
+	}
+	return &Session{
+		UserID: record.UserID, Email: record.Email, Role: record.Role,
+		EncryptedPrivateKey: record.EncryptedPrivateKey, EncryptedIdentityPrivateKey: record.EncryptedIdentityPrivateKey,
+		PublicKey: record.PublicKey, IdentityPublicKey: record.IdentityPublicKey,
+		Vaults: record.Vaults, ActiveVaultID: record.ActiveVaultID,
+	}, nil
+}
+
+// SaveSession persists the tokens to the OS keychain and the rest to the
+// session file, overwriting any previous entry. Does not touch either when
+// the caller is API-key-driven.
 func SaveSession(session *Session) error {
 	if session == nil {
 		return errors.New("cli: nil session")
@@ -94,22 +169,48 @@ func SaveSession(session *Session) error {
 	if session.APIKey != "" {
 		return nil // API-key mode is stateless
 	}
-	// AccessToken + RefreshToken are stored in the OS keychain so they
-	// survive across CLI invocations. gosec G117 flags the marshal
-	// because the struct field name matches a "secret" pattern, but
-	// persisting tokens in an OS-keyring-backed store is exactly what
-	// the session helper is for.
-	raw, err := json.Marshal(session) //nolint:gosec // G117: intentional keychain persistence
+	// The tokens are the only secrets and go to the OS keyring; gosec G117
+	// flags the marshal on the field names, which is exactly the intent.
+	tokens, err := json.Marshal(sessionTokens{ //nolint:gosec // G117: intentional keychain persistence
+		AccessToken: session.AccessToken, RefreshToken: session.RefreshToken, RefreshExpiresAt: session.RefreshExpiresAt,
+	})
+	if err != nil {
+		return fmt.Errorf("encode session tokens: %w", err)
+	}
+	if err := keyring.Set(keychainService, keychainUser, string(tokens)); err != nil {
+		return fmt.Errorf("keychain: %w", err)
+	}
+	raw, err := json.MarshalIndent(sessionRecord{
+		UserID: session.UserID, Email: session.Email, Role: session.Role,
+		EncryptedPrivateKey: session.EncryptedPrivateKey, EncryptedIdentityPrivateKey: session.EncryptedIdentityPrivateKey,
+		PublicKey: session.PublicKey, IdentityPublicKey: session.IdentityPublicKey,
+		Vaults: session.Vaults, ActiveVaultID: session.ActiveVaultID,
+	}, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode session: %w", err)
 	}
-	return keyring.Set(keychainService, keychainUser, string(raw))
+	path, err := sessionPath()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil { //nolint:gosec // G703: fixed path under the user config dir
+		return err
+	}
+	return os.WriteFile(path, raw, 0o600)
 }
 
-// ClearSession removes the keychain entry. A missing entry is not an error.
+// ClearSession removes the keychain entry and the session file. Missing
+// entries are not an error.
 func ClearSession() error {
 	err := keyring.Delete(keychainService, keychainUser)
 	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return err
+	}
+	path, err := sessionPath()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	return nil
