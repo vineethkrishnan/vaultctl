@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -186,15 +187,14 @@ type promptSession struct {
 	opts   Options
 	master *os.File
 
-	mu            sync.Mutex
-	tail          []byte
-	lastOutput    time.Time
-	tailHandled   bool
-	secretHandled bool
-	wasSecret     bool
-	filled        []Kind
-	answered      map[Kind]bool
-	handedOver    map[Kind]bool
+	mu          sync.Mutex
+	tail        []byte
+	lastOutput  time.Time
+	tailHandled bool
+	wasSecret   bool
+	filled      []Kind
+	answered    map[Kind]bool
+	handedOver  map[Kind]bool
 
 	captureOpen   bool
 	captureSecret bool
@@ -218,6 +218,11 @@ func (s *promptSession) observe(chunk []byte) {
 // secret prompt (every password prompt looks like this, whatever the
 // program); a visible prompt is output that stopped without a newline and
 // reads like a question for a username or a code.
+//
+// Each burst of child output is acted on at most once (tailHandled, reset
+// by observe), so a repeated prompt is recognised by its fresh output
+// rather than by catching the brief echo-on window between two reads, which
+// can be shorter than the sample tick.
 func (s *promptSession) evaluate(now time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -225,25 +230,28 @@ func (s *promptSession) evaluate(now time.Time) {
 	if secret && !s.wasSecret && s.opts.Capture {
 		s.openCapture(KindNone, true)
 	}
-	if !secret {
-		s.secretHandled = false
-	}
 	s.wasSecret = secret
-	if s.lastOutput.IsZero() {
+	if s.lastOutput.IsZero() || s.tailHandled {
 		return
 	}
 	quiet := now.Sub(s.lastOutput)
 	switch {
-	case secret && !s.secretHandled && quiet >= secretSettle:
-		s.secretHandled = true
+	case secret && quiet >= secretSettle && !s.isEmptyAftermath():
 		s.tailHandled = true
 		s.handle(Classify(LastLine(s.tail), true), true)
-	case !secret && !s.tailHandled && quiet >= visibleSettle && len(s.tail) > 0 && s.tail[len(s.tail)-1] != '\n':
+	case !secret && quiet >= visibleSettle && len(s.tail) > 0 && s.tail[len(s.tail)-1] != '\n':
 		s.tailHandled = true
 		if kind := Classify(LastLine(s.tail), false); kind != KindNone {
 			s.handle(kind, false)
 		}
 	}
+}
+
+// isEmptyAftermath is true when the only output since a fill is whitespace
+// (getpass writes a newline after reading the secret), so that trailing
+// newline is not mistaken for a fresh silent prompt.
+func (s *promptSession) isEmptyAftermath() bool {
+	return len(s.filled) > 0 && strings.TrimSpace(StripANSI(string(s.tail))) == ""
 }
 
 func (s *promptSession) handle(kind Kind, secret bool) {
