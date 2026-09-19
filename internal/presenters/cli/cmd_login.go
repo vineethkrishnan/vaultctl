@@ -16,11 +16,22 @@ import (
 )
 
 func newLoginCmd() *cobra.Command {
-	var email, deviceName string
+	var email, deviceName, server string
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Authenticate with email + master password and cache a session",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if server != "" {
+				normalized, err := normalizeServerURL(server)
+				if err != nil {
+					return err
+				}
+				config := loadConfig()
+				config.Server = normalized
+				if err := saveConfig(config); err != nil {
+					return fmt.Errorf("save config: %w", err)
+				}
+			}
 			// API-key mode: no interactive prompt, no password derivation.
 			if os.Getenv(envAPIKey) != "" {
 				session := &Session{APIKey: os.Getenv(envAPIKey)}
@@ -157,6 +168,7 @@ func newLoginCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&email, "email", "", "Email address (prompted if omitted)")
 	cmd.Flags().StringVar(&deviceName, "device", "vaultctl-cli", "Device label recorded on the server session")
+	cmd.Flags().StringVar(&server, "server", "", "Server URL to log in to; saved to the config file for later commands")
 	return cmd
 }
 

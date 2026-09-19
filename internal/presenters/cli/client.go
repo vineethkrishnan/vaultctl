@@ -12,34 +12,51 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
-// httpClient is the single transport used by every CLI command. Dev defaults
-// accept self-signed certs because a local vaultctl server is launched via
-// HTTPS on localhost; production deployments pin a real CA via the standard
-// OS trust store and can set VAULTCTL_INSECURE_SKIP_VERIFY=0.
-var httpClient = &http.Client{
-	Timeout: 30 * time.Second,
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify()}, //nolint:gosec // opt-in via env
-	},
+var (
+	httpClientOnce sync.Once
+	httpClient     *http.Client
+)
+
+// client is the single transport used by every CLI command. Certificate
+// verification is on unless the user opted out, or the server is loopback
+// (a local `vaultctl server` runs on a self-signed certificate).
+func client() *http.Client {
+	httpClientOnce.Do(func() {
+		httpClient = &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify()}, //nolint:gosec // opt-in via env or config, default only for loopback
+			},
+		}
+	})
+	return httpClient
 }
 
 func insecureSkipVerify() bool {
-	// Off-by-default in future, but M10 ships a dev-oriented CLI that
-	// must talk to localhost:8080 with a snakeoil cert out of the box.
-	v := strings.ToLower(os.Getenv("VAULTCTL_INSECURE_SKIP_VERIFY"))
-	return v == "" || v == "1" || v == "true" || v == "yes"
+	if value := strings.ToLower(os.Getenv(envInsecureSkipVerify)); value != "" {
+		return value == "1" || value == "true" || value == "yes"
+	}
+	if configured := loadConfig().InsecureSkipVerify; configured != nil {
+		return *configured
+	}
+	return isLoopbackServer(ServerURL())
 }
 
-// ServerURL returns the configured base URL (no trailing slash).
+// ServerURL returns the base URL (no trailing slash): VAULTCTL_SERVER, then
+// the config file, then the local development default.
 func ServerURL() string {
-	s := os.Getenv(envServer)
-	if s == "" {
-		s = defaultServerURL
+	server := os.Getenv(envServer)
+	if server == "" {
+		server = loadConfig().Server
 	}
-	return strings.TrimRight(s, "/")
+	if server == "" {
+		server = defaultServerURL
+	}
+	return strings.TrimRight(server, "/")
 }
 
 // APIError is the decoded { "error": { "code", "message" } } shape from the
@@ -111,7 +128,7 @@ func do(method, path string, body any, session *Session) ([]byte, error) {
 }
 
 func send(req *http.Request) (int, []byte, error) {
-	resp, err := httpClient.Do(req)
+	resp, err := client().Do(req)
 	if err != nil {
 		return 0, nil, fmt.Errorf("http: %w", err)
 	}

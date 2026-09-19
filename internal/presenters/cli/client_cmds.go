@@ -12,6 +12,7 @@ import "github.com/spf13/cobra"
 func newClientCmds() []*cobra.Command {
 	return []*cobra.Command{
 		newLoginCmd(),
+		newConfigCmd(),
 		newLogoutCmd(),
 		newStatusCmd(),
 		newListCmd(),

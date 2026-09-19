@@ -53,11 +53,11 @@ The bundled compose sets `VAULTCTL_DB_SSL_INSECURE_OK=true` because Postgres liv
 ## CLI
 
 ```bash
-go install github.com/vineethkrishnan/vaultctl/cmd/server@latest
-# or grab a signed binary from the latest release
+# grab a signed `vaultctl` binary from the latest release, or build it:
+git clone https://github.com/vineethkrishnan/vaultctl.git && cd vaultctl
+make build && cp bin/vaultctl ~/go/bin/      # `go install .../cmd/server` would name the binary `server`
 
-export VAULTCTL_SERVER=https://vault.example.com
-vaultctl login
+vaultctl login --server https://vault.example.com   # server is remembered in the config file
 vaultctl unlock                 # keeps the vault open in a per-user agent (macOS/Linux)
 vaultctl list
 vaultctl get GitHub --field password
