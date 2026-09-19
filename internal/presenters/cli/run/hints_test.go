@@ -30,7 +30,7 @@ func TestRewrite(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Rewrite(tc.argv, ParseArgv(tc.argv), tc.username, tc.hasPassword)
+			got := Rewrite(tc.argv, ParseArgvWithEnv(tc.argv, fakeEnv(map[string]string{"TELEPORT_HOME": t.TempDir()})), tc.username, tc.hasPassword)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %v want %v", got, tc.want)
 			}
