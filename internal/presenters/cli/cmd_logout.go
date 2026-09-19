@@ -45,6 +45,9 @@ func newLogoutCmd() *cobra.Command {
 			if err := ClearSession(); err != nil {
 				return err
 			}
+			if err := agentLock(); err != nil {
+				printErr("warning: could not lock the agent: " + err.Error())
+			}
 			if isJSON(cmd) {
 				return printJSON(cmd, map[string]string{jsonKeyStatus: "ok"})
 			}

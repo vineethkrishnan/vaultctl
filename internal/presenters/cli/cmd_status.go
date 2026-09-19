@@ -34,10 +34,17 @@ func newStatusCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Authenticated via VAULTCTL_API_KEY → %s\n", ServerURL())
 				return nil
 			}
+			agentRunning, agentLocked, agentExpires, err := agentStatus()
+			if err != nil {
+				return err
+			}
 			if isJSON(cmd) {
 				return printJSON(cmd, map[string]any{
 					"authenticated":    true,
 					"mode":             "master-password",
+					"agentRunning":     agentRunning,
+					"locked":           agentLocked,
+					"unlockedUntil":    agentExpires,
 					"userId":           session.UserID,
 					"email":            session.Email,
 					"role":             session.Role,
@@ -53,6 +60,14 @@ func newStatusCmd() *cobra.Command {
 			_, _ = fmt.Fprintf(out, "Vaults: %d\n", len(session.Vaults))
 			if session.ActiveVaultID != "" {
 				_, _ = fmt.Fprintf(out, "Active vault: %s\n", session.ActiveVaultID)
+			}
+			switch {
+			case !agentRunning:
+				_, _ = fmt.Fprintln(out, "Vault: locked (no agent running; `vaultctl unlock` starts one)")
+			case agentLocked:
+				_, _ = fmt.Fprintln(out, "Vault: locked")
+			default:
+				_, _ = fmt.Fprintf(out, "Vault: unlocked until %s\n", agentExpires.Local().Format("15:04:05"))
 			}
 			return nil
 		},

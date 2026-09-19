@@ -3,26 +3,23 @@
 package cli
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
-
-	"github.com/vineethkrishnan/vaultctl/internal/application/clientcrypto"
-	"github.com/vineethkrishnan/vaultctl/internal/domain/user"
 )
 
 func newUnlockCmd() *cobra.Command {
-	return &cobra.Command{
+	var timeout time.Duration
+	cmd := &cobra.Command{
 		Use:   "unlock",
-		Short: "Re-prompt for master password and validate the cached session",
-		Long: `Re-prompt for the master password, re-derive the stretched key, and
-validate it against the cached encrypted private key.
+		Short: "Unlock the vault and keep it unlocked in the agent",
+		Long: `Prompt for the master password, verify it against the cached encrypted
+private key, and hand the derived key to the vaultctl agent (started on
+demand) so later commands and ` + "`vaultctl run`" + ` do not prompt again.
 
-On the CLI this is a single-shot check - the stretched key cannot survive
-across processes - but it is useful for catching "did I remember my master
-password?" without running a destructive command.`,
+The key is forgotten after --timeout of inactivity or on ` + "`vaultctl lock`" + `.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			session, err := LoadSession()
 			if errors.Is(err, ErrNoSession) {
@@ -34,48 +31,28 @@ password?" without running a destructive command.`,
 			if session.APIKey != "" {
 				return errors.New("cannot unlock: running in VAULTCTL_API_KEY mode")
 			}
+			stretchedKey, err := promptStretchedKey(session)
+			if err != nil {
+				return err
+			}
+			defer zeroBytes(stretchedKey)
+			keys, err := unlockKeys(session, stretchedKey)
+			if err != nil {
+				return err
+			}
+			keys.Zero()
 
-			// Refetch prelogin so we use the user's current KDF params.
-			preloginRaw, err := httpGet("/auth/prelogin?email="+urlQueryEscape(session.Email), nil)
+			expiresAt, err := agentStoreKey(stretchedKey, timeout)
 			if err != nil {
 				return err
 			}
-			var prelogin struct {
-				Salt        string `json:"salt"`
-				Iterations  uint32 `json:"iterations"`
-				MemoryKB    uint32 `json:"memoryKB"`
-				Parallelism uint8  `json:"parallelism"`
-			}
-			if err := unmarshalJSON(preloginRaw, &prelogin); err != nil {
-				return err
-			}
-			salt, err := base64.StdEncoding.DecodeString(prelogin.Salt)
-			if err != nil {
-				return err
-			}
-			password, err := promptPassword("Master password")
-			if err != nil {
-				return err
-			}
-			derived, err := clientcrypto.DeriveKeys(password, salt, user.KDFParams{
-				Iterations: prelogin.Iterations, MemoryKB: prelogin.MemoryKB, Parallelism: prelogin.Parallelism,
-			})
-			if err != nil {
-				return err
-			}
-			defer derived.Zero()
-
-			keys, err := unlockKeys(session, derived.StretchedKey)
-			if err != nil {
-				return err
-			}
-			defer keys.Zero()
-
 			if isJSON(cmd) {
-				return printJSON(cmd, map[string]string{jsonKeyStatus: "unlocked"})
+				return printJSON(cmd, map[string]any{jsonKeyStatus: "unlocked", "expiresAt": expiresAt})
 			}
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Master password verified - vault unlocked for this process.")
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Vault unlocked until %s of inactivity.\n", timeout)
 			return nil
 		},
 	}
+	cmd.Flags().DurationVar(&timeout, "timeout", defaultAgentTimeout, "Lock again after this much inactivity")
+	return cmd
 }
