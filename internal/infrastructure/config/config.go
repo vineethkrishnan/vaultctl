@@ -48,6 +48,9 @@ type Config struct {
 	// reaches Postgres over a private bridge network and cannot negotiate TLS.
 	// Operators must set this in addition to VAULTCTL_DB_SSL_MODE=disable.
 	DBSSLInsecureOK bool `env:"VAULTCTL_DB_SSL_INSECURE_OK" envDefault:"false"`
+	// The release image is distroless, so `sh -c "migrate up && server"` cannot
+	// run; the server applies pending migrations itself before it listens.
+	AutoMigrate bool `env:"VAULTCTL_AUTO_MIGRATE" envDefault:"false"`
 
 	// ===========================================================================
 	// JWT signing keys - dual-key rotation (H8)

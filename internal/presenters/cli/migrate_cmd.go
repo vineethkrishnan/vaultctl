@@ -31,22 +31,34 @@ func newMigrateUpCmd() *cobra.Command {
 		Use:   "up",
 		Short: "Apply all pending migrations",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			m, closeFn, err := newMigrator()
+			cfg, err := config.Load()
+			if err != nil {
+				return fmt.Errorf("load config: %w", err)
+			}
+			version, dirty, err := applyPendingMigrations(cfg)
 			if err != nil {
 				return err
-			}
-			defer closeFn()
-			if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-				return fmt.Errorf("migrate up: %w", err)
-			}
-			version, dirty, err := m.Version()
-			if err != nil && !errors.Is(err, migrate.ErrNilVersion) {
-				return fmt.Errorf("read version: %w", err)
 			}
 			cmd.Printf("migrations applied: version=%d dirty=%t\n", version, dirty)
 			return nil
 		},
 	}
+}
+
+func applyPendingMigrations(cfg *config.Config) (uint, bool, error) {
+	m, closeFn, err := newMigrator(cfg)
+	if err != nil {
+		return 0, false, err
+	}
+	defer closeFn()
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return 0, false, fmt.Errorf("migrate up: %w", err)
+	}
+	version, dirty, err := m.Version()
+	if err != nil && !errors.Is(err, migrate.ErrNilVersion) {
+		return 0, false, fmt.Errorf("read version: %w", err)
+	}
+	return version, dirty, nil
 }
 
 func newMigrateDownCmd() *cobra.Command {
@@ -55,7 +67,11 @@ func newMigrateDownCmd() *cobra.Command {
 		Use:   "down",
 		Short: "Roll back N migrations (default 1)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			m, closeFn, err := newMigrator()
+			cfg, err := config.Load()
+			if err != nil {
+				return fmt.Errorf("load config: %w", err)
+			}
+			m, closeFn, err := newMigrator(cfg)
 			if err != nil {
 				return err
 			}
@@ -71,11 +87,7 @@ func newMigrateDownCmd() *cobra.Command {
 	return c
 }
 
-func newMigrator() (*migrate.Migrate, func(), error) {
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, nil, fmt.Errorf("load config: %w", err)
-	}
+func newMigrator(cfg *config.Config) (*migrate.Migrate, func(), error) {
 	src, err := iofs.New(dbmigrations.FS, ".")
 	if err != nil {
 		return nil, nil, fmt.Errorf("open embedded migrations: %w", err)

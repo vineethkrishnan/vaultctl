@@ -34,7 +34,7 @@ services:
       args:
         VERSION: ${VAULTCTL_VERSION:-latest}
     image: ghcr.io/vineethkrishnan/vaultctl:${VAULTCTL_VERSION:-latest}
-    command: ["sh", "-c", "vaultctl migrate up && exec vaultctl server"]
+    command: ["server"]
     container_name: vaultctl-api
     restart: unless-stopped
     env_file: .env
@@ -44,6 +44,7 @@ services:
       # production fail-closed default strict for every other deployment.
       VAULTCTL_DB_SSL_MODE: disable
       VAULTCTL_DB_SSL_INSECURE_OK: "true"
+      VAULTCTL_AUTO_MIGRATE: "true"
       VAULTCTL_DB_HOST: vaultctl-db
       VAULTCTL_ATTACHMENTS_DIR: /data/attachments
     volumes:
