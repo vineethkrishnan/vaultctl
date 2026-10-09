@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.29.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.29.0...v1.29.1) (2026-10-09)
+
+
+### Bug Fixes
+
+* **web:** seed the default folders into the vault registration creates ([#423](https://github.com/vineethkrishnan/vaultctl/issues/423)) ([0c1bfb3](https://github.com/vineethkrishnan/vaultctl/commit/0c1bfb3eabaf5c8117ee18ab65a3bbeb3de63948))
+
+
+### Documentation
+
+* **compose:** point the in-app upgrade at the maintained watchtower ([#422](https://github.com/vineethkrishnan/vaultctl/issues/422)) ([5e417be](https://github.com/vineethkrishnan/vaultctl/commit/5e417bed115c2bfa85111ad12c87c11b1881555d))
+
 ## [1.29.0](https://github.com/vineethkrishnan/vaultctl/compare/v1.28.0...v1.29.0) (2026-10-09)
 
 
