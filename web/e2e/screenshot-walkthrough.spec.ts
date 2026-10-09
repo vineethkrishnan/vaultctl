@@ -104,6 +104,9 @@ test("capture walkthrough screenshots", async ({ page, context }) => {
   await expect(
     page.getByText(/no items|empty|create your first/i).first(),
   ).toBeVisible({ timeout: 30_000 });
+  for (const folderName of ["Personal", "Work", "Temporary"]) {
+    await expect(page.getByRole("link", { name: folderName, exact: true })).toBeVisible();
+  }
   await shot(page, "05-empty-vault.png");
 
   // ----------------------------------------------------------- 06. Item type picker
