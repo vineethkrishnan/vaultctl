@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.29.2](https://github.com/vineethkrishnan/vaultctl/compare/v1.29.1...v1.29.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* **web:** show the update button only to admins and say why an upgrade is refused ([#425](https://github.com/vineethkrishnan/vaultctl/issues/425)) ([dd2e906](https://github.com/vineethkrishnan/vaultctl/commit/dd2e906666ee1530b7dfe7fd79df90de02bb044e))
+
 ## [1.29.1](https://github.com/vineethkrishnan/vaultctl/compare/v1.29.0...v1.29.1) (2026-10-09)
 
 
