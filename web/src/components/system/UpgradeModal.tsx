@@ -22,6 +22,11 @@ interface Props {
   onClose: () => void;
 }
 
+const UPGRADE_ERROR_KEYS: Record<string, string> = {
+  FORBIDDEN: "upgrade.forbidden",
+  STEP_UP_REQUIRED: "upgrade.stepUpRequired",
+};
+
 export function UpgradeModal({ stepUpToken, targetVersion, onClose }: Props) {
   const { t } = useTranslation("system");
   const [phase, setPhase] = useState<Phase>("applying");
@@ -53,6 +58,11 @@ export function UpgradeModal({ stepUpToken, targetVersion, onClose }: Props) {
       }
     }
 
+    function upgradeErrorMessage(ev: UpgradeEvent): string | undefined {
+      const key = ev.code ? UPGRADE_ERROR_KEYS[ev.code] : undefined;
+      return key ? t(key) : ev.msg;
+    }
+
     function handleEvent(ev: UpgradeEvent) {
       if (ev.type === "log" && ev.msg) {
         addLog(ev.msg);
@@ -64,7 +74,7 @@ export function UpgradeModal({ stepUpToken, targetVersion, onClose }: Props) {
         }, 1_500);
       } else if (ev.type === "error") {
         setPhase("error");
-        setErrorMsg(ev.msg);
+        setErrorMsg(upgradeErrorMessage(ev));
       }
     }
 
