@@ -102,7 +102,7 @@ func (r *VaultRepo) IsActiveMember(ctx context.Context, userID user.ID, vaultID 
 	err := r.Pool.QueryRow(ctx, `
 		SELECT role FROM vault_members WHERE user_id = $1 AND vault_id = $2 AND removed_at IS NULL
 	`, string(userID), string(vaultID)).Scan(&role)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) || isInvalidTextRepresentation(err) {
 		return "", false, nil
 	}
 	if err != nil {
