@@ -40,6 +40,7 @@ export const getUpdateStatus = () => apiGet<UpdateStatus>("/api/v1/updates");
 export interface UpgradeEvent {
   type: "log" | "restarting" | "error";
   msg?: string;
+  code?: string;
 }
 
 /**
@@ -63,7 +64,8 @@ export async function* applyUpgrade(
   });
 
   if (!res.ok || !res.body) {
-    yield { type: "error", msg: `HTTP ${res.status}` };
+    const body = await res.json().catch(() => null);
+    yield { type: "error", msg: `HTTP ${res.status}`, code: body?.error?.code };
     return;
   }
 

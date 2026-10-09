@@ -10,6 +10,8 @@ import {
 } from "@/lib/system-api";
 import { useUpdateNotification } from "@/hooks/use-update-notification";
 import { useServerFeatures } from "@/hooks/use-server-features";
+import { useAuthStore } from "@/lib/auth-store";
+import { canAdminister } from "@/lib/roles";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
 import { StepUpModal } from "@/components/auth/StepUpModal";
 import { UpgradeModal } from "@/components/system/UpgradeModal";
@@ -22,6 +24,7 @@ export function UpdateBanner() {
   const { t } = useTranslation(["system", "common"]);
   const { status: data, show } = useUpdateNotification();
   const features = useServerFeatures();
+  const canApplyUpgrade = useAuthStore((s) => canAdminister(s.role));
 
   const [dismissed, setDismissed] = useState(false);
   const [modal, setModal] = useState<"available" | "whatsnew" | null>(null);
@@ -60,7 +63,7 @@ export function UpdateBanner() {
             . {t("update.youAreOn", { version: data.currentVersion })}
           </span>
           <div className="ml-auto flex items-center gap-2">
-            {features.upgrade && (
+            {features.upgrade && canApplyUpgrade && (
               <button
                 onClick={() => setStepUp(true)}
                 className="rounded-md bg-brand px-3 py-1 text-xs font-medium text-[#042f2a] hover:bg-brand/90"

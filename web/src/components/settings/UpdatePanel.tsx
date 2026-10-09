@@ -12,6 +12,8 @@ import {
   type NotifyLevel,
 } from "@/lib/system-api";
 import { useServerFeatures } from "@/hooks/use-server-features";
+import { useAuthStore } from "@/lib/auth-store";
+import { canAdminister } from "@/lib/roles";
 import { WhatsNewModal } from "@/components/system/WhatsNewModal";
 import { StepUpModal } from "@/components/auth/StepUpModal";
 import { UpgradeModal } from "@/components/system/UpgradeModal";
@@ -21,6 +23,7 @@ const LEVELS: NotifyLevel[] = ["all", "minor", "major", "off"];
 export function UpdatePanel() {
   const { t } = useTranslation(["settings", "system"]);
   const features = useServerFeatures();
+  const canApplyUpgrade = useAuthStore((s) => canAdminister(s.role));
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["system", "updates"],
     queryFn: getUpdateStatus,
@@ -81,7 +84,7 @@ export function UpdatePanel() {
 
       {data?.updateAvailable && (
         <div className="flex flex-wrap items-center gap-2">
-          {features.upgrade && (
+          {features.upgrade && canApplyUpgrade && (
             <button
               onClick={() => setStepUp(true)}
               className="rounded-md bg-brand px-4 py-1.5 text-sm font-medium text-[#042f2a] hover:bg-brand/90"

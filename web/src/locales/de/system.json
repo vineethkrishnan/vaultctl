@@ -21,7 +21,9 @@
     "confirmTitle": "Update auf v{{version}} anwenden?",
     "confirmBody": "Der Server wird nach dem Laden des neuen Images und der Ausführung von Datenbankmigrationen neugestartet. Bestehende Sitzungen bleiben erhalten. Sie werden aufgefordert, Ihr Master-Passwort zur Bestätigung einzugeben.",
     "confirm": "Aktualisieren",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "forbidden": "Nur Administratoren und Eigentümer können Updates installieren. Melden Sie sich mit einem Administratorkonto an.",
+    "stepUpRequired": "Die Bestätigung Ihres Master-Passworts ist abgelaufen. Schließen Sie dies und versuchen Sie es erneut."
   },
   "whatsNew": {
     "title": "Neuerungen",
