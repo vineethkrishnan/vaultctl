@@ -112,14 +112,30 @@ starts against the old schema, so keep it on whenever the upgrade hook is enable
 
 ```bash
 # In .env
+VAULTCTL_VERSION=latest
 VAULTCTL_UPGRADE_ENABLED=true
-VAULTCTL_UPGRADE_HOOK_URL=http://watchtower:8080/v1/update
-VAULTCTL_UPGRADE_HOOK_TOKEN=<secret-matching-WATCHTOWER_HTTP_API_TOKEN>
+VAULTCTL_UPGRADE_HOOK_URL=http://watchtower:8080/v1/update?container=vaultctl-api&async=true
+VAULTCTL_UPGRADE_HOOK_TOKEN=<openssl rand -hex 32>
 ```
 
-Uncomment the `watchtower` service block in `docker-compose.yml`. The Watchtower
-container must be on the same Docker network as vaultctl and must be started with
-`--http-api-update`.
+Uncomment the `watchtower` service block in `docker-compose.yml` (or
+`docker-compose.simple.yml`) and run `docker compose up -d`.
+
+- Use [`nickfedor/watchtower`](https://github.com/nicholas-fedor/watchtower). The
+  original `containrrr/watchtower` is archived; its last release (v1.7.1) defaults
+  to Docker API 1.25, which Docker Engine 29 rejects (minimum 1.44).
+- `VAULTCTL_VERSION=latest` is required. Watchtower only pulls a newer build of the
+  tag the container already runs, so a pinned version such as `1.29.0` never moves.
+- `WATCHTOWER_HTTP_API_ENDPOINTS=update,health` turns on the update endpoint. With
+  `WATCHTOWER_HTTP_API_PERIODIC_POLLS` left unset, Watchtower updates only when the
+  button is pressed. Do not enable periodic polls unless you want unattended upgrades.
+- `container=vaultctl-api` limits the update to vaultctl, and `async=true` makes
+  Watchtower answer `202` immediately instead of holding the request open while it
+  restarts the server that sent it.
+- `WATCHTOWER_CLEANUP=true` removes the previous image after an upgrade so old
+  images do not fill the disk.
+- Watchtower gets the Docker socket, which is root-equivalent on the host. Keep its
+  port unpublished so only containers on `vaultctl-net` can reach it.
 
 **Custom script**
 
@@ -133,12 +149,17 @@ The script is exec'd directly (no shell expansion). It should pull the new image
 stop the old container, start the new one, and exit 0 on success. stdout/stderr
 are streamed live to the admin UI as the upgrade runs.
 
+The script runs inside the vaultctl process, so it only suits installs where the
+binary runs directly on the host (for example under systemd). The release image is
+distroless, with no shell and no Docker access, so container deployments should use
+Watchtower.
+
 | Variable | Default | Description |
 | --- | --- | --- |
 | `VAULTCTL_UPGRADE_ENABLED` | `false` | Gates the `POST /api/v1/updates/apply` endpoint. Off by default; must be explicitly opted in. Requires admin + step-up re-auth. |
-| `VAULTCTL_UPGRADE_HOOK_URL` | (none) | Full URL of an HTTP endpoint to POST to when an upgrade is triggered (e.g. `http://watchtower:8080/v1/update`). Takes precedence over `HOOK_SCRIPT` if both are set. |
+| `VAULTCTL_UPGRADE_HOOK_URL` | (none) | Full URL of an HTTP endpoint to POST to when an upgrade is triggered (e.g. `http://watchtower:8080/v1/update?container=vaultctl-api&async=true`). Takes precedence over `HOOK_SCRIPT` if both are set. |
 | `VAULTCTL_UPGRADE_HOOK_TOKEN` | (none) | Bearer token sent to the hook URL. Must match the Watchtower `WATCHTOWER_HTTP_API_TOKEN` value. |
-| `VAULTCTL_UPGRADE_HOOK_SCRIPT` | (none) | Absolute path to an executable script on the host. The server exec's it directly; no shell expansion. |
+| `VAULTCTL_UPGRADE_HOOK_SCRIPT` | (none) | Absolute path to an executable script, run by the vaultctl process itself (so not usable from the distroless container). The server exec's it directly; no shell expansion. |
 
 ## Email (SMTP)
 
