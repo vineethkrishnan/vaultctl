@@ -20,7 +20,7 @@ import {
   toBase64,
   zero,
 } from "@/shared/crypto";
-import type { RegisterResponse, LoginResponse } from "@/shared/types/api";
+import type { RegisterResponse, LoginResponse, VaultResponse } from "@/shared/types/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { RecoveryKitDownload } from "@/components/auth/RecoveryKitDownload";
 
@@ -149,7 +149,7 @@ export function RegisterPage() {
       });
 
       // Create personal vault
-      const vault = await apiPost<{ vaultId: string }>("/api/v1/vaults", {
+      const vault = await apiPost<VaultResponse>("/api/v1/vaults", {
         name: "Personal Vault",
         type: "personal",
         encryptedVaultKey: toBase64(encVaultKeyBytes),
@@ -165,7 +165,7 @@ export function RegisterPage() {
           const encryptedName = toBase64(
             serializeBlob(await aesGcmEncrypt(vaultKey, pad(encoder.encode(folderName)))),
           );
-          await apiPost(`/api/v1/vaults/${vault.vaultId}/folders`, { encryptedName });
+          await apiPost(`/api/v1/vaults/${vault.id}/folders`, { encryptedName });
         }
       } catch {
         // Non-fatal: the user can create folders manually later.
