@@ -44,6 +44,14 @@ func newServerCmd() *cobra.Command {
 			}
 			logger := logging.New(cfg)
 
+			if cfg.AutoMigrate {
+				version, _, err := applyPendingMigrations(cfg)
+				if err != nil {
+					return err
+				}
+				logger.Info("server.migrations_applied", "version", version)
+			}
+
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 

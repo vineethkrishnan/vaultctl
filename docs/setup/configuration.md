@@ -38,6 +38,7 @@ Durations use Go syntax (`15m`, `168h`, `15s`). Lists are comma-separated.
 | `VAULTCTL_DB_PASSWORD` | (none) | Database password. **Required (prod).** |
 | `VAULTCTL_DB_SSL_MODE` | `require` | `require`, `verify-full`, or `disable`. Use `verify-full` for any cross-host DB. |
 | `VAULTCTL_DB_SSL_INSECURE_OK` | `false` | Explicit opt-in to allow `VAULTCTL_DB_SSL_MODE=disable` in production. Only set when Postgres is on a private bridge network (the bundled compose does this). In prod, `disable` without this set fails startup. |
+| `VAULTCTL_AUTO_MIGRATE` | `false` | Apply pending migrations when `vaultctl server` starts, before it listens. A failed or dirty migration stops startup. Multiple replicas are safe: migrations take a Postgres advisory lock. The bundled compose sets it to `true`; leave it off if you run `vaultctl migrate up` as a separate step. |
 
 ## JWT signing keys (dual-key rotation)
 
@@ -104,8 +105,8 @@ Settings without SSHing into the host. Disabled by default. Set exactly one of
 The server never pulls images or modifies its own binary. It calls out to an
 external mechanism (Watchtower, a shell script) that does the work and then
 restarts the container. Migrations run automatically on the next startup because
-the bundled compose uses `vaultctl migrate up && exec vaultctl server` as the
-container command.
+the bundled compose sets `VAULTCTL_AUTO_MIGRATE=true`. Without it, the new version
+starts against the old schema, so keep it on whenever the upgrade hook is enabled.
 
 **Watchtower (recommended for Docker Compose)**
 

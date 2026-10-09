@@ -136,6 +136,28 @@ func TestLoad_Production_AllowsSSLDisable_WithExplicitInsecureOK_H12(t *testing.
 	}
 }
 
+func TestLoad_AutoMigrate_OffByDefault(t *testing.T) {
+	setEnv(t, map[string]string{"VAULTCTL_ENV": "development"})
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("dev load: %v", err)
+	}
+	if cfg.AutoMigrate {
+		t.Fatal("auto-migrate must stay opt-in so deploys that migrate separately are unchanged")
+	}
+}
+
+func TestLoad_AutoMigrate_OptIn(t *testing.T) {
+	setEnv(t, map[string]string{"VAULTCTL_ENV": "development", "VAULTCTL_AUTO_MIGRATE": "true"})
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("dev load: %v", err)
+	}
+	if !cfg.AutoMigrate {
+		t.Fatal("VAULTCTL_AUTO_MIGRATE=true was not applied")
+	}
+}
+
 func TestLoad_RedactFields_ParsedAsSlice(t *testing.T) {
 	setEnv(t, map[string]string{"VAULTCTL_ENV": "development"})
 	cfg, _ := Load()
