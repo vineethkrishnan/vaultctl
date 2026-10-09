@@ -48,6 +48,26 @@ services:
       timeout: 3s
       retries: 5
 
+  # --- Optional: Watchtower (in-app upgrade support) ---
+  # Uncomment to enable the Update now button in Settings > Updates. In .env set
+  # VAULTCTL_VERSION=latest, VAULTCTL_UPGRADE_ENABLED=true,
+  # VAULTCTL_UPGRADE_HOOK_URL=http://watchtower:8080/v1/update?container=vaultctl-api&async=true
+  # and VAULTCTL_UPGRADE_HOOK_TOKEN (e.g. openssl rand -hex 32). See docs/setup/configuration.md.
+  #
+  # watchtower:
+  #   image: nickfedor/watchtower:1.23.0
+  #   container_name: vaultctl-watchtower
+  #   restart: unless-stopped
+  #   command: ["vaultctl-api"]
+  #   environment:
+  #     WATCHTOWER_HTTP_API_ENDPOINTS: "update,health"
+  #     WATCHTOWER_HTTP_API_TOKEN: ${VAULTCTL_UPGRADE_HOOK_TOKEN}
+  #     WATCHTOWER_CLEANUP: "true"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     - vaultctl-net
+
 volumes:
   postgres-data:
   attachments-data:

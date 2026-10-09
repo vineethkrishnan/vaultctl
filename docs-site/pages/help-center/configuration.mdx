@@ -49,6 +49,7 @@ When `VAULTCTL_ENV=production`, the server **refuses to start** unless every one
 | `VAULTCTL_DB_PASSWORD` | *(required in prod)* | Database password. |
 | `VAULTCTL_DB_SSL_MODE` | `require` | One of `disable`, `require`, `verify-ca`, `verify-full`. |
 | `VAULTCTL_DB_SSL_INSECURE_OK` | `false` | Must be `true` to allow `VAULTCTL_DB_SSL_MODE=disable` in production. Set automatically by the bundled compose where Postgres lives on a private bridge network; leave `false` for any cross-host deploy. |
+| `VAULTCTL_AUTO_MIGRATE` | `false` | Apply pending migrations when the server starts. A failed or dirty migration stops startup. Set to `true` by the bundled compose files. |
 
 <Callout type="info">
   vaultctl connects with discrete `VAULTCTL_DB_*` variables, not a single `DATABASE_URL` connection string.
@@ -143,7 +144,7 @@ The `vaultctl` CLI reads its own variables, separate from the server:
 
 ## Upgrades & migrations
 
-Database migrations are embedded in the binary but are **not** applied automatically on server start. After pulling a new image or binary that adds a migration, run the migration when you recreate the container:
+Database migrations are embedded in the binary. With `VAULTCTL_AUTO_MIGRATE=true`, which the bundled compose files set, the server applies pending migrations on start and refuses to start if one fails. Without it, run the migration yourself when you recreate the container:
 
 ```bash
 # One-off against the live database
@@ -154,6 +155,8 @@ docker compose run --rm vaultctl migrate up
 ```
 
 Migrations are idempotent - running `migrate up` with nothing pending is a no-op.
+
+To upgrade from the web UI instead of the shell, enable the in-app upgrade (an **Update now** button in Settings > Updates, backed by Watchtower). Setup is in [`docs/setup/configuration.md`](https://github.com/vineethkrishnan/vaultctl/blob/main/docs/setup/configuration.md#in-app-upgrade).
 
 ## Key rotation
 
