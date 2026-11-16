@@ -60,6 +60,7 @@ import {
 } from "../../utils/password-gen";
 import { isSafeHttpUri } from "@shared/host";
 import { copySecret } from "../../utils/clipboard";
+import { api, STARTUP_REQUEST_TIMEOUT_MS } from "../../utils/server-api";
 import {
   isBiometricAvailable,
   isBiometricEnrolled,
@@ -156,62 +157,6 @@ const SUPPORT_EMAIL = "support@vinelab.in";
 
 function bg<T = unknown>(message: Record<string, unknown>): Promise<T> {
   return browser.runtime.sendMessage(message) as Promise<T>;
-}
-
-function apiError(message: string, code: string): Error & { code: string } {
-  const err = new Error(message) as Error & { code: string };
-  err.code = code;
-  return err;
-}
-
-async function api<T>(
-  serverUrl: string,
-  path: string,
-  opts: { method?: string; token?: string; body?: unknown } = {},
-): Promise<T> {
-  const base = serverUrl.replace(/\/$/, "");
-  let res: Response;
-  try {
-    res = await fetch(`${base}${path}`, {
-      method: opts.method ?? "GET",
-      headers: {
-        // Only set Content-Type when there is a body. On a bodyless GET it is
-        // a non-safelisted header that forces a CORS preflight, which the
-        // health check does not need and some setups (Firefox without the
-        // host grant) reject.
-        ...(opts.body ? { "Content-Type": "application/json" } : {}),
-        ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
-      },
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-    });
-  } catch {
-    // fetch rejects with a bare TypeError ("Failed to fetch" / "Load failed" /
-    // "NetworkError ...") for DNS, connection-refused, TLS and CORS failures -
-    // none of which are legible to a user. Map them all to one clear message.
-    throw apiError(
-      `Can't reach the server at ${base}. Check the address is correct and that the server is running.`,
-      "NETWORK_ERROR",
-    );
-  }
-
-  const text = await res.text();
-  let json: { error?: { code?: string; message?: string } } = {};
-  if (text) {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      throw apiError(
-        `${base} returned an unexpected response. Make sure the URL points to a vaultctl server.`,
-        "BAD_RESPONSE",
-      );
-    }
-  }
-  if (!res.ok) {
-    const code = json?.error?.code;
-    const msg = json?.error?.message ?? `Server error (HTTP ${res.status}).`;
-    throw apiError(msg, code ?? `HTTP_${res.status}`);
-  }
-  return json as T;
 }
 
 // Decrypt a wire blob using the background's in-memory vault key.
@@ -383,13 +328,16 @@ export function Popup() {
             const params = await api<PreloginResponse>(
               url,
               `/api/v1/auth/prelogin?email=${encodeURIComponent(savedEmail)}`,
+              { timeoutMs: STARTUP_REQUEST_TIMEOUT_MS },
             );
             if (!cancelled) {
               setKdf(params);
               setPhase("password");
             }
-          } catch {
-            if (!cancelled) setPhase("email");
+          } catch (err) {
+            if (cancelled) return;
+            setError(err instanceof Error ? err.message : t("email.connectionFailed"));
+            setPhase("email");
           }
         };
 
