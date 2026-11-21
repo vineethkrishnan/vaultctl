@@ -11,6 +11,7 @@ import {
 } from "@/shared/export";
 import { itemsToCsv, type CsvExportItem } from "@/shared/export/csv";
 import { getExport } from "@/api/import-export/import-export";
+import { StepUpModal } from "@/components/auth/StepUpModal";
 
 type ExportFormat = "json" | "csv";
 
@@ -37,6 +38,7 @@ export function ExportDialog() {
   const [done, setDone] = useState<{ filename: string; bytes: number } | null>(
     null,
   );
+  const [stepUpOpen, setStepUpOpen] = useState(false);
 
   async function handleExport() {
     setError(null);
@@ -50,6 +52,16 @@ export function ExportDialog() {
     setBusy(true);
     try {
       const res = await getExport();
+      // The server gates export behind a fresh master-password step-up; ask
+      // for it and retry from the modal's onSuccess.
+      if (
+        res.status === 403 &&
+        (res.data as { error?: { code?: string } }).error?.code ===
+          "STEP_UP_REQUIRED"
+      ) {
+        setStepUpOpen(true);
+        return;
+      }
       if (res.status !== 200) {
         setError(t("vault:export.serverReturned", { status: res.status }));
         return;
@@ -179,6 +191,15 @@ export function ExportDialog() {
           </span>
         </div>
       )}
+
+      <StepUpModal
+        open={stepUpOpen}
+        onSuccess={() => {
+          setStepUpOpen(false);
+          void handleExport();
+        }}
+        onCancel={() => setStepUpOpen(false)}
+      />
     </div>
   );
 }
